@@ -28,14 +28,12 @@
             <p class="text-lg text-gray-600 mt-2">12-Team Snake Draft Edition</p>
         </header>
 
-        <!-- Modal for Team Names -->
         <div id="team-name-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden">
             <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
                 <div class="mt-3 text-center">
                     <h3 class="text-lg leading-6 font-medium text-gray-900">Enter Team Names</h3>
                     <div id="team-name-inputs" class="mt-2 px-7 py-3 space-y-2 text-left">
-                        <!-- Inputs will be generated here -->
-                    </div>
+                        </div>
                     <div class="items-center px-4 py-3">
                         <button id="start-draft-button" class="px-4 py-2 bg-green-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-300">
                             Start Draft
@@ -45,15 +43,12 @@
             </div>
         </div>
 
-
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <!-- Left Column: Controls and Instructions -->
             <div class="md-col-span-1 bg-white p-6 rounded-lg shadow-md self-start">
                 <h2 class="text-2xl font-semibold mb-4 border-b pb-2">Draft Controls</h2>
                 <div class="space-y-4">
                     <div>
-                        <label for="data-file" class="block text-sm font-medium text-gray-700 mb-1">1. Upload Player TSV</label>
-                        <input type="file" id="data-file" accept=".tsv" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-violet-50 file:text-violet-700 hover:file:bg-violet-100">
+                        <button id="load-data-button" class="w-full bg-violet-600 hover:bg-violet-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">1. Load Player Data from GitHub</button>
                     </div>
                     
                     <button id="setup-draft-button" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">2. Setup 12-Team Draft</button>
@@ -76,7 +71,7 @@
                  <div id="instructions" class="mt-6 p-4 bg-gray-50 rounded-lg">
                     <h3 class="font-semibold text-lg mb-2">How to Use:</h3>
                     <ol class="list-decimal list-inside space-y-1 text-sm text-gray-600">
-                        <li>Upload your player data TSV file.</li>
+                        <li>Click "Load Player Data from GitHub".</li>
                         <li>Click "Setup 12-Team Draft" and enter team names.</li>
                         <li>Click "Start Draft". The app will show who is picking.</li>
                         <li>Draft a player by clicking the "Draft" button in their row.</li>
@@ -86,9 +81,7 @@
                 </div>
             </div>
 
-            <!-- Right Column: Draft Board and Rosters -->
             <div class="md:col-span-2 space-y-8">
-                <!-- Available Players -->
                 <div class="bg-white p-6 rounded-lg shadow-md">
                     <h2 class="text-2xl font-semibold mb-4">Available Players</h2>
                     <div class="table-container border rounded-lg">
@@ -104,18 +97,15 @@
                                 </tr>
                             </thead>
                             <tbody id="players-body" class="bg-white divide-y divide-gray-200">
-                                <!-- Player rows will be inserted here -->
-                            </tbody>
+                                </tbody>
                         </table>
                     </div>
                 </div>
 
-                <!-- Team Rosters -->
                 <div class="bg-white p-6 rounded-lg shadow-md">
                     <h2 class="text-2xl font-semibold mb-4">Team Rosters</h2>
                     <div id="rosters-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        <!-- Roster cards will be inserted here -->
-                    </div>
+                        </div>
                 </div>
             </div>
         </div>
@@ -143,7 +133,6 @@
         };
 
         // --- DOM ELEMENTS ---
-        const fileInput = document.getElementById('data-file');
         const playersBody = document.getElementById('players-body');
         const rostersContainer = document.getElementById('rosters-container');
         const saveButton = document.getElementById('save-draft');
@@ -156,29 +145,42 @@
         const currentRoundSpan = document.getElementById('current-round');
         const currentPickNumberSpan = document.getElementById('current-pick-number');
         const onTheClockSpan = document.getElementById('on-the-clock');
+        const loadDataButton = document.getElementById('load-data-button');
+
+        // --- Hard-coded URL for your TSV file ---
+        // REPLACE THIS URL with your own raw GitHub TSV file URL
+        const tsvFileUrl = 'https://raw.githubusercontent.com/<YourUsername>/<YourRepo>/main/players.tsv';
+
 
         // --- EVENT LISTENERS ---
-        fileInput.addEventListener('change', handleFileUpload);
         saveButton.addEventListener('click', saveDraft);
         loadButton.addEventListener('click', loadDraft);
         setupDraftButton.addEventListener('click', showTeamNameModal);
         startDraftButton.addEventListener('click', startDraft);
+        loadDataButton.addEventListener('click', loadPlayersFromGitHub);
 
         /**
-         * Handles data file upload and parsing.
+         * Fetches and loads player data from the hard-coded GitHub URL.
          */
-        function handleFileUpload(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const text = e.target.result;
-                players = parseTSV(text);
-                renderPlayers();
-            };
-            reader.readAsText(file);
+        function loadPlayersFromGitHub() {
+            fetch(tsvFileUrl)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok. Ensure you are logged into GitHub and the file URL is correct.');
+                    }
+                    return response.text();
+                })
+                .then(text => {
+                    players = parseTSV(text);
+                    renderPlayers();
+                    alert('Player data loaded successfully!');
+                })
+                .catch(error => {
+                    console.error('There has been a problem with your fetch operation:', error);
+                    alert('Failed to load data. Please ensure the file URL is correct and you are logged into GitHub.');
+                });
         }
-
+        
         /**
          * Parses TSV text into an array of player objects.
          * @param {string} text - The TSV content.
@@ -213,7 +215,7 @@
          */
         function showTeamNameModal() {
             if (players.length === 0) {
-                alert('Please upload a player TSV file first.');
+                alert('Please load a player TSV file first.');
                 return;
             }
             teamNameInputsContainer.innerHTML = '';
@@ -429,6 +431,5 @@
             }
         }
     </script>
-
 </body>
 </html>
