@@ -14,22 +14,28 @@
             max-height: 500px;
             overflow-y: auto;
         }
-        .roster-card ul {
-            max-height: 200px;
+        .roster-content {
+            max-height: 400px;
             overflow-y: auto;
         }
         /* Custom scrollbar for better aesthetics */
-        .table-container::-webkit-scrollbar, .roster-card ul::-webkit-scrollbar {
+        .table-container::-webkit-scrollbar, .roster-content::-webkit-scrollbar {
             width: 8px;
             background-color: #f1f1f1;
             border-radius: 4px;
         }
-        .table-container::-webkit-scrollbar-thumb, .roster-card ul::-webkit-scrollbar-thumb {
-            background-color: #cbd5e1; /* Tailwind gray-300 */
+        .table-container::-webkit-scrollbar-thumb, .roster-content::-webkit-scrollbar-thumb {
+            background-color: #cbd5e1;
             border-radius: 4px;
         }
-        .table-container::-webkit-scrollbar-thumb:hover, .roster-card ul::-webkit-scrollbar-thumb:hover {
-            background-color: #94a3b8; /* Tailwind gray-400 */
+        .table-container::-webkit-scrollbar-thumb:hover, .roster-content::-webkit-scrollbar-thumb:hover {
+            background-color: #94a3b8;
+        }
+        .tab {
+            @apply px-4 py-2 text-sm font-medium text-gray-600 border-b-2 border-transparent transition duration-200 cursor-pointer;
+        }
+        .tab.active {
+            @apply text-indigo-600 border-indigo-600 font-semibold;
         }
     </style>
 </head>
@@ -41,153 +47,141 @@
             <p class="text-lg text-gray-600 mt-2">12-Team Snake Draft Edition</p>
         </header>
 
-        <div id="team-name-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
-            <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
-                <div class="mt-3 text-center">
-                    <h3 class="text-lg leading-6 font-medium text-gray-900">Enter Team Names</h3>
-                    <div id="team-name-inputs" class="mt-2 px-7 py-3 space-y-2 text-left">
-                    </div>
-                    <div class="items-center px-4 py-3">
-                        <button id="start-draft-button" class="px-4 py-2 bg-green-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-300">
-                            Start Draft
-                        </button>
-                    </div>
+        <div id="setup-screen" class="bg-white p-6 rounded-lg shadow-md max-w-lg mx-auto">
+            <h2 class="text-2xl font-semibold mb-4 text-center">Setup or Load Draft</h2>
+            <div class="space-y-4">
+                <div>
+                    <label for="data-file" class="block text-sm font-medium text-gray-700 mb-1">1a. Upload Player TSV File</label>
+                    <input type="file" id="data-file" accept=".tsv" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-violet-50 file:text-violet-700 hover:file:bg-violet-100">
+                </div>
+                
+                <div class="flex items-center space-x-2">
+                    <hr class="flex-grow border-gray-300">
+                    <span class="text-xs text-gray-500 font-semibold">OR</span>
+                    <hr class="flex-grow border-gray-300">
+                </div>
+                
+                <button id="load-data-button" class="w-full bg-violet-600 hover:bg-violet-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">1b. Load Player Data from GitHub</button>
+                
+                <button id="show-setup-draft" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">2. Setup 12-Team Draft</button>
+                
+                <div class="flex space-x-2">
+                    <button id="load-draft-button" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Load Existing Draft</button>
                 </div>
             </div>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div class="md:col-span-1 bg-white p-6 rounded-lg shadow-md self-start">
-                <h2 class="text-2xl font-semibold mb-4 border-b pb-2">Draft Controls</h2>
-                <div class="space-y-4">
-                    <div>
-                        <label for="data-file" class="block text-sm font-medium text-gray-700 mb-1">1a. Upload Player TSV File</label>
-                        <input type="file" id="data-file" accept=".tsv" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-violet-50 file:text-violet-700 hover:file:bg-violet-100">
-                    </div>
-                    
-                    <div class="flex items-center space-x-2">
-                        <hr class="flex-grow border-gray-300">
-                        <span class="text-xs text-gray-500 font-semibold">OR</span>
-                        <hr class="flex-grow border-gray-300">
-                    </div>
-
-                    <div>
-                        <button id="load-data-button" class="w-full bg-violet-600 hover:bg-violet-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">1b. Load Player Data from GitHub</button>
-                    </div>
-                    
-                    <button id="setup-draft-button" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">2. Setup 12-Team Draft</button>
-
-                     <div class="flex space-x-2">
-                        <button id="save-draft" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Save Draft</button>
-                        <button id="load-draft" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Load Draft</button>
-                     </div>
-                     <div>
-                        <button id="undo-pick-button" class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300 mt-2">Undo Last Pick</button>
-                     </div>
-                </div>
-
-                <div class="mt-6 p-4 bg-gray-50 rounded-lg">
-                    <h3 class="font-semibold text-lg mb-2">Filter & Sort Players</h3>
-                    <div class="space-y-4">
-                        <div>
-                            <label for="player-search" class="block text-sm font-medium text-gray-700">Search Player:</label>
-                            <input type="text" id="player-search" placeholder="e.g., Mahomes" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+        <div id="drafting-screen" class="hidden">
+            <div id="team-name-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+                <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
+                    <div class="mt-3 text-center">
+                        <h3 class="text-lg leading-6 font-medium text-gray-900">Enter Team Names</h3>
+                        <div id="team-name-inputs" class="mt-2 px-7 py-3 space-y-2 text-left"></div>
+                        <div class="items-center px-4 py-3">
+                            <button id="start-draft-button" class="px-4 py-2 bg-green-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-300">
+                                Start Draft
+                            </button>
                         </div>
-                        <div>
-                            <label for="position-filter" class="block text-sm font-medium text-gray-700">Filter by Position:</label>
-                            <select id="position-filter" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white">
-                                <option value="">All Positions</option>
-                                <option value="QB">QB</option>
-                                <option value="RB">RB</option>
-                                <option value="WR">WR</option>
-                                <option value="TE">TE</option>
-                                <option value="PK">PK</option>
-                                <option value="Def">Def</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label for="sort-by" class="block text-sm font-medium text-gray-700">Sort By:</label>
-                            <select id="sort-by" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white">
-                                <option value="VBD" selected>VBD (Highest First)</option>
-                                <option value="2025 Projected Fantasy Points">Proj. Points (Highest First)</option>
-                                <option value="Player">Player Name (A-Z)</option>
-                                <option value="Pos">Position (A-Z)</option>
-                                <option value="Team">Team (A-Z)</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-                
-                <div id="draft-status" class="mt-6 p-4 bg-gray-50 rounded-lg hidden">
-                    <h3 class="font-semibold text-lg mb-2">Draft Status</h3>
-                    <div class="space-y-1 text-sm">
-                        <p><strong>Round:</strong> <span id="current-round">N/A</span></p>
-                        <p><strong>Pick:</strong> <span id="current-pick-number">N/A</span></p>
-                        <p class="text-lg font-bold text-indigo-600"><strong>On the Clock:</strong> <span id="on-the-clock">N/A</span></p>
-                    </div>
-                    <div class="mt-4">
-                        <h4 class="font-semibold text-md mb-2">Upcoming Picks:</h4>
-                        <ul id="upcoming-picks" class="text-sm list-disc list-inside space-y-0.5">
-                        </ul>
-                    </div>
-                </div>
-                
-                <div class="mt-6 p-4 bg-white rounded-lg shadow-md">
-                    <h3 class="text-2xl font-semibold mb-4 border-b pb-2">Top 5 Available</h3>
-                    <div id="top-5-container" class="space-y-4">
-                    </div>
-                </div>
-
-                <div class="mt-6 p-4 bg-white rounded-lg shadow-md">
-                    <h3 class="text-2xl font-semibold mb-4 border-b pb-2">Recommended Picks</h3>
-                    <div id="recommendations-container" class="space-y-4">
-                        <p class="text-gray-500">
-                            Recommendations will appear here after the draft starts.
-                        </p>
                     </div>
                 </div>
             </div>
 
-            <div class="md:col-span-2 space-y-8">
-                <div class="bg-white p-6 rounded-lg shadow-md">
-                    <h2 class="text-2xl font-semibold mb-4">Available Players</h2>
-                    <div class="table-container border rounded-lg">
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50 sticky top-0">
-                                <tr>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Player</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pos</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Team</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bye</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Proj. Pts</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">VBD</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody id="players-body" class="bg-white divide-y divide-gray-200">
-                            </tbody>
-                        </table>
-                        <p id="no-available-players" class="text-center text-gray-500 p-4 hidden">No players available based on current filters.</p>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="md:col-span-1 bg-white p-6 rounded-lg shadow-md self-start">
+                    <h2 class="text-2xl font-semibold mb-4 border-b pb-2">Draft Controls</h2>
+                    <div class="space-y-4">
+                        <button id="save-draft" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Save Draft</button>
+                        <button id="undo-pick-button" class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300 mt-2">Undo Last Pick</button>
+                    </div>
+
+                    <div id="draft-status" class="mt-6 p-4 bg-gray-50 rounded-lg">
+                        <h3 class="font-semibold text-lg mb-2">Draft Status</h3>
+                        <div class="space-y-1 text-sm">
+                            <p><strong>Round:</strong> <span id="current-round">N/A</span></p>
+                            <p><strong>Pick:</strong> <span id="current-pick-number">N/A</span></p>
+                            <p class="text-lg font-bold text-indigo-600"><strong>On the Clock:</strong> <span id="on-the-clock">N/A</span></p>
+                        </div>
+                        <div class="mt-4">
+                            <h4 class="font-semibold text-md mb-2">Upcoming Picks:</h4>
+                            <ul id="upcoming-picks" class="text-sm list-disc list-inside space-y-0.5"></ul>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 p-4 bg-white rounded-lg shadow-md">
+                        <h3 class="text-2xl font-semibold mb-4 border-b pb-2">Top 5 Available</h3>
+                        <div id="top-5-container" class="space-y-4"></div>
+                    </div>
+
+                    <div class="mt-6 p-4 bg-white rounded-lg shadow-md">
+                        <h3 class="text-2xl font-semibold mb-4 border-b pb-2">Recommended Picks</h3>
+                        <div id="recommendations-container" class="space-y-4">
+                            <p class="text-gray-500">Recommendations will appear here after the draft starts.</p>
+                        </div>
                     </div>
                 </div>
 
-                <div class="bg-white p-6 rounded-lg shadow-md">
-                    <h2 class="text-2xl font-semibold mb-4">Team Rosters</h2>
-                    <div id="rosters-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div class="md:col-span-2 space-y-8">
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <h2 class="text-2xl font-semibold mb-4">Available Players</h2>
+                        <div class="space-y-4">
+                            <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
+                                <input type="text" id="player-search" placeholder="Search Player..." class="flex-grow px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                <select id="position-filter" class="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white">
+                                    <option value="">All Positions</option>
+                                    <option value="QB">QB</option>
+                                    <option value="RB">RB</option>
+                                    <option value="WR">WR</option>
+                                    <option value="TE">TE</option>
+                                    <option value="PK">PK</option>
+                                    <option value="Def">Def</option>
+                                </select>
+                                <select id="sort-by" class="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white">
+                                    <option value="VBD" selected>VBD (Highest First)</option>
+                                    <option value="2025 Projected Fantasy Points">Proj. Points (Highest First)</option>
+                                    <option value="Player">Player Name (A-Z)</option>
+                                    <option value="Pos">Position (A-Z)</option>
+                                    <option value="Team">Team (A-Z)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="table-container border rounded-lg mt-4">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50 sticky top-0">
+                                    <tr>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Player</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pos</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Team</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bye</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Proj. Pts</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">VBD</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="players-body" class="bg-white divide-y divide-gray-200"></tbody>
+                            </table>
+                            <p id="no-available-players" class="text-center text-gray-500 p-4 hidden">No players available based on current filters.</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <h2 class="text-2xl font-semibold mb-4">Team Rosters</h2>
+                        <div id="roster-tabs" class="flex flex-wrap border-b border-gray-200"></div>
+                        <div id="roster-content" class="roster-content mt-4"></div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-
+    
     <script>
         // --- STATE MANAGEMENT ---
-        let players = []; // This array will hold all available player data.
-        let teams = {}; // { "Team Name": { roster: [player1], positions: {QB:1, RB:2...} } }
+        let players = [];
+        let teams = {};
         let draftOrder = [];
         let currentPick = 0;
         let draftStarted = false;
         let draftHistory = [];
+        let teamNames = [];
 
         // --- ROSTER SETTINGS ---
         const rosterSettings = {
@@ -203,13 +197,14 @@
         };
 
         // --- DOM ELEMENTS ---
+        const setupScreen = document.getElementById('setup-screen');
+        const draftingScreen = document.getElementById('drafting-screen');
         const fileInput = document.getElementById('data-file');
         const playersBody = document.getElementById('players-body');
-        const rostersContainer = document.getElementById('rosters-container');
         const saveButton = document.getElementById('save-draft');
-        const loadButton = document.getElementById('load-draft');
+        const loadDraftButton = document.getElementById('load-draft-button');
         const undoButton = document.getElementById('undo-pick-button');
-        const setupDraftButton = document.getElementById('setup-draft-button');
+        const showSetupDraftButton = document.getElementById('show-setup-draft');
         const modal = document.getElementById('team-name-modal');
         const teamNameInputsContainer = document.getElementById('team-name-inputs');
         const startDraftButton = document.getElementById('start-draft-button');
@@ -225,16 +220,18 @@
         const noAvailablePlayersMessage = document.getElementById('no-available-players');
         const top5Container = document.getElementById('top-5-container');
         const recommendationsContainer = document.getElementById('recommendations-container');
+        const rosterTabsContainer = document.getElementById('roster-tabs');
+        const rosterContentContainer = document.getElementById('roster-content');
 
         // --- Hard-coded URL for your TSV file ---
-        const tsvFileUrl = 'https://github.com/APmsj09/Fantasy_Football/blob/main/Data.tsv';
+        const tsvFileUrl = 'https://raw.githubusercontent.com/APmsj09/Fantasy_Football/main/Data.tsv';
 
         // --- EVENT LISTENERS ---
         fileInput.addEventListener('change', handleFileUpload);
         saveButton.addEventListener('click', saveDraft);
-        loadButton.addEventListener('click', loadDraft);
+        loadDraftButton.addEventListener('click', loadDraft);
         undoButton.addEventListener('click', undoLastPick);
-        setupDraftButton.addEventListener('click', showTeamNameModal);
+        showSetupDraftButton.addEventListener('click', showTeamNameModal);
         startDraftButton.addEventListener('click', startDraft);
         loadDataButton.addEventListener('click', loadPlayersFromGitHub);
         playerSearchInput.addEventListener('input', applyFiltersAndSort);
@@ -242,41 +239,11 @@
         sortBySelect.addEventListener('change', applyFiltersAndSort);
 
         /**
-         * Handles local data file upload and parsing.
+         * Switches the view from the setup screen to the main drafting screen.
          */
-        function handleFileUpload(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const text = e.target.result;
-                players = parseTSV(text);
-                applyFiltersAndSort();
-                alert('Player data uploaded successfully from your device!');
-            };
-            reader.readAsText(file);
-        }
-
-        /**
-         * Fetches and loads player data from the hard-coded GitHub URL.
-         */
-        function loadPlayersFromGitHub() {
-            fetch(tsvFileUrl)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Network response was not ok. Please ensure the file URL is correct and you are logged into GitHub to access private repositories.');
-                    }
-                    return response.text();
-                })
-                .then(text => {
-                    players = parseTSV(text);
-                    applyFiltersAndSort();
-                    alert('Player data loaded successfully from GitHub!');
-                })
-                .catch(error => {
-                    console.error('There has been a problem with your fetch operation:', error);
-                    alert('Failed to load data from GitHub. Please check your internet connection, the file URL, and ensure you are logged into GitHub.');
-                });
+        function showDraftingScreen() {
+            setupScreen.classList.add('hidden');
+            draftingScreen.classList.remove('hidden');
         }
 
         /**
@@ -317,6 +284,44 @@
         }
 
         /**
+         * Fetches and loads player data from the hard-coded GitHub URL.
+         */
+        function loadPlayersFromGitHub() {
+            fetch(tsvFileUrl)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok. Ensure the URL is correct.');
+                    }
+                    return response.text();
+                })
+                .then(text => {
+                    players = parseTSV(text);
+                    applyFiltersAndSort();
+                    alert('Player data loaded successfully from GitHub!');
+                })
+                .catch(error => {
+                    console.error('There has been a problem with your fetch operation:', error);
+                    alert('Failed to load data from GitHub. Please check your internet connection and the file URL.');
+                });
+        }
+
+        /**
+         * Handles local data file upload and parsing.
+         */
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const text = e.target.result;
+                players = parseTSV(text);
+                applyFiltersAndSort();
+                alert('Player data uploaded successfully from your device!');
+            };
+            reader.readAsText(file);
+        }
+
+        /**
          * Shows the modal to enter team names.
          */
         function showTeamNameModal() {
@@ -340,7 +345,7 @@
          * Initializes and starts the draft.
          */
         function startDraft() {
-            const teamNames = [];
+            teamNames = [];
             for (let i = 1; i <= 12; i++) {
                 const input = document.getElementById(`team-${i}`);
                 if (!input.value.trim()) {
@@ -348,6 +353,10 @@
                     return;
                 }
                 teamNames.push(input.value.trim());
+            }
+            if (new Set(teamNames).size !== teamNames.length) {
+                alert('All team names must be unique.');
+                return;
             }
 
             teams = {};
@@ -369,7 +378,7 @@
 
             draftStarted = true;
             modal.classList.add('hidden');
-            draftStatusDiv.classList.remove('hidden');
+            showDraftingScreen();
             updateDraftStatus();
             renderRosters();
             applyFiltersAndSort();
@@ -434,7 +443,6 @@
             const recommendations = [];
             const positionsToDraft = ['RB', 'WR', 'QB', 'TE'];
 
-            // Priority 1: Fill empty starting spots based on VBD
             let startersNeeded = rosterSettings.totalStarters - teamRoster.length;
             if (startersNeeded > 0) {
                 const sortedAvailablePlayers = [...players].sort((a, b) => b.VBD - a.VBD);
@@ -451,7 +459,6 @@
                 }
             }
 
-            // Priority 2: Find high-value players for upcoming bye weeks
             const byeWeeks = teamRoster.map(p => p['Bye Week']);
             const availablePlayersWithBye = players.filter(p => !byeWeeks.includes(p['Bye Week']));
             availablePlayersWithBye.sort((a, b) => {
@@ -466,7 +473,6 @@
             }));
             recommendations.push(...byeRecommendations);
 
-            // Merge and show the top 5 unique recommendations
             const uniqueRecommendations = recommendations.filter((item, index, self) =>
                 index === self.findIndex((t) => (
                     t.player.Player === item.player.Player
@@ -499,13 +505,12 @@
             }
         }
 
-
         /**
          * Applies current filters and sort order to the available players
          * and then renders the main players table.
          */
         function applyFiltersAndSort() {
-            let filteredPlayers = [...players]; // Start with all available players
+            let filteredPlayers = [...players];
 
             const searchTerm = playerSearchInput.value.toLowerCase();
             if (searchTerm) {
@@ -571,10 +576,44 @@
         }
 
         /**
-         * Renders the team rosters.
+         * Renders the tabbed roster UI.
          */
         function renderRosters() {
-            rostersContainer.innerHTML = '';
+            rosterTabsContainer.innerHTML = '';
+            rosterContentContainer.innerHTML = '';
+            const sortedTeamNames = Object.keys(teams).sort();
+            
+            let activeTab = sortedTeamNames[0];
+            const savedActiveTab = localStorage.getItem('activeRosterTab');
+            if (savedActiveTab && sortedTeamNames.includes(savedActiveTab)) {
+                activeTab = savedActiveTab;
+            }
+
+            sortedTeamNames.forEach(teamName => {
+                const isActive = teamName === activeTab;
+                const tab = document.createElement('button');
+                tab.className = `tab ${isActive ? 'active' : ''}`;
+                tab.textContent = teamName;
+                tab.onclick = () => switchRosterTab(teamName);
+                rosterTabsContainer.appendChild(tab);
+            });
+
+            renderRosterContent(activeTab);
+        }
+
+        /**
+         * Renders the content for a specific team roster tab.
+         * @param {string} teamName - The name of the team to display.
+         */
+        function renderRosterContent(teamName) {
+            rosterContentContainer.innerHTML = '';
+            const teamData = teams[teamName];
+            if (!teamData) {
+                rosterContentContainer.innerHTML = '<p class="text-sm text-gray-500">Roster not found.</p>';
+                return;
+            }
+            localStorage.setItem('activeRosterTab', teamName);
+
             const positions = ['QB', 'RB', 'WR', 'TE', 'PK', 'Def'];
             const posColors = {
                 'QB': 'bg-blue-100',
@@ -585,24 +624,19 @@
                 'Def': 'bg-indigo-100'
             };
 
-            Object.keys(teams).sort().forEach(teamName => {
-                const teamData = teams[teamName];
-                const teamCard = document.createElement('div');
-                teamCard.className = 'bg-gray-50 p-4 rounded-lg border roster-card shadow-sm';
+            const posSummary = positions
+                .map(pos => `${pos}: ${teamData.positions[pos] || 0}`)
+                .join(', ');
 
-                const rosterPercentage = (teamData.roster.length / rosterSettings.totalSize) * 100;
-                const posSummary = positions
-                    .map(pos => `${pos}: ${teamData.positions[pos] || 0}`)
-                    .join(', ');
+            const playersHtml = teamData.roster.map(p => `
+                <li class="flex justify-between items-center text-sm border-b border-gray-200 last:border-b-0 py-1 px-2 ${posColors[p.Pos]} rounded">
+                    <span class="font-medium">${p.Player}</span>
+                    <span class="text-gray-600">${p.Pos} - ${p.Team}</span>
+                </li>
+            `).join('');
 
-                const playersHtml = teamData.roster.map(p => `
-                    <li class="flex justify-between items-center text-sm border-b border-gray-200 last:border-b-0 py-1 px-2 ${posColors[p.Pos]} rounded">
-                        <span class="font-medium">${p.Player}</span>
-                        <span class="text-gray-600">${p.Pos} - ${p.Team}</span>
-                    </li>
-                `).join('');
-
-                teamCard.innerHTML = `
+            rosterContentContainer.innerHTML = `
+                <div class="bg-gray-50 p-4 rounded-lg border shadow-sm">
                     <h3 class="font-semibold text-lg mb-2 flex justify-between items-center">
                         <span>${teamName}</span>
                         <span class="text-sm text-gray-500">
@@ -610,15 +644,29 @@
                         </span>
                     </h3>
                     <div class="w-full bg-gray-200 rounded-full h-2 mb-4">
-                        <div class="bg-blue-600 h-2 rounded-full" style="width: ${rosterPercentage}%;"></div>
+                        <div class="bg-blue-600 h-2 rounded-full" style="width: ${(teamData.roster.length / rosterSettings.totalSize) * 100}%;"></div>
                     </div>
                     <p class="text-xs text-gray-600 mb-2">${posSummary}</p>
                     <ul class="space-y-1">
                         ${playersHtml || '<li class="text-sm text-gray-500">Roster is empty.</li>'}
                     </ul>
-                `;
-                rostersContainer.appendChild(teamCard);
+                </div>
+            `;
+        }
+        
+        /**
+         * Switches the active roster tab.
+         * @param {string} teamName - The name of the team to switch to.
+         */
+        function switchRosterTab(teamName) {
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
             });
+            const newActiveTab = document.querySelector(`.tab[onclick="switchRosterTab('${teamName}')"]`);
+            if (newActiveTab) {
+                newActiveTab.classList.add('active');
+            }
+            renderRosterContent(teamName);
         }
 
         /**
@@ -679,25 +727,20 @@
                 return;
             }
 
-            // Record the pick in history before modifying state
             draftHistory.push({
                 pickIndex: currentPick,
                 player: { ...playerToDraft },
                 teamName: teamName
             });
 
-            // Remove player from the main player list
             players = players.filter(p => p.Player !== playerToDraft.Player);
 
-            // Add player to the team's roster
             teamData.roster.push(playerToDraft);
-            teamData.roster.sort((a, b) => a.Pos.localeCompare(b.Pos)); // Keep roster sorted by position
+            teamData.roster.sort((a, b) => a.Pos.localeCompare(b.Pos));
             teamData.positions[position] = (teamData.positions[position] || 0) + 1;
 
-            // Advance the draft
             currentPick++;
 
-            // Update the UI
             applyFiltersAndSort();
             renderRosters();
             updateDraftStatus();
@@ -717,17 +760,12 @@
             const teamData = teams[teamName];
             const position = playerToUndo.Pos;
 
-            // Add the player back to the available players list
             players.push(playerToUndo);
-
-            // Remove the player from the team's roster
             teamData.roster = teamData.roster.filter(p => p.Player !== playerToUndo.Player);
             teamData.positions[position] = (teamData.positions[position] || 1) - 1;
 
-            // Go back one pick in the draft order
             currentPick = lastPick.pickIndex;
 
-            // Update the UI
             applyFiltersAndSort();
             renderRosters();
             updateDraftStatus();
@@ -743,7 +781,8 @@
                 draftOrder,
                 currentPick,
                 draftStarted,
-                draftHistory
+                draftHistory,
+                teamNames
             };
             localStorage.setItem('fantasyDraftState', JSON.stringify(draftState));
             alert('Draft saved successfully!');
@@ -762,9 +801,9 @@
                 currentPick = draftState.currentPick;
                 draftStarted = draftState.draftStarted;
                 draftHistory = draftState.draftHistory;
+                teamNames = draftState.teamNames;
 
-                // Re-render UI based on loaded state
-                draftStatusDiv.classList.remove('hidden');
+                showDraftingScreen();
                 updateDraftStatus();
                 renderRosters();
                 applyFiltersAndSort();
@@ -774,9 +813,19 @@
             }
         }
 
-        // Initial render
+        // Initial check and rendering
+        window.addEventListener('load', () => {
+            const savedState = localStorage.getItem('fantasyDraftState');
+            if (savedState) {
+                // If a draft is saved, give the user the option to load it
+                loadDraftButton.classList.remove('hidden');
+            } else {
+                // Otherwise, hide the load button
+                loadDraftButton.classList.add('hidden');
+            }
+        });
+
         applyFiltersAndSort();
-        renderRosters();
     </script>
 </body>
 </html>
