@@ -41,14 +41,12 @@
             <p class="text-lg text-gray-600 mt-2">12-Team Snake Draft Edition</p>
         </header>
 
-        <!-- Modal for Team Names -->
         <div id="team-name-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
             <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
                 <div class="mt-3 text-center">
                     <h3 class="text-lg leading-6 font-medium text-gray-900">Enter Team Names</h3>
                     <div id="team-name-inputs" class="mt-2 px-7 py-3 space-y-2 text-left">
-                        <!-- Inputs will be generated here -->
-                    </div>
+                        </div>
                     <div class="items-center px-4 py-3">
                         <button id="start-draft-button" class="px-4 py-2 bg-green-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-300">
                             Start Draft
@@ -59,11 +57,9 @@
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <!-- Left Column: Controls and Instructions -->
-            <div class="md-col-span-1 bg-white p-6 rounded-lg shadow-md self-start">
+            <div class="md:col-span-1 bg-white p-6 rounded-lg shadow-md self-start">
                 <h2 class="text-2xl font-semibold mb-4 border-b pb-2">Draft Controls</h2>
                 <div class="space-y-4">
-                    <!-- Option 1: Upload File -->
                     <div>
                         <label for="data-file" class="block text-sm font-medium text-gray-700 mb-1">1a. Upload Player TSV File</label>
                         <input type="file" id="data-file" accept=".tsv" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-violet-50 file:text-violet-700 hover:file:bg-violet-100">
@@ -75,7 +71,6 @@
                         <hr class="flex-grow border-gray-300">
                     </div>
 
-                    <!-- Option 2: Load from GitHub -->
                     <div>
                         <button id="load-data-button" class="w-full bg-violet-600 hover:bg-violet-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">1b. Load Player Data from GitHub</button>
                     </div>
@@ -86,13 +81,11 @@
                         <button id="save-draft" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Save Draft</button>
                         <button id="load-draft" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Load Draft</button>
                      </div>
-                     <!-- New Undo Button -->
                      <div>
                         <button id="undo-pick-button" class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300 mt-2">Undo Last Pick</button>
                      </div>
                 </div>
 
-                <!-- Filter and Sort Controls (Moved to Left Column) -->
                 <div class="mt-6 p-4 bg-gray-50 rounded-lg">
                     <h3 class="font-semibold text-lg mb-2">Filter & Sort Players</h3>
                     <div class="space-y-4">
@@ -135,15 +128,18 @@
                     <div class="mt-4">
                         <h4 class="font-semibold text-md mb-2">Upcoming Picks:</h4>
                         <ul id="upcoming-picks" class="text-sm list-disc list-inside space-y-0.5">
-                            <!-- Upcoming picks will be listed here -->
-                        </ul>
+                            </ul>
                     </div>
+                </div>
+                
+                <div class="mt-6 p-4 bg-white rounded-lg shadow-md">
+                    <h3 class="text-2xl font-semibold mb-4 border-b pb-2">Top 5 Available</h3>
+                    <div id="top-5-container" class="space-y-4">
+                        </div>
                 </div>
             </div>
 
-            <!-- Right Column: Draft Board and Rosters -->
             <div class="md:col-span-2 space-y-8">
-                <!-- Available Players (Now includes "Best Players" concept via sorting) -->
                 <div class="bg-white p-6 rounded-lg shadow-md">
                     <h2 class="text-2xl font-semibold mb-4">Available Players</h2>
                     <div class="table-container border rounded-lg">
@@ -160,19 +156,16 @@
                                 </tr>
                             </thead>
                             <tbody id="players-body" class="bg-white divide-y divide-gray-200">
-                                <!-- Player rows will be inserted here -->
-                            </tbody>
+                                </tbody>
                         </table>
                         <p id="no-available-players" class="text-center text-gray-500 p-4 hidden">No players available based on current filters.</p>
                     </div>
                 </div>
 
-                <!-- Team Rosters -->
                 <div class="bg-white p-6 rounded-lg shadow-md">
                     <h2 class="text-2xl font-semibold mb-4">Team Rosters</h2>
                     <div id="rosters-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        <!-- Roster cards will be inserted here -->
-                    </div>
+                        </div>
                 </div>
             </div>
         </div>
@@ -204,7 +197,6 @@
         // --- DOM ELEMENTS ---
         const fileInput = document.getElementById('data-file');
         const playersBody = document.getElementById('players-body'); // Main player table body
-        // Removed bestPlayersBody as it's no longer a separate section
         const rostersContainer = document.getElementById('rosters-container');
         const saveButton = document.getElementById('save-draft');
         const loadButton = document.getElementById('load-draft');
@@ -223,7 +215,7 @@
         const positionFilterSelect = document.getElementById('position-filter');
         const sortBySelect = document.getElementById('sort-by');
         const noAvailablePlayersMessage = document.getElementById('no-available-players');
-        // Removed noBestPlayersMessage
+        const top5Container = document.getElementById('top-5-container');
 
         // --- Hard-coded URL for your TSV file ---
         // IMPORTANT: Replace this with the raw URL of your TSV file from your private GitHub repository
@@ -315,7 +307,6 @@
             }
             // Add a simple VBD calculation if not present, for demonstration
             if (!headers.includes('VBD')) {
-                // If VBD is not in the TSV, use Projected Fantasy Points as a fallback
                 parsedPlayers.forEach(p => {
                     p.VBD = p['2025 Projected Fantasy Points'] || 0;
                 });
@@ -461,6 +452,7 @@
             });
 
             renderPlayers(filteredPlayers); // Render the filtered and sorted list
+            renderTop5(); // Update the Top 5 box
         }
 
         /**
@@ -476,10 +468,9 @@
                 noAvailablePlayersMessage.classList.add('hidden');
                 playersToRender.forEach((player) => {
                     const tr = document.createElement('tr');
-                    tr.className = 'hover:bg-gray-100 cursor-pointer'; // Add cursor pointer for double-click hint
-                    // Double-click event listener on the row
-                    // We need the original index of the player in the global 'players' array
-                    tr.ondblclick = () => draftPlayer(players.indexOf(player)); 
+                    tr.className = 'hover:bg-gray-100 cursor-pointer';
+                    // Double-click listener on the row
+                    tr.ondblclick = () => draftPlayer(player);
                     
                     tr.innerHTML = `
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${player.Player}</td>
@@ -489,41 +480,63 @@
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${player['2025 Projected Fantasy Points']}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${player.VBD !== undefined ? player.VBD.toFixed(2) : 'N/A'}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            <button class="text-indigo-600 hover:text-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-300 rounded-md px-2 py-1" onclick="event.stopPropagation(); draftPlayer(${players.indexOf(player)})">Draft</button>
+                            <button class="text-indigo-600 hover:text-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-300 rounded-md px-2 py-1 draft-button">Draft</button>
                         </td>
                     `;
+                    const draftButton = tr.querySelector('.draft-button');
+                    draftButton.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        draftPlayer(player);
+                    });
+
                     playersBody.appendChild(tr);
                 });
             }
         }
-
-        // Removed renderBestPlayers() as it's no longer a separate section
-
 
         /**
          * Renders the team rosters, displaying drafted players for each team.
          */
         function renderRosters() {
             rostersContainer.innerHTML = '';
+            const positions = ['QB', 'RB', 'WR', 'TE', 'PK', 'Def'];
+            const posColors = {
+                'QB': 'bg-blue-100',
+                'RB': 'bg-green-100',
+                'WR': 'bg-yellow-100',
+                'TE': 'bg-red-100',
+                'PK': 'bg-purple-100',
+                'Def': 'bg-indigo-100'
+            };
+
             Object.keys(teams).sort().forEach(teamName => {
                 const teamData = teams[teamName];
                 const teamCard = document.createElement('div');
                 teamCard.className = 'bg-gray-50 p-4 rounded-lg border roster-card shadow-sm';
 
-                const posSummary = Object.entries(teamData.positions)
-                                         .map(([pos, count]) => `${pos}: ${count}`)
-                                         .join(', ');
+                const rosterPercentage = (teamData.roster.length / rosterSettings.totalSize) * 100;
+                const posSummary = positions
+                    .map(pos => `${pos}: ${teamData.positions[pos] || 0}`)
+                    .join(', ');
 
                 const playersHtml = teamData.roster.map(p => `
-                    <li class="flex justify-between items-center text-sm border-b border-gray-200 last:border-b-0 py-1">
+                    <li class="flex justify-between items-center text-sm border-b border-gray-200 last:border-b-0 py-1 px-2 ${posColors[p.Pos]} rounded">
                         <span class="font-medium">${p.Player}</span>
                         <span class="text-gray-600">${p.Pos} - ${p.Team}</span>
                     </li>
                 `).join('');
 
                 teamCard.innerHTML = `
-                    <h3 class="font-semibold text-lg mb-2">${teamName} <span class="text-sm text-gray-500">(${teamData.roster.length}/${rosterSettings.totalSize} players)</span></h3>
-                    <p class="text-xs text-gray-600 mb-2">${posSummary || 'No players drafted yet'}</p>
+                    <h3 class="font-semibold text-lg mb-2 flex justify-between items-center">
+                        <span>${teamName}</span>
+                        <span class="text-sm text-gray-500">
+                            <span class="text-blue-600 font-bold">${teamData.roster.length}</span>/${rosterSettings.totalSize} players
+                        </span>
+                    </h3>
+                    <div class="w-full bg-gray-200 rounded-full h-2 mb-4">
+                        <div class="bg-blue-600 h-2 rounded-full" style="width: ${rosterPercentage}%;"></div>
+                    </div>
+                    <p class="text-xs text-gray-600 mb-2">${posSummary}</p>
                     <ul class="space-y-1">
                         ${playersHtml || '<li class="text-sm text-gray-500">Roster is empty.</li>'}
                     </ul>
@@ -531,14 +544,47 @@
                 rostersContainer.appendChild(teamCard);
             });
         }
+        
+        /**
+         * Renders the top 5 available players for key positions.
+         */
+        function renderTop5() {
+            top5Container.innerHTML = '';
+            const positions = ['QB', 'RB', 'WR', 'TE'];
+
+            positions.forEach(pos => {
+                // Filter players by position and sort by VBD
+                const topPlayers = players.filter(p => p.Pos === pos)
+                                          .sort((a, b) => b.VBD - a.VBD)
+                                          .slice(0, 5); // Get the top 5
+
+                const listItemsHtml = topPlayers.map(p => `
+                    <li class="flex justify-between items-center text-sm">
+                        <span class="font-medium">${p.Player}</span>
+                        <span class="text-gray-600">${p.Team} - ${p.VBD.toFixed(2)} VBD</span>
+                    </li>
+                `).join('');
+
+                const posSection = document.createElement('div');
+                posSection.className = 'p-3 bg-gray-50 rounded-lg';
+                posSection.innerHTML = `
+                    <h4 class="font-bold text-md mb-2 text-indigo-600">${pos}</h4>
+                    <ul class="space-y-1">
+                        ${listItemsHtml || '<li class="text-sm text-gray-500">No players available.</li>'}
+                    </ul>
+                `;
+                top5Container.appendChild(posSection);
+            });
+        }
+
 
         /**
          * Handles drafting a player, updating team rosters, and advancing the draft.
          * Includes validation for draft status, roster limits, and position limits.
          * Records the pick in draftHistory for undo functionality.
-         * @param {number} originalPlayerIndex - The original index of the player in the global 'players' array.
+         * @param {Object} playerToDraft - The player object to draft.
          */
-        function draftPlayer(originalPlayerIndex) {
+        function draftPlayer(playerToDraft) {
             if (!draftStarted) {
                 alert('Please set up and start the draft first.');
                 return;
@@ -550,7 +596,6 @@
 
             const teamName = draftOrder[currentPick];
             const teamData = teams[teamName];
-            const playerToDraft = players[originalPlayerIndex]; // Get player from original array
             const position = playerToDraft.Pos;
 
             const currentPositionCount = teamData.positions[position] || 0;
@@ -576,14 +621,14 @@
             teamData.positions[position] = (teamData.positions[position] || 0) + 1;
 
             // Remove the drafted player from the available players list
-            players.splice(originalPlayerIndex, 1);
+            players = players.filter(p => p.Player !== playerToDraft.Player || p.Team !== playerToDraft.Team);
 
             // Advance the draft to the next pick
             currentPick++;
 
             // Re-render UI to reflect changes
             updateDraftStatus();
-            applyFiltersAndSort(); // This will re-render available players
+            applyFiltersAndSort(); // This will re-render available players and top 5
             renderRosters();
             alert(`Drafted ${playerToDraft.Player} (${playerToDraft.Pos}) to ${teamName}.`);
         }
@@ -601,84 +646,80 @@
             const lastPick = draftHistory.pop();
             const player = lastPick.player;
             const teamName = lastPick.teamName;
+            const teamData = teams[teamName];
+            const position = player.Pos;
 
             // Revert currentPick to the state before this pick was made
             currentPick = lastPick.pickIndex;
 
-            // Add the player back to the available players list
-            players.push(player);
-            // Re-sort and filter will be applied by applyFiltersAndSort later
-
             // Remove player from the team's roster
-            const teamData = teams[teamName];
-            const playerIndexInRoster = teamData.roster.findIndex(p => 
-                p.Player === player.Player && p.Pos === player.Pos && p.Team === player.Team
-            ); // More robust find
-            if (playerIndexInRoster !== -1) {
+            const playerIndexInRoster = teamData.roster.findIndex(p => p.Player === player.Player && p.Team === player.Team);
+            if (playerIndexInRoster > -1) {
                 teamData.roster.splice(playerIndexInRoster, 1);
-                // Decrement position count for the team
-                teamData.positions[player.Pos] = (teamData.positions[player.Pos] || 1) - 1;
-                // Clean up position entry if count becomes zero or less
-                if (teamData.positions[player.Pos] <= 0) {
-                    delete teamData.positions[player.Pos];
+                teamData.positions[position] = (teamData.positions[position] || 1) - 1;
+                if (teamData.positions[position] === 0) {
+                    delete teamData.positions[position]; // Clean up the object
                 }
-            } else {
-                console.warn("Player not found in roster during undo, potential state mismatch.");
             }
 
-            // Re-render all UI components to reflect the undo
+            // Add the player back to the available players list
+            players.push(player);
+
+            // Re-render UI to reflect changes
             updateDraftStatus();
-            applyFiltersAndSort(); // This re-renders available players with the restored player
+            applyFiltersAndSort();
             renderRosters();
-            alert(`Last pick (${player.Player} to ${teamName}) undone.`);
+            alert(`Last pick (${player.Player} to ${teamName}) has been undone.`);
         }
 
 
         /**
          * Saves the current draft state to localStorage.
-         * Now also saves draftHistory.
          */
         function saveDraft() {
             if (!draftStarted) {
-                alert('No draft in progress to save.');
+                alert('Please start a draft before attempting to save.');
                 return;
             }
             const draftState = {
-                players,
-                teams,
-                draftOrder,
-                currentPick,
-                draftStarted,
-                draftHistory // Save the draft history
+                players: players,
+                teams: teams,
+                draftOrder: draftOrder,
+                currentPick: currentPick,
+                draftHistory: draftHistory,
+                draftStarted: draftStarted
             };
             localStorage.setItem('fantasyDraftState', JSON.stringify(draftState));
-            alert('Draft progress saved successfully!');
+            alert('Draft state saved successfully!');
         }
 
         /**
          * Loads a saved draft state from localStorage.
-         * Now also loads draftHistory.
          */
         function loadDraft() {
             const savedState = localStorage.getItem('fantasyDraftState');
-            if (savedState) {
-                const draftState = JSON.parse(savedState);
-                players = draftState.players;
-                teams = draftState.teams;
-                draftOrder = draftState.draftOrder;
-                currentPick = draftState.currentPick;
-                draftStarted = draftState.draftStarted;
-                draftHistory = draftState.draftHistory || []; // Load history, default to empty array if not present (for older saves)
-
-                draftStatusDiv.classList.remove('hidden');
-                updateDraftStatus();
-                applyFiltersAndSort(); // Re-render with loaded data
-                renderRosters();
-                alert('Draft progress loaded successfully!');
-            } else {
-                alert('No saved draft found in your browser\'s local storage.');
+            if (!savedState) {
+                alert('No saved draft found.');
+                return;
             }
+            const draftState = JSON.parse(savedState);
+            players = draftState.players;
+            teams = draftState.teams;
+            draftOrder = draftState.draftOrder;
+            currentPick = draftState.currentPick;
+            draftHistory = draftState.draftHistory;
+            draftStarted = draftState.draftStarted;
+            
+            // Render the loaded state
+            if (draftStarted) {
+                 draftStatusDiv.classList.remove('hidden');
+            }
+            updateDraftStatus();
+            applyFiltersAndSort();
+            renderRosters();
+            alert('Draft state loaded successfully!');
         }
+
     </script>
 
 </body>
