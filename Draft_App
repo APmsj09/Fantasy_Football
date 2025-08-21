@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fantasy Football Draft Assistant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .table-container {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        .roster-card ul {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <div class="container mx-auto p-4 md:p-8">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-gray-900">Fantasy Football Draft Assistant</h1>
+            <p class="text-lg text-gray-600 mt-2">12-Team Snake Draft Edition</p>
+        </header>
+
+        <!-- Modal for Team Names -->
+        <div id="team-name-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden">
+            <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
+                <div class="mt-3 text-center">
+                    <h3 class="text-lg leading-6 font-medium text-gray-900">Enter Team Names</h3>
+                    <div id="team-name-inputs" class="mt-2 px-7 py-3 space-y-2 text-left">
+                        <!-- Inputs will be generated here -->
+                    </div>
+                    <div class="items-center px-4 py-3">
+                        <button id="start-draft-button" class="px-4 py-2 bg-green-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-300">
+                            Start Draft
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <!-- Left Column: Controls and Instructions -->
+            <div class="md-col-span-1 bg-white p-6 rounded-lg shadow-md self-start">
+                <h2 class="text-2xl font-semibold mb-4 border-b pb-2">Draft Controls</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label for="data-file" class="block text-sm font-medium text-gray-700 mb-1">1. Upload Player TSV</label>
+                        <input type="file" id="data-file" accept=".tsv" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-violet-50 file:text-violet-700 hover:file:bg-violet-100">
+                    </div>
+                    
+                    <button id="setup-draft-button" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">2. Setup 12-Team Draft</button>
+
+                     <div class="flex space-x-2">
+                        <button id="save-draft" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Save Draft</button>
+                        <button id="load-draft" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Load Draft</button>
+                     </div>
+                </div>
+                
+                <div id="draft-status" class="mt-6 p-4 bg-gray-50 rounded-lg hidden">
+                    <h3 class="font-semibold text-lg mb-2">Draft Status</h3>
+                    <div class="space-y-1 text-sm">
+                        <p><strong>Round:</strong> <span id="current-round">N/A</span></p>
+                        <p><strong>Pick:</strong> <span id="current-pick-number">N/A</span></p>
+                        <p class="text-lg font-bold text-indigo-600"><strong>On the Clock:</strong> <span id="on-the-clock">N/A</span></p>
+                    </div>
+                </div>
+
+                 <div id="instructions" class="mt-6 p-4 bg-gray-50 rounded-lg">
+                    <h3 class="font-semibold text-lg mb-2">How to Use:</h3>
+                    <ol class="list-decimal list-inside space-y-1 text-sm text-gray-600">
+                        <li>Upload your player data TSV file.</li>
+                        <li>Click "Setup 12-Team Draft" and enter team names.</li>
+                        <li>Click "Start Draft". The app will show who is picking.</li>
+                        <li>Draft a player by clicking the "Draft" button in their row.</li>
+                        <li>The draft will automatically advance to the next pick.</li>
+                        <li>Save/Load your progress at any time.</li>
+                    </ol>
+                </div>
+            </div>
+
+            <!-- Right Column: Draft Board and Rosters -->
+            <div class="md:col-span-2 space-y-8">
+                <!-- Available Players -->
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h2 class="text-2xl font-semibold mb-4">Available Players</h2>
+                    <div class="table-container border rounded-lg">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50 sticky top-0">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Player</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pos</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Team</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bye</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Proj. Pts</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="players-body" class="bg-white divide-y divide-gray-200">
+                                <!-- Player rows will be inserted here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Team Rosters -->
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h2 class="text-2xl font-semibold mb-4">Team Rosters</h2>
+                    <div id="rosters-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <!-- Roster cards will be inserted here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- STATE MANAGEMENT ---
+        let players = [];
+        let teams = {}; // { "Team Name": { roster: [player1], positions: {QB:1, RB:2...} } }
+        let draftOrder = [];
+        let currentPick = 0;
+        let draftStarted = false;
+
+        // --- ROSTER SETTINGS ---
+        const rosterSettings = {
+            QB: { min: 0, max: 1 },
+            RB: { min: 2, max: 4 },
+            WR: { min: 2, max: 4 },
+            TE: { min: 1, max: 3 },
+            PK: { min: 0, max: 1 },
+            Def: { min: 0, max: 1 },
+            totalStarters: 10,
+            bench: 6,
+            totalSize: 16
+        };
+
+        // --- DOM ELEMENTS ---
+        const fileInput = document.getElementById('data-file');
+        const playersBody = document.getElementById('players-body');
+        const rostersContainer = document.getElementById('rosters-container');
+        const saveButton = document.getElementById('save-draft');
+        const loadButton = document.getElementById('load-draft');
+        const setupDraftButton = document.getElementById('setup-draft-button');
+        const modal = document.getElementById('team-name-modal');
+        const teamNameInputsContainer = document.getElementById('team-name-inputs');
+        const startDraftButton = document.getElementById('start-draft-button');
+        const draftStatusDiv = document.getElementById('draft-status');
+        const currentRoundSpan = document.getElementById('current-round');
+        const currentPickNumberSpan = document.getElementById('current-pick-number');
+        const onTheClockSpan = document.getElementById('on-the-clock');
+
+        // --- EVENT LISTENERS ---
+        fileInput.addEventListener('change', handleFileUpload);
+        saveButton.addEventListener('click', saveDraft);
+        loadButton.addEventListener('click', loadDraft);
+        setupDraftButton.addEventListener('click', showTeamNameModal);
+        startDraftButton.addEventListener('click', startDraft);
+
+        /**
+         * Handles data file upload and parsing.
+         */
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const text = e.target.result;
+                players = parseTSV(text);
+                renderPlayers();
+            };
+            reader.readAsText(file);
+        }
+
+        /**
+         * Parses TSV text into an array of player objects.
+         * @param {string} text - The TSV content.
+         * @returns {Array<Object>} Array of player objects.
+         */
+        function parseTSV(text) {
+            // Use a regular expression to split by newline, covering both \n and \r\n
+            const rows = text.split(/\r?\n/).filter(row => row.trim() !== '');
+            if (rows.length < 2) {
+                alert('Data file must have a header and at least one player row.');
+                return [];
+            }
+            // Split by tab character for TSV
+            const headers = rows[0].split('\t').map(h => h.trim());
+            const parsedPlayers = [];
+            for (let i = 1; i < rows.length; i++) {
+                // Split by tab character for TSV
+                const values = rows[i].split('\t').map(v => v.trim());
+                if (values.length === headers.length) {
+                    let player = {};
+                    headers.forEach((header, index) => {
+                        player[header] = values[index];
+                    });
+                    parsedPlayers.push(player);
+                }
+            }
+            return parsedPlayers;
+        }
+
+        /**
+         * Shows the modal to enter team names.
+         */
+        function showTeamNameModal() {
+            if (players.length === 0) {
+                alert('Please upload a player TSV file first.');
+                return;
+            }
+            teamNameInputsContainer.innerHTML = '';
+            for (let i = 1; i <= 12; i++) {
+                teamNameInputsContainer.innerHTML += `
+                    <div>
+                        <label for="team-${i}" class="block text-sm font-medium text-gray-700">Team ${i}</label>
+                        <input type="text" id="team-${i}" value="Team ${i}" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                    </div>
+                `;
+            }
+            modal.classList.remove('hidden');
+        }
+
+        /**
+         * Initializes and starts the draft.
+         */
+        function startDraft() {
+            const teamNames = [];
+            for (let i = 1; i <= 12; i++) {
+                const input = document.getElementById(`team-${i}`);
+                if (!input.value.trim()) {
+                    alert(`Please enter a name for Team ${i}.`);
+                    return;
+                }
+                teamNames.push(input.value.trim());
+            }
+
+            // Reset state
+            teams = {};
+            draftOrder = [];
+            currentPick = 0;
+
+            // Initialize teams
+            teamNames.forEach(name => {
+                teams[name] = { roster: [], positions: {} };
+            });
+
+            // Generate snake draft order (16 rounds)
+            for (let i = 0; i < rosterSettings.totalSize; i++) {
+                const roundOrder = [...teamNames];
+                if ((i + 1) % 2 === 0) { // Even rounds are reversed
+                    roundOrder.reverse();
+                }
+                draftOrder.push(...roundOrder);
+            }
+
+            draftStarted = true;
+            modal.classList.add('hidden');
+            draftStatusDiv.classList.remove('hidden');
+            updateDraftStatus();
+            renderRosters();
+        }
+
+        /**
+         * Updates the UI with the current draft status.
+         */
+        function updateDraftStatus() {
+            if (!draftStarted || currentPick >= draftOrder.length) {
+                onTheClockSpan.textContent = "Draft Complete!";
+                currentRoundSpan.textContent = (rosterSettings.totalSize).toString();
+                currentPickNumberSpan.textContent = draftOrder.length.toString();
+                return;
+            }
+            const round = Math.floor(currentPick / 12) + 1;
+            const pickInRound = (currentPick % 12) + 1;
+            const overallPick = currentPick + 1;
+            const currentTeam = draftOrder[currentPick];
+
+            currentRoundSpan.textContent = round;
+            currentPickNumberSpan.textContent = `${overallPick} (${pickInRound})`;
+            onTheClockSpan.textContent = currentTeam;
+        }
+
+        /**
+         * Renders the list of available players.
+         */
+        function renderPlayers() {
+            playersBody.innerHTML = '';
+            players.forEach((player, index) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${player.Player}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${player.Pos}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${player.Team}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${player['Bye Week']}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${player['2025 Projected Fantasy Points']}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <button class="text-indigo-600 hover:text-indigo-900" onclick="draftPlayer(${index})">Draft</button>
+                    </td>
+                `;
+                playersBody.appendChild(tr);
+            });
+        }
+
+        /**
+         * Renders the team rosters.
+         */
+        function renderRosters() {
+            rostersContainer.innerHTML = '';
+            Object.keys(teams).sort().forEach(teamName => {
+                const teamData = teams[teamName];
+                const teamCard = document.createElement('div');
+                teamCard.className = 'bg-gray-50 p-4 rounded-lg border roster-card';
+
+                const posSummary = Object.entries(teamData.positions)
+                                         .map(([pos, count]) => `${pos}: ${count}`)
+                                         .join(', ');
+
+                const playersHtml = teamData.roster.map(p => `
+                    <li class="flex justify-between text-sm">
+                        <span>${p.Player} (${p.Pos})</span>
+                        <span>${p.Team}</span>
+                    </li>
+                `).join('');
+
+                teamCard.innerHTML = `
+                    <h3 class="font-semibold text-lg mb-2">${teamName} (${teamData.roster.length}/${rosterSettings.totalSize})</h3>
+                    <p class="text-xs text-gray-600 mb-2">${posSummary || 'No players drafted'}</p>
+                    <ul class="space-y-1">
+                        ${playersHtml}
+                    </ul>
+                `;
+                rostersContainer.appendChild(teamCard);
+            });
+        }
+
+        /**
+         * Handles drafting a player and advancing the draft.
+         * @param {number} playerIndex - The index of the player in the players array.
+         */
+        function draftPlayer(playerIndex) {
+            if (!draftStarted) {
+                alert('Please set up and start the draft first.');
+                return;
+            }
+            if (currentPick >= draftOrder.length) {
+                alert('The draft is complete!');
+                return;
+            }
+
+            const teamName = draftOrder[currentPick];
+            const teamData = teams[teamName];
+            const playerToDraft = players[playerIndex];
+            const position = playerToDraft.Pos;
+
+            // Roster validation
+            const currentPositionCount = teamData.positions[position] || 0;
+            if (rosterSettings[position] && currentPositionCount >= rosterSettings[position].max) {
+                alert(`${teamName} already has the maximum number of ${position}s (${rosterSettings[position].max}).`);
+                return;
+            }
+            if (teamData.roster.length >= rosterSettings.totalSize) {
+                alert(`${teamName}'s roster is full (${rosterSettings.totalSize} players).`);
+                return;
+            }
+
+            // Add player to team
+            teamData.roster.push(playerToDraft);
+            teamData.positions[position] = (teamData.positions[position] || 0) + 1;
+
+            // Remove player from available list
+            players.splice(playerIndex, 1);
+
+            // Advance draft
+            currentPick++;
+
+            // Re-render UI
+            updateDraftStatus();
+            renderPlayers();
+            renderRosters();
+        }
+
+        /**
+         * Saves the current draft state to localStorage.
+         */
+        function saveDraft() {
+            if (!draftStarted) {
+                alert('No draft in progress to save.');
+                return;
+            }
+            const draftState = {
+                players,
+                teams,
+                draftOrder,
+                currentPick,
+                draftStarted
+            };
+            localStorage.setItem('fantasyDraftState', JSON.stringify(draftState));
+            alert('Draft progress saved!');
+        }
+
+        /**
+         * Loads a saved draft state from localStorage.
+         */
+        function loadDraft() {
+            const savedState = localStorage.getItem('fantasyDraftState');
+            if (savedState) {
+                const draftState = JSON.parse(savedState);
+                players = draftState.players;
+                teams = draftState.teams;
+                draftOrder = draftState.draftOrder;
+                currentPick = draftState.currentPick;
+                draftStarted = draftState.draftStarted;
+
+                draftStatusDiv.classList.remove('hidden');
+                updateDraftStatus();
+                renderPlayers();
+                renderRosters();
+                alert('Draft progress loaded!');
+            } else {
+                alert('No saved draft found.');
+            }
+        }
+    </script>
+
+</body>
+</html>
