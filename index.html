@@ -64,8 +64,22 @@
                     <span class="text-xs text-gray-500 font-semibold">OR</span>
                     <hr class="flex-grow border-gray-300">
                 </div>
+
+                <div class="space-y-2">
+                    <label for="url-input" class="block text-sm font-medium text-gray-700 mb-1">1b. Paste Player TSV URL</label>
+                    <div class="flex space-x-2">
+                        <input type="url" id="url-input" placeholder="e.g., https://example.com/data.tsv" class="flex-grow px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                        <button id="load-url-button" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 disabled-button" disabled>Load</button>
+                    </div>
+                </div>
                 
-                <button id="load-data-button" class="w-full bg-violet-600 hover:bg-violet-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">1b. Load Player Data from GitHub</button>
+                <div class="flex items-center space-x-2">
+                    <hr class="flex-grow border-gray-300">
+                    <span class="text-xs text-gray-500 font-semibold">OR</span>
+                    <hr class="flex-grow border-gray-300">
+                </div>
+                
+                <button id="load-data-button" class="w-full bg-violet-600 hover:bg-violet-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">1c. Load Player Data from GitHub</button>
                 
                 <button id="show-setup-draft" class="w-full bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300 disabled-button" disabled>2. Setup 12-Team Draft</button>
                 
@@ -217,6 +231,8 @@
         const currentPickNumberSpan = document.getElementById('current-pick-number');
         const onTheClockSpan = document.getElementById('on-the-clock');
         const loadDataButton = document.getElementById('load-data-button');
+        const urlInput = document.getElementById('url-input');
+        const loadUrlButton = document.getElementById('load-url-button');
         const upcomingPicksList = document.getElementById('upcoming-picks');
         const playerSearchInput = document.getElementById('player-search');
         const positionFilterSelect = document.getElementById('position-filter');
@@ -237,7 +253,16 @@
         undoButton.addEventListener('click', undoLastPick);
         showSetupDraftButton.addEventListener('click', showTeamNameModal);
         startDraftButton.addEventListener('click', startDraft);
-        loadDataButton.addEventListener('click', loadPlayersFromGitHub);
+        loadDataButton.addEventListener('click', () => loadPlayersFromUrl(tsvFileUrl));
+        loadUrlButton.addEventListener('click', () => loadPlayersFromUrl(urlInput.value));
+        urlInput.addEventListener('input', () => {
+            loadUrlButton.disabled = urlInput.value.trim() === '';
+            if (loadUrlButton.disabled) {
+                loadUrlButton.classList.add('disabled-button');
+            } else {
+                loadUrlButton.classList.remove('disabled-button');
+            }
+        });
         playerSearchInput.addEventListener('input', applyFiltersAndSort);
         positionFilterSelect.addEventListener('change', applyFiltersAndSort);
         sortBySelect.addEventListener('change', applyFiltersAndSort);
@@ -248,6 +273,19 @@
         function showDraftingScreen() {
             setupScreen.classList.add('hidden');
             draftingScreen.classList.remove('hidden');
+        }
+
+        /**
+         * Updates the UI state based on whether player data is loaded.
+         */
+        function updateUIState() {
+            const isDataLoaded = players.length > 0;
+            showSetupDraftButton.disabled = !isDataLoaded;
+            if (isDataLoaded) {
+                showSetupDraftButton.classList.remove('disabled-button');
+            } else {
+                showSetupDraftButton.classList.add('disabled-button');
+            }
         }
 
         /**
@@ -288,35 +326,44 @@
         }
 
         /**
-         * Fetches and loads player data from the hard-coded GitHub URL.
+         * Fetches and loads player data from a given URL.
+         * @param {string} url - The URL of the TSV file.
          */
-        function loadPlayersFromGitHub() {
-            loadDataButton.textContent = "Loading...";
-            loadDataButton.disabled = true;
-            showSetupDraftButton.disabled = true;
+        function loadPlayersFromUrl(url) {
+            const isGitHub = url.includes('github.com');
+            let buttonToUpdate = isGitHub ? loadDataButton : loadUrlButton;
+            
+            buttonToUpdate.textContent = "Loading...";
+            buttonToUpdate.disabled = true;
 
-            fetch(tsvFileUrl)
+            fetch(url)
                 .then(response => {
                     if (!response.ok) {
-                        throw new Error('Network response was not ok. Ensure the URL is correct.');
+                        throw new Error(`Network response was not ok. Status: ${response.status}`);
                     }
                     return response.text();
                 })
                 .then(text => {
                     players = parseTSV(text);
-                    applyFiltersAndSort();
-                    alert('Player data loaded successfully from GitHub!');
-                    loadDataButton.textContent = "Data Loaded!";
-                    loadDataButton.classList.add('bg-green-500', 'hover:bg-green-600');
-                    showSetupDraftButton.disabled = false;
-                    showSetupDraftButton.classList.remove('disabled-button');
+                    if (players.length > 0) {
+                        applyFiltersAndSort();
+                        alert('Player data loaded successfully!');
+                        buttonToUpdate.textContent = "Data Loaded!";
+                        buttonToUpdate.classList.add('bg-green-500', 'hover:bg-green-600');
+                    } else {
+                         throw new Error('No player data found in the file.');
+                    }
                 })
                 .catch(error => {
                     console.error('There has been a problem with your fetch operation:', error);
-                    alert('Failed to load data from GitHub. Please check your internet connection and the file URL.');
-                    loadDataButton.textContent = "Failed to Load";
-                    loadDataButton.classList.add('bg-red-500', 'hover:bg-red-600');
-                    loadDataButton.disabled = false;
+                    alert(`Failed to load data from URL: ${error.message}`);
+                    buttonToUpdate.textContent = "Failed to Load";
+                    buttonToUpdate.classList.remove('bg-green-500', 'hover:bg-green-600');
+                    buttonToUpdate.classList.add('bg-red-500', 'hover:bg-red-600');
+                })
+                .finally(() => {
+                    buttonToUpdate.disabled = false;
+                    updateUIState();
                 });
         }
 
@@ -325,19 +372,22 @@
          */
         function handleFileUpload(event) {
             const file = event.target.files[0];
-            if (!file) return;
-
-            showSetupDraftButton.disabled = true;
-            showSetupDraftButton.classList.add('disabled-button');
+            if (!file) {
+                updateUIState();
+                return;
+            }
 
             const reader = new FileReader();
             reader.onload = (e) => {
                 const text = e.target.result;
                 players = parseTSV(text);
-                applyFiltersAndSort();
-                alert('Player data uploaded successfully from your device!');
-                showSetupDraftButton.disabled = false;
-                showSetupDraftButton.classList.remove('disabled-button');
+                if (players.length > 0) {
+                    applyFiltersAndSort();
+                    alert('Player data uploaded successfully from your device!');
+                } else {
+                    alert('Failed to parse player data from the file. Please check the file format.');
+                }
+                updateUIState();
             };
             reader.readAsText(file);
         }
@@ -347,7 +397,7 @@
          */
         function showTeamNameModal() {
             if (players.length === 0) {
-                alert('Please load player data first, either by uploading a file or by loading from GitHub.');
+                alert('Please load player data first, either by uploading a file or by loading from a URL.');
                 return;
             }
             teamNameInputsContainer.innerHTML = '';
@@ -359,7 +409,7 @@
                     </div>
                 `;
             }
-            modal.classList.remove('hidden');
+            modal.classList.remove('hidden'); // The crucial line to make the modal visible
         }
 
         /**
@@ -842,8 +892,10 @@
             } else {
                 loadDraftButton.classList.add('hidden');
             }
+            updateUIState();
         });
-
+        
+        updateUIState();
         applyFiltersAndSort();
     </script>
 </body>
