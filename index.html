@@ -43,6 +43,11 @@
         .tab:not(.active) {
             @apply bg-gray-50 hover:bg-gray-100; /* Inactive tabs look clickable */
         }
+        /* Ensure canvas itself is responsive within its container */
+        canvas {
+            width: 100% !important;
+            height: auto !important;
+        }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
@@ -910,7 +915,9 @@
                         borderColor: chartColors[pos],
                         backgroundColor: chartColors[pos],
                         fill: false,
-                        tension: 0.1
+                        tension: 0.1,
+                        pointRadius: 2, // Smaller point radius
+                        pointHoverRadius: 5 // Default point hover radius
                     });
                 }
             });
@@ -924,10 +931,11 @@
                     borderColor: chartColors.Total,
                     backgroundColor: chartColors.Total,
                     borderWidth: 3,
-                    pointRadius: 4,
+                    pointRadius: 3, // Smaller point radius for total line
                     pointBackgroundColor: chartColors.Total,
                     fill: false,
-                    tension: 0.1
+                    tension: 0.1,
+                    pointHoverRadius: 6 // Default point hover radius
                 });
             }
 
@@ -947,7 +955,7 @@
                         ${playersHtml || '<li class="text-sm text-gray-500">Roster is empty.</li>'}
                     </ul>
                     
-                    <div class="mt-4 p-3 bg-white rounded-lg border">
+                    <div class="mt-4 p-3 bg-white rounded-lg border max-h-80"> <!-- Max height added -->
                         <h4 class="font-semibold text-md mb-2">Weekly Projected Points (Weeks 1-13):</h4>
                         <canvas id="rosterChart-${teamId}"></canvas>
                     </div>
@@ -976,7 +984,8 @@
                 },
                 options: {
                     responsive: true,
-                    maintainAspectRatio: false,
+                    maintainAspectRatio: false, // Allows chart to resize without maintaining aspect ratio
+                    animation: false, // Disable animations for performance
                     scales: {
                         y: {
                             beginAtZero: true,
