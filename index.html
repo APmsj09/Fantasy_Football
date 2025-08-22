@@ -37,6 +37,10 @@
         .tab.active {
             @apply text-indigo-600 border-indigo-600 font-semibold;
         }
+        .disabled-button {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
@@ -63,10 +67,10 @@
                 
                 <button id="load-data-button" class="w-full bg-violet-600 hover:bg-violet-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">1b. Load Player Data from GitHub</button>
                 
-                <button id="show-setup-draft" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">2. Setup 12-Team Draft</button>
+                <button id="show-setup-draft" class="w-full bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300 disabled-button" disabled>2. Setup 12-Team Draft</button>
                 
                 <div class="flex space-x-2">
-                    <button id="load-draft-button" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Load Existing Draft</button>
+                    <button id="load-draft-button" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300 hidden">Load Existing Draft</button>
                 </div>
             </div>
         </div>
@@ -224,7 +228,7 @@
         const rosterContentContainer = document.getElementById('roster-content');
 
         // --- Hard-coded URL for your TSV file ---
-        const tsvFileUrl = 'https://github.com/APmsj09/Fantasy_Football/blob/8ca0874e1889ad3af48e71f6eb00832da1de760e/Data.tsv';
+        const tsvFileUrl = 'https://raw.githubusercontent.com/APmsj09/Fantasy_Football/main/Data.tsv';
 
         // --- EVENT LISTENERS ---
         fileInput.addEventListener('change', handleFileUpload);
@@ -287,6 +291,10 @@
          * Fetches and loads player data from the hard-coded GitHub URL.
          */
         function loadPlayersFromGitHub() {
+            loadDataButton.textContent = "Loading...";
+            loadDataButton.disabled = true;
+            showSetupDraftButton.disabled = true;
+
             fetch(tsvFileUrl)
                 .then(response => {
                     if (!response.ok) {
@@ -298,10 +306,17 @@
                     players = parseTSV(text);
                     applyFiltersAndSort();
                     alert('Player data loaded successfully from GitHub!');
+                    loadDataButton.textContent = "Data Loaded!";
+                    loadDataButton.classList.add('bg-green-500', 'hover:bg-green-600');
+                    showSetupDraftButton.disabled = false;
+                    showSetupDraftButton.classList.remove('disabled-button');
                 })
                 .catch(error => {
                     console.error('There has been a problem with your fetch operation:', error);
                     alert('Failed to load data from GitHub. Please check your internet connection and the file URL.');
+                    loadDataButton.textContent = "Failed to Load";
+                    loadDataButton.classList.add('bg-red-500', 'hover:bg-red-600');
+                    loadDataButton.disabled = false;
                 });
         }
 
@@ -311,12 +326,18 @@
         function handleFileUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
+
+            showSetupDraftButton.disabled = true;
+            showSetupDraftButton.classList.add('disabled-button');
+
             const reader = new FileReader();
             reader.onload = (e) => {
                 const text = e.target.result;
                 players = parseTSV(text);
                 applyFiltersAndSort();
                 alert('Player data uploaded successfully from your device!');
+                showSetupDraftButton.disabled = false;
+                showSetupDraftButton.classList.remove('disabled-button');
             };
             reader.readAsText(file);
         }
@@ -817,10 +838,8 @@
         window.addEventListener('load', () => {
             const savedState = localStorage.getItem('fantasyDraftState');
             if (savedState) {
-                // If a draft is saved, give the user the option to load it
                 loadDraftButton.classList.remove('hidden');
             } else {
-                // Otherwise, hide the load button
                 loadDraftButton.classList.add('hidden');
             }
         });
