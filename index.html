@@ -41,6 +41,8 @@
             opacity: 0.6;
             cursor: not-allowed;
         }
+        /* Revert modal aggressive debugging styles, as modal HTML is now removed */
+        /* These styles are now largely irrelevant as the modal element itself is removed */
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
@@ -51,8 +53,9 @@
             <p class="text-lg text-gray-600 mt-2">12-Team Snake Draft Edition</p>
         </header>
 
+        <!-- Setup Screen -->
         <div id="setup-screen" class="bg-white p-6 rounded-lg shadow-md max-w-lg mx-auto">
-            <h2 class="text-2xl font-semibold mb-4 text-center">Setup or Load Draft</h2>
+            <h2 class="text-2xl font-semibold mb-4 text-center">Setup Draft</h2>
             <div class="space-y-4">
                 <div>
                     <label for="data-file" class="block text-sm font-medium text-gray-700 mb-1">1a. Upload Player TSV File</label>
@@ -81,7 +84,7 @@
                 
                 <button id="load-data-button" class="w-full bg-violet-600 hover:bg-violet-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">1c. Load Player Data from GitHub</button>
                 
-                <button id="show-setup-draft" class="w-full bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300 disabled-button">2. Setup 12-Team Draft</button>
+                <!-- Removed the "Setup 12-Team Draft" button as the draft now starts automatically -->
                 
                 <div class="flex space-x-2">
                     <button id="load-draft-button" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300 hidden">Load Existing Draft</button>
@@ -89,21 +92,10 @@
             </div>
         </div>
 
+        <!-- Drafting Screen -->
         <div id="drafting-screen" class="hidden">
-            <div id="team-name-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
-                <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
-                    <div class="mt-3 text-center">
-                        <h3 class="text-lg leading-6 font-medium text-gray-900">Enter Team Names</h3>
-                        <div id="team-name-inputs" class="mt-2 px-7 py-3 space-y-2 text-left"></div>
-                        <div class="items-center px-4 py-3">
-                            <button id="start-draft-button" class="px-4 py-2 bg-green-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-300">
-                                Start Draft
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
+            <!-- The team-name-modal is now removed entirely -->
+            
             <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
                 <div class="md:col-span-1 bg-white p-6 rounded-lg shadow-md self-start">
                     <h2 class="text-2xl font-semibold mb-4 border-b pb-2">Draft Controls</h2>
@@ -194,12 +186,12 @@
     <script>
         // --- STATE MANAGEMENT ---
         let players = [];
-        let teams = {};
-        let draftOrder = [];
+        let teamsById = {}; // Changed from 'teams' to 'teamsById'
+        let draftOrder = []; // Now stores team IDs
         let currentPick = 0;
         let draftStarted = false;
-        let draftHistory = [];
-        let teamNames = [];
+        let draftHistory = []; // Now stores team IDs
+        // Removed `teamNames` as `teamsById` objects will hold editable names
 
         // --- ROSTER SETTINGS ---
         const rosterSettings = {
@@ -214,58 +206,42 @@
             totalSize: 16
         };
 
-        // --- DOM ELEMENTS ---
-        const setupScreen = document.getElementById('setup-screen');
-        const draftingScreen = document.getElementById('drafting-screen');
-        const fileInput = document.getElementById('data-file');
-        const playersBody = document.getElementById('players-body');
-        const saveButton = document.getElementById('save-draft');
-        const loadDraftButton = document.getElementById('load-draft-button');
-        const undoButton = document.getElementById('undo-pick-button');
-        const showSetupDraftButton = document.getElementById('show-setup-draft');
-        const modal = document.getElementById('team-name-modal');
-        const teamNameInputsContainer = document.getElementById('team-name-inputs');
-        const startDraftButton = document.getElementById('start-draft-button');
-        const draftStatusDiv = document.getElementById('draft-status');
-        const currentRoundSpan = document.getElementById('current-round');
-        const currentPickNumberSpan = document.getElementById('current-pick-number');
-        const onTheClockSpan = document.getElementById('on-the-clock');
-        const loadDataButton = document.getElementById('load-data-button');
-        const urlInput = document.getElementById('url-input');
-        const loadUrlButton = document.getElementById('load-url-button');
-        const upcomingPicksList = document.getElementById('upcoming-picks');
-        const playerSearchInput = document.getElementById('player-search');
-        const positionFilterSelect = document.getElementById('position-filter');
-        const sortBySelect = document.getElementById('sort-by');
-        const noAvailablePlayersMessage = document.getElementById('no-available-players');
-        const top5Container = document.getElementById('top-5-container');
-        const recommendationsContainer = document.getElementById('recommendations-container');
-        const rosterTabsContainer = document.getElementById('roster-tabs');
-        const rosterContentContainer = document.getElementById('roster-content');
+        // --- DOM ELEMENTS (Declared here, assigned in window.onload) ---
+        let setupScreen;
+        let draftingScreen;
+        let fileInput;
+        let playersBody;
+        let saveButton;
+        let loadDraftButton;
+        let undoButton;
+        let loadDataButton;
+        let urlInput;
+        let loadUrlButton;
+        let upcomingPicksList;
+        let playerSearchInput;
+        let positionFilterSelect;
+        let sortBySelect;
+        let noAvailablePlayersMessage;
+        let top5Container;
+        let recommendationsContainer;
+        let rosterTabsContainer;
+        let rosterContentContainer;
 
         // --- Hard-coded URL for your TSV file ---
         const tsvFileUrl = 'https://raw.githubusercontent.com/APmsj09/Fantasy_Football/main/Data.tsv';
 
-        // --- EVENT LISTENERS ---
-        fileInput.addEventListener('change', handleFileUpload);
-        saveButton.addEventListener('click', saveDraft);
-        loadDraftButton.addEventListener('click', loadDraft);
-        undoButton.addEventListener('click', undoLastPick);
-        showSetupDraftButton.addEventListener('click', showTeamNameModal);
-        startDraftButton.addEventListener('click', startDraft);
-        loadDataButton.addEventListener('click', () => loadPlayersFromUrl(tsvFileUrl));
-        loadUrlButton.addEventListener('click', () => loadPlayersFromUrl(urlInput.value));
-        urlInput.addEventListener('input', () => {
-            loadUrlButton.disabled = urlInput.value.trim() === '';
-            if (loadUrlButton.disabled) {
-                loadUrlButton.classList.add('disabled-button');
-            } else {
-                loadUrlButton.classList.remove('disabled-button');
-            }
-        });
-        playerSearchInput.addEventListener('input', applyFiltersAndSort);
-        positionFilterSelect.addEventListener('change', applyFiltersAndSort);
-        sortBySelect.addEventListener('change', applyFiltersAndSort);
+        // --- EVENT LISTENERS (Attached in window.onload) ---
+
+        /**
+         * Generates a UUID.
+         * @returns {string} A unique ID.
+         */
+        function generateUUID() {
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        }
 
         /**
          * Switches the view from the setup screen to the main drafting screen.
@@ -273,20 +249,47 @@
         function showDraftingScreen() {
             setupScreen.classList.add('hidden');
             draftingScreen.classList.remove('hidden');
+            console.log("Switched to drafting screen.");
         }
 
         /**
-         * Updates the UI state based on whether player data is loaded.
+         * Initializes the draft with default teams or loaded team names.
+         * @param {Array<string>} [initialTeamNames] - Optional array of team names to use.
          */
-        function updateUIState() {
-            const isDataLoaded = players.length > 0;
-            showSetupDraftButton.disabled = !isDataLoaded;
-            if (isDataLoaded) {
-                showSetupDraftButton.classList.remove('disabled-button');
-            } else {
-                showSetupDraftButton.classList.add('disabled-button');
+        function initializeDraftSetup(initialTeamNames = []) {
+            console.log("initializeDraftSetup called.");
+            teamsById = {};
+            draftOrder = [];
+            currentPick = 0;
+            draftHistory = [];
+            draftStarted = true;
+
+            let teamsToCreate = initialTeamNames.length > 0 ? initialTeamNames : Array.from({ length: 12 }, (_, i) => `Team ${i + 1}`);
+            
+            // Create teams with unique IDs
+            let teamIds = [];
+            teamsToCreate.forEach(name => {
+                const id = generateUUID();
+                teamsById[id] = { id: id, name: name, roster: [], positions: {} };
+                teamIds.push(id);
+            });
+
+            // Populate draft order with team IDs
+            for (let i = 0; i < rosterSettings.totalSize; i++) {
+                const roundOrder = [...teamIds];
+                if ((i + 1) % 2 === 0) { // Snake draft logic
+                    roundOrder.reverse();
+                }
+                draftOrder.push(...roundOrder);
             }
+
+            console.log("Draft initialized. Teams:", teamsById);
+            showDraftingScreen();
+            updateDraftStatus();
+            renderRosters();
+            applyFiltersAndSort();
         }
+
 
         /**
          * Parses TSV text into an array of player objects, including weekly projections.
@@ -346,10 +349,11 @@
                 .then(text => {
                     players = parseTSV(text);
                     if (players.length > 0) {
-                        applyFiltersAndSort();
                         alert('Player data loaded successfully!');
                         buttonToUpdate.textContent = "Data Loaded!";
                         buttonToUpdate.classList.add('bg-green-500', 'hover:bg-green-600');
+                        console.log("Players loaded successfully. Number of players:", players.length);
+                        initializeDraftSetup(); // Automatically start draft after data loads
                     } else {
                          throw new Error('No player data found in the file.');
                     }
@@ -363,7 +367,7 @@
                 })
                 .finally(() => {
                     buttonToUpdate.disabled = false;
-                    updateUIState();
+                    // updateUIState() is no longer needed here as we transition immediately
                 });
         }
 
@@ -373,7 +377,7 @@
         function handleFileUpload(event) {
             const file = event.target.files[0];
             if (!file) {
-                updateUIState();
+                // updateUIState() is no longer needed here as we transition immediately
                 return;
             }
 
@@ -382,78 +386,18 @@
                 const text = e.target.result;
                 players = parseTSV(text);
                 if (players.length > 0) {
-                    applyFiltersAndSort();
                     alert('Player data uploaded successfully from your device!');
+                    console.log("Players loaded successfully from file. Number of players:", players.length);
+                    initializeDraftSetup(); // Automatically start draft after data loads
                 } else {
                     alert('Failed to parse player data from the file. Please check the file format.');
                 }
-                updateUIState();
+                // updateUIState() is no longer needed here as we transition immediately
             };
             reader.readAsText(file);
         }
-
-        /**
-         * Shows the modal to enter team names.
-         */
-        function showTeamNameModal() {
-            if (players.length === 0) {
-                alert('Please load player data first, either by uploading a file or by loading from a URL.');
-                return;
-            }
-            teamNameInputsContainer.innerHTML = '';
-            for (let i = 1; i <= 12; i++) {
-                teamNameInputsContainer.innerHTML += `
-                    <div>
-                        <label for="team-${i}" class="block text-sm font-medium text-gray-700">Team ${i}</label>
-                        <input type="text" id="team-${i}" value="Team ${i}" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                    </div>
-                `;
-            }
-            modal.classList.remove('hidden'); // The crucial line to make the modal visible
-        }
-
-        /**
-         * Initializes and starts the draft.
-         */
-        function startDraft() {
-            teamNames = [];
-            for (let i = 1; i <= 12; i++) {
-                const input = document.getElementById(`team-${i}`);
-                if (!input.value.trim()) {
-                    alert(`Please enter a name for Team ${i}.`);
-                    return;
-                }
-                teamNames.push(input.value.trim());
-            }
-            if (new Set(teamNames).size !== teamNames.length) {
-                alert('All team names must be unique.');
-                return;
-            }
-
-            teams = {};
-            draftOrder = [];
-            currentPick = 0;
-            draftHistory = [];
-
-            teamNames.forEach(name => {
-                teams[name] = { roster: [], positions: {} };
-            });
-
-            for (let i = 0; i < rosterSettings.totalSize; i++) {
-                const roundOrder = [...teamNames];
-                if ((i + 1) % 2 === 0) {
-                    roundOrder.reverse();
-                }
-                draftOrder.push(...roundOrder);
-            }
-
-            draftStarted = true;
-            modal.classList.add('hidden');
-            showDraftingScreen();
-            updateDraftStatus();
-            renderRosters();
-            applyFiltersAndSort();
-        }
+        
+        // Removed showTeamNameModal as it's no longer used
 
         /**
          * Updates the UI with the current draft status and upcoming picks.
@@ -470,11 +414,12 @@
             const round = Math.floor(currentPick / 12) + 1;
             const pickInRound = (currentPick % 12) + 1;
             const overallPick = currentPick + 1;
-            const currentTeam = draftOrder[currentPick];
+            const currentTeamId = draftOrder[currentPick];
+            const currentTeamName = teamsById[currentTeamId].name;
 
             currentRoundSpan.textContent = round;
             currentPickNumberSpan.textContent = `${overallPick} (${pickInRound})`;
-            onTheClockSpan.textContent = currentTeam;
+            onTheClockSpan.textContent = currentTeamName;
 
             upcomingPicksList.innerHTML = '';
             const numberOfFuturePicks = 5;
@@ -483,8 +428,9 @@
                 if (futurePickIndex < draftOrder.length) {
                     const futureRound = Math.floor(futurePickIndex / 12) + 1;
                     const futurePickInRound = (futurePickIndex % 12) + 1;
-                    const futureTeam = draftOrder[futurePickIndex];
-                    upcomingPicksList.innerHTML += `<li>Pick ${futurePickIndex + 1} (R${futureRound}, P${futurePickInRound}): ${futureTeam}</li>`;
+                    const futureTeamId = draftOrder[futurePickIndex];
+                    const futureTeamName = teamsById[futureTeamId].name;
+                    upcomingPicksList.innerHTML += `<li>Pick ${futurePickIndex + 1} (R${futureRound}, P${futurePickInRound}): ${futureTeamName}</li>`;
                 } else {
                     break;
                 }
@@ -503,57 +449,118 @@
          */
         function renderRecommendations() {
             recommendationsContainer.innerHTML = '';
-            const currentTeamName = draftOrder[currentPick];
-            if (!currentTeamName) {
+            const currentTeamId = draftOrder[currentPick];
+            if (!currentTeamId) { // Check if draft is complete
                 recommendationsContainer.innerHTML = `<p class="text-gray-500">Draft is complete.</p>`;
                 return;
             }
+            const currentTeamName = teamsById[currentTeamId].name;
+            const teamRoster = teamsById[currentTeamId].roster;
+            const teamPositions = teamsById[currentTeamId].positions;
+            let recommendations = [];
+            let criticalNeedsExist = false;
 
-            const teamRoster = teams[currentTeamName].roster;
+            // Define core positions (excluding PK and Def for VBD priority in starters)
+            const corePositions = ['QB', 'RB', 'WR', 'TE'];
 
-            const recommendations = [];
-            const positionsToDraft = ['RB', 'WR', 'QB', 'TE'];
+            // Stage 1: Prioritize players to fill vacant roster spots for core positions based on VBD
+            for (const pos of corePositions) {
+                const currentCount = teamPositions[pos] || 0;
+                // Check if the team has NOT met the MINIMUM requirement for this position
+                if (currentCount < rosterSettings[pos].min) {
+                    criticalNeedsExist = true;
+                    const neededCount = rosterSettings[pos].min - currentCount; // How many more are strictly needed
+                    
+                    // Filter available players for this position, sort by VBD
+                    const topPosPlayers = [...players]
+                        .filter(p => p.Pos === pos)
+                        .sort((a, b) => b.VBD - a.VBD)
+                        .slice(0, neededCount + 1); // Get a few extra in case of ties or deeper suggestions
 
-            let startersNeeded = rosterSettings.totalStarters - teamRoster.length;
-            if (startersNeeded > 0) {
-                const sortedAvailablePlayers = [...players].sort((a, b) => b.VBD - a.VBD);
+                    recommendations.push(...topPosPlayers.map(p => ({
+                        player: p,
+                        reason: `High VBD to fill starting ${pos} slot.`,
+                        priority: 1 // Highest priority for filling essential spots
+                    })));
+                }
+            }
 
-                for (const pos of positionsToDraft) {
-                    const neededCount = rosterSettings[pos].max - (teams[currentTeamName].positions[pos] || 0);
-                    if (neededCount > 0) {
-                        const topPosPlayers = sortedAvailablePlayers.filter(p => p.Pos === pos).slice(0, 3);
-                        recommendations.push(...topPosPlayers.map(p => ({
+            // Only proceed to bye-week and depth if critical starting needs are met OR roster is almost full
+            if (!criticalNeedsExist || teamRoster.length >= rosterSettings.totalSize - 3) { // Consider depth when nearing full roster
+                // Stage 2: Maximize weekly points by targeting players for upcoming bye weeks
+                const currentDraftRound = Math.floor(currentPick / 12) + 1;
+                const weeksToConsider = [];
+                for (let i = 0; i < 4; i++) { // Look ahead for 4 weeks
+                    const targetWeek = currentDraftRound + i;
+                    if (targetWeek >= 1 && targetWeek <= 18) { // Assuming season has 18 weeks (fantasy relevant)
+                        weeksToConsider.push(targetWeek);
+                    }
+                }
+
+                for (const week of weeksToConsider) {
+                    // Check if the current team has a player on bye during this week
+                    const relevantByePlayers = teamRoster.filter(p => p['Bye Week'] == week);
+                    if (relevantByePlayers.length > 0) {
+                        // Find available players who DON'T have a bye in this target week and have good projections
+                        const topByeWeekFillers = [...players]
+                            .filter(p => p.Pos !== 'PK' && p.Pos !== 'Def' && p['Bye Week'] != week) // Exclude PK/Def for bye week fillers, and ensure not on bye
+                            .sort((a, b) => {
+                                const aProj = a[`Week ${week}`] || 0;
+                                const bProj = b[`Week ${week}`] || 0;
+                                return bProj - aProj;
+                            })
+                            .slice(0, 2); // Top 2 options for this specific bye week
+
+                        recommendations.push(...topByeWeekFillers.map(p => ({
                             player: p,
-                            reason: `High VBD at a position of need.`
+                            reason: `High projected points for bye week filler (Week ${week}).`,
+                            priority: 2 // Lower priority than essential starters
                         })));
                     }
                 }
             }
+            
+            // Stage 3: General depth/best available if neither critical needs nor immediate bye week issues were prioritized heavily
+            // This fills the remaining recommendation slots if we haven't hit 5 yet
+            if (recommendations.length < 5 && teamRoster.length < rosterSettings.totalSize) { 
+                const generalDepthPlayers = [...players]
+                    .sort((a, b) => b.VBD - a.VBD); // Sort all available by VBD
+                
+                // Add unique players until we have 5 recommendations or run out of players
+                for (const player of generalDepthPlayers) {
+                    if (!recommendations.some(rec => rec.player.Player === player.Player)) {
+                        recommendations.push({
+                            player: player,
+                            reason: `Best available player (High VBD).`,
+                            priority: 3 // Lowest priority
+                        });
+                    }
+                    if (recommendations.length >= 5) break;
+                }
+            }
 
-            const byeWeeks = teamRoster.map(p => p['Bye Week']);
-            const availablePlayersWithBye = players.filter(p => !byeWeeks.includes(p['Bye Week']));
-            availablePlayersWithBye.sort((a, b) => {
-                const aTotalProj = Object.keys(a).filter(key => key.startsWith('Week ')).reduce((sum, key) => sum + a[key], 0);
-                const bTotalProj = Object.keys(b).filter(key => key.startsWith('Week ')).reduce((sum, key) => sum + b[key], 0);
-                return bTotalProj - aTotalProj;
+
+            // Deduplicate and sort the final recommendations
+            const uniqueRecommendationsMap = new Map(); // Map to store unique players and their highest priority reason
+            for (const rec of recommendations) {
+                if (!uniqueRecommendationsMap.has(rec.player.Player) || rec.priority < uniqueRecommendationsMap.get(rec.player.Player).priority) {
+                    uniqueRecommendationsMap.set(rec.player.Player, rec);
+                }
+            }
+            let finalRecommendations = Array.from(uniqueRecommendationsMap.values());
+
+            // Sort by priority (1 before 2, 2 before 3), then by VBD descending
+            finalRecommendations.sort((a, b) => {
+                if (a.priority !== b.priority) {
+                    return a.priority - b.priority;
+                }
+                return b.player.VBD - a.player.VBD;
             });
 
-            const byeRecommendations = availablePlayersWithBye.slice(0, 3).map(p => ({
-                player: p,
-                reason: `Potential high-value bye week filler.`
-            }));
-            recommendations.push(...byeRecommendations);
+            const top5FinalRecommendations = finalRecommendations.slice(0, 5); // Ensure only top 5 displayed
 
-            const uniqueRecommendations = recommendations.filter((item, index, self) =>
-                index === self.findIndex((t) => (
-                    t.player.Player === item.player.Player
-                ))
-            );
-
-            const top5Recommendations = uniqueRecommendations.slice(0, 5);
-
-            if (top5Recommendations.length > 0) {
-                top5Recommendations.forEach(rec => {
+            if (top5FinalRecommendations.length > 0) {
+                top5FinalRecommendations.forEach(rec => {
                     const player = rec.player;
                     const recCard = document.createElement('div');
                     recCard.className = 'p-3 bg-gray-50 rounded-lg border flex items-center justify-between hover:bg-gray-100 cursor-pointer';
@@ -647,43 +654,72 @@
         }
 
         /**
+         * Handles editing a team's name directly from the roster tab.
+         * @param {HTMLInputElement} inputElement - The input field being edited.
+         * @param {string} teamId - The unique ID of the team being edited.
+         */
+        function editTeamName(inputElement, teamId) {
+            const newName = inputElement.value.trim();
+            if (newName && newName !== teamsById[teamId].name) {
+                // Check for duplicate names (optional, but good practice)
+                const isDuplicate = Object.values(teamsById).some(team => team.id !== teamId && team.name === newName);
+                if (isDuplicate) {
+                    alert('Team name must be unique!');
+                    inputElement.value = teamsById[teamId].name; // Revert to old name
+                    return;
+                }
+                teamsById[teamId].name = newName;
+                console.log(`Team ${teamId} name updated to: ${newName}`);
+                renderRosters(); // Re-render tabs to show updated name
+                updateDraftStatus(); // Update "On the Clock" if needed
+            } else {
+                inputElement.value = teamsById[teamId].name; // Revert if empty or no change
+            }
+        }
+
+        /**
          * Renders the tabbed roster UI.
          */
         function renderRosters() {
             rosterTabsContainer.innerHTML = '';
             rosterContentContainer.innerHTML = '';
-            const sortedTeamNames = Object.keys(teams).sort();
             
-            let activeTab = sortedTeamNames[0];
+            // Sort teams by their current display names
+            const sortedTeamIds = Object.values(teamsById)
+                                        .sort((a, b) => a.name.localeCompare(b.name))
+                                        .map(team => team.id);
+            
+            let activeTabId = sortedTeamIds[0];
             const savedActiveTab = localStorage.getItem('activeRosterTab');
-            if (savedActiveTab && sortedTeamNames.includes(savedActiveTab)) {
-                activeTab = savedActiveTab;
+            if (savedActiveTab && sortedTeamIds.includes(savedActiveTab)) {
+                activeTabId = savedActiveTab;
             }
 
-            sortedTeamNames.forEach(teamName => {
-                const isActive = teamName === activeTab;
+            sortedTeamIds.forEach(teamId => {
+                const team = teamsById[teamId];
+                const isActive = teamId === activeTabId;
                 const tab = document.createElement('button');
                 tab.className = `tab ${isActive ? 'active' : ''}`;
-                tab.textContent = teamName;
-                tab.onclick = () => switchRosterTab(teamName);
+                tab.textContent = team.name; // Display team's current name
+                tab.onclick = () => switchRosterTab(team.id);
                 rosterTabsContainer.appendChild(tab);
             });
 
-            renderRosterContent(activeTab);
+            renderRosterContent(activeTabId);
         }
 
         /**
          * Renders the content for a specific team roster tab.
-         * @param {string} teamName - The name of the team to display.
+         * @param {string} teamId - The ID of the team to display.
          */
-        function renderRosterContent(teamName) {
+        function renderRosterContent(teamId) {
             rosterContentContainer.innerHTML = '';
-            const teamData = teams[teamName];
+            const teamData = teamsById[teamId];
             if (!teamData) {
                 rosterContentContainer.innerHTML = '<p class="text-sm text-gray-500">Roster not found.</p>';
                 return;
             }
-            localStorage.setItem('activeRosterTab', teamName);
+            localStorage.setItem('activeRosterTab', teamId);
 
             const positions = ['QB', 'RB', 'WR', 'TE', 'PK', 'Def'];
             const posColors = {
@@ -709,7 +745,7 @@
             rosterContentContainer.innerHTML = `
                 <div class="bg-gray-50 p-4 rounded-lg border shadow-sm">
                     <h3 class="font-semibold text-lg mb-2 flex justify-between items-center">
-                        <span>${teamName}</span>
+                        <input type="text" value="${teamData.name}" class="bg-transparent font-semibold text-lg border-b border-gray-300 focus:outline-none focus:border-indigo-500 rounded-sm px-1" onblur="editTeamName(this, '${teamId}')">
                         <span class="text-sm text-gray-500">
                             <span class="text-blue-600 font-bold">${teamData.roster.length}</span>/${rosterSettings.totalSize} players
                         </span>
@@ -727,17 +763,18 @@
         
         /**
          * Switches the active roster tab.
-         * @param {string} teamName - The name of the team to switch to.
+         * @param {string} teamId - The ID of the team to switch to.
          */
-        function switchRosterTab(teamName) {
+        function switchRosterTab(teamId) {
             document.querySelectorAll('.tab').forEach(tab => {
                 tab.classList.remove('active');
             });
-            const newActiveTab = document.querySelector(`.tab[onclick="switchRosterTab('${teamName}')"]`);
+            // Find the tab button based on its onclick attribute
+            const newActiveTab = document.querySelector(`.tab[onclick="switchRosterTab('${teamId}')"]`);
             if (newActiveTab) {
                 newActiveTab.classList.add('active');
             }
-            renderRosterContent(teamName);
+            renderRosterContent(teamId);
         }
 
         /**
@@ -776,7 +813,7 @@
          */
         function draftPlayer(playerToDraft) {
             if (!draftStarted) {
-                alert('Please set up and start the draft first.');
+                alert('Please load data to start the draft.');
                 return;
             }
             if (currentPick >= draftOrder.length) {
@@ -784,24 +821,24 @@
                 return;
             }
 
-            const teamName = draftOrder[currentPick];
-            const teamData = teams[teamName];
+            const teamId = draftOrder[currentPick];
+            const teamData = teamsById[teamId];
             const position = playerToDraft.Pos;
 
             const currentPositionCount = teamData.positions[position] || 0;
             if (rosterSettings[position] && currentPositionCount >= rosterSettings[position].max) {
-                alert(`${teamName} already has the maximum number of ${position}s allowed (${rosterSettings[position].max}). Please draft a player from a different position.`);
+                alert(`${teamData.name} already has the maximum number of ${position}s allowed (${rosterSettings[position].max}). Please draft a player from a different position.`);
                 return;
             }
             if (teamData.roster.length >= rosterSettings.totalSize) {
-                alert(`${teamName}'s roster is full (${rosterSettings.totalSize} players). They cannot draft any more players.`);
+                alert(`${teamData.name}'s roster is full (${rosterSettings.totalSize} players). They cannot draft any more players.`);
                 return;
             }
 
             draftHistory.push({
                 pickIndex: currentPick,
                 player: { ...playerToDraft },
-                teamName: teamName
+                teamId: teamId // Store team ID, not name
             });
 
             players = players.filter(p => p.Player !== playerToDraft.Player);
@@ -827,8 +864,8 @@
             }
             const lastPick = draftHistory.pop();
             const playerToUndo = lastPick.player;
-            const teamName = lastPick.teamName;
-            const teamData = teams[teamName];
+            const teamId = lastPick.teamId; // Retrieve team ID
+            const teamData = teamsById[teamId];
             const position = playerToUndo.Pos;
 
             players.push(playerToUndo);
@@ -848,12 +885,11 @@
         function saveDraft() {
             const draftState = {
                 players,
-                teams,
+                teamsById, // Save the entire teamsById object
                 draftOrder,
                 currentPick,
                 draftStarted,
-                draftHistory,
-                teamNames
+                draftHistory
             };
             localStorage.setItem('fantasyDraftState', JSON.stringify(draftState));
             alert('Draft saved successfully!');
@@ -867,12 +903,11 @@
             if (savedState) {
                 const draftState = JSON.parse(savedState);
                 players = draftState.players;
-                teams = draftState.teams;
+                teamsById = draftState.teamsById; // Load teamsById
                 draftOrder = draftState.draftOrder;
                 currentPick = draftState.currentPick;
                 draftStarted = draftState.draftStarted;
                 draftHistory = draftState.draftHistory;
-                teamNames = draftState.teamNames;
 
                 showDraftingScreen();
                 updateDraftStatus();
@@ -884,19 +919,68 @@
             }
         }
 
-        // Initial check and rendering
+        // Initial setup when the window loads
         window.addEventListener('load', () => {
+            // Assign DOM elements to variables after they are loaded
+            setupScreen = document.getElementById('setup-screen');
+            draftingScreen = document.getElementById('drafting-screen');
+            fileInput = document.getElementById('data-file');
+            playersBody = document.getElementById('players-body');
+            saveButton = document.getElementById('save-draft');
+            loadDraftButton = document.getElementById('load-draft-button');
+            undoButton = document.getElementById('undo-pick-button');
+            // showSetupDraftButton is removed
+            // modal, teamNameInputsContainer, startDraftButton are removed
+            upcomingPicksList = document.getElementById('upcoming-picks');
+            playerSearchInput = document.getElementById('player-search');
+            positionFilterSelect = document.getElementById('position-filter');
+            sortBySelect = document.getElementById('sort-by');
+            noAvailablePlayersMessage = document.getElementById('no-available-players');
+            top5Container = document.getElementById('top-5-container');
+            recommendationsContainer = document.getElementById('recommendations-container');
+            rosterTabsContainer = document.getElementById('roster-tabs');
+            rosterContentContainer = document.getElementById('roster-content');
+            currentRoundSpan = document.getElementById('current-round'); // These were missing, added them
+            currentPickNumberSpan = document.getElementById('current-pick-number');
+            onTheClockSpan = document.getElementById('on-the-clock');
+            loadDataButton = document.getElementById('load-data-button');
+            urlInput = document.getElementById('url-input');
+            loadUrlButton = document.getElementById('load-url-button');
+            
+            console.log("DOM elements retrieved.");
+
+            // Attach all event listeners
+            fileInput.addEventListener('change', handleFileUpload);
+            saveButton.addEventListener('click', saveDraft);
+            loadDraftButton.addEventListener('click', loadDraft);
+            undoButton.addEventListener('click', undoLastPick);
+            // showSetupDraftButton listener is removed
+            // startDraftButton listener is removed
+            loadDataButton.addEventListener('click', () => loadPlayersFromUrl(tsvFileUrl));
+            loadUrlButton.addEventListener('click', () => loadPlayersFromUrl(urlInput.value));
+            urlInput.addEventListener('input', () => {
+                loadUrlButton.disabled = urlInput.value.trim() === '';
+                if (loadUrlButton.disabled) {
+                    loadUrlButton.classList.add('disabled-button');
+                } else {
+                    loadUrlButton.classList.remove('disabled-button');
+                }
+            });
+            playerSearchInput.addEventListener('input', applyFiltersAndSort);
+            positionFilterSelect.addEventListener('change', applyFiltersAndSort);
+            sortBySelect.addEventListener('change', applyFiltersAndSort);
+
+            // Check for saved state and update UI accordingly
             const savedState = localStorage.getItem('fantasyDraftState');
             if (savedState) {
                 loadDraftButton.classList.remove('hidden');
             } else {
                 loadDraftButton.classList.add('hidden');
             }
-            updateUIState();
+            
+            // Initial render of available players
+            applyFiltersAndSort(); 
         });
-        
-        updateUIState();
-        applyFiltersAndSort();
     </script>
 </body>
 </html>
