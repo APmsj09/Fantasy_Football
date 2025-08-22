@@ -610,45 +610,57 @@
             }
             const currentTeamName = teamsById[currentTeamId].name;
             const teamRoster = teamsById[currentTeamId].roster;
-            const teamPositions = teamsById[currentTeamId].positions; // Not used in this version of recommendations
-
-            const baselineResults = calculateRosterSpotsPoints(teamRoster, 'Week 1');
-            const baselineTotalPoints = baselineResults.totalPoints;
+            // teamPositions is still available if needed, but the core VBD/Impact logic doesn't directly use it here.
 
             const VBD_WEIGHT = 0.6; 
             const IMPACT_WEIGHT = 0.4;
+            const WEEKS_TO_AVERAGE = 13; // Consistent with projected standings
 
             const evaluatedPlayers = [];
 
             // Iterate through all AVAILABLE players
             players.forEach(availablePlayer => { 
-                // Create a hypothetical roster by temporarily adding the available player
-                const hypotheticalRoster = [...teamRoster, availablePlayer];
+                let totalWeeklyImpact = 0;
 
-                // Calculate optimal lineup points for this hypothetical roster for Week 1
-                const hypotheticalResults = calculateRosterSpotsPoints(hypotheticalRoster, 'Week 1');
-                const hypotheticalTotalPoints = hypotheticalResults.totalPoints;
+                // Calculate average weekly impact across WEEKS_TO_AVERAGE
+                for (let week = 1; week <= WEEKS_TO_AVERAGE; week++) {
+                    const weekKey = `Week ${week}`;
+                    // Create a hypothetical roster by temporarily adding the available player
+                    const hypotheticalRoster = [...teamRoster, availablePlayer];
 
-                // Calculate the impact this player has on the team's optimal Week 1 score
-                const weeklyImpact = hypotheticalTotalPoints - baselineTotalPoints;
+                    // Calculate optimal lineup points for this hypothetical roster for the current week
+                    const hypotheticalResults = calculateRosterSpotsPoints(hypotheticalRoster, weekKey);
+                    const hypotheticalTotalPoints = hypotheticalResults.totalPoints;
 
-                // Combine VBD with weekly impact for a comprehensive recommendation score
-                const recommendationScore = (availablePlayer.VBD * VBD_WEIGHT) + (weeklyImpact * IMPACT_WEIGHT);
+                    // Calculate the team's baseline optimal lineup points for the current week *without* the new player
+                    // Filter out the 'availablePlayer' if they somehow already exist in the base roster (shouldn't for this logic)
+                    const baselineRosterForWeek = teamRoster.filter(p => p.Player !== availablePlayer.Player);
+                    const baselineResultsForWeek = calculateRosterSpotsPoints(baselineRosterForWeek, weekKey);
+                    const baselineTotalPointsForWeek = baselineResultsForWeek.totalPoints;
+
+                    // Calculate the impact this player has on the team's optimal score for this specific week
+                    totalWeeklyImpact += (hypotheticalTotalPoints - baselineTotalPointsForWeek);
+                }
+
+                const averageWeeklyImpact = totalWeeklyImpact / WEEKS_TO_AVERAGE;
+
+                // Combine VBD with average weekly impact for a comprehensive recommendation score
+                const recommendationScore = (availablePlayer.VBD * VBD_WEIGHT) + (averageWeeklyImpact * IMPACT_WEIGHT);
 
                 // Determine a more specific reason
                 let reason = `VBD: ${availablePlayer.VBD.toFixed(2)}.`;
-                if (weeklyImpact > 0) {
-                    reason += ` Expected +${weeklyImpact.toFixed(1)} Week 1 point upgrade.`;
-                } else if (weeklyImpact === 0) {
-                    reason += ` No immediate Week 1 point upgrade.`;
+                if (averageWeeklyImpact > 0) {
+                    reason += ` Expected +${averageWeeklyImpact.toFixed(1)} avg. weekly point upgrade.`;
+                } else if (averageWeeklyImpact === 0) {
+                    reason += ` No immediate average weekly point upgrade.`;
                 } else { 
-                    reason += ` Expected ${weeklyImpact.toFixed(1)} Week 1 point change.`;
+                    reason += ` Expected ${averageWeeklyImpact.toFixed(1)} avg. weekly point change.`;
                 }
 
                 evaluatedPlayers.push({
                     player: availablePlayer,
                     recommendationScore: recommendationScore,
-                    weeklyImpact: weeklyImpact,
+                    weeklyImpact: averageWeeklyImpact, // Storing average impact now
                     reason: reason
                 });
             });
@@ -879,6 +891,7 @@
                     if (slot.player) {
                         const playerPos = slot.player.Pos; // Use player's actual position
                         if (allRosterPositions.includes(playerPos)) {
+                            // FIX: Changed weeklyPointsForWeek to weeklyPointsForChart
                             weeklyPointsForChart[weekKey].positions[playerPos] = (weeklyPointsForChart[weekKey].positions[playerPos] || 0) + slot.points;
                         }
                     }
@@ -1159,7 +1172,7 @@
                 else { 
                     slottedPosition = 'Bench';
                     console.log(`${playerToDraft.Player} drafted to Bench for ${teamData.name}.`);
-                    draftedSuccessfully = true;
+                     draftedSuccessfully = true;
                 }
             }
             
