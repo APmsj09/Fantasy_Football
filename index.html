@@ -363,11 +363,7 @@
                 let player = {};
                 player.Player = values[playerIndex];
                 
-                // The value at the 'Pos' column index is actually the Team name.
-                // The value at the 'Team' column index is actually the Position.
-                player.Team = values[posIndex]; // Assign value from 'Pos' header's column to player.Team
-                player.Pos = values[teamIndex]; // Assign value from 'Team' header's column to player.Pos
-                
+                                
                 // Standardize 'K' to 'PK' and 'DEF' to 'DST'
                 if (player.Pos === 'K') {
                     player.Pos = 'PK';
