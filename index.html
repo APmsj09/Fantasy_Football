@@ -197,11 +197,20 @@
 
         <!-- Summary Screen -->
         <div id="summary-screen" class="hidden bg-white p-6 rounded-lg shadow-md max-w-2xl mx-auto my-8">
-            <h2 class="text-3xl font-bold text-gray-900 mb-6 text-center">Projected Final Standings</h2>
+            <h2 class="text-3xl font-bold text-gray-900 mb-6 text-center">Projected Final Standings</h1>
             <div id="standings-list" class="space-y-3">
                 <!-- Standings will be rendered here -->
             </div>
             <button id="close-summary-button" class="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 mt-6">Close Summary</button>
+        </div>
+
+        <!-- Custom Message Box -->
+        <div id="message-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-50">
+            <div class="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full">
+                <h3 id="message-modal-title" class="text-xl font-bold text-gray-800 mb-4"></h3>
+                <p id="message-modal-content" class="text-gray-700 mb-6"></p>
+                <button id="message-modal-close" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Close</button>
+            </div>
         </div>
     </div>
     
@@ -258,6 +267,12 @@
         let viewStandingsButton; // New view standings button
         let closeSummaryButton; // New close summary button
 
+        // New DOM elements for the message modal
+        let messageModal;
+        let messageModalTitle;
+        let messageModalContent;
+        let messageModalCloseButton;
+
         // --- Hard-coded URL for your TSV file ---
         const tsvFileUrl = 'https://raw.githubusercontent.com/APmsj09/Fantasy_Football/main/Data.tsv';
 
@@ -271,6 +286,23 @@
                 return v.toString(16);
             });
         }
+
+        /**
+         * Function to show custom message box.
+         * @param {string} title - The title of the message.
+         * @param {string} message - The content of the message.
+         */
+        function showMessage(title, message) {
+            if (messageModal && messageModalTitle && messageModalContent) {
+                messageModalTitle.textContent = title;
+                messageModalContent.textContent = message;
+                messageModal.classList.remove('hidden');
+            } else {
+                console.warn("Message modal elements not fully initialized. Falling back to console log:", title, message);
+                console.log(`${title}: ${message}`);
+            }
+        }
+
 
         /**
          * Switches the view from the setup screen to the main drafting screen.
@@ -332,7 +364,7 @@
         function parseTSV(text) {
             const rows = text.split(/\r?\n/).filter(row => row.trim() !== '');
             if (rows.length < 2) {
-                alert('Data file must have a header and at least one player row.');
+                showMessage('Data Error', 'Data file must have a header and at least one player row.');
                 return [];
             }
             const rawHeaders = rows[0].split('\t');
@@ -348,7 +380,7 @@
             const byeWeekIndex = headers.indexOf('Bye Week');
 
             if (playerIndex === -1 || teamIndex === -1 || posIndex === -1) {
-                alert('Required columns (Player, Team, Pos) not found in the TSV file.');
+                showMessage('Data Error', 'Required columns (Player, Team, Pos) not found in the TSV file.');
                 return [];
             }
 
@@ -420,7 +452,7 @@
                 .then(text => {
                     players = parseTSV(text);
                     if (players.length > 0) {
-                        alert('Player data loaded successfully!');
+                        showMessage('Success', 'Player data loaded successfully!');
                         buttonToUpdate.textContent = "Data Loaded!";
                         buttonToUpdate.classList.add('bg-green-500', 'hover:bg-green-600');
                         console.log("Players loaded successfully. Number of players:", players.length);
@@ -431,7 +463,7 @@
                 })
                 .catch(error => {
                     console.error('There has been a problem with your fetch operation:', error);
-                    alert(`Failed to load data from URL: ${error.message}`);
+                    showMessage('Error', `Failed to load data from URL: ${error.message}`);
                     buttonToUpdate.textContent = "Failed to Load";
                     buttonToUpdate.classList.remove('bg-green-500', 'hover:bg-green-600');
                     buttonToUpdate.classList.add('bg-red-500', 'hover:bg-red-600');
@@ -455,11 +487,11 @@
                 const text = e.target.result;
                 players = parseTSV(text);
                 if (players.length > 0) {
-                    alert('Player data uploaded successfully from your device!');
+                    showMessage('Success', 'Player data uploaded successfully from your device!');
                     console.log("Players loaded successfully from file. Number of players:", players.length);
                     initializeDraftSetup(); // Automatically start draft after data loads
                 } else {
-                    alert('Failed to parse player data from the file. Please check the file format.');
+                    showMessage('Error', 'Failed to parse player data from the file. Please check the file format.');
                 }
             };
             reader.readAsText(file);
@@ -599,7 +631,7 @@
 
         /**
          * Generates and displays a list of recommended players for the team on the clock,
-         * combining VBD and projected weekly point impact.
+         * combining VBD and projected weekly point impact (PPW).
          */
         function renderRecommendations() {
             recommendationsContainer.innerHTML = '';
@@ -610,62 +642,69 @@
             }
             const currentTeamName = teamsById[currentTeamId].name;
             const teamRoster = teamsById[currentTeamId].roster;
-            // teamPositions is still available if needed, but the core VBD/Impact logic doesn't directly use it here.
 
-            const VBD_WEIGHT = 0.6; 
-            const IMPACT_WEIGHT = 0.4;
-            const WEEKS_TO_AVERAGE = 13; // Consistent with projected standings
+            const totalRounds = rosterSettings.totalSize;
+            const currentRound = Math.floor(currentPick / 12) + 1;
+
+            // Dynamic weights for VBD and Impact based on current round
+            const vbdStartWeight = 0.7;
+            const impactStartWeight = 0.3;
+            const vbdEndWeight = 0.1;
+            const impactEndWeight = 0.9;
+
+            let vbdWeight = vbdStartWeight;
+            let impactWeight = impactStartWeight;
+
+            if (totalRounds > 1) { // Avoid division by zero if only one round
+                const roundProgress = (currentRound - 1) / (totalRounds - 1);
+                vbdWeight = vbdStartWeight - roundProgress * (vbdStartWeight - vbdEndWeight);
+                impactWeight = impactStartWeight + roundProgress * (impactEndWeight - impactStartWeight);
+            }
+            vbdWeight = Math.max(0, Math.min(1, vbdWeight));
+            impactWeight = 1 - vbdWeight;
+
+
+            const WEEKS_TO_AVERAGE = 13; 
 
             const evaluatedPlayers = [];
 
-            // Iterate through all AVAILABLE players
             players.forEach(availablePlayer => { 
                 let totalWeeklyImpact = 0;
 
-                // Calculate average weekly impact across WEEKS_TO_AVERAGE
                 for (let week = 1; week <= WEEKS_TO_AVERAGE; week++) {
                     const weekKey = `Week ${week}`;
-                    // Create a hypothetical roster by temporarily adding the available player
                     const hypotheticalRoster = [...teamRoster, availablePlayer];
 
-                    // Calculate optimal lineup points for this hypothetical roster for the current week
                     const hypotheticalResults = calculateRosterSpotsPoints(hypotheticalRoster, weekKey);
                     const hypotheticalTotalPoints = hypotheticalResults.totalPoints;
 
-                    // Calculate the team's baseline optimal lineup points for the current week *without* the new player
-                    // Filter out the 'availablePlayer' if they somehow already exist in the base roster (shouldn't for this logic)
-                    const baselineRosterForWeek = teamRoster.filter(p => p.Player !== availablePlayer.Player);
-                    const baselineResultsForWeek = calculateRosterSpotsPoints(baselineRosterForWeek, weekKey);
+                    const baselineResultsForWeek = calculateRosterSpotsPoints(teamRoster, weekKey);
                     const baselineTotalPointsForWeek = baselineResultsForWeek.totalPoints;
 
-                    // Calculate the impact this player has on the team's optimal score for this specific week
                     totalWeeklyImpact += (hypotheticalTotalPoints - baselineTotalPointsForWeek);
                 }
 
                 const averageWeeklyImpact = totalWeeklyImpact / WEEKS_TO_AVERAGE;
 
-                // Combine VBD with average weekly impact for a comprehensive recommendation score
-                const recommendationScore = (availablePlayer.VBD * VBD_WEIGHT) + (averageWeeklyImpact * IMPACT_WEIGHT);
+                const recommendationScore = (availablePlayer.VBD * vbdWeight) + (averageWeeklyImpact * impactWeight);
 
-                // Determine a more specific reason
                 let reason = `VBD: ${availablePlayer.VBD.toFixed(2)}.`;
                 if (averageWeeklyImpact > 0) {
-                    reason += ` Expected +${averageWeeklyImpact.toFixed(1)} avg. weekly point upgrade.`;
+                    reason += ` Expected +${averageWeeklyImpact.toFixed(1)} avg. weekly point upgrade (PPW).`;
                 } else if (averageWeeklyImpact === 0) {
-                    reason += ` No immediate average weekly point upgrade.`;
+                    reason += ` No immediate average weekly point upgrade (PPW).`;
                 } else { 
-                    reason += ` Expected ${averageWeeklyImpact.toFixed(1)} avg. weekly point change.`;
+                    reason += ` Expected ${averageWeeklyImpact.toFixed(1)} avg. weekly point change (PPW).`;
                 }
 
                 evaluatedPlayers.push({
                     player: availablePlayer,
                     recommendationScore: recommendationScore,
-                    weeklyImpact: averageWeeklyImpact, // Storing average impact now
+                    weeklyImpact: averageWeeklyImpact,
                     reason: reason
                 });
             });
 
-            // Sort evaluated players by their comprehensive recommendation score (descending)
             evaluatedPlayers.sort((a, b) => b.recommendationScore - a.recommendationScore);
 
             const top5FinalRecommendations = evaluatedPlayers.slice(0, 5);
@@ -675,20 +714,29 @@
                     const player = rec.player;
                     const recCard = document.createElement('div');
                     recCard.className = 'p-3 bg-gray-50 rounded-lg border flex items-center justify-between hover:bg-gray-100 cursor-pointer';
-                    recCard.innerHTML = `
-                        <div>
-                            <h4 class="font-bold text-md text-indigo-600">${player.Player}</h4>
-                            <p class="text-sm text-gray-600">${player.Pos} - ${player.Team} | VBD: ${player.VBD.toFixed(2)}</p>
-                            <p class="text-xs text-gray-500 mt-1">${rec.reason}</p>
-                        </div>
-                        <button class="bg-indigo-500 text-white text-xs px-3 py-1 rounded hover:bg-indigo-600 draft-button" data-player-id="${player.Player}">Draft</button>
+                    
+                    const infoDiv = document.createElement('div');
+                    infoDiv.innerHTML = `
+                        <h4 class="font-bold text-md text-indigo-600">${player.Player}</h4>
+                        <p class="text-sm text-gray-600">${player.Pos} - ${player.Team} | VBD: ${player.VBD.toFixed(2)}</p>
+                        <p class="text-xs text-gray-500 mt-1">${rec.reason}</p>
                     `;
-                    recCard.querySelector('.draft-button').addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        draftPlayer(player);
-                    });
+
+                    const draftButton = document.createElement('button');
+                    draftButton.className = 'bg-green-600 text-white text-xs px-3 py-1 rounded hover:bg-green-700 draft-button flex items-center space-x-1'; 
+                    draftButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg><span>Select</span>`; 
+                    draftButton.setAttribute('data-player-id', player.Player); 
+
+                    // Attach the button to the card
+                    recCard.appendChild(infoDiv);
+                    recCard.appendChild(draftButton);
+                    
+                    // Append the card to the container
                     recommendationsContainer.appendChild(recCard);
                 });
+                recommendationsContainer.innerHTML += `<p class="text-xs text-gray-500 mt-4 text-center">Recommendation weights: VBD ${vbdWeight.toFixed(2)}, Impact ${impactWeight.toFixed(2)}</p>`;
             } else {
                 recommendationsContainer.innerHTML = `<p class="text-gray-500">No specific recommendations at this time.</p>`;
             }
@@ -750,7 +798,11 @@
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${player['2025 Projected Fantasy Points']}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${player.VBD !== undefined ? player.VBD.toFixed(2) : 'N/A'}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            <button class="text-indigo-600 hover:text-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-300 rounded-md px-2 py-1 draft-button">Draft</button>
+                            <button class="bg-green-600 text-white text-xs px-3 py-1 rounded hover:bg-green-700 draft-button flex items-center space-x-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg><span>Select</span>
+                            </button>
                         </td>
                     `;
                     const draftButton = tr.querySelector('.draft-button');
@@ -775,7 +827,7 @@
                 // Check for duplicate names (optional, but good practice)
                 const isDuplicate = Object.values(teamsById).some(team => team.id !== teamId && team.name === newName);
                 if (isDuplicate) {
-                    alert('Team name must be unique!');
+                    showMessage('Error', 'Team name must be unique!');
                     inputElement.value = teamsById[teamId].name; // Revert to old name
                     return;
                 }
@@ -891,7 +943,6 @@
                     if (slot.player) {
                         const playerPos = slot.player.Pos; // Use player's actual position
                         if (allRosterPositions.includes(playerPos)) {
-                            // FIX: Changed weeklyPointsForWeek to weeklyPointsForChart
                             weeklyPointsForChart[weekKey].positions[playerPos] = (weeklyPointsForChart[weekKey].positions[playerPos] || 0) + slot.points;
                         }
                     }
@@ -1075,138 +1126,171 @@
          * Handles drafting a player, updating team rosters, and advancing the draft.
          */
         function draftPlayer(playerToDraft) {
-            if (!draftStarted) {
-                alert('Please load data to start the draft.');
-                return;
-            }
-            if (currentPick >= draftOrder.length) {
-                alert('The draft is complete! No more picks available.');
-                return;
-            }
+            console.log('TRACE: draftPlayer START for player:', playerToDraft.Player); // TRACE START
+            console.log('TRACE: currentPick:', currentPick, 'draftOrder.length:', draftOrder.length);
+            console.log('TRACE: draftStarted:', draftStarted);
+            console.log('TRACE: Player to draft object:', playerToDraft);
 
-            const teamId = draftOrder[currentPick];
-            const teamData = teamsById[teamId];
-            const position = playerToDraft.Pos; 
-            let slottedPosition = position; 
-
-            // Defensive check for invalid position
-            if (!rosterSettings[position]) {
-                console.error(`Invalid or unexpected position '${position}' found for player ${playerToDraft.Player}.`);
-                alert(`Cannot draft player: Invalid position '${position}'. Please check player data.`);
-                return;
-            }
-
-            let draftedSuccessfully = false;
-
-            // Check if overall roster is full
-            if (teamData.roster.length >= rosterSettings.totalSize) {
-                alert(`${teamData.name}'s roster is full.`);
-                return;
-            }
-
-            const currentRound = Math.floor(currentPick / 12) + 1;
-
-            // --- Round 16 and later: Enforce filling minimum starting spots first ---
-            if (currentRound >= 16) {
-                // Check if player's primary position is a critical *unfilled minimum*
-                if (rosterSettings[position] && (teamData.positions[position] || 0) < rosterSettings[position].min) {
-                    teamData.positions[position]++;
-                    slottedPosition = position;
-                    console.log(`${playerToDraft.Player} drafted into primary starting ${position} (enforcing min) for ${teamData.name} in Round ${currentRound}.`);
-                    draftedSuccessfully = true;
-                } 
-                // If not a critical min, but it's a Flex-eligible position and a Flex spot is open, or a primary non-flex up to max.
-                // This part ensures any remaining open starter spots are filled if possible, including Flex.
-                else if (['RB', 'WR', 'TE'].includes(position) && (teamData.positions['Flex'] || 0) < rosterSettings.Flex.max) {
-                    teamData.positions['Flex']++;
-                    slottedPosition = 'Flex';
-                    console.log(`${playerToDraft.Player} drafted into Flex for ${teamData.name} in Round ${currentRound}.`);
-                    draftedSuccessfully = true;
+            try {
+                if (!draftStarted) {
+                    console.log('DEBUG: Condition met: !draftStarted is true. Showing "Draft Not Started" message.');
+                    showMessage('Draft Not Started', 'Please load data to start the draft.');
+                    console.log('TRACE: draftPlayer END (Draft Not Started)'); // TRACE END
+                    return;
                 }
-                else if (rosterSettings[position] && (teamData.positions[position] || 0) < rosterSettings[position].max) {
-                    teamData.positions[position]++;
-                    slottedPosition = position;
-                    console.log(`${playerToDraft.Player} drafted into additional primary ${position} (filling max) for ${teamData.name} in Round ${currentRound}.`);
-                    draftedSuccessfully = true;
+                if (currentPick >= draftOrder.length) {
+                    console.log('DEBUG: Condition met: currentPick >= draftOrder.length is true. Showing "Draft Complete" message.');
+                    showMessage('Draft Complete', 'The draft is complete! No more picks available.');
+                    console.log('TRACE: draftPlayer END (Draft Complete)'); // TRACE END
+                    return;
                 }
-                // If no starting spot (primary or flex) available, go to bench
+
+                const teamId = draftOrder[currentPick];
+                const teamData = teamsById[teamId];
+                const position = playerToDraft.Pos; 
+                let slottedPosition = position; 
+
+                console.log('TRACE: Current Team:', teamData.name, 'Position:', position); // Team and player pos
+                console.log('TRACE: Roster settings for position:', rosterSettings[position]); // Check settings
+
+                // Defensive check for invalid position
+                if (!rosterSettings[position]) {
+                    console.log('DEBUG: Condition met: !rosterSettings[position] is true. Showing "Invalid Player Position" message.');
+                    console.error(`ERROR: Invalid or unexpected position '${position}' found for player ${playerToDraft.Player}.`);
+                    showMessage('Invalid Player Position', `Cannot draft player: Invalid position '${position}'. Please check player data.`);
+                    console.log('TRACE: draftPlayer END (Invalid Position)'); // TRACE END
+                    return;
+                }
+
+                let draftedSuccessfully = false;
+
+                // Check if overall roster is full
+                if (teamData.roster.length >= rosterSettings.totalSize) {
+                    console.log(`DEBUG: Condition met: Roster is full. Showing "Roster Full" message. Roster size: ${teamData.roster.length}/${rosterSettings.totalSize}`);
+                    showMessage('Roster Full', `${teamData.name}'s roster is full. Total roster size: ${teamData.roster.length}/${rosterSettings.totalSize}.`);
+                    console.log('TRACE: draftPlayer END (Roster Full)'); // TRACE END
+                    return;
+                }
+
+                console.log(`TRACE: Attempting to draft ${playerToDraft.Player} (${playerToDraft.Pos}) for ${teamData.name}. Current roster size: ${teamData.roster.length}`);
+
+                const currentRound = Math.floor(currentPick / 12) + 1;
+                console.log('TRACE: Current Round:', currentRound);
+
+                // --- Round 16 and later: Enforce filling minimum starting spots first ---
+                if (currentRound >= 16) {
+                    console.log('TRACE: In Round 16+ logic.');
+                    // Check if player's primary position is a critical *unfilled minimum*
+                    if (rosterSettings[position] && (teamData.positions[position] || 0) < rosterSettings[position].min) {
+                        teamData.positions[position]++;
+                        slottedPosition = position;
+                        console.log(`DEBUG: ${playerToDraft.Player} drafted into primary starting ${position} (enforcing min) for ${teamData.name} in Round ${currentRound}.`);
+                        draftedSuccessfully = true;
+                    } 
+                    // If not a critical min, but it's a Flex-eligible position and a Flex spot is open, or a primary non-flex up to max.
+                    // This part ensures any remaining open starter spots are filled if possible, including Flex.
+                    else if (['RB', 'WR', 'TE'].includes(position) && (teamData.positions['Flex'] || 0) < rosterSettings.Flex.max) {
+                        teamData.positions['Flex']++;
+                        slottedPosition = 'Flex';
+                        console.log(`DEBUG: ${playerToDraft.Player} drafted into Flex for ${teamData.name} in Round ${currentRound}.`);
+                        draftedSuccessfully = true;
+                    }
+                    else if (rosterSettings[position] && (teamData.positions[position] || 0) < rosterSettings[position].max) {
+                        teamData.positions[position]++;
+                        slottedPosition = position;
+                        console.log(`DEBUG: ${playerToDraft.Player} drafted into additional primary ${position} (filling max) for ${teamData.name} in Round ${currentRound}.`);
+                        draftedSuccessfully = true;
+                    }
+                    // If no starting spot (primary or flex) available, go to bench
+                    else if (teamData.roster.length < rosterSettings.totalSize) { // Ensure there's still overall roster space for bench
+                        slottedPosition = 'Bench';
+                        console.log(`DEBUG: ${playerToDraft.Player} drafted to Bench for ${teamData.name} in Round ${currentRound}.`);
+                        draftedSuccessfully = true;
+                    }
+                    console.log('TRACE: After Round 16+ slotting attempts. draftedSuccessfully:', draftedSuccessfully);
+                }
+                // --- Before Round 16: Use flexible slotting logic ---
                 else {
-                    slottedPosition = 'Bench';
-                    console.log(`${playerToDraft.Player} drafted to Bench for ${teamData.name} in Round ${currentRound}.`);
-                    draftedSuccessfully = true;
+                    console.log('TRACE: In Before Round 16 logic.');
+                    // 1. Prioritize filling primary slots for positions that don't typically go into Flex (QB, PK, DST, TE)
+                    // If there's space up to their max limit, put them there.
+                    if (['QB', 'PK', 'DST', 'TE'].includes(position) && (teamData.positions[position] || 0) < rosterSettings[position].max) {
+                        teamData.positions[position]++;
+                        slottedPosition = position;
+                        console.log(`DEBUG: ${playerToDraft.Player} drafted into primary ${position} for ${teamData.name}.`);
+                        draftedSuccessfully = true;
+                    } 
+                    // 2. For RB/WR, try to fill primary spots up to their minimum first.
+                    else if (['RB', 'WR'].includes(position) && (teamData.positions[position] || 0) < rosterSettings[position].min) {
+                        teamData.positions[position]++;
+                        slottedPosition = position;
+                        console.log(`DEBUG: ${playerToDraft.Player} drafted into primary ${position} (filling min) for ${teamData.name}.`);
+                        draftedSuccessfully = true;
+                    }
+                    // 3. For RB/WR/TE, if primary minimums for RB/WR are met OR if it's a TE (and not slotted above),
+                    //    try to fill a Flex spot IF available.
+                    else if (['RB', 'WR', 'TE'].includes(position) && (teamData.positions['Flex'] || 0) < rosterSettings.Flex.max) {
+                        teamData.positions['Flex']++;
+                        slottedPosition = 'Flex';
+                        console.log(`DEBUG: ${playerToDraft.Player} drafted into Flex for ${teamData.name}.`);
+                        draftedSuccessfully = true;
+                    }
+                    // 4. For RB/WR, if primary minimums are met and Flex is full, but there's still space up to primary max.
+                    else if (['RB', 'WR'].includes(position) && (teamData.positions[position] || 0) < rosterSettings[position].max) {
+                        teamData.positions[position]++;
+                        slottedPosition = position;
+                        console.log(`DEBUG: ${playerToDraft.Player} drafted into additional primary ${position} (filling max) for ${teamData.name}.`);
+                        draftedSuccessfully = true;
+                    }
+                    // 5. Finally, if no other starting (primary or Flex) spot is available, put on Bench.
+                    else if (teamData.roster.length < rosterSettings.totalSize) { // Ensure there's still overall roster space for bench
+                        slottedPosition = 'Bench';
+                        console.log(`DEBUG: ${playerToDraft.Player} drafted to Bench for ${teamData.name}.`);
+                        draftedSuccessfully = true;
+                    }
+                    console.log('TRACE: After Before Round 16 slotting attempts. draftedSuccessfully:', draftedSuccessfully);
                 }
+                
+                // If for some reason the player couldn't be slotted, this is a safeguard.
+                if (!draftedSuccessfully) {
+                    console.error('DEBUG ERROR: Player could not be slotted into any position. This indicates an issue with slotting logic, or all roster/bench spots are genuinely full or blocked by roster rules.');
+                    showMessage('Drafting Error: Roster Rules', `Could not find an appropriate spot for ${playerToDraft.Player} on ${teamData.name}'s roster. This could mean all starter and bench spots are full, or there's a specific roster rule preventing this pick in Round ${currentRound}. Current roster size: ${teamData.roster.length}/${rosterSettings.totalSize}`);
+                    console.log('TRACE: draftPlayer END (Not Drafted - Roster Rules)'); // TRACE END
+                    return;
+                }
+
+                // --- If player was successfully slotted, proceed with draft actions ---
+                draftHistory.push({
+                    pickIndex: currentPick,
+                    player: { ...playerToDraft },
+                    teamId: teamId,
+                    slottedPosition: slottedPosition 
+                });
+
+                players = players.filter(p => p.Player !== playerToDraft.Player);
+
+                // Push player with their slotted position to the team roster
+                teamData.roster.push({ ...playerToDraft, slottedPos: slottedPosition });
+                // Sort by slotted position, then by primary position for consistent display
+                teamData.roster.sort((a, b) => {
+                    if (a.slottedPos.localeCompare(b.slottedPos) !== 0) {
+                        return a.slottedPos.localeCompare(b.slottedPos);
+                    }
+                    return a.Pos.localeCompare(b.Pos);
+                });
+                
+                currentPick++;
+
+                applyFiltersAndSort();
+                renderRosters();
+                updateDraftStatus();
+                console.log('DEBUG: Player drafted successfully:', playerToDraft.Player); // Success log
+                console.log('TRACE: draftPlayer END (Success)'); // TRACE END
+            } catch (error) {
+                console.error("An unexpected error occurred during draftPlayer:", error);
+                showMessage('Unexpected Error', `An unexpected error occurred while drafting ${playerToDraft.Player}: ${error.message}. Check console for details.`);
+                console.log('TRACE: draftPlayer END (Unexpected Error)'); // TRACE END
             }
-            // --- Before Round 16: Use flexible slotting logic ---
-            else {
-                // 1. Prioritize filling primary slots for positions that don't typically go into Flex (QB, PK, DST, TE)
-                // If there's space up to their max limit, put them there.
-                if (['QB', 'PK', 'DST', 'TE'].includes(position) && (teamData.positions[position] || 0) < rosterSettings[position].max) {
-                    teamData.positions[position]++;
-                    slottedPosition = position;
-                    console.log(`${playerToDraft.Player} drafted into primary ${position} for ${teamData.name}.`);
-                    draftedSuccessfully = true;
-                } 
-                // 2. For RB/WR, try to fill primary spots up to their minimum first.
-                else if (['RB', 'WR'].includes(position) && (teamData.positions[position] || 0) < rosterSettings[position].min) {
-                    teamData.positions[position]++;
-                    slottedPosition = position;
-                    console.log(`${playerToDraft.Player} drafted into primary ${position} (filling min) for ${teamData.name}.`);
-                    draftedSuccessfully = true;
-                }
-                // 3. For RB/WR/TE, if primary minimums for RB/WR are met OR if it's a TE (and not slotted above),
-                //    try to fill a Flex spot IF available.
-                else if (['RB', 'WR', 'TE'].includes(position) && (teamData.positions['Flex'] || 0) < rosterSettings.Flex.max) {
-                    teamData.positions['Flex']++;
-                    slottedPosition = 'Flex';
-                    console.log(`${playerToDraft.Player} drafted into Flex for ${teamData.name}.`);
-                    draftedSuccessfully = true;
-                }
-                // 4. For RB/WR, if primary minimums are met and Flex is full, but there's still space up to primary max.
-                else if (['RB', 'WR'].includes(position) && (teamData.positions[position] || 0) < rosterSettings[position].max) {
-                    teamData.positions[position]++;
-                    slottedPosition = position;
-                    console.log(`${playerToDraft.Player} drafted into additional primary ${position} (filling max) for ${teamData.name}.`);
-                    draftedSuccessfully = true;
-                }
-                // 5. Finally, if no other starting (primary or Flex) spot is available, put on Bench.
-                else { 
-                    slottedPosition = 'Bench';
-                    console.log(`${playerToDraft.Player} drafted to Bench for ${teamData.name}.`);
-                     draftedSuccessfully = true;
-                }
-            }
-            
-            // If for some reason the player couldn't be slotted, this is a safeguard.
-            if (!draftedSuccessfully) {
-                alert(`Error: Could not find a suitable spot for ${playerToDraft.Player} on ${teamData.name}'s roster.`);
-                return;
-            }
-
-            // --- If player was successfully slotted, proceed with draft actions ---
-            draftHistory.push({
-                pickIndex: currentPick,
-                player: { ...playerToDraft },
-                teamId: teamId,
-                slottedPosition: slottedPosition 
-            });
-
-            players = players.filter(p => p.Player !== playerToDraft.Player);
-
-            // Push player with their slotted position to the team roster
-            teamData.roster.push({ ...playerToDraft, slottedPos: slottedPosition });
-            // Sort by slotted position, then by primary position for consistent display
-            teamData.roster.sort((a, b) => {
-                if (a.slottedPos.localeCompare(b.slottedPos) !== 0) {
-                    return a.slottedPos.localeCompare(b.slottedPos);
-                }
-                return a.Pos.localeCompare(b.Pos);
-            });
-            
-            currentPick++;
-
-            applyFiltersAndSort();
-            renderRosters();
-            updateDraftStatus();
         }
 
         /**
@@ -1214,7 +1298,7 @@
          */
         function undoLastPick() {
             if (draftHistory.length === 0) {
-                alert('No picks to undo.');
+                showMessage('No Picks', 'No picks to undo.');
                 return;
             }
             const lastPick = draftHistory.pop();
@@ -1232,7 +1316,7 @@
             
             // Decrement the count for the slot the player was actually in, but only if it's not 'Bench'
             // Ensure position exists in rosterSettings before decrementing
-            if (slottedPosition !== 'Bench' && teamData.positions[slottedPosition] > 0) {
+            if (slottedPosition !== 'Bench' && teamData.positions[slottedPosition] !== undefined && teamData.positions[slottedPosition] > 0) {
                 teamData.positions[slottedPosition]--;
             }
 
@@ -1320,7 +1404,7 @@
                 draftHistory
             };
             localStorage.setItem('fantasyDraftState', JSON.stringify(draftState));
-            alert('Draft saved successfully!');
+            showMessage('Draft Saved', 'Draft saved successfully!');
         }
 
         /**
@@ -1337,13 +1421,34 @@
                 draftStarted = draftState.draftStarted;
                 draftHistory = draftState.draftHistory;
 
+                // Ensure initialPositions are correctly set for loaded teams
+                for (const teamId in teamsById) {
+                    const team = teamsById[teamId];
+                    const initialPositions = {};
+                    Object.keys(rosterSettings).forEach(pos => {
+                        if (pos !== 'totalStarters' && pos !== 'bench' && pos !== 'totalSize') {
+                            initialPositions[pos] = 0;
+                        }
+                    });
+                    team.positions = initialPositions; // Reset to 0
+                    // Recalculate based on roster if needed, or assume saved state is correct
+                    team.roster.forEach(player => {
+                        if (player.slottedPos && team.positions[player.slottedPos] !== undefined) {
+                            team.positions[player.slottedPos]++;
+                        } else if (player.Pos && team.positions[player.Pos] !== undefined) { // Fallback to actual pos if slottedPos not found
+                            team.positions[player.Pos]++;
+                        }
+                    });
+                }
+
+
                 showDraftingScreen();
                 updateDraftStatus();
                 renderRosters();
                 applyFiltersAndSort();
-                alert('Draft loaded successfully!');
+                showMessage('Draft Loaded', 'Draft loaded successfully!');
             } else {
-                alert('No saved draft found.');
+                showMessage('No Saved Draft', 'No saved draft found.');
             }
         }
 
@@ -1363,7 +1468,7 @@
             sortBySelect = document.getElementById('sort-by');
             noAvailablePlayersMessage = document.getElementById('no-available-players');
             top5Container = document.getElementById('top-5-container');
-            recommendationsContainer = document.getElementById('recommendations-container');
+            recommendationsContainer = document.getElementById('recommendations-container'); // Get reference to the container
             rosterTabsContainer = document.getElementById('roster-tabs');
             rosterContentContainer = document.getElementById('roster-content');
             currentRoundSpan = document.getElementById('current-round'); 
@@ -1378,6 +1483,13 @@
             standingsList = document.getElementById('standings-list');
             viewStandingsButton = document.getElementById('view-standings-button');
             closeSummaryButton = document.getElementById('close-summary-button');
+
+            // Assign message modal elements
+            messageModal = document.getElementById('message-modal');
+            messageModalTitle = document.getElementById('message-modal-title');
+            messageModalContent = document.getElementById('message-modal-content');
+            messageModalCloseButton = document.getElementById('message-modal-close');
+            messageModalCloseButton.addEventListener('click', () => messageModal.classList.add('hidden'));
             
             console.log("DOM elements retrieved.");
 
@@ -1401,6 +1513,22 @@
             sortBySelect.addEventListener('change', applyFiltersAndSort);
             viewStandingsButton.addEventListener('click', renderSummaryPage); 
             closeSummaryButton.addEventListener('click', closeSummaryPage); 
+
+            // Event delegation for recommendation buttons
+            recommendationsContainer.addEventListener('click', (e) => {
+                const clickedButton = e.target.closest('.draft-button');
+                if (clickedButton) {
+                    e.stopPropagation(); // Stop propagation from the button itself
+                    const playerId = clickedButton.getAttribute('data-player-id');
+                    const playerToDraft = players.find(p => p.Player === playerId);
+                    if (playerToDraft) {
+                        console.log('DEBUG (Delegated): Select button clicked for player:', playerToDraft.Player);
+                        draftPlayer(playerToDraft);
+                    } else {
+                        console.warn('Player not found for ID:', playerId);
+                    }
+                }
+            });
 
             // Check for saved state and update UI accordingly
             const savedState = localStorage.getItem('fantasyDraftState');
