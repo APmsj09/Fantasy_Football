@@ -41,8 +41,6 @@
             opacity: 0.6;
             cursor: not-allowed;
         }
-        /* Revert modal aggressive debugging styles, as modal HTML is now removed */
-        /* These styles are now largely irrelevant as the modal element itself is removed */
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
@@ -84,8 +82,6 @@
                 
                 <button id="load-data-button" class="w-full bg-violet-600 hover:bg-violet-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">1c. Load Player Data from GitHub</button>
                 
-                <!-- Removed the "Setup 12-Team Draft" button as the draft now starts automatically -->
-                
                 <div class="flex space-x-2">
                     <button id="load-draft-button" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300 hidden">Load Existing Draft</button>
                 </div>
@@ -94,7 +90,6 @@
 
         <!-- Drafting Screen -->
         <div id="drafting-screen" class="hidden">
-            <!-- The team-name-modal is now removed entirely -->
             
             <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
                 <div class="md:col-span-1 bg-white p-6 rounded-lg shadow-md self-start">
@@ -186,23 +181,24 @@
     <script>
         // --- STATE MANAGEMENT ---
         let players = [];
-        let teamsById = {}; // Changed from 'teams' to 'teamsById'
-        let draftOrder = []; // Now stores team IDs
+        let teamsById = {};
+        let draftOrder = [];
         let currentPick = 0;
         let draftStarted = false;
-        let draftHistory = []; // Now stores team IDs
-        // Removed `teamNames` as `teamsById` objects will hold editable names
+        let draftHistory = [];
 
         // --- ROSTER SETTINGS ---
+        // Updated roster settings as per user's request: 1QB, 2RB, 2WR, 1TE, 2FLEX, 1K, 1DEF
         const rosterSettings = {
-            QB: { min: 0, max: 1 },
-            RB: { min: 2, max: 4 },
-            WR: { min: 2, max: 4 },
-            TE: { min: 1, max: 3 },
-            PK: { min: 0, max: 1 },
-            Def: { min: 0, max: 1 },
-            totalStarters: 10,
-            bench: 6,
+            QB: { min: 1, max: 2 }, 
+            RB: { min: 2, max: 4 }, 
+            WR: { min: 2, max: 4 }, 
+            TE: { min: 1, max: 2 }, 
+            Flex: { min: 2, max: 2 }, // Updated to 2 Flex spots
+            PK: { min: 1, max: 1 }, 
+            Def: { min: 1, max: 1 }, 
+            totalStarters: 10, // 1 QB + 2 RB + 2 WR + 1 TE + 2 Flex + 1 PK + 1 Def = 10
+            bench: 6, // 16 total size - 10 starters = 6
             totalSize: 16
         };
 
@@ -226,11 +222,12 @@
         let recommendationsContainer;
         let rosterTabsContainer;
         let rosterContentContainer;
+        let currentRoundSpan; 
+        let currentPickNumberSpan;
+        let onTheClockSpan;
 
         // --- Hard-coded URL for your TSV file ---
         const tsvFileUrl = 'https://raw.githubusercontent.com/APmsj09/Fantasy_Football/main/Data.tsv';
-
-        // --- EVENT LISTENERS (Attached in window.onload) ---
 
         /**
          * Generates a UUID.
@@ -270,7 +267,14 @@
             let teamIds = [];
             teamsToCreate.forEach(name => {
                 const id = generateUUID();
-                teamsById[id] = { id: id, name: name, roster: [], positions: {} };
+                // Initialize positions with 0 count
+                const initialPositions = {};
+                Object.keys(rosterSettings).forEach(pos => {
+                    if (pos !== 'totalStarters' && pos !== 'bench' && pos !== 'totalSize') {
+                        initialPositions[pos] = 0;
+                    }
+                });
+                teamsById[id] = { id: id, name: name, roster: [], positions: initialPositions };
                 teamIds.push(id);
             });
 
@@ -302,28 +306,67 @@
                 alert('Data file must have a header and at least one player row.');
                 return [];
             }
-            const headers = rows[0].split('\t').map(h => h.trim());
+            const rawHeaders = rows[0].split('\t');
+            const headers = rawHeaders.map(h => h.trim());
+            console.log("TSV Headers found:", headers);
+
+            // Find index of crucial columns
+            const playerIndex = headers.indexOf('Player');
+            const teamIndex = headers.indexOf('Team'); // Original index for "Team" column
+            const posIndex = headers.indexOf('Pos');   // Original index for "Pos" column
+            const projectedPointsIndex = headers.indexOf('2025 Projected Fantasy Points');
+            const vbdIndex = headers.indexOf('VBD');
+            const byeWeekIndex = headers.indexOf('Bye Week');
+
+            if (playerIndex === -1 || teamIndex === -1 || posIndex === -1) {
+                alert('Required columns (Player, Team, Pos) not found in the TSV file.');
+                return [];
+            }
+
             const parsedPlayers = [];
             for (let i = 1; i < rows.length; i++) {
                 const values = rows[i].split('\t').map(v => v.trim());
-                if (values.length === headers.length) {
-                    let player = {};
-                    headers.forEach((header, index) => {
-                        let value = values[index];
-                        if (header.startsWith('Week ') || header === '2025 Projected Fantasy Points' || header === 'VBD') {
-                            player[header] = parseFloat(value) || 0;
-                        } else {
-                            player[header] = value;
-                        }
-                    });
-                    parsedPlayers.push(player);
+                if (values.length !== headers.length) {
+                    console.warn(`Skipping row ${i + 1} due to header/value mismatch. Headers: ${headers.length}, Values: ${values.length}. Row: ${rows[i]}`);
+                    continue; 
                 }
-            }
-            if (!headers.includes('VBD')) {
-                parsedPlayers.forEach(p => {
-                    p.VBD = p['2025 Projected Fantasy Points'] || 0;
-                });
-                console.warn("VBD column not found. Using '2025 Projected Fantasy Points' as VBD.");
+                
+                let player = {};
+                player.Player = values[playerIndex];
+                
+                // *** FIX: Flip Pos and Team assignment as per user's error report ***
+                // The value at the 'Pos' column index is actually the Team name.
+                // The value at the 'Team' column index is actually the Position.
+                player.Team = values[posIndex]; // Assign value from 'Pos' header's column to player.Team
+                player.Pos = values[teamIndex]; // Assign value from 'Team' header's column to player.Pos
+                
+                // Standardize 'K' to 'PK' and 'DEF' to 'Def'
+                if (player.Pos === 'K') {
+                    player.Pos = 'PK';
+                } else if (player.Pos === 'DEF') {
+                    player.Pos = 'Def';
+                }
+
+                player['2025 Projected Fantasy Points'] = parseFloat(values[projectedPointsIndex]) || 0;
+                player.VBD = (vbdIndex !== -1) ? parseFloat(values[vbdIndex]) || 0 : player['2025 Projected Fantasy Points'];
+                player['Bye Week'] = values[byeWeekIndex];
+
+                // Extract Weekly Projections
+                for (let week = 1; week <= 18; week++) { // Assuming up to Week 18 projections
+                    const weekHeader = `Week ${week}`;
+                    const weekIndex = headers.indexOf(weekHeader);
+                    if (weekIndex !== -1) {
+                        player[weekHeader] = parseFloat(values[weekIndex]) || 0;
+                    } else {
+                        player[weekHeader] = 0; // Default to 0 if week projection is missing
+                    }
+                }
+
+                // DEBUG: Log final parsed player object to confirm Pos and Team are correct after the flip
+                if (player.Player === "Ja'Marr Chase" || parsedPlayers.length < 5) { // Log first 5 players and Ja'Marr Chase
+                    console.log(`  Processed Player (Row ${i + 1}): Player: ${player.Player}, Raw Pos Column Value: '${values[posIndex]}', Raw Team Column Value: '${values[teamIndex]}', Final player.Pos: '${player.Pos}', Final player.Team: '${player.Team}'`);
+                }
+                parsedPlayers.push(player);
             }
             return parsedPlayers;
         }
@@ -367,7 +410,6 @@
                 })
                 .finally(() => {
                     buttonToUpdate.disabled = false;
-                    // updateUIState() is no longer needed here as we transition immediately
                 });
         }
 
@@ -377,7 +419,6 @@
         function handleFileUpload(event) {
             const file = event.target.files[0];
             if (!file) {
-                // updateUIState() is no longer needed here as we transition immediately
                 return;
             }
 
@@ -392,13 +433,10 @@
                 } else {
                     alert('Failed to parse player data from the file. Please check the file format.');
                 }
-                // updateUIState() is no longer needed here as we transition immediately
             };
             reader.readAsText(file);
         }
         
-        // Removed showTeamNameModal as it's no longer used
-
         /**
          * Updates the UI with the current draft status and upcoming picks.
          */
@@ -460,79 +498,88 @@
             let recommendations = [];
             let criticalNeedsExist = false;
 
-            // Define core positions (excluding PK and Def for VBD priority in starters)
-            const corePositions = ['QB', 'RB', 'WR', 'TE'];
+            // Define all positions that can be drafted or are part of the roster settings
+            const allRosterPositions = Object.keys(rosterSettings).filter(p => !['totalStarters', 'bench', 'totalSize'].includes(p));
 
-            // Stage 1: Prioritize players to fill vacant roster spots for core positions based on VBD
-            for (const pos of corePositions) {
+            // Stage 1: Prioritize players to fill vacant roster spots based on minimum requirements and VBD
+            for (const pos of allRosterPositions) {
                 const currentCount = teamPositions[pos] || 0;
-                // Check if the team has NOT met the MINIMUM requirement for this position
-                if (currentCount < rosterSettings[pos].min) {
+                if (rosterSettings[pos] && currentCount < rosterSettings[pos].min) {
                     criticalNeedsExist = true;
-                    const neededCount = rosterSettings[pos].min - currentCount; // How many more are strictly needed
+                    const neededCount = rosterSettings[pos].min - currentCount; 
                     
-                    // Filter available players for this position, sort by VBD
-                    const topPosPlayers = [...players]
-                        .filter(p => p.Pos === pos)
+                    let filteredByPosPlayers;
+                    if (pos === 'Flex') {
+                        filteredByPosPlayers = [...players].filter(p => ['RB', 'WR', 'TE'].includes(p.Pos));
+                    } else {
+                        filteredByPosPlayers = [...players].filter(p => p.Pos === pos);
+                    }
+
+                    const topPosPlayers = filteredByPosPlayers
                         .sort((a, b) => b.VBD - a.VBD)
-                        .slice(0, neededCount + 1); // Get a few extra in case of ties or deeper suggestions
+                        .slice(0, neededCount + 2); // Get a few extra suggestions
 
                     recommendations.push(...topPosPlayers.map(p => ({
                         player: p,
                         reason: `High VBD to fill starting ${pos} slot.`,
-                        priority: 1 // Highest priority for filling essential spots
+                        priority: 1 
                     })));
                 }
             }
 
-            // Only proceed to bye-week and depth if critical starting needs are met OR roster is almost full
-            if (!criticalNeedsExist || teamRoster.length >= rosterSettings.totalSize - 3) { // Consider depth when nearing full roster
-                // Stage 2: Maximize weekly points by targeting players for upcoming bye weeks
+            // Stage 2: Maximize weekly points by targeting players for upcoming bye weeks
+            // Only proceed if critical starting needs are met OR roster is almost full
+            if (!criticalNeedsExist || teamRoster.length >= rosterSettings.totalSize - 3) {
                 const currentDraftRound = Math.floor(currentPick / 12) + 1;
                 const weeksToConsider = [];
-                for (let i = 0; i < 4; i++) { // Look ahead for 4 weeks
+                for (let i = 0; i < 4; i++) { 
                     const targetWeek = currentDraftRound + i;
-                    if (targetWeek >= 1 && targetWeek <= 18) { // Assuming season has 18 weeks (fantasy relevant)
+                    if (targetWeek >= 1 && targetWeek <= 18) { 
                         weeksToConsider.push(targetWeek);
                     }
                 }
 
                 for (const week of weeksToConsider) {
                     // Check if the current team has a player on bye during this week
-                    const relevantByePlayers = teamRoster.filter(p => p['Bye Week'] == week);
+                    const relevantByePlayers = teamRoster.filter(p => p['Bye Week'] == week && ['RB', 'WR', 'TE'].includes(p.slottedPos || p.Pos)); 
                     if (relevantByePlayers.length > 0) {
-                        // Find available players who DON'T have a bye in this target week and have good projections
+                        // Find available players who DON'T have a bye in this target week and have good projections for that week
                         const topByeWeekFillers = [...players]
-                            .filter(p => p.Pos !== 'PK' && p.Pos !== 'Def' && p['Bye Week'] != week) // Exclude PK/Def for bye week fillers, and ensure not on bye
+                            .filter(p => ['RB', 'WR', 'TE'].includes(p.Pos) && p['Bye Week'] != week) 
                             .sort((a, b) => {
                                 const aProj = a[`Week ${week}`] || 0;
                                 const bProj = b[`Week ${week}`] || 0;
-                                return bProj - aProj;
+                                return bProj - aProj; // Sort by projected points for the specific week
                             })
-                            .slice(0, 2); // Top 2 options for this specific bye week
+                            .slice(0, 2); 
 
                         recommendations.push(...topByeWeekFillers.map(p => ({
                             player: p,
                             reason: `High projected points for bye week filler (Week ${week}).`,
-                            priority: 2 // Lower priority than essential starters
+                            priority: 2 
                         })));
                     }
                 }
             }
             
-            // Stage 3: General depth/best available if neither critical needs nor immediate bye week issues were prioritized heavily
-            // This fills the remaining recommendation slots if we haven't hit 5 yet
+            // Stage 3: General depth/best available if remaining recommendation slots need to be filled
             if (recommendations.length < 5 && teamRoster.length < rosterSettings.totalSize) { 
                 const generalDepthPlayers = [...players]
-                    .sort((a, b) => b.VBD - a.VBD); // Sort all available by VBD
+                    .sort((a, b) => {
+                        // Primary sort by VBD
+                        if (b.VBD !== a.VBD) return b.VBD - a.VBD;
+                        // Secondary sort by Week 1 projected points for tie-breaking
+                        const aProjWeek1 = a['Week 1'] || 0;
+                        const bProjWeek1 = b['Week 1'] || 0;
+                        return bProjWeek1 - aProjWeek1;
+                    });
                 
-                // Add unique players until we have 5 recommendations or run out of players
                 for (const player of generalDepthPlayers) {
                     if (!recommendations.some(rec => rec.player.Player === player.Player)) {
                         recommendations.push({
                             player: player,
                             reason: `Best available player (High VBD).`,
-                            priority: 3 // Lowest priority
+                            priority: 3 
                         });
                     }
                     if (recommendations.length >= 5) break;
@@ -541,7 +588,7 @@
 
 
             // Deduplicate and sort the final recommendations
-            const uniqueRecommendationsMap = new Map(); // Map to store unique players and their highest priority reason
+            const uniqueRecommendationsMap = new Map(); 
             for (const rec of recommendations) {
                 if (!uniqueRecommendationsMap.has(rec.player.Player) || rec.priority < uniqueRecommendationsMap.get(rec.player.Player).priority) {
                     uniqueRecommendationsMap.set(rec.player.Player, rec);
@@ -557,7 +604,7 @@
                 return b.player.VBD - a.player.VBD;
             });
 
-            const top5FinalRecommendations = finalRecommendations.slice(0, 5); // Ensure only top 5 displayed
+            const top5FinalRecommendations = finalRecommendations.slice(0, 5); 
 
             if (top5FinalRecommendations.length > 0) {
                 top5FinalRecommendations.forEach(rec => {
@@ -614,7 +661,7 @@
             });
 
             renderPlayers(filteredPlayers);
-            renderTop5();
+            renderTop5(); 
         }
 
         /**
@@ -721,31 +768,84 @@
             }
             localStorage.setItem('activeRosterTab', teamId);
 
-            const positions = ['QB', 'RB', 'WR', 'TE', 'PK', 'Def'];
+            const allRosterPositions = Object.keys(rosterSettings).filter(p => !['totalStarters', 'bench', 'totalSize'].includes(p));
             const posColors = {
                 'QB': 'bg-blue-100',
                 'RB': 'bg-green-100',
                 'WR': 'bg-yellow-100',
                 'TE': 'bg-red-100',
-                'PK': 'bg-purple-100',
+                'Flex': 'bg-purple-100', 
+                'PK': 'bg-gray-200',
                 'Def': 'bg-indigo-100'
             };
 
-            const posSummary = positions
+            const posSummary = allRosterPositions
                 .map(pos => `${pos}: ${teamData.positions[pos] || 0}`)
                 .join(', ');
 
             const playersHtml = teamData.roster.map(p => `
-                <li class="flex justify-between items-center text-sm border-b border-gray-200 last:border-b-0 py-1 px-2 ${posColors[p.Pos]} rounded">
+                <li class="flex justify-between items-center text-sm border-b border-gray-200 last:border-b-0 py-1 px-2 ${posColors[p.slottedPos || p.Pos] || 'bg-gray-50'} rounded">
                     <span class="font-medium">${p.Player}</span>
-                    <span class="text-gray-600">${p.Pos} - ${p.Team}</span>
+                    <span class="text-gray-600">${p.Pos} - ${p.Team} (${p.slottedPos})</span>
                 </li>
             `).join('');
 
+            // Calculate weekly points by position and week for Weeks 1-13
+            const weeklyPointsByPosAndWeek = {};
+            allRosterPositions.forEach(pos => {
+                weeklyPointsByPosAndWeek[pos] = {};
+                for (let week = 1; week <= 13; week++) { // Iterate weeks 1-13
+                    weeklyPointsByPosAndWeek[pos][`Week ${week}`] = 0;
+                }
+            });
+
+            teamData.roster.forEach(player => {
+                const effectivePos = player.slottedPos; // Use slottedPos which is explicitly tracked
+                for (let week = 1; week <= 13; week++) {
+                    const weekKey = `Week ${week}`;
+                    const weekProj = player[weekKey] || 0;
+                    
+                    if (weeklyPointsByPosAndWeek[effectivePos] && !isNaN(weekProj)) {
+                        weeklyPointsByPosAndWeek[effectivePos][weekKey] += weekProj;
+                    }
+                }
+            });
+
+            let pointsSummaryHtml = `<p class="text-sm font-semibold mt-4 mb-2">Week 1 Projected Points:</p>`;
+            allRosterPositions.forEach(pos => {
+                const totalProjPointsWeek1 = weeklyPointsByPosAndWeek[pos]['Week 1'] ? weeklyPointsByPosAndWeek[pos]['Week 1'].toFixed(1) : '0.0';
+                if (parseFloat(totalProjPointsWeek1) > 0 || teamData.positions[pos] > 0) { 
+                    pointsSummaryHtml += `<p class="text-xs text-gray-700 mt-0.5 ml-2">${pos}: <span class="font-bold">${totalProjPointsWeek1}</span></p>`;
+                }
+            });
+            if (pointsSummaryHtml === `<p class="text-sm font-semibold mt-4 mb-2">Week 1 Projected Points:</p>`) {
+                pointsSummaryHtml += `<p class="text-xs text-gray-500 ml-2">No projected points yet.</p>`;
+            }
+
+            let weeklyChartHtml = `<div class="mt-4 p-3 bg-white rounded-lg border">
+                <h4 class="font-semibold text-md mb-2">Weekly Projected Points (Weeks 1-13):</h4>`;
+
+            allRosterPositions.forEach(pos => {
+                if (teamData.positions[pos] > 0) { // Only show positions with players
+                    weeklyChartHtml += `<p class="text-sm font-medium mt-2">${pos}:</p><ul class="flex flex-wrap text-xs text-gray-700">`;
+                    for (let week = 1; week <= 13; week++) {
+                        const weekKey = `Week ${week}`;
+                        const points = weeklyPointsByPosAndWeek[pos][weekKey].toFixed(1);
+                        // Only display if there are actual points for the week
+                        if (parseFloat(points) > 0) { 
+                             weeklyChartHtml += `<li class="mr-2 mb-1">W${week}: <span class="font-bold">${points}</span></li>`;
+                        }
+                    }
+                    weeklyChartHtml += `</ul>`;
+                }
+            });
+            weeklyChartHtml += `</div>`;
+
+
             rosterContentContainer.innerHTML = `
-                <div class="bg-gray-50 p-4 rounded-lg border shadow-sm">
+                <div class="bg-gray-50 p-4 rounded-lg border shadow-md">
                     <h3 class="font-semibold text-lg mb-2 flex justify-between items-center">
-                        <input type="text" value="${teamData.name}" class="bg-transparent font-semibold text-lg border-b border-gray-300 focus:outline-none focus:border-indigo-500 rounded-sm px-1" onblur="editTeamName(this, '${teamId}')">
+                        <input type="text" value="${teamData.name}" class="bg-transparent font-semibold text-lg border-b border-gray-300 focus:outline-none focus:border-indigo-500 rounded-sm px-1 py-0.5 hover:bg-gray-100 transition duration-150" onblur="editTeamName(this, '${teamId}')">
                         <span class="text-sm text-gray-500">
                             <span class="text-blue-600 font-bold">${teamData.roster.length}</span>/${rosterSettings.totalSize} players
                         </span>
@@ -757,6 +857,8 @@
                     <ul class="space-y-1">
                         ${playersHtml || '<li class="text-sm text-gray-500">Roster is empty.</li>'}
                     </ul>
+                    ${pointsSummaryHtml}
+                    ${weeklyChartHtml}
                 </div>
             `;
         }
@@ -769,7 +871,6 @@
             document.querySelectorAll('.tab').forEach(tab => {
                 tab.classList.remove('active');
             });
-            // Find the tab button based on its onclick attribute
             const newActiveTab = document.querySelector(`.tab[onclick="switchRosterTab('${teamId}')"]`);
             if (newActiveTab) {
                 newActiveTab.classList.add('active');
@@ -782,12 +883,21 @@
          */
         function renderTop5() {
             top5Container.innerHTML = '';
-            const positions = ['QB', 'RB', 'WR', 'TE'];
+            console.log("renderTop5 called. Current players array length:", players.length); 
+            const positions = ['QB', 'RB', 'WR', 'TE']; 
+
+            if (players.length === 0) {
+                 top5Container.innerHTML = `<p class="text-gray-500 text-center">No players available.</p>`;
+                 console.log("No players available to render in Top 5.");
+                 return;
+            }
 
             positions.forEach(pos => {
                 const topPlayers = players.filter(p => p.Pos === pos)
                     .sort((a, b) => b.VBD - a.VBD)
                     .slice(0, 5);
+
+                console.log(`Top players for ${pos}:`, topPlayers.map(p => `${p.Player} (VBD: ${p.VBD.toFixed(2)})`)); 
 
                 const listItemsHtml = topPlayers.map(p => `
                     <li class="flex justify-between items-center text-sm">
@@ -806,6 +916,7 @@
                 `;
                 top5Container.appendChild(posSection);
             });
+            console.log("renderTop5 finished.");
         }
 
         /**
@@ -823,30 +934,61 @@
 
             const teamId = draftOrder[currentPick];
             const teamData = teamsById[teamId];
-            const position = playerToDraft.Pos;
+            const position = playerToDraft.Pos; // This is the player's primary position
+            let slottedPosition = position; // This will be the position the player is actually slotted into
 
-            const currentPositionCount = teamData.positions[position] || 0;
-            if (rosterSettings[position] && currentPositionCount >= rosterSettings[position].max) {
+            // Defensive check for invalid position
+            if (!rosterSettings[position]) {
+                console.error(`Invalid or unexpected position '${position}' found for player ${playerToDraft.Player}.`);
+                alert(`Cannot draft player: Invalid position '${position}'. Please check player data.`);
+                return;
+            }
+
+            // Check if there's space in the primary position
+            const currentPrimaryPosCount = teamData.positions[position] || 0;
+            if (currentPrimaryPosCount < rosterSettings[position].max) {
+                teamData.positions[position]++; // Increment primary position count
+            } else if (['RB', 'WR', 'TE'].includes(position)) {
+                // If primary position is full and it's a Flex-eligible player, try to slot into Flex
+                const currentFlexCount = teamData.positions['Flex'] || 0;
+                if (rosterSettings.Flex && currentFlexCount < rosterSettings.Flex.max) {
+                    teamData.positions['Flex']++; // Increment Flex count
+                    slottedPosition = 'Flex'; // Mark as slotted into Flex
+                    console.log(`${playerToDraft.Player} drafted into Flex for ${teamData.name}.`);
+                } else {
+                    alert(`${teamData.name} already has the maximum number of ${position}s allowed (${rosterSettings[position].max}) and no Flex spots available. Please draft a player from a different position or a different Flex-eligible position.`);
+                    return;
+                }
+            } else {
+                // If primary position is full and not Flex-eligible
                 alert(`${teamData.name} already has the maximum number of ${position}s allowed (${rosterSettings[position].max}). Please draft a player from a different position.`);
                 return;
             }
+            
             if (teamData.roster.length >= rosterSettings.totalSize) {
                 alert(`${teamData.name}'s roster is full (${rosterSettings.totalSize} players). They cannot draft any more players.`);
+                // Decrement the count for the position that was just incremented
+                if (slottedPosition === 'Flex') {
+                    teamData.positions['Flex']--;
+                } else {
+                    teamData.positions[position]--;
+                }
                 return;
             }
 
             draftHistory.push({
                 pickIndex: currentPick,
                 player: { ...playerToDraft },
-                teamId: teamId // Store team ID, not name
+                teamId: teamId,
+                slottedPosition: slottedPosition // Store where the player was actually slotted
             });
 
             players = players.filter(p => p.Player !== playerToDraft.Player);
 
-            teamData.roster.push(playerToDraft);
-            teamData.roster.sort((a, b) => a.Pos.localeCompare(b.Pos));
-            teamData.positions[position] = (teamData.positions[position] || 0) + 1;
-
+            // Push player with their slotted position to the team roster
+            teamData.roster.push({ ...playerToDraft, slottedPos: slottedPosition });
+            teamData.roster.sort((a, b) => a.Pos.localeCompare(b.Pos)); // Keep roster sorted by primary position
+            
             currentPick++;
 
             applyFiltersAndSort();
@@ -864,13 +1006,17 @@
             }
             const lastPick = draftHistory.pop();
             const playerToUndo = lastPick.player;
-            const teamId = lastPick.teamId; // Retrieve team ID
+            const teamId = lastPick.teamId;
+            const slottedPosition = lastPick.slottedPosition; // Get the actual slot
             const teamData = teamsById[teamId];
-            const position = playerToUndo.Pos;
-
+            
             players.push(playerToUndo);
-            teamData.roster = teamData.roster.filter(p => p.Player !== playerToUndo.Player);
-            teamData.positions[position] = (teamData.positions[position] || 1) - 1;
+            teamData.roster = teamData.roster.filter(p => p.Player !== playerToUndo.Player || (p.Player === playerToUndo.Player && p.slottedPos !== slottedPosition));
+            
+            // Decrement the count for the slot the player was actually in
+            if (teamData.positions[slottedPosition] > 0) {
+                teamData.positions[slottedPosition]--;
+            }
 
             currentPick = lastPick.pickIndex;
 
@@ -929,8 +1075,6 @@
             saveButton = document.getElementById('save-draft');
             loadDraftButton = document.getElementById('load-draft-button');
             undoButton = document.getElementById('undo-pick-button');
-            // showSetupDraftButton is removed
-            // modal, teamNameInputsContainer, startDraftButton are removed
             upcomingPicksList = document.getElementById('upcoming-picks');
             playerSearchInput = document.getElementById('player-search');
             positionFilterSelect = document.getElementById('position-filter');
@@ -940,7 +1084,7 @@
             recommendationsContainer = document.getElementById('recommendations-container');
             rosterTabsContainer = document.getElementById('roster-tabs');
             rosterContentContainer = document.getElementById('roster-content');
-            currentRoundSpan = document.getElementById('current-round'); // These were missing, added them
+            currentRoundSpan = document.getElementById('current-round'); 
             currentPickNumberSpan = document.getElementById('current-pick-number');
             onTheClockSpan = document.getElementById('on-the-clock');
             loadDataButton = document.getElementById('load-data-button');
@@ -954,8 +1098,6 @@
             saveButton.addEventListener('click', saveDraft);
             loadDraftButton.addEventListener('click', loadDraft);
             undoButton.addEventListener('click', undoLastPick);
-            // showSetupDraftButton listener is removed
-            // startDraftButton listener is removed
             loadDataButton.addEventListener('click', () => loadPlayersFromUrl(tsvFileUrl));
             loadUrlButton.addEventListener('click', () => loadPlayersFromUrl(urlInput.value));
             urlInput.addEventListener('input', () => {
