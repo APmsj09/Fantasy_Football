@@ -341,8 +341,8 @@
 
             // Find index of crucial columns
             const playerIndex = headers.indexOf('Player');
-            const teamIndex = headers.indexOf('Team'); // Original index for "Team" column
-            const posIndex = headers.indexOf('Pos');   // Original index for "Pos" column
+            const teamIndex = headers.indexOf('Team'); 
+            const posIndex = headers.indexOf('Pos');   
             const projectedPointsIndex = headers.indexOf('2025 Projected Fantasy Points');
             const vbdIndex = headers.indexOf('VBD');
             const byeWeekIndex = headers.indexOf('Bye Week');
@@ -363,12 +363,15 @@
                 let player = {};
                 player.Player = values[playerIndex];
                 
-                                
+                // Assign Team from the 'Team' column, and Pos from the 'Pos' column
+                player.Team = values[teamIndex]; 
+                player.Pos = values[posIndex]; 
+                
                 // Standardize 'K' to 'PK' and 'DEF' to 'DST'
                 if (player.Pos === 'K') {
                     player.Pos = 'PK';
                 } else if (player.Pos === 'DEF') {
-                    player.Pos = 'DST'; // Changed from Def to DST
+                    player.Pos = 'DST'; 
                 }
 
                 player['2025 Projected Fantasy Points'] = parseFloat(values[projectedPointsIndex]) || 0;
@@ -377,7 +380,7 @@
 
                 // Extract Weekly Projections
                 for (let week = 1; week <= 18; week++) { // Assuming up to Week 18 projections
-                    const weekHeader = `Week ${week}`; // Example: "Week 6"
+                    const weekHeader = `Week ${week}`; 
                     const weekIndex = headers.indexOf(weekHeader);
                     if (weekIndex !== -1) {
                         // Trim the value before parseFloat to handle any hidden whitespace
@@ -388,9 +391,9 @@
                         }
                         player[weekHeader] = parsedValue;
                         // Selective debug log for a few players and specific week to verify parsing
-                        if (player.Player === "Ja'Marr Chase" && week === 6) { // Logging for Ja'Marr Chase for week 6
+                        if (player.Player === "Ja'Marr Chase" && week === 6) { 
                             console.log(`  ParseTSV Debug: Player: ${player.Player}, ${weekHeader}: raw='${rawValue}', parsed=${parsedValue}`);
-                        } else if (parsedPlayers.length < 5 && week === 6) { // Logging first 5 players for week 6 for quick checks
+                        } else if (parsedPlayers.length < 5 && week === 6) { 
                              console.log(`  ParseTSV Debug: Player: ${player.Player}, ${weekHeader}: raw='${rawValue}', parsed=${parsedValue}`);
                         }
                     } else {
@@ -534,7 +537,7 @@
             
             // Group players by position
             const playersByPos = {
-                QB: [], RB: [], WR: [], TE: [], PK: [], DST: [] // Changed from Def to DST
+                QB: [], RB: [], WR: [], TE: [], PK: [], DST: [] 
             };
             activePlayers.forEach(player => {
                 // Ensure player.Pos is valid before adding
@@ -559,7 +562,7 @@
                 for (let i = 0; i < count; i++) {
                     const player = playersByPos[pos].find(p => !usedPlayers.has(p.Player));
                     if (player) {
-                        const slotName = `${slotPrefix}${count > 1 ? i + 1 : ''}`; // QB, RB1, RB2, etc.
+                        const slotName = `${slotPrefix}${count > 1 ? i + 1 : ''}`; 
                         lineupSlots[slotName] = { player: player, points: player[weekKey] };
                         usedPlayers.add(player.Player);
                         totalPoints += player[weekKey];
@@ -573,7 +576,7 @@
             // Fill dedicated primary positions (QB, PK, DST, and min for RB, WR, TE)
             fillPrimarySlots('QB', rosterSettings.QB.min, 'QB');
             fillPrimarySlots('PK', rosterSettings.PK.min, 'PK');
-            fillPrimarySlots('DST', rosterSettings.DST.min, 'DST'); // Changed from Def to DST
+            fillPrimarySlots('DST', rosterSettings.DST.min, 'DST'); 
             fillPrimarySlots('RB', rosterSettings.RB.min, 'RB');
             fillPrimarySlots('WR', rosterSettings.WR.min, 'WR');
             fillPrimarySlots('TE', rosterSettings.TE.min, 'TE');
@@ -608,7 +611,7 @@
         function renderRecommendations() {
             recommendationsContainer.innerHTML = '';
             const currentTeamId = draftOrder[currentPick];
-            if (!currentTeamId) { // Check if draft is complete
+            if (!currentTeamId) { 
                 recommendationsContainer.innerHTML = `<p class="text-gray-500">Draft is complete.</p>`;
                 return;
             }
@@ -649,7 +652,7 @@
                     reason += ` Expected +${weeklyImpact.toFixed(1)} Week 1 point upgrade.`;
                 } else if (weeklyImpact === 0) {
                     reason += ` No immediate Week 1 point upgrade.`;
-                } else { // Negative impact, usually due to a worse player replacing an existing one in the optimal lineup
+                } else { 
                     reason += ` Expected ${weeklyImpact.toFixed(1)} Week 1 point change.`;
                 }
 
@@ -837,7 +840,7 @@
                 'TE': 'bg-red-100',
                 'Flex': 'bg-purple-100', 
                 'PK': 'bg-gray-200',
-                'DST': 'bg-indigo-100', // Changed from Def to DST
+                'DST': 'bg-indigo-100', 
                 'Bench': 'bg-gray-100' // Added color for Bench players
             };
             const chartColors = { // Specific colors for chart lines
@@ -847,7 +850,7 @@
                 'TE': 'rgb(255, 99, 132)', // Red
                 'Flex': 'rgb(153, 102, 255)', // Purple
                 'PK': 'rgb(201, 203, 207)', // Grey
-                'DST': 'rgb(255, 159, 64)', // Changed from Def to DST
+                'DST': 'rgb(255, 159, 64)', 
                 'Total': 'rgb(0, 0, 0)' // Black for total
             };
 
@@ -912,8 +915,8 @@
                         backgroundColor: chartColors[pos],
                         fill: false,
                         tension: 0.1,
-                        pointRadius: 2, // Smaller point radius
-                        pointHoverRadius: 5 // Default point hover radius
+                        pointRadius: 2, 
+                        pointHoverRadius: 5 
                     });
                 }
             });
@@ -927,11 +930,11 @@
                     borderColor: chartColors.Total,
                     backgroundColor: chartColors.Total,
                     borderWidth: 3,
-                    pointRadius: 3, // Smaller point radius for total line
+                    pointRadius: 3, 
                     pointBackgroundColor: chartColors.Total,
                     fill: false,
                     tension: 0.1,
-                    pointHoverRadius: 6 // Default point hover radius
+                    pointHoverRadius: 6 
                 });
             }
 
@@ -951,7 +954,7 @@
                         ${playersHtml || '<li class="text-sm text-gray-500">Roster is empty.</li>'}
                     </ul>
                     
-                    <div class="mt-4 p-3 bg-white rounded-lg border max-h-80"> <!-- Max height added -->
+                    <div class="mt-4 p-3 bg-white rounded-lg border max-h-80"> 
                         <h4 class="font-semibold text-md mb-2">Weekly Projected Points (Weeks 1-13):</h4>
                         <canvas id="rosterChart-${teamId}"></canvas>
                     </div>
@@ -980,8 +983,8 @@
                 },
                 options: {
                     responsive: true,
-                    maintainAspectRatio: false, // Allows chart to resize without maintaining aspect ratio
-                    animation: false, // Disable animations for performance
+                    maintainAspectRatio: false, 
+                    animation: false, 
                     scales: {
                         y: {
                             beginAtZero: true,
@@ -1081,8 +1084,8 @@
 
             const teamId = draftOrder[currentPick];
             const teamData = teamsById[teamId];
-            const position = playerToDraft.Pos; // This is the player's primary position
-            let slottedPosition = position; // This will be the position the player is actually slotted into
+            const position = playerToDraft.Pos; 
+            let slottedPosition = position; 
 
             // Defensive check for invalid position
             if (!rosterSettings[position]) {
@@ -1096,24 +1099,22 @@
 
             // 1. Try to slot into primary position
             if (rosterSettings[position] && (teamData.positions[position] || 0) < rosterSettings[position].max) {
-                teamData.positions[position]++; // Increment primary position count
-                slottedPosition = position; // Mark as slotted into primary position
+                teamData.positions[position]++; 
+                slottedPosition = position; 
                 console.log(`${playerToDraft.Player} drafted into primary ${position} for ${teamData.name}.`);
                 draftedSuccessfully = true;
             }
             // 2. If primary position is full AND it's a Flex-eligible player, try to slot into Flex
             else if (['RB', 'WR', 'TE'].includes(position) && rosterSettings.Flex && (teamData.positions['Flex'] || 0) < rosterSettings.Flex.max) {
-                teamData.positions['Flex']++; // Increment Flex count
-                slottedPosition = 'Flex'; // Mark as slotted into Flex
+                teamData.positions['Flex']++; 
+                slottedPosition = 'Flex'; 
                 console.log(`${playerToDraft.Player} drafted into Flex for ${teamData.name}.`);
                 draftedSuccessfully = true;
             }
             // 3. If primary and (if applicable) Flex are full, slot into Bench if total roster size allows
             else if (teamData.roster.length < rosterSettings.totalSize) { 
-                slottedPosition = 'Bench'; // Mark as a bench player
+                slottedPosition = 'Bench'; 
                 console.log(`${playerToDraft.Player} drafted to Bench for ${teamData.name}.`);
-                // No need to increment a specific 'Bench' count in teamData.positions,
-                // as total roster length implicitly tracks this.
                 draftedSuccessfully = true;
             }
             
@@ -1128,7 +1129,7 @@
                 pickIndex: currentPick,
                 player: { ...playerToDraft },
                 teamId: teamId,
-                slottedPosition: slottedPosition // Store where the player was actually slotted
+                slottedPosition: slottedPosition 
             });
 
             players = players.filter(p => p.Player !== playerToDraft.Player);
@@ -1161,7 +1162,7 @@
             const lastPick = draftHistory.pop();
             const playerToUndo = lastPick.player;
             const teamId = lastPick.teamId;
-            const slottedPosition = lastPick.slottedPosition; // Get the actual slot
+            const slottedPosition = lastPick.slottedPosition; 
             const teamData = teamsById[teamId];
             
             players.push(playerToUndo);
@@ -1339,8 +1340,8 @@
             playerSearchInput.addEventListener('input', applyFiltersAndSort);
             positionFilterSelect.addEventListener('change', applyFiltersAndSort);
             sortBySelect.addEventListener('change', applyFiltersAndSort);
-            viewStandingsButton.addEventListener('click', renderSummaryPage); // Event listener for the new button
-            closeSummaryButton.addEventListener('click', closeSummaryPage); // Event listener for closing summary
+            viewStandingsButton.addEventListener('click', renderSummaryPage); 
+            closeSummaryButton.addEventListener('click', closeSummaryPage); 
 
             // Check for saved state and update UI accordingly
             const savedState = localStorage.getItem('fantasyDraftState');
