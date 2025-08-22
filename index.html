@@ -130,6 +130,7 @@
                         <div class="space-y-4">
                             <button id="save-draft" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Save Draft</button>
                             <button id="undo-pick-button" class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300 mt-2">Undo Last Pick</button>
+                            <button id="view-standings-button" class="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-2 px-4 rounded-lg transition duration-300 mt-2">View Projected Standings</button>
                         </div>
                     </div>
                 </div>
@@ -148,7 +149,7 @@
                                     <option value="WR">WR</option>
                                     <option value="TE">TE</option>
                                     <option value="PK">PK</option>
-                                    <option value="Def">Def</option>
+                                    <option value="DST">DST</option>
                                 </select>
                                 <select id="sort-by" class="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white">
                                     <option value="VBD" selected>VBD (Highest First)</option>
@@ -188,6 +189,15 @@
                 </div>
             </div>
         </div>
+
+        <!-- Summary Screen -->
+        <div id="summary-screen" class="hidden bg-white p-6 rounded-lg shadow-md max-w-2xl mx-auto my-8">
+            <h2 class="text-3xl font-bold text-gray-900 mb-6 text-center">Projected Final Standings</h2>
+            <div id="standings-list" class="space-y-3">
+                <!-- Standings will be rendered here -->
+            </div>
+            <button id="close-summary-button" class="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 mt-6">Close Summary</button>
+        </div>
     </div>
     
     <script>
@@ -201,7 +211,7 @@
         let rosterCharts = {}; // To store Chart.js instances
 
         // --- ROSTER SETTINGS ---
-        // Updated roster settings as per user's request: 1QB, 2RB, 2WR, 1TE, 2FLEX, 1K, 1DEF
+        // Updated roster settings as per user's request: 1QB, 2RB, 2WR, 1TE, 2FLEX, 1K, 1DST
         const rosterSettings = {
             QB: { min: 1, max: 1 }, 
             RB: { min: 2, max: 2 }, 
@@ -209,8 +219,8 @@
             TE: { min: 1, max: 1 }, 
             Flex: { min: 2, max: 2 }, 
             PK: { min: 1, max: 1 }, 
-            Def: { min: 1, max: 1 }, 
-            totalStarters: 10, // 1 QB + 2 RB + 2 WR + 1 TE + 2 Flex + 1 PK + 1 Def = 10
+            DST: { min: 1, max: 1 }, // Changed from Def to DST
+            totalStarters: 10, // 1 QB + 2 RB + 2 WR + 1 TE + 2 Flex + 1 PK + 1 DST = 10
             bench: 6, // 16 total size - 10 starters = 6
             totalSize: 16
         };
@@ -238,6 +248,10 @@
         let currentRoundSpan; 
         let currentPickNumberSpan;
         let onTheClockSpan;
+        let summaryScreen; // New summary screen element
+        let standingsList; // New standings list element
+        let viewStandingsButton; // New view standings button
+        let closeSummaryButton; // New close summary button
 
         // --- Hard-coded URL for your TSV file ---
         const tsvFileUrl = 'https://raw.githubusercontent.com/APmsj09/Fantasy_Football/main/Data.tsv';
@@ -259,7 +273,6 @@
         function showDraftingScreen() {
             setupScreen.classList.add('hidden');
             draftingScreen.classList.remove('hidden');
-            console.log("Switched to drafting screen.");
         }
 
         /**
@@ -267,7 +280,6 @@
          * @param {Array<string>} [initialTeamNames] - Optional array of team names to use.
          */
         function initializeDraftSetup(initialTeamNames = []) {
-            console.log("initializeDraftSetup called.");
             teamsById = {};
             draftOrder = [];
             currentPick = 0;
@@ -300,7 +312,6 @@
                 draftOrder.push(...roundOrder);
             }
 
-            console.log("Draft initialized. Teams:", teamsById);
             showDraftingScreen();
             updateDraftStatus();
             renderRosters();
@@ -352,11 +363,11 @@
                 player.Team = values[posIndex]; // Assign value from 'Pos' header's column to player.Team
                 player.Pos = values[teamIndex]; // Assign value from 'Team' header's column to player.Pos
                 
-                // Standardize 'K' to 'PK' and 'DEF' to 'Def'
+                // Standardize 'K' to 'PK' and 'DEF' to 'DST'
                 if (player.Pos === 'K') {
                     player.Pos = 'PK';
                 } else if (player.Pos === 'DEF') {
-                    player.Pos = 'Def';
+                    player.Pos = 'DST'; // Changed from Def to DST
                 }
 
                 player['2025 Projected Fantasy Points'] = parseFloat(values[projectedPointsIndex]) || 0;
@@ -365,19 +376,27 @@
 
                 // Extract Weekly Projections
                 for (let week = 1; week <= 18; week++) { // Assuming up to Week 18 projections
-                    const weekHeader = `Week ${week}`;
+                    const weekHeader = `Week ${week}`; // Example: "Week 6"
                     const weekIndex = headers.indexOf(weekHeader);
                     if (weekIndex !== -1) {
-                        player[weekHeader] = parseFloat(values[weekIndex]) || 0;
+                        // Trim the value before parseFloat to handle any hidden whitespace
+                        let rawValue = values[weekIndex].trim();
+                        let parsedValue = parseFloat(rawValue);
+                        if (isNaN(parsedValue)) {
+                            parsedValue = 0; // Default to 0 if parsing fails
+                        }
+                        player[weekHeader] = parsedValue;
+                        // Selective debug log for a few players and specific week to verify parsing
+                        if (player.Player === "Ja'Marr Chase" && week === 6) { // Logging for Ja'Marr Chase for week 6
+                            console.log(`  ParseTSV Debug: Player: ${player.Player}, ${weekHeader}: raw='${rawValue}', parsed=${parsedValue}`);
+                        } else if (parsedPlayers.length < 5 && week === 6) { // Logging first 5 players for week 6 for quick checks
+                             console.log(`  ParseTSV Debug: Player: ${player.Player}, ${weekHeader}: raw='${rawValue}', parsed=${parsedValue}`);
+                        }
                     } else {
-                        player[weekHeader] = 0; // Default to 0 if week projection is missing
+                        player[weekHeader] = 0; // Default to 0 if week projection column is missing
                     }
                 }
 
-                // DEBUG: Log final parsed player object to confirm Pos and Team are correct after the flip
-                if (player.Player === "Ja'Marr Chase" || parsedPlayers.length < 5) { // Log first 5 players and Ja'Marr Chase
-                    console.log(`  Processed Player (Row ${i + 1}): Player: ${player.Player}, Raw Pos Column Value: '${values[posIndex]}', Raw Team Column Value: '${values[teamIndex]}', Final player.Pos: '${player.Pos}', Final player.Team: '${player.Team}'`);
-                }
                 parsedPlayers.push(player);
             }
             return parsedPlayers;
@@ -458,6 +477,11 @@
                 currentRoundSpan.textContent = (rosterSettings.totalSize).toString();
                 currentPickNumberSpan.textContent = draftOrder.length.toString();
                 upcomingPicksList.innerHTML = '<li class="text-gray-500">Draft has concluded.</li>';
+                
+                // Automatically show summary when draft completes
+                if (draftStarted && currentPick >= draftOrder.length) { 
+                    renderSummaryPage();
+                }
                 return;
             }
 
@@ -505,16 +529,18 @@
          * - lineupSlots: An object mapping each roster slot (e.g., 'QB', 'RB1', 'Flex1') to the player filling it and their points.
          */
         function calculateRosterSpotsPoints(teamRoster, weekKey) {
-            const activePlayers = teamRoster.filter(p => p[weekKey] !== undefined && p[weekKey] !== null);
+            const activePlayers = teamRoster.filter(p => typeof p[weekKey] === 'number' && p[weekKey] > 0);
             
             // Group players by position
             const playersByPos = {
-                QB: [], RB: [], WR: [], TE: [], PK: [], Def: []
+                QB: [], RB: [], WR: [], TE: [], PK: [], DST: [] // Changed from Def to DST
             };
             activePlayers.forEach(player => {
                 // Ensure player.Pos is valid before adding
                 if (playersByPos[player.Pos]) {
                     playersByPos[player.Pos].push(player);
+                } else {
+                    console.warn(`Unknown position '${player.Pos}' for player ${player.Player} in ${weekKey}.`);
                 }
             });
 
@@ -543,10 +569,10 @@
                 }
             };
 
-            // Fill dedicated primary positions (QB, PK, Def, and min for RB, WR, TE)
+            // Fill dedicated primary positions (QB, PK, DST, and min for RB, WR, TE)
             fillPrimarySlots('QB', rosterSettings.QB.min, 'QB');
             fillPrimarySlots('PK', rosterSettings.PK.min, 'PK');
-            fillPrimarySlots('Def', rosterSettings.Def.min, 'Def');
+            fillPrimarySlots('DST', rosterSettings.DST.min, 'DST'); // Changed from Def to DST
             fillPrimarySlots('RB', rosterSettings.RB.min, 'RB');
             fillPrimarySlots('WR', rosterSettings.WR.min, 'WR');
             fillPrimarySlots('TE', rosterSettings.TE.min, 'TE');
@@ -810,7 +836,7 @@
                 'TE': 'bg-red-100',
                 'Flex': 'bg-purple-100', 
                 'PK': 'bg-gray-200',
-                'Def': 'bg-indigo-100',
+                'DST': 'bg-indigo-100', // Changed from Def to DST
                 'Bench': 'bg-gray-100' // Added color for Bench players
             };
             const chartColors = { // Specific colors for chart lines
@@ -820,7 +846,7 @@
                 'TE': 'rgb(255, 99, 132)', // Red
                 'Flex': 'rgb(153, 102, 255)', // Purple
                 'PK': 'rgb(201, 203, 207)', // Grey
-                'Def': 'rgb(255, 159, 64)', // Orange
+                'DST': 'rgb(255, 159, 64)', // Changed from Def to DST
                 'Total': 'rgb(0, 0, 0)' // Black for total
             };
 
@@ -839,23 +865,23 @@
             // Calculate weekly points for optimal lineup for Weeks 1-13
             const weeklyPointsForChart = {};
             const chartLabels = [];
+            let weeklyBreakdownHtml = ''; // New variable to store the weekly breakdown list
             for (let week = 1; week <= 13; week++) { // Iterate weeks 1-13 for chart
                 chartLabels.push(`Week ${week}`);
                 const weekKey = `Week ${week}`;
+                
+                // Call the helper function to get optimal lineup points for this week
                 const { totalPoints, lineupSlots } = calculateRosterSpotsPoints(teamData.roster, weekKey);
                 
-                // Initialize for current week
                 weeklyPointsForChart[weekKey] = {
                     total: totalPoints,
                     positions: {}
                 };
 
-                // Populate points for each position from the optimal lineup
                 allRosterPositions.forEach(pos => {
-                    weeklyPointsForChart[weekKey].positions[pos] = 0; // Default to 0
+                    weeklyPointsForChart[weekKey].positions[pos] = 0;
                 });
 
-                // Aggregate points by the primary position of the player in the optimal lineup
                 Object.values(lineupSlots).forEach(slot => {
                     if (slot.player) {
                         const playerPos = slot.player.Pos; // Use player's actual position
@@ -864,6 +890,11 @@
                         }
                     }
                 });
+                // Add to the weekly breakdown HTML
+                weeklyBreakdownHtml += `<li class="flex justify-between items-center text-sm py-1 px-2 border-b border-gray-200 last:border-b-0">
+                                            <span class="font-medium">${weekKey}:</span>
+                                            <span class="text-gray-700">${totalPoints.toFixed(2)} pts</span>
+                                        </li>`;
             }
 
             // Prepare Chart.js datasets
@@ -912,13 +943,20 @@
                         <div class="bg-blue-600 h-2 rounded-full" style="width: ${(teamData.roster.length / rosterSettings.totalSize) * 100}%;"></div>
                     </div>
                     <p class="text-xs text-gray-600 mb-2">${posSummary}</p>
-                    <ul class="space-y-1">
+                    <ul class="space-y-1 mb-4">
                         ${playersHtml || '<li class="text-sm text-gray-500">Roster is empty.</li>'}
                     </ul>
                     
-                    <div class="mt-4 p-3 bg-white rounded-lg border max-h-80"> <!-- Added max-h-80 here -->
+                    <div class="mt-4 p-3 bg-white rounded-lg border">
                         <h4 class="font-semibold text-md mb-2">Weekly Projected Points (Weeks 1-13):</h4>
                         <canvas id="rosterChart-${teamId}"></canvas>
+                    </div>
+
+                    <div class="mt-4 p-3 bg-white rounded-lg border">
+                        <h4 class="font-semibold text-md mb-2">Weekly Projected Points Breakdown:</h4>
+                        <ul class="space-y-1 max-h-40 overflow-y-auto">
+                            ${weeklyBreakdownHtml}
+                        </ul>
                     </div>
                 </div>
             `;
@@ -1141,6 +1179,70 @@
         }
 
         /**
+         * Calculates projected standings for all teams based on total projected points.
+         * @returns {Array<Object>} Sorted list of teams with their total projected points.
+         */
+        function calculateProjectedStandings() {
+            const standings = [];
+            const weeksToConsider = 13; // Usually fantasy regular season is 13-14 weeks
+
+            for (const teamId in teamsById) {
+                const team = teamsById[teamId];
+                let totalSeasonProjectedPoints = 0;
+                for (let week = 1; week <= weeksToConsider; week++) {
+                    const weekKey = `Week ${week}`;
+                    // Ensure that the roster points calculation is consistent
+                    const { totalPoints } = calculateRosterSpotsPoints(team.roster, weekKey);
+                    totalSeasonProjectedPoints += totalPoints;
+                }
+                standings.push({
+                    teamName: team.name,
+                    totalProjectedPoints: totalSeasonProjectedPoints
+                });
+            }
+
+            // Sort by total projected points (descending)
+            standings.sort((a, b) => b.totalProjectedPoints - a.totalProjectedPoints);
+            return standings;
+        }
+
+        /**
+         * Renders the projected standings summary page.
+         */
+        function renderSummaryPage() {
+            const standings = calculateProjectedStandings();
+            standingsList.innerHTML = ''; // Clear previous standings
+
+            if (standings.length === 0) {
+                standingsList.innerHTML = '<p class="text-gray-500 text-center">No teams to display standings for.</p>';
+            } else {
+                standings.forEach((team, index) => {
+                    const rank = index + 1;
+                    const rankClass = rank <= 3 ? 'font-bold text-indigo-700' : 'text-gray-700';
+                    standingsList.innerHTML += `
+                        <div class="flex justify-between items-center p-3 border rounded-lg bg-gray-50">
+                            <span class="text-lg ${rankClass}">${rank}. ${team.teamName}</span>
+                            <span class="text-lg font-semibold text-blue-600">${team.totalProjectedPoints.toFixed(2)} pts</span>
+                        </div>
+                    `;
+                });
+            }
+
+            // Hide drafting screen and show summary screen
+            draftingScreen.classList.add('hidden');
+            summaryScreen.classList.remove('hidden');
+        }
+
+        /**
+         * Closes the summary page and returns to the drafting screen.
+         */
+        function closeSummaryPage() {
+            summaryScreen.classList.add('hidden');
+            draftingScreen.classList.remove('hidden');
+        }
+
+
+        /**
          * Saves the current draft state to local storage.
          */
         function saveDraft() {
@@ -1205,6 +1307,12 @@
             loadDataButton = document.getElementById('load-data-button');
             urlInput = document.getElementById('url-input');
             loadUrlButton = document.getElementById('load-url-button');
+
+            // New summary screen elements
+            summaryScreen = document.getElementById('summary-screen');
+            standingsList = document.getElementById('standings-list');
+            viewStandingsButton = document.getElementById('view-standings-button');
+            closeSummaryButton = document.getElementById('close-summary-button');
             
             console.log("DOM elements retrieved.");
 
@@ -1226,6 +1334,8 @@
             playerSearchInput.addEventListener('input', applyFiltersAndSort);
             positionFilterSelect.addEventListener('change', applyFiltersAndSort);
             sortBySelect.addEventListener('change', applyFiltersAndSort);
+            viewStandingsButton.addEventListener('click', renderSummaryPage); // Event listener for the new button
+            closeSummaryButton.addEventListener('click', closeSummaryPage); // Event listener for closing summary
 
             // Check for saved state and update UI accordingly
             const savedState = localStorage.getItem('fantasyDraftState');
