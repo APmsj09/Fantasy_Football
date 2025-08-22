@@ -31,15 +31,15 @@
         .table-container::-webkit-scrollbar-thumb:hover, .roster-content::-webkit-scrollbar-thumb:hover {
             background-color: #94a3b8;
         }
+        /* Individual tab styling */
         .tab {
-            @apply px-4 py-2 text-sm font-medium text-gray-600 border-b-2 border-transparent transition duration-200 cursor-pointer;
+            @apply px-4 py-2 text-sm font-medium text-gray-600 border border-gray-200 rounded-t-lg transition duration-200 cursor-pointer -mb-px; /* Added full border, rounded top, and negative margin to overlap */
         }
         .tab.active {
-            @apply text-indigo-600 border-indigo-600 font-semibold;
+            @apply text-indigo-600 border-indigo-600 font-semibold bg-white; /* Active tab stands out */
         }
-        .disabled-button {
-            opacity: 0.6;
-            cursor: not-allowed;
+        .tab:not(.active) {
+            @apply bg-gray-50 hover:bg-gray-100; /* Inactive tabs look clickable */
         }
     </style>
 </head>
@@ -91,15 +91,11 @@
         <!-- Drafting Screen -->
         <div id="drafting-screen" class="hidden">
             
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <div class="md:col-span-1 bg-white p-6 rounded-lg shadow-md self-start">
-                    <h2 class="text-2xl font-semibold mb-4 border-b pb-2">Draft Controls</h2>
-                    <div class="space-y-4">
-                        <button id="save-draft" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Save Draft</button>
-                        <button id="undo-pick-button" class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300 mt-2">Undo Last Pick</button>
-                    </div>
-
-                    <div id="draft-status" class="mt-6 p-4 bg-gray-50 rounded-lg">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8"> 
+                <!-- Left Column: Draft Status, Recommendations, Top 5 (stacked), then Draft Controls at bottom -->
+                <div class="md:col-span-1 flex flex-col gap-6"> <!-- Using flex-col with gap for vertical spacing -->
+                    
+                    <div id="draft-status" class="bg-white p-6 rounded-lg shadow-md">
                         <h3 class="font-semibold text-lg mb-2">Draft Status</h3>
                         <div class="space-y-1 text-sm">
                             <p><strong>Round:</strong> <span id="current-round">N/A</span></p>
@@ -112,20 +108,32 @@
                         </div>
                     </div>
 
-                    <div class="mt-6 p-4 bg-white rounded-lg shadow-md">
-                        <h3 class="text-2xl font-semibold mb-4 border-b pb-2">Top 5 Available</h3>
-                        <div id="top-5-container" class="space-y-4"></div>
-                    </div>
-
-                    <div class="mt-6 p-4 bg-white rounded-lg shadow-md">
+                    <!-- Recommended Picks moved here -->
+                    <div class="bg-white p-6 rounded-lg shadow-md">
                         <h3 class="text-2xl font-semibold mb-4 border-b pb-2">Recommended Picks</h3>
                         <div id="recommendations-container" class="space-y-4">
                             <p class="text-gray-500">Recommendations will appear here after the draft starts.</p>
                         </div>
                     </div>
+
+                    <!-- Top 5 Available moved here -->
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <h3 class="text-2xl font-semibold mb-4 border-b pb-2">Top 5 Available</h3>
+                        <div id="top-5-container" class="space-y-4"></div>
+                    </div>
+
+                    <!-- Draft Controls moved to the very bottom of the left column -->
+                    <div class="bg-white p-6 rounded-lg shadow-md mt-auto"> <!-- mt-auto pushes it to the bottom -->
+                        <h2 class="text-2xl font-semibold mb-4 border-b pb-2">Draft Controls</h2>
+                        <div class="space-y-4">
+                            <button id="save-draft" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Save Draft</button>
+                            <button id="undo-pick-button" class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300 mt-2">Undo Last Pick</button>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="md:col-span-2 space-y-8">
+                <!-- Right Column: Available Players, Team Rosters (now col-span-3) -->
+                <div class="md:col-span-3 space-y-8"> 
                     <div class="bg-white p-6 rounded-lg shadow-md">
                         <h2 class="text-2xl font-semibold mb-4">Available Players</h2>
                         <div class="space-y-4">
@@ -170,8 +178,10 @@
 
                     <div class="bg-white p-6 rounded-lg shadow-md">
                         <h2 class="text-2xl font-semibold mb-4">Team Rosters</h2>
-                        <div id="roster-tabs" class="flex flex-wrap border-b border-gray-200"></div>
-                        <div id="roster-content" class="roster-content mt-4"></div>
+                        <!-- Parent container for tabs with flex, no direct borders for individual tab styling -->
+                        <div id="roster-tabs" class="flex flex-wrap gap-x-1"></div> 
+                        <!-- Content container will have borders -->
+                        <div id="roster-content" class="roster-content mt-4 border border-gray-200 rounded-lg"></div>
                     </div>
                 </div>
             </div>
@@ -190,11 +200,11 @@
         // --- ROSTER SETTINGS ---
         // Updated roster settings as per user's request: 1QB, 2RB, 2WR, 1TE, 2FLEX, 1K, 1DEF
         const rosterSettings = {
-            QB: { min: 1, max: 2 }, 
-            RB: { min: 2, max: 4 }, 
-            WR: { min: 2, max: 4 }, 
-            TE: { min: 1, max: 2 }, 
-            Flex: { min: 2, max: 2 }, // Updated to 2 Flex spots
+            QB: { min: 1, max: 1 }, 
+            RB: { min: 2, max: 2 }, // Updated from 4 to 2 as per user's request
+            WR: { min: 2, max: 2 }, // Updated from 4 to 2 as per user's request
+            TE: { min: 1, max: 1 }, // Updated from 2 to 1 as per user's request
+            Flex: { min: 2, max: 2 }, 
             PK: { min: 1, max: 1 }, 
             Def: { min: 1, max: 1 }, 
             totalStarters: 10, // 1 QB + 2 RB + 2 WR + 1 TE + 2 Flex + 1 PK + 1 Def = 10
@@ -495,35 +505,36 @@
             const currentTeamName = teamsById[currentTeamId].name;
             const teamRoster = teamsById[currentTeamId].roster;
             const teamPositions = teamsById[currentTeamId].positions;
-            let recommendations = [];
-            let criticalNeedsExist = false;
+            let rawRecommendations = []; // Store recommendations before final filtering/deduplication
 
             // Define all positions that can be drafted or are part of the roster settings
             const allRosterPositions = Object.keys(rosterSettings).filter(p => !['totalStarters', 'bench', 'totalSize'].includes(p));
 
+            // Helper to check if a player is already in the global 'players' array (i.e., available)
+            const isPlayerAvailable = (player) => players.some(p => p.Player === player.Player);
+
             // Stage 1: Prioritize players to fill vacant roster spots based on minimum requirements and VBD
+            let criticalNeedsExist = false;
             for (const pos of allRosterPositions) {
                 const currentCount = teamPositions[pos] || 0;
                 if (rosterSettings[pos] && currentCount < rosterSettings[pos].min) {
                     criticalNeedsExist = true;
-                    const neededCount = rosterSettings[pos].min - currentCount; 
-                    
                     let filteredByPosPlayers;
                     if (pos === 'Flex') {
-                        filteredByPosPlayers = [...players].filter(p => ['RB', 'WR', 'TE'].includes(p.Pos));
+                        filteredByPosPlayers = players.filter(p => ['RB', 'WR', 'TE'].includes(p.Pos));
                     } else {
-                        filteredByPosPlayers = [...players].filter(p => p.Pos === pos);
+                        filteredByPosPlayers = players.filter(p => p.Pos === pos);
                     }
 
                     const topPosPlayers = filteredByPosPlayers
                         .sort((a, b) => b.VBD - a.VBD)
-                        .slice(0, neededCount + 2); // Get a few extra suggestions
+                        .slice(0, 3); // Get top few suggestions
 
-                    recommendations.push(...topPosPlayers.map(p => ({
+                    topPosPlayers.forEach(p => rawRecommendations.push({
                         player: p,
                         reason: `High VBD to fill starting ${pos} slot.`,
-                        priority: 1 
-                    })));
+                        priority: 1
+                    }));
                 }
             }
 
@@ -532,71 +543,69 @@
             if (!criticalNeedsExist || teamRoster.length >= rosterSettings.totalSize - 3) {
                 const currentDraftRound = Math.floor(currentPick / 12) + 1;
                 const weeksToConsider = [];
-                for (let i = 0; i < 4; i++) { 
+                for (let i = 0; i < 4; i++) {
                     const targetWeek = currentDraftRound + i;
-                    if (targetWeek >= 1 && targetWeek <= 18) { 
+                    if (targetWeek >= 1 && targetWeek <= 18) {
                         weeksToConsider.push(targetWeek);
                     }
                 }
 
                 for (const week of weeksToConsider) {
-                    // Check if the current team has a player on bye during this week
-                    const relevantByePlayers = teamRoster.filter(p => p['Bye Week'] == week && ['RB', 'WR', 'TE'].includes(p.slottedPos || p.Pos)); 
+                    const relevantByePlayers = teamRoster.filter(p => p['Bye Week'] == week && ['RB', 'WR', 'TE'].includes(p.slottedPos || p.Pos));
                     if (relevantByePlayers.length > 0) {
-                        // Find available players who DON'T have a bye in this target week and have good projections for that week
-                        const topByeWeekFillers = [...players]
-                            .filter(p => ['RB', 'WR', 'TE'].includes(p.Pos) && p['Bye Week'] != week) 
+                        const topByeWeekFillers = players // Filter directly from 'players'
+                            .filter(p => ['RB', 'WR', 'TE'].includes(p.Pos) && p['Bye Week'] != week)
                             .sort((a, b) => {
                                 const aProj = a[`Week ${week}`] || 0;
                                 const bProj = b[`Week ${week}`] || 0;
-                                return bProj - aProj; // Sort by projected points for the specific week
+                                return bProj - aProj;
                             })
-                            .slice(0, 2); 
+                            .slice(0, 2);
 
-                        recommendations.push(...topByeWeekFillers.map(p => ({
+                        topByeWeekFillers.forEach(p => rawRecommendations.push({
                             player: p,
                             reason: `High projected points for bye week filler (Week ${week}).`,
-                            priority: 2 
-                        })));
+                            priority: 2
+                        }));
                     }
                 }
             }
-            
+
             // Stage 3: General depth/best available if remaining recommendation slots need to be filled
-            if (recommendations.length < 5 && teamRoster.length < rosterSettings.totalSize) { 
-                const generalDepthPlayers = [...players]
+            if (rawRecommendations.length < 5 && teamRoster.length < rosterSettings.totalSize) {
+                const generalDepthPlayers = players // Filter directly from 'players'
                     .sort((a, b) => {
-                        // Primary sort by VBD
                         if (b.VBD !== a.VBD) return b.VBD - a.VBD;
-                        // Secondary sort by Week 1 projected points for tie-breaking
                         const aProjWeek1 = a['Week 1'] || 0;
                         const bProjWeek1 = b['Week 1'] || 0;
                         return bProjWeek1 - aProjWeek1;
                     });
-                
+
                 for (const player of generalDepthPlayers) {
-                    if (!recommendations.some(rec => rec.player.Player === player.Player)) {
-                        recommendations.push({
+                    // Only add if not already in rawRecommendations and is available
+                    if (!rawRecommendations.some(rec => rec.player.Player === player.Player)) {
+                        rawRecommendations.push({
                             player: player,
                             reason: `Best available player (High VBD).`,
-                            priority: 3 
+                            priority: 3
                         });
                     }
-                    if (recommendations.length >= 5) break;
+                    if (rawRecommendations.length >= 5) break;
                 }
             }
 
-
-            // Deduplicate and sort the final recommendations
-            const uniqueRecommendationsMap = new Map(); 
-            for (const rec of recommendations) {
-                if (!uniqueRecommendationsMap.has(rec.player.Player) || rec.priority < uniqueRecommendationsMap.get(rec.player.Player).priority) {
-                    uniqueRecommendationsMap.set(rec.player.Player, rec);
+            // Final Deduplicate and filter by availability.
+            const uniqueRecommendationsMap = new Map();
+            for (const rec of rawRecommendations) {
+                if (isPlayerAvailable(rec.player)) { // Explicitly check if the player is still available
+                    if (!uniqueRecommendationsMap.has(rec.player.Player) || rec.priority < uniqueRecommendationsMap.get(rec.player.Player).priority) {
+                        uniqueRecommendationsMap.set(rec.player.Player, rec);
+                    }
                 }
             }
             let finalRecommendations = Array.from(uniqueRecommendationsMap.values());
 
-            // Sort by priority (1 before 2, 2 before 3), then by VBD descending
+            // Sort by priority, then by VBD descending
             finalRecommendations.sort((a, b) => {
                 if (a.priority !== b.priority) {
                     return a.priority - b.priority;
@@ -604,7 +613,7 @@
                 return b.player.VBD - a.player.VBD;
             });
 
-            const top5FinalRecommendations = finalRecommendations.slice(0, 5); 
+            const top5FinalRecommendations = finalRecommendations.slice(0, 5);
 
             if (top5FinalRecommendations.length > 0) {
                 top5FinalRecommendations.forEach(rec => {
@@ -746,6 +755,7 @@
                 const team = teamsById[teamId];
                 const isActive = teamId === activeTabId;
                 const tab = document.createElement('button');
+                // Added gap-x-1 to the parent roster-tabs div, so removed -mb-px from here
                 tab.className = `tab ${isActive ? 'active' : ''}`;
                 tab.textContent = team.name; // Display team's current name
                 tab.onclick = () => switchRosterTab(team.id);
@@ -811,17 +821,6 @@
                 }
             });
 
-            let pointsSummaryHtml = `<p class="text-sm font-semibold mt-4 mb-2">Week 1 Projected Points:</p>`;
-            allRosterPositions.forEach(pos => {
-                const totalProjPointsWeek1 = weeklyPointsByPosAndWeek[pos]['Week 1'] ? weeklyPointsByPosAndWeek[pos]['Week 1'].toFixed(1) : '0.0';
-                if (parseFloat(totalProjPointsWeek1) > 0 || teamData.positions[pos] > 0) { 
-                    pointsSummaryHtml += `<p class="text-xs text-gray-700 mt-0.5 ml-2">${pos}: <span class="font-bold">${totalProjPointsWeek1}</span></p>`;
-                }
-            });
-            if (pointsSummaryHtml === `<p class="text-sm font-semibold mt-4 mb-2">Week 1 Projected Points:</p>`) {
-                pointsSummaryHtml += `<p class="text-xs text-gray-500 ml-2">No projected points yet.</p>`;
-            }
-
             let weeklyChartHtml = `<div class="mt-4 p-3 bg-white rounded-lg border">
                 <h4 class="font-semibold text-md mb-2">Weekly Projected Points (Weeks 1-13):</h4>`;
 
@@ -857,7 +856,6 @@
                     <ul class="space-y-1">
                         ${playersHtml || '<li class="text-sm text-gray-500">Roster is empty.</li>'}
                     </ul>
-                    ${pointsSummaryHtml}
                     ${weeklyChartHtml}
                 </div>
             `;
