@@ -665,7 +665,9 @@
         }
 
         const MIN_DROP_OFF_THRESHOLD = 5; // Minimum drop-off to consider (points)
-        const STD_DEV_FACTOR = 0.66; // How many standard deviations count as a "big drop"
+        const BASE_STD_DEV_FACTOR = 0.66; // Base standard deviation factor
+        const PICK_DISTANCE_SCALER = 0.01; // How much next pick distance influences the STD_DEV_FACTOR
+        const MIN_STD_DEV_FACTOR_CLAMP = 0.3; // Minimum value for the adjusted STD_DEV_FACTOR
 
         /**
          * Generates and displays a list of recommended players for the team on the clock,
@@ -709,6 +711,17 @@
             // Calculate positional stats once for all players before iterating
             const currentPositionalStats = calculatePositionalStats();
 
+            // --- Calculate next pick distance for the current team ---
+            let nextPickDistance = 0;
+            const nextPickIndex = draftOrder.indexOf(currentTeamId, currentPick + 1);
+            if (nextPickIndex !== -1) {
+                nextPickDistance = nextPickIndex - currentPick;
+            } else {
+                // If this is the last pick for the team, consider a large distance
+                nextPickDistance = draftOrder.length - currentPick; 
+            }
+            // --- End next pick distance calculation ---
+
             const evaluatedPlayers = [];
 
             players.forEach(availablePlayer => { 
@@ -741,8 +754,12 @@
                 const posStats = currentPositionalStats[playerPos];
 
                 if (['QB', 'RB', 'WR', 'TE'].includes(playerPos) && posStats && posStats.count >= 2) {
-                    // Dynamic threshold: Max of MIN_DROP_OFF_THRESHOLD or STD_DEV_FACTOR * standardDeviation
-                    dynamicThreshold = Math.max(MIN_DROP_OFF_THRESHOLD, posStats.standardDeviation * STD_DEV_FACTOR);
+                    // Adjust STD_DEV_FACTOR based on next pick distance
+                    // A larger nextPickDistance makes adjustedStdDevFactor smaller, which lowers the dynamicThreshold, making it easier to trigger a "big drop"
+                    const adjustedStdDevFactor = Math.max(MIN_STD_DEV_FACTOR_CLAMP, BASE_STD_DEV_FACTOR - (nextPickDistance * PICK_DISTANCE_SCALER));
+                    
+                    // Dynamic threshold: Max of MIN_DROP_OFF_THRESHOLD or adjustedStdDevFactor * standardDeviation
+                    dynamicThreshold = Math.max(MIN_DROP_OFF_THRESHOLD, posStats.standardDeviation * adjustedStdDevFactor);
                     
                     const playersAtCurrentPosSorted = players.filter(p => p.Pos === playerPos)
                                                         .sort((a, b) => b['2025 Projected Fantasy Points'] - a['2025 Projected Fantasy Points']);
@@ -1513,7 +1530,7 @@
                 const draftState = JSON.parse(savedState);
                 players = draftState.players;
                 teamsById = draftState.teamsById; // Load teamsById
-                draftOrder = draftState.draftOrder;
+                draftOrder = draftState.teamIds; // Assume teamIds was saved directly as draftOrder
                 currentPick = draftState.currentPick;
                 draftStarted = draftState.draftStarted;
                 draftHistory = draftState.draftHistory;
