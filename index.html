@@ -223,6 +223,7 @@
         let draftStarted = false;
         let draftHistory = [];
         let rosterCharts = {}; // To store Chart.js instances
+        let positionalStats = {}; // Stores calculated std dev, mean for each position
 
         // --- ROSTER SETTINGS ---
         // Updated roster settings as per user's request: 1QB, 2RB, 2WR, 1TE, 2FLEX, 1K, 1DST
@@ -628,6 +629,43 @@
             return { totalPoints, lineupSlots };
         }
 
+        /**
+         * Calculates statistical measures (like standard deviation) for projected points
+         * for each position among currently available players.
+         * @returns {Object} An object with position keys and their calculated stats.
+         */
+        function calculatePositionalStats() {
+            const stats = {};
+            const positionsToEvaluate = ['QB', 'RB', 'WR', 'TE', 'PK', 'DST']; // Relevant positions
+
+            positionsToEvaluate.forEach(pos => {
+                const playersAtPos = players.filter(p => p.Pos === pos);
+                const projectedPoints = playersAtPos.map(p => p['2025 Projected Fantasy Points']);
+
+                if (projectedPoints.length > 1) { // Need at least 2 for meaningful standard deviation
+                    const mean = projectedPoints.reduce((sum, val) => sum + val, 0) / projectedPoints.length;
+                    const variance = projectedPoints.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / projectedPoints.length;
+                    const standardDeviation = Math.sqrt(variance);
+
+                    stats[pos] = {
+                        standardDeviation: standardDeviation,
+                        mean: mean,
+                        count: projectedPoints.length
+                    };
+                } else {
+                    // Fallback for positions with too few players
+                    stats[pos] = {
+                        standardDeviation: 0,
+                        mean: projectedPoints.length > 0 ? projectedPoints[0] : 0,
+                        count: projectedPoints.length
+                    };
+                }
+            });
+            return stats;
+        }
+
+        const MIN_DROP_OFF_THRESHOLD = 5; // Minimum drop-off to consider (points)
+        const STD_DEV_FACTOR = 0.66; // How many standard deviations count as a "big drop"
 
         /**
          * Generates and displays a list of recommended players for the team on the clock,
@@ -642,6 +680,7 @@
             }
             const currentTeamName = teamsById[currentTeamId].name;
             const teamRoster = teamsById[currentTeamId].roster;
+            const currentTeamPositions = teamsById[currentTeamId].positions; // Get current team's position counts
 
             const totalRounds = rosterSettings.totalSize;
             const currentRound = Math.floor(currentPick / 12) + 1;
@@ -665,6 +704,10 @@
 
 
             const WEEKS_TO_AVERAGE = 13; 
+            const POSITIONAL_DROP_OFF_BONUS_FACTOR = 0.5; // Arbitrary factor to scale the positional drop-off bonus
+
+            // Calculate positional stats once for all players before iterating
+            const currentPositionalStats = calculatePositionalStats();
 
             const evaluatedPlayers = [];
 
@@ -686,22 +729,76 @@
 
                 const averageWeeklyImpact = totalWeeklyImpact / WEEKS_TO_AVERAGE;
 
-                const recommendationScore = (availablePlayer.VBD * vbdWeight) + (averageWeeklyImpact * impactWeight);
+                // Initial recommendation score based on VBD and average weekly impact
+                let recommendationScore = (availablePlayer.VBD * vbdWeight) + (averageWeeklyImpact * impactWeight);
 
-                let reason = `VBD: ${availablePlayer.VBD.toFixed(2)}.`;
-                if (averageWeeklyImpact > 0) {
-                    reason += ` Expected +${averageWeeklyImpact.toFixed(1)} avg. weekly point upgrade (PPW).`;
-                } else if (averageWeeklyImpact === 0) {
-                    reason += ` No immediate average weekly point upgrade (PPW).`;
-                } else { 
-                    reason += ` Expected ${averageWeeklyImpact.toFixed(1)} avg. weekly point change (PPW).`;
+                // Calculate positional drop-off for this player's position and add as a bonus
+                let positionalDropOff = 0;
+                let dynamicThreshold = 0;
+                let isBigDrop = false;
+
+                const playerPos = availablePlayer.Pos;
+                const posStats = currentPositionalStats[playerPos];
+
+                if (['QB', 'RB', 'WR', 'TE'].includes(playerPos) && posStats && posStats.count >= 2) {
+                    // Dynamic threshold: Max of MIN_DROP_OFF_THRESHOLD or STD_DEV_FACTOR * standardDeviation
+                    dynamicThreshold = Math.max(MIN_DROP_OFF_THRESHOLD, posStats.standardDeviation * STD_DEV_FACTOR);
+                    
+                    const playersAtCurrentPosSorted = players.filter(p => p.Pos === playerPos)
+                                                        .sort((a, b) => b['2025 Projected Fantasy Points'] - a['2025 Projected Fantasy Points']);
+
+                    if (playersAtCurrentPosSorted.length >= 2) {
+                        const currentTopPlayerPoints = playersAtCurrentPosSorted[0]['2025 Projected Fantasy Points'];
+                        const secondTopPlayerPoints = playersAtCurrentPosSorted[1]['2025 Projected Fantasy Points'];
+                        positionalDropOff = currentTopPlayerPoints - secondTopPlayerPoints;
+
+                        if (positionalDropOff > dynamicThreshold) {
+                            isBigDrop = true;
+                            recommendationScore += positionalDropOff * POSITIONAL_DROP_OFF_BONUS_FACTOR; // Apply bonus
+                        }
+                    }
                 }
+
+                // --- Enhanced Reason Generation ---
+                let specificReason = "";
+                const minPositionCount = rosterSettings[playerPos]?.min || 0;
+                const maxPositionCount = rosterSettings[playerPos]?.max || 0;
+                const currentPositionCount = currentTeamPositions[playerPos] || 0;
+                const currentFlexCount = currentTeamPositions['Flex'] || 0;
+                const maxFlexCount = rosterSettings.Flex?.max || 0;
+                const rosterCurrentSize = teamRoster.length;
+                const rosterTotalSize = rosterSettings.totalSize;
+
+                if (rosterCurrentSize >= rosterTotalSize) {
+                    specificReason = `Roster is full.`;
+                } else if (currentPositionCount < minPositionCount) {
+                    specificReason = `Fills starting ${playerPos} need.`;
+                } else if (['RB', 'WR', 'TE'].includes(playerPos) && currentFlexCount < maxFlexCount) {
+                    specificReason = `Fills a Flex spot.`;
+                } else if (currentPositionCount < maxPositionCount) {
+                    specificReason = `Adds depth at ${playerPos}.`;
+                } else {
+                    specificReason = `Adds general roster depth.`;
+                }
+                
+                // Always append the PPW impact
+                if (averageWeeklyImpact > 0) {
+                    specificReason += ` (+${averageWeeklyImpact.toFixed(1)} avg. PPW)`;
+                } else if (averageWeeklyImpact < 0) {
+                    specificReason += ` (${averageWeeklyImpact.toFixed(1)} avg. PPW)`;
+                }
+
+                // Add a note to the reason if there's a significant drop-off for this position
+                if (isBigDrop) {
+                    specificReason += ` (Big drop after current top ${playerPos} - > ${dynamicThreshold.toFixed(1)} pts)`;
+                }
+                // --- End Enhanced Reason Generation ---
 
                 evaluatedPlayers.push({
                     player: availablePlayer,
                     recommendationScore: recommendationScore,
                     weeklyImpact: averageWeeklyImpact,
-                    reason: reason
+                    reason: specificReason // Use the enhanced reason
                 });
             });
 
