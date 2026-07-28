@@ -1,14 +1,19 @@
 const UI = {
     switchTab(targetId) {
-        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-        document.getElementById(targetId).classList.add('active');
-        
-        document.querySelectorAll('.nav-btn').forEach(b => {
-            if (b.getAttribute('data-target') === targetId) b.classList.add('active');
-            else b.classList.remove('active');
+        const targetScreen = document.getElementById(targetId);
+        if (!targetScreen) return;
+
+        document.querySelectorAll('.screen').forEach(screen => {
+            const isActive = screen.id === targetId;
+            screen.classList.toggle('active', isActive);
+            screen.classList.toggle('hidden', !isActive);
         });
 
-        if(targetId === 'player-db-screen') this.renderDatabase();
+        document.querySelectorAll('.nav-btn').forEach(button => {
+            button.classList.toggle('active', button.getAttribute('data-target') === targetId);
+        });
+
+        if (targetId === 'player-db-screen') this.renderDatabase();
     },
 
     showMessage(title, message) {
