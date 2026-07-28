@@ -1,11 +1,11 @@
 // Helper for Home screen buttons to route properly
-window.appGoToSetup = function(mode) {
+window.appGoToSetup = function (mode) {
     document.getElementById('setting-draft-type').value = mode;
     UI.switchTab('setup-screen');
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    
+
     // Navigation routing
     document.querySelectorAll('.nav-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
@@ -15,37 +15,138 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Handle Data Load (Updated to load Player Data AND League History)
-    const tsvUrl = 'https://raw.githubusercontent.com/APmsj09/Fantasy_Football/main/Data.tsv';
     const startBtn = document.getElementById('start-draft-btn');
-    
-    document.getElementById('load-data-button').addEventListener('click', async (e) => {
-        e.target.textContent = "Loading Data & AI Profiles...";
+
+    // Auto-Load Data Function
+    async function autoLoadData() {
+        const loadBtn = document.getElementById('load-data-button');
+        if (loadBtn) loadBtn.textContent = "Fetching Data from GitHub...";
+
         try {
-            // 1. Fetch Player Data
-            const res = await fetch(tsvUrl);
+            // 1. Fetch Main Player Data (using relative path to github repo)
+            const res = await fetch('./Data.tsv');
             State.allPlayers = State.parseTSV(await res.text());
-            
-            // 2. Fetch Historical Data (Assuming it is saved locally or hosted)
-            // Replace 'DraftHistory.tsv' with your actual path or URL
-            try {
-                const historyRes = await fetch('DraftHistory.tsv'); 
-                State.parseHistory(await historyRes.text());
-                renderInsightsTable(); // Call UI function
-            } catch(historyErr) {
-                console.warn("Could not load DraftHistory.tsv. Bots will use generic VBD.", historyErr);
+
+            // 2. Fetch Advanced Stats
+            const files = [
+                './AdvancedQBData.tsv',
+                './AdvancedRBData.tsv',
+                './AdvancedWRData.tsv',
+                './AdvancedTEData.tsv'
+            ];
+
+            for (let file of files) {
+                try {
+                    let advRes = await fetch(file);
+                    let parsedAdv = State.parseAdvancedData(await advRes.text());
+                    State.mergeAdvancedMetrics(parsedAdv);
+                } catch (err) { console.warn(`Could not load ${file}`); }
             }
 
-            UI.showMessage('Success', `Loaded ${State.allPlayers.length} players and ${Object.keys(State.managerProfiles).length} manager AI profiles!`);
-            
+            // 3. Fetch Team Target Distributions
+            try {
+                let tgtRes = await fetch('./Team_Target_Dist_Data.tsv');
+                State.teamTargets = State.parseAdvancedData(await tgtRes.text());
+                renderTeamTargets('WR'); // Initial Render
+            } catch (err) { console.warn("Could not load Team Targets"); }
+
+            // 4. Fetch Draft History
+            try {
+                const historyRes = await fetch('./DraftHistory.tsv');
+                State.parseHistory(await historyRes.text());
+                renderInsightsTable();
+            } catch (historyErr) { console.warn("Could not load DraftHistory.tsv."); }
+
+            // Initial Render for Metric Leaders
+            renderMetricLeaders('RZ TGT');
+
+            // Update UI
+            if (loadBtn) {
+                loadBtn.textContent = "✓ All Data Auto-Loaded!";
+                loadBtn.classList.replace('bg-slate-900', 'bg-emerald-600');
+                loadBtn.disabled = true;
+            }
+
             startBtn.classList.remove('opacity-50', 'cursor-not-allowed');
             startBtn.disabled = false;
             startBtn.textContent = "Initialize Draft Board";
-            e.target.textContent = "All Data Loaded!";
-            e.target.classList.replace('bg-slate-900', 'bg-emerald-600');
+
         } catch (err) {
-            UI.showMessage('Error', 'Failed to load data. Please check connection.');
-            e.target.textContent = "Load Default Data";
+            console.error(err);
+            if (loadBtn) {
+                loadBtn.textContent = "Failed to load data. Click to retry.";
+                loadBtn.classList.replace('bg-slate-900', 'bg-red-600');
+                loadBtn.disabled = false;
+            }
+            UI.showMessage('Error', 'Failed to auto-load data. Ensure TSV files are in the repository root.');
+        }
+    }
+
+    // Call it immediately!
+    autoLoadData();
+
+    // Allow manual retry if it fails
+    document.getElementById('load-data-button').addEventListener('click', autoLoadData);
+
+    // Render Team Target Dist
+    function renderTeamTargets(position) {
+        const tbody = document.getElementById('team-targets-body');
+        if (!tbody || State.teamTargets.length === 0) return;
+
+        let sortedTeams = [...State.teamTargets].sort((a, b) => (b[`${position} %`] || 0) - (a[`${position} %`] || 0));
+
+        tbody.innerHTML = sortedTeams.map(t => `
+            <tr class="hover:bg-slate-50">
+                <td class="px-4 py-3 font-medium text-gray-900">${t.Team}</td>
+                <td class="px-4 py-3 font-bold text-indigo-600">${t[`${position} %`]}%</td>
+                <td class="px-4 py-3 text-sm text-gray-500">${t[`${position} Targets`]} / ${t['Total Targets']}</td>
+            </tr>
+        `).join('');
+    }
+
+    // Render Advanced Metric Leaders
+    function renderMetricLeaders(metric) {
+        const tbody = document.getElementById('metric-leaders-body');
+        if (!tbody || State.advancedMetrics.length === 0) return;
+
+        let sortedPlayers = [...State.advancedMetrics]
+            .filter(p => p[metric] !== undefined && p[metric] !== null)
+            .sort((a, b) => b[metric] - a[metric])
+            .slice(0, 15);
+
+        tbody.innerHTML = sortedPlayers.map(p => {
+            let pos = p['ATT'] ? 'RB' : (p['REC'] ? 'WR/TE' : 'QB');
+            let displayVal = metric === '% TM' ? `${p[metric]}%` : p[metric];
+            return `
+            <tr class="hover:bg-slate-50">
+                <td class="px-4 py-3 font-medium text-gray-900">${p.Player}</td>
+                <td class="px-4 py-3 text-sm text-gray-500">${pos}</td>
+                <td class="px-4 py-3 font-bold text-emerald-600">${displayVal}</td>
+            </tr>
+            `;
+        }).join('');
+    }
+
+    // Handle Insight Tab Clicks
+    document.addEventListener('click', (e) => {
+        if (e.target.classList.contains('target-tab-btn')) {
+            document.querySelectorAll('.target-tab-btn').forEach(b => {
+                b.classList.remove('bg-indigo-100', 'text-indigo-700');
+                b.classList.add('bg-gray-100', 'text-gray-600');
+            });
+            e.target.classList.remove('bg-gray-100', 'text-gray-600');
+            e.target.classList.add('bg-indigo-100', 'text-indigo-700');
+            renderTeamTargets(e.target.getAttribute('data-pos'));
+        }
+
+        if (e.target.classList.contains('metric-tab-btn')) {
+            document.querySelectorAll('.metric-tab-btn').forEach(b => {
+                b.classList.remove('bg-emerald-100', 'text-emerald-700');
+                b.classList.add('bg-gray-100', 'text-gray-600');
+            });
+            e.target.classList.remove('bg-gray-100', 'text-gray-600');
+            e.target.classList.add('bg-emerald-100', 'text-emerald-700');
+            renderMetricLeaders(e.target.getAttribute('data-metric'));
         }
     });
 
@@ -53,7 +154,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderInsightsTable() {
         const tbody = document.getElementById('insights-table-body');
         tbody.innerHTML = '';
-        
+
         Object.values(State.managerProfiles).forEach(p => {
             let stratColor = p.strategy === 'RB-Heavy' ? 'text-emerald-600' : (p.strategy === 'Zero-RB' ? 'text-indigo-600' : 'text-gray-600');
             tbody.innerHTML += `
@@ -72,7 +173,7 @@ document.addEventListener('DOMContentLoaded', () => {
         State.settings.numTeams = parseInt(document.getElementById('setting-teams').value);
         State.settings.draftMode = document.getElementById('setting-draft-type').value;
         State.settings.userTeamIndex = document.getElementById('setting-user-pick').value;
-        
+
         let r = State.settings.roster;
         r.QB.max = parseInt(document.getElementById('pos-qb').value);
         r.RB.max = parseInt(document.getElementById('pos-rb').value);
@@ -98,7 +199,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.target.classList.contains('draft-btn')) {
             const playerName = e.target.getAttribute('data-player');
             const player = State.availablePlayers.find(p => p.Player === playerName);
-            
+
             const teamId = State.draftOrder[State.currentPick];
             const team = State.teamsById[teamId];
 
@@ -109,7 +210,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             AutoDraft.executeDraft(player, team, slot);
             UI.updateDraftBoard();
-            
+
             if (State.settings.draftMode === 'mock') {
                 AutoDraft.processQueue();
             }
@@ -119,29 +220,29 @@ document.addEventListener('DOMContentLoaded', () => {
     // Undo Pick Logic
     document.getElementById('undo-pick-button').addEventListener('click', () => {
         if (State.draftHistory.length === 0) return UI.showMessage("Error", "No picks to undo.");
-        
+
         // Find last pick
         let lastPick = State.draftHistory.pop();
         let team = State.teamsById[lastPick.teamId];
-        
+
         // Remove from team
         team.roster = team.roster.filter(p => p.Player !== lastPick.player.Player);
         team.counts[lastPick.slot]--;
-        
+
         // Return to available players and re-sort
         State.availablePlayers.push(lastPick.player);
-        State.availablePlayers.sort((a,b) => b.VBD - a.VBD); // Keep sorted high to low
-        
+        State.availablePlayers.sort((a, b) => b.VBD - a.VBD); // Keep sorted high to low
+
         // Decrement pick counter
         State.currentPick--;
         State.draftStarted = true; // In case we undid the final pick
 
         UI.updateDraftBoard();
-        
+
         // If mock draft, stop the bot temporarily so user can review
-        if(State.settings.draftMode === 'mock' && AutoDraft.isDrafting) {
-             // Let it finish its current tick, but next tick will rely on user
-             console.log("Mock draft interrupted by Undo.");
+        if (State.settings.draftMode === 'mock' && AutoDraft.isDrafting) {
+            // Let it finish its current tick, but next tick will rely on user
+            console.log("Mock draft interrupted by Undo.");
         }
     });
 

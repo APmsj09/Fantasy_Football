@@ -21,6 +21,43 @@ const State = {
             DST: { max: 1 }, Bench: { max: 5 }, totalSize: 16
         }
     },
+
+    teamTargets: [],
+    advancedMetrics: [],
+
+    parseAdvancedData(text) {
+        const rows = text.split(/\r?\n/).filter(row => row.trim() !== '');
+        const headers = rows[0].split('\t').map(h => h.trim());
+        const parsed = [];
+        for (let i = 1; i < rows.length; i++) {
+            const values = rows[i].split('\t').map(v => v.trim());
+            let obj = {};
+            headers.forEach((h, idx) => {
+                let val = values[idx];
+                if (val && val.includes('%')) {
+                    obj[h] = parseFloat(val.replace('%', ''));
+                } else if (!isNaN(parseFloat(val)) && !val.includes(',')) {
+                    obj[h] = parseFloat(val);
+                } else {
+                    obj[h] = val;
+                }
+            });
+            parsed.push(obj);
+        }
+        return parsed;
+    },
+
+    mergeAdvancedMetrics(advancedDataArray) {
+        this.advancedMetrics = [...this.advancedMetrics, ...advancedDataArray];
+        advancedDataArray.forEach(advPlayer => {
+            let mainPlayer = this.allPlayers.find(p => p.Player === advPlayer.Player);
+            if (mainPlayer) {
+                if (advPlayer['RZ TGT']) mainPlayer.rzTgt = advPlayer['RZ TGT'];
+                if (advPlayer['YACON/ATT']) mainPlayer.yacAtt = advPlayer['YACON/ATT'];
+                if (advPlayer['% TM']) mainPlayer.targetShare = advPlayer['% TM'];
+            }
+        });
+    },
     
     parseTSV(text) {
         const rows = text.split(/\r?\n/).filter(row => row.trim() !== '');

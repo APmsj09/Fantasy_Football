@@ -1,19 +1,14 @@
 const UI = {
     switchTab(targetId) {
-        const targetScreen = document.getElementById(targetId);
-        if (!targetScreen) return;
-
-        document.querySelectorAll('.screen').forEach(screen => {
-            const isActive = screen.id === targetId;
-            screen.classList.toggle('active', isActive);
-            screen.classList.toggle('hidden', !isActive);
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(targetId).classList.add('active');
+        
+        document.querySelectorAll('.nav-btn').forEach(b => {
+            if (b.getAttribute('data-target') === targetId) b.classList.add('active');
+            else b.classList.remove('active');
         });
 
-        document.querySelectorAll('.nav-btn').forEach(button => {
-            button.classList.toggle('active', button.getAttribute('data-target') === targetId);
-        });
-
-        if (targetId === 'player-db-screen') this.renderDatabase();
+        if(targetId === 'player-db-screen') this.renderDatabase();
     },
 
     showMessage(title, message) {
@@ -105,8 +100,23 @@ const UI = {
 
             let tr = document.createElement('tr');
             tr.className = "hover:bg-slate-50 border-b border-gray-50";
+            
+            // Create an insight tag if they are an elite target/efficiency player
+            let insightTag = "";
+            if (p.targetShare && p.targetShare >= 25) {
+                insightTag = `<span class="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-800">🎯 ${p.targetShare}% Tgts</span>`;
+            } else if (p.rzTgt && p.rzTgt >= 15) {
+                insightTag = `<span class="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-100 text-red-800">🚨 High RZ Vol</span>`;
+            } else if (p.yacAtt && p.yacAtt >= 2.2) {
+                insightTag = `<span class="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-800">🏃‍♂️ Elusive</span>`;
+            }
+
             tr.innerHTML = `
-                <td class="px-4 py-3 text-sm font-semibold text-gray-900">${p.Player} <span class="text-xs font-normal text-gray-400 ml-1">(${p.Team})</span></td>
+                <td class="px-4 py-3 text-sm font-semibold text-gray-900 flex items-center">
+                    ${p.Player} 
+                    <span class="text-xs font-normal text-gray-400 ml-1">${p.Team}</span>
+                    ${insightTag}
+                </td>
                 <td class="px-4 py-3 text-sm text-gray-500">${p.Pos}</td>
                 <td class="px-4 py-3 text-sm font-medium">${p.ProjPts.toFixed(1)}</td>
                 <td class="px-4 py-3 text-sm font-bold text-emerald-600">${p.VBD.toFixed(1)}</td>
