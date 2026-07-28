@@ -68,6 +68,8 @@ body {
 /* Screen Management */
 .screen { display: none; }
 .screen.active { display: block; animation: fadeIn 0.3s ease-in-out; }
+.screen.active.grid { display: grid; }
+.screen.active.flex { display: flex; }
 
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(5px); }
