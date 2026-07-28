@@ -1,180 +1,399 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pro Fantasy Draft Assistant</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
 </head>
-<body class="bg-gray-100 text-gray-800">
 
-    <!-- Navigation -->
-    <nav class="bg-indigo-700 text-white shadow-lg">
-        <div class="container mx-auto px-4 py-3 flex flex-wrap justify-between items-center">
-            <div class="text-xl font-bold">Pro Draft Assistant</div>
-            <div class="flex space-x-2 mt-2 md:mt-0">
-                <button class="nav-btn active" data-target="setup-screen">Setup & Settings</button>
-                <button class="nav-btn" data-target="player-db-screen">Player Database</button>
-                <button class="nav-btn" data-target="drafting-screen">Draft Board</button>
-                <button class="nav-btn" data-target="summary-screen">Standings</button>
+<body class="bg-gray-50 text-gray-800 h-screen overflow-hidden flex font-sans">
+
+    <!-- Sidebar Navigation -->
+    <aside
+        class="w-64 bg-slate-900 text-slate-300 flex flex-col h-full shadow-2xl flex-shrink-0 transition-all duration-300">
+        <div class="p-6 flex items-center space-x-3">
+            <div class="w-8 h-8 bg-indigo-500 rounded-lg flex items-center justify-center text-white font-bold">FF</div>
+            <h1 class="text-xl font-bold text-white tracking-wide">Draft Pro</h1>
+        </div>
+
+        <nav class="flex-1 px-4 space-y-2 mt-4">
+            <button class="nav-btn active w-full flex items-center space-x-3 px-4 py-3 rounded-lg"
+                data-target="home-screen">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6">
+                    </path>
+                </svg>
+                <span>Home</span>
+            </button>
+            <button class="nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-lg" data-target="setup-screen">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z">
+                    </path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                </svg>
+                <span>League Settings</span>
+            </button>
+            <button class="nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-lg"
+                data-target="player-db-screen">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z">
+                    </path>
+                </svg>
+                <span>Player Database</span>
+            </button>
+            <button class="nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-lg"
+                data-target="drafting-screen" id="nav-draft-board">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01">
+                    </path>
+                </svg>
+                <span>Draft Board</span>
+            </button>
+            <button class="nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-lg"
+                data-target="summary-screen">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z">
+                    </path>
+                </svg>
+                <span>Standings</span>
+            </button>
+            <button class="nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-lg"
+                data-target="insights-screen">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                </svg>
+                <span>League Insights</span>
+            </button>
+        </nav>
+        <div class="p-4 text-xs text-slate-500 text-center border-t border-slate-700">
+            Pro Fantasy Assistant v2.0
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 h-full overflow-y-auto p-6 md:p-10 relative">
+
+        <!-- 0. Home Screen -->
+        <div id="home-screen" class="screen active max-w-4xl mx-auto mt-10">
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-10 text-center">
+                <h1 class="text-4xl font-extrabold text-gray-900 mb-4">Welcome to Draft Pro</h1>
+                <p class="text-lg text-gray-500 mb-10 max-w-2xl mx-auto">Dominate your league with advanced Value Based
+                    Drafting (VBD) projections, live draft assistance, and mock draft simulations.</p>
+
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div class="border rounded-xl p-6 hover:shadow-md transition-shadow cursor-pointer bg-gradient-to-br from-indigo-50 to-white"
+                        onclick="appGoToSetup('live')">
+                        <div
+                            class="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                            </svg>
+                        </div>
+                        <h2 class="text-xl font-bold text-gray-800 mb-2">Live Draft Assistant</h2>
+                        <p class="text-sm text-gray-500">Drafting with friends in real-time? Manually enter every pick,
+                            and let the AI recommend the absolute best value players for <strong>your</strong> roster.
+                        </p>
+                    </div>
+
+                    <div class="border rounded-xl p-6 hover:shadow-md transition-shadow cursor-pointer bg-gradient-to-br from-emerald-50 to-white"
+                        onclick="appGoToSetup('mock')">
+                        <div
+                            class="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z">
+                                </path>
+                            </svg>
+                        </div>
+                        <h2 class="text-xl font-bold text-gray-800 mb-2">Mock Draft Simulator</h2>
+                        <p class="text-sm text-gray-500">Practice against intelligent CPU opponents. The AI will draft
+                            for all other teams based on roster needs and VBD projections.</p>
+                    </div>
+                </div>
             </div>
         </div>
-    </nav>
 
-    <div class="container mx-auto p-4 md:p-8">
-        
+        <!-- Insights Screen -->
+        <div id="insights-screen" class="screen max-w-5xl mx-auto mt-6">
+            <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+                <h2 class="text-3xl font-extrabold text-gray-900 mb-2">Manager Tendencies</h2>
+                <p class="text-gray-500 mb-6">Historical data analyzed from 2020-2025. CPU Bots in Mock Drafts will
+                    mimic these personalities.</p>
+                <div class="table-container border rounded-xl">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-slate-50 sticky top-0">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Manager
+                                </th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Core
+                                    Strategy</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Avg QB
+                                    Round</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Avg TE
+                                    Round</th>
+                            </tr>
+                        </thead>
+                        <tbody id="insights-table-body" class="bg-white divide-y divide-gray-100"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
         <!-- 1. Setup Screen -->
-        <div id="setup-screen" class="screen active bg-white p-6 rounded-lg shadow-md max-w-3xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8">
-            <!-- Data Loading -->
-            <div>
-                <h2 class="text-2xl font-semibold mb-4 border-b pb-2">1. Load Player Data</h2>
-                <div class="space-y-4">
+        <div id="setup-screen" class="screen max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                <h2 class="text-xl font-bold mb-6 flex items-center space-x-2"><span
+                        class="w-6 h-6 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center text-sm">1</span>
+                    <span>Player Data</span>
+                </h2>
+                <div class="space-y-5">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Upload Player TSV File</label>
-                        <input type="file" id="data-file" accept=".tsv" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-violet-50 file:text-violet-700 hover:file:bg-violet-100">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Upload Player TSV File</label>
+                        <input type="file" id="data-file" accept=".tsv"
+                            class="block w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 transition-colors cursor-pointer border rounded-lg">
                     </div>
-                    <div class="flex items-center space-x-2"><hr class="flex-grow"><span class="text-xs text-gray-500">OR</span><hr class="flex-grow"></div>
-                    <button id="load-data-button" class="w-full bg-violet-600 hover:bg-violet-700 text-white font-bold py-2 px-4 rounded-lg">Load Default Data from GitHub</button>
+                    <div class="flex items-center space-x-3">
+                        <hr class="flex-grow border-gray-200"><span
+                            class="text-xs text-gray-400 font-medium uppercase">Or</span>
+                        <hr class="flex-grow border-gray-200">
+                    </div>
+                    <button id="load-data-button"
+                        class="w-full bg-slate-900 hover:bg-slate-800 text-white font-medium py-3 px-4 rounded-lg transition-colors shadow-sm">Load
+                        Default Data from GitHub</button>
                 </div>
             </div>
 
-            <!-- League Settings -->
-            <div>
-                <h2 class="text-2xl font-semibold mb-4 border-b pb-2">2. League Settings</h2>
-                <div class="grid grid-cols-2 gap-4 mb-4">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                <h2 class="text-xl font-bold mb-6 flex items-center space-x-2"><span
+                        class="w-6 h-6 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center text-sm">2</span>
+                    <span>League Settings</span>
+                </h2>
+                <div class="grid grid-cols-2 gap-5 mb-6">
                     <div>
-                        <label class="block text-sm">Total Teams</label>
-                        <input type="number" id="setting-teams" value="12" class="w-full border p-1 rounded">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Total Teams</label>
+                        <input type="number" id="setting-teams" value="12"
+                            class="w-full border-gray-300 border p-2.5 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
                     </div>
                     <div>
-                        <label class="block text-sm">Draft Type</label>
-                        <select id="setting-draft-type" class="w-full border p-1 rounded">
-                            <option value="manual">Manual (Offline Board)</option>
-                            <option value="mock">Mock Draft (Play vs CPU)</option>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Draft Type</label>
+                        <select id="setting-draft-type"
+                            class="w-full border-gray-300 border p-2.5 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                            <option value="live">Live Assistant (Manual)</option>
+                            <option value="mock">Mock Draft (Vs CPU)</option>
                         </select>
                     </div>
-                    <div id="user-pick-container" class="col-span-2 hidden">
-                        <label class="block text-sm">Your Draft Position (1-12)</label>
-                        <input type="number" id="setting-user-pick" value="1" min="1" class="w-full border p-1 rounded">
+                    <div id="user-pick-container" class="col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Your Draft Position (1-12)</label>
+                        <input type="number" id="setting-user-pick" value="1" min="1"
+                            class="w-full border-gray-300 border p-2.5 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                        <p class="text-xs text-gray-500 mt-1">We need this so we know which team to generate
+                            recommendations for.</p>
                     </div>
                 </div>
-                
-                <h3 class="font-semibold mt-4 mb-2">Roster Limits</h3>
-                <div class="grid grid-cols-4 gap-2 text-sm">
-                    <div><label>QB</label><input type="number" id="pos-qb" value="1" class="w-full border p-1"></div>
-                    <div><label>RB</label><input type="number" id="pos-rb" value="2" class="w-full border p-1"></div>
-                    <div><label>WR</label><input type="number" id="pos-wr" value="2" class="w-full border p-1"></div>
-                    <div><label>TE</label><input type="number" id="pos-te" value="1" class="w-full border p-1"></div>
-                    <div><label>FLEX</label><input type="number" id="pos-flex" value="2" class="w-full border p-1"></div>
-                    <div><label>K</label><input type="number" id="pos-pk" value="1" class="w-full border p-1"></div>
-                    <div><label>DST</label><input type="number" id="pos-dst" value="1" class="w-full border p-1"></div>
-                    <div><label>Bench</label><input type="number" id="pos-bn" value="6" class="w-full border p-1"></div>
+
+                <h3 class="font-semibold text-gray-900 mt-6 mb-3">Roster Limits</h3>
+                <div class="grid grid-cols-4 gap-3 text-sm">
+                    <div><label class="text-gray-600 block mb-1">QB</label><input type="number" id="pos-qb" value="1"
+                            class="w-full border rounded-lg p-2 text-center"></div>
+                    <div><label class="text-gray-600 block mb-1">RB</label><input type="number" id="pos-rb" value="2"
+                            class="w-full border rounded-lg p-2 text-center"></div>
+                    <div><label class="text-gray-600 block mb-1">WR</label><input type="number" id="pos-wr" value="2"
+                            class="w-full border rounded-lg p-2 text-center"></div>
+                    <div><label class="text-gray-600 block mb-1">TE</label><input type="number" id="pos-te" value="1"
+                            class="w-full border rounded-lg p-2 text-center"></div>
+                    <div><label class="text-gray-600 block mb-1">FLEX</label><input type="number" id="pos-flex"
+                            value="2" class="w-full border rounded-lg p-2 text-center"></div>
+                    <div><label class="text-gray-600 block mb-1">K</label><input type="number" id="pos-pk" value="1"
+                            class="w-full border rounded-lg p-2 text-center"></div>
+                    <div><label class="text-gray-600 block mb-1">DST</label><input type="number" id="pos-dst" value="1"
+                            class="w-full border rounded-lg p-2 text-center"></div>
+                    <div><label class="text-gray-600 block mb-1">Bench</label><input type="number" id="pos-bn" value="6"
+                            class="w-full border rounded-lg p-2 text-center"></div>
                 </div>
 
-                <button id="start-draft-btn" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg mt-6 hidden">Initialize Draft</button>
+                <button id="start-draft-btn"
+                    class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg mt-8 transition-colors shadow-md opacity-50 cursor-not-allowed"
+                    disabled>Waiting for Player Data...</button>
             </div>
         </div>
 
         <!-- 2. Player Database Screen -->
-        <div id="player-db-screen" class="screen hidden bg-white p-6 rounded-lg shadow-md">
-            <h2 class="text-2xl font-semibold mb-4">Player Database & Projections</h2>
-            <!-- Reusable table will be moved here or cloned -->
-            <div class="flex space-x-2 mb-4">
-                <input type="text" id="db-search" placeholder="Search Player..." class="flex-grow px-3 py-2 border rounded-md">
-                <select id="db-position" class="px-3 py-2 border rounded-md">
+        <div id="player-db-screen"
+            class="screen bg-white p-6 rounded-2xl shadow-sm border border-gray-100 max-w-6xl mx-auto">
+            <h2 class="text-2xl font-bold mb-6">Player Database & Projections</h2>
+            <div class="flex space-x-4 mb-6">
+                <input type="text" id="db-search" placeholder="Search Player or Team..."
+                    class="flex-grow px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
+                <select id="db-position" class="px-4 py-2 border border-gray-300 rounded-lg outline-none">
                     <option value="">All Positions</option>
-                    <option value="QB">QB</option><option value="RB">RB</option>
-                    <option value="WR">WR</option><option value="TE">TE</option>
-                    <option value="PK">PK</option><option value="DST">DST</option>
+                    <option value="QB">QB</option>
+                    <option value="RB">RB</option>
+                    <option value="WR">WR</option>
+                    <option value="TE">TE</option>
+                    <option value="PK">PK</option>
+                    <option value="DST">DST</option>
                 </select>
             </div>
-            <div class="table-container border rounded-lg">
+            <div class="table-container border rounded-xl overflow-hidden">
                 <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50 sticky top-0">
+                    <thead class="bg-slate-50 sticky top-0">
                         <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Player</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pos</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Team</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Proj Pts</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">VBD</th>
+                            <th
+                                class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                Player</th>
+                            <th
+                                class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                Pos</th>
+                            <th
+                                class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                Team</th>
+                            <th
+                                class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                Proj Pts</th>
+                            <th
+                                class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                VBD</th>
                         </tr>
                     </thead>
-                    <tbody id="db-players-body" class="bg-white divide-y divide-gray-200"></tbody>
+                    <tbody id="db-players-body" class="bg-white divide-y divide-gray-100"></tbody>
                 </table>
             </div>
         </div>
 
         <!-- 3. Drafting Screen -->
-        <div id="drafting-screen" class="screen hidden grid grid-cols-1 md:grid-cols-4 gap-8"> 
-            
-            <div class="md:col-span-1 flex flex-col gap-6"> 
-                <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-indigo-600">
-                    <h3 class="font-semibold text-lg mb-2">Draft Status</h3>
-                    <p><strong>Round:</strong> <span id="current-round">N/A</span></p>
-                    <p><strong>Pick:</strong> <span id="current-pick-number">N/A</span></p>
-                    <p class="text-lg font-bold text-indigo-600 mt-2"><strong>On the Clock:</strong> <br><span id="on-the-clock">N/A</span></p>
-                </div>
-                
-                <div class="bg-white p-6 rounded-lg shadow-md">
-                    <h3 class="text-xl font-semibold mb-2 border-b pb-1">AI Recommendations</h3>
-                    <div id="recommendations-container" class="space-y-3">Waiting for draft to start...</div>
+        <div id="drafting-screen" class="screen grid grid-cols-1 xl:grid-cols-4 gap-6 h-full pb-10">
+
+            <!-- Left Sidebar for Draft Status & Recommends -->
+            <div class="xl:col-span-1 flex flex-col gap-6 overflow-y-auto hide-scrollbar">
+
+                <div
+                    class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 border-l-4 border-l-indigo-500 relative overflow-hidden">
+                    <div class="absolute -right-6 -top-6 text-indigo-50 opacity-50">
+                        <svg class="w-32 h-32" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd"
+                                d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
+                                clip-rule="evenodd"></path>
+                        </svg>
+                    </div>
+                    <h3 class="font-bold text-gray-400 text-xs uppercase tracking-wider mb-3 relative z-10">Draft Status
+                    </h3>
+                    <div class="flex justify-between items-end relative z-10">
+                        <div>
+                            <p class="text-sm text-gray-500">Round <span id="current-round"
+                                    class="font-bold text-gray-900 text-lg">1</span></p>
+                            <p class="text-sm text-gray-500">Pick <span id="current-pick-number"
+                                    class="font-bold text-gray-900 text-lg">1</span></p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-xs text-gray-500 mb-1">On the Clock</p>
+                            <p id="on-the-clock" class="text-xl font-extrabold text-indigo-600 leading-tight">Team 1</p>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="bg-white p-6 rounded-lg shadow-md mt-auto"> 
-                    <button id="undo-pick-button" class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg">Undo Last Pick</button>
+                <!-- Recommendations targeted specifically for USER -->
+                <div class="bg-indigo-900 text-white p-5 rounded-2xl shadow-lg flex-1">
+                    <h3 class="text-lg font-bold mb-1">Your Targets</h3>
+                    <p class="text-indigo-200 text-xs mb-4 pb-3 border-b border-indigo-700">Best values for <strong
+                            id="user-team-name-disp">Your Team</strong></p>
+                    <div id="recommendations-container" class="space-y-3">
+                        <!-- Recs populate here -->
+                    </div>
+                </div>
+
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+                    <button id="undo-pick-button"
+                        class="w-full bg-red-50 text-red-600 hover:bg-red-100 font-semibold py-3 px-4 rounded-xl transition-colors flex justify-center items-center space-x-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path>
+                        </svg>
+                        <span>Undo Last Pick</span>
+                    </button>
                 </div>
             </div>
 
-            <div class="md:col-span-3 space-y-8"> 
-                <div class="bg-white p-6 rounded-lg shadow-md">
-                    <h2 class="text-xl font-semibold mb-4">Available Players</h2>
-                    <div class="table-container border rounded-lg mt-4">
+            <!-- Main Draft Board Area -->
+            <div class="xl:col-span-3 flex flex-col gap-6 h-full">
+
+                <div
+                    class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex-1 flex flex-col min-h-[400px]">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-bold">Available Players</h2>
+                        <div class="text-sm font-medium px-3 py-1 bg-indigo-50 text-indigo-700 rounded-full"
+                            id="drafting-for-badge">Drafting for: CPU 1</div>
+                    </div>
+                    <div class="table-container border rounded-xl flex-1">
                         <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50 sticky top-0">
+                            <thead class="bg-slate-50 sticky top-0 z-10 shadow-sm">
                                 <tr>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Player</th>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Pos</th>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Proj</th>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">VBD</th>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
+                                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Player
+                                    </th>
+                                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Pos
+                                    </th>
+                                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Proj
+                                    </th>
+                                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">VBD
+                                    </th>
+                                    <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase">
+                                        Action</th>
                                 </tr>
                             </thead>
-                            <tbody id="draft-players-body" class="bg-white divide-y divide-gray-200"></tbody>
+                            <tbody id="draft-players-body" class="bg-white divide-y divide-gray-100"></tbody>
                         </table>
                     </div>
                 </div>
 
-                <div class="bg-white p-6 rounded-lg shadow-md">
-                    <h2 class="text-xl font-semibold mb-4">Team Rosters</h2>
-                    <div id="roster-tabs" class="flex flex-wrap gap-x-1"></div> 
-                    <div id="roster-content" class="roster-content mt-4 border border-gray-200 rounded-lg"></div>
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                    <h2 class="text-xl font-bold mb-4">League Rosters</h2>
+                    <div id="roster-tabs" class="flex flex-nowrap overflow-x-auto hide-scrollbar gap-x-2 pb-2"></div>
+                    <div id="roster-content" class="roster-content mt-4 border border-gray-100 rounded-xl bg-slate-50">
+                    </div>
                 </div>
             </div>
         </div>
 
         <!-- 4. Summary Screen -->
-        <div id="summary-screen" class="screen hidden bg-white p-6 rounded-lg shadow-md max-w-2xl mx-auto">
-            <h2 class="text-3xl font-bold text-gray-900 mb-6 text-center">Projected Final Standings</h2>
-            <div id="standings-list" class="space-y-3"></div>
-        </div>
-
-        <!-- Custom Message Box -->
-        <div id="message-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-50">
-            <div class="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full">
-                <h3 id="message-modal-title" class="text-xl font-bold text-gray-800 mb-4"></h3>
-                <p id="message-modal-content" class="text-gray-700 mb-6"></p>
-                <button id="message-modal-close" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg">Close</button>
+        <div id="summary-screen" class="screen max-w-3xl mx-auto mt-10">
+            <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+                <div class="text-center mb-8">
+                    <h2 class="text-3xl font-extrabold text-gray-900">Projected Final Standings</h2>
+                    <p class="text-gray-500 mt-2">Based on drafted rosters and full season VBD projections.</p>
+                </div>
+                <div id="standings-list" class="space-y-3"></div>
             </div>
         </div>
-    </div>
-    
-    <!-- Load Scripts in order -->
+
+        <!-- Custom Message Modal -->
+        <div id="message-modal"
+            class="hidden fixed inset-0 bg-slate-900 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 transition-opacity">
+            <div class="bg-white p-8 rounded-2xl shadow-2xl max-w-sm w-full transform transition-all scale-100">
+                <h3 id="message-modal-title" class="text-xl font-bold text-gray-900 mb-2"></h3>
+                <p id="message-modal-content" class="text-gray-600 mb-6 leading-relaxed"></p>
+                <button id="message-modal-close"
+                    class="w-full bg-slate-900 hover:bg-slate-800 text-white font-medium py-3 px-4 rounded-xl transition-colors">Acknowledge</button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Scripts -->
     <script src="js/state.js"></script>
     <script src="js/ui.js"></script>
     <script src="js/autoDraft.js"></script>
     <script src="js/app.js"></script>
 </body>
+
 </html>

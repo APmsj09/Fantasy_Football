@@ -3,78 +3,86 @@ const AutoDraft = {
 
     async processQueue() {
         if (!State.draftStarted || State.currentPick >= State.draftOrder.length || this.isDrafting) return;
+        if (State.settings.draftMode === 'live') return; 
         
         const teamId = State.draftOrder[State.currentPick];
         const team = State.teamsById[teamId];
 
-        // If it's a CPU team, let the bot draft
         if (team.isCPU) {
             this.isDrafting = true;
-            UI.showMessage("Mock Draft", `${team.name} is on the clock...`);
-            
-            // Artificial delay to make it feel like a real draft
-            await new Promise(r => setTimeout(r, 800)); 
-            
+            await new Promise(r => setTimeout(r, 600)); // Simulating thinking time
             this.makeCPUPick(team);
             this.isDrafting = false;
             
-            // Call next tick
             UI.updateDraftBoard();
             this.processQueue();
         }
     },
 
     makeCPUPick(team) {
-        // Sort available players by VBD (Value Based Drafting)
-        let bestPlayers = [...State.availablePlayers].sort((a, b) => b.VBD - a.VBD);
+        const round = Math.floor(State.currentPick / State.settings.numTeams) + 1;
+        const profile = team.profile; // The historical tendencies
+
+        // Deep copy players so we can manipulate 'Adjusted VBD' without ruining the master list
+        let evaluatedPlayers = State.availablePlayers.map(p => ({ ...p, adjustedVBD: p.VBD }));
+
+        // --- APPLY AI TENDENCIES based on Profile ---
+        if (profile) {
+            evaluatedPlayers.forEach(p => {
+                let multiplier = 1.0;
+
+                // 1. Core Strategy (Rounds 1-4)
+                if (round <= 4) {
+                    if (profile.strategy === 'RB-Heavy' && p.Pos === 'RB') multiplier = 1.4;
+                    if (profile.strategy === 'Zero-RB' && p.Pos === 'WR') multiplier = 1.4;
+                }
+
+                // 2. Early QB / TE reaches
+                // If they historically reach, inflate that position's value around their average draft round
+                if (p.Pos === 'QB' && profile.draftsEarlyQB && round >= (profile.qbAvgRound - 1) && round <= (profile.qbAvgRound + 1)) {
+                    multiplier = 1.8; 
+                }
+                if (p.Pos === 'TE' && profile.draftsEarlyTE && round >= (profile.teAvgRound - 1) && round <= (profile.teAvgRound + 1)) {
+                    multiplier = 1.8;
+                }
+                
+                // 3. Needs-based adjustment (Drafting a 2nd QB drops value drastically)
+                if (team.counts[p.Pos] > 0 && ['QB', 'TE', 'PK', 'DST'].includes(p.Pos)) {
+                    multiplier = 0.1; // CPU rarely drafts backups for onesies early
+                }
+
+                p.adjustedVBD = p.VBD * multiplier;
+            });
+        }
+
+        // Sort by the new personality-adjusted VBD
+        evaluatedPlayers.sort((a, b) => b.adjustedVBD - a.adjustedVBD);
+
         let selectedPlayer = null;
         let slottedPos = null;
 
-        for (let player of bestPlayers) {
+        // Find the best legal player
+        for (let player of evaluatedPlayers) {
             let pos = player.Pos;
-            
-            // 1. Can they fit in standard position?
-            if (team.counts[pos] < State.settings.roster[pos].max) {
-                slottedPos = pos;
-            } 
-            // 2. Can they fit in FLEX?
-            else if (['RB', 'WR', 'TE'].includes(pos) && team.counts['Flex'] < State.settings.roster.Flex.max) {
-                slottedPos = 'Flex';
-            } 
-            // 3. Can they fit on the Bench?
-            else if (team.counts['Bench'] < State.settings.roster.Bench.max) {
-                slottedPos = 'Bench';
-            }
+            if (team.counts[pos] < State.settings.roster[pos].max) slottedPos = pos;
+            else if (['RB', 'WR', 'TE'].includes(pos) && team.counts['Flex'] < State.settings.roster.Flex.max) slottedPos = 'Flex';
+            else if (team.counts['Bench'] < State.settings.roster.Bench.max) slottedPos = 'Bench';
 
             if (slottedPos) {
-                selectedPlayer = player;
-                break; // We found the highest VBD player that fits the roster!
+                // Find the original player object in State to draft
+                selectedPlayer = State.availablePlayers.find(p => p.Player === player.Player);
+                break;
             }
         }
 
-        if (selectedPlayer) {
-            this.executeDraft(selectedPlayer, team, slottedPos);
-        } else {
-            console.error(`${team.name} could not find a valid player to draft!`);
-        }
+        if (selectedPlayer) this.executeDraft(selectedPlayer, team, slottedPos);
     },
 
     executeDraft(player, team, slot) {
-        // Remove from available pool
         State.availablePlayers = State.availablePlayers.filter(p => p.Player !== player.Player);
-        
-        // Add to team
         team.roster.push({ ...player, slottedPos: slot });
         team.counts[slot]++;
-        
-        // Log history
-        State.draftHistory.push({
-            pickIndex: State.currentPick,
-            player: player,
-            teamId: team.id,
-            slot: slot
-        });
-
+        State.draftHistory.push({ pickIndex: State.currentPick, player: player, teamId: team.id, slot: slot });
         State.currentPick++;
     }
 };

@@ -1,63 +1,75 @@
 body {
-    font-family: 'Inter', sans-serif;
-}
-.table-container {
-    max-height: 500px;
-    overflow-y: auto;
-}
-.roster-content {
-    max-height: 400px;
-    overflow-y: auto;
+    background-color: #f8fafc;
 }
 
-.table-container::-webkit-scrollbar, .roster-content::-webkit-scrollbar {
-    width: 8px;
-    background-color: #f1f1f1;
-    border-radius: 4px;
+/* Hide scrollbar for Chrome, Safari and Opera but keep functionality */
+.hide-scrollbar::-webkit-scrollbar {
+    display: none;
 }
-.table-container::-webkit-scrollbar-thumb, .roster-content::-webkit-scrollbar-thumb {
-    background-color: #cbd5e1;
-    border-radius: 4px;
-}
-.table-container::-webkit-scrollbar-thumb:hover, .roster-content::-webkit-scrollbar-thumb:hover {
-    background-color: #94a3b8;
+.hide-scrollbar {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
 }
 
+/* Custom stylish scrollbar for tables/content */
+.table-container, .roster-content, main {
+    overflow-y: auto;
+}
+.table-container::-webkit-scrollbar, .roster-content::-webkit-scrollbar, main::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+.table-container::-webkit-scrollbar-track, .roster-content::-webkit-scrollbar-track, main::-webkit-scrollbar-track {
+    background: transparent; 
+}
+.table-container::-webkit-scrollbar-thumb, .roster-content::-webkit-scrollbar-thumb, main::-webkit-scrollbar-thumb {
+    background: #cbd5e1; 
+    border-radius: 10px;
+}
+.table-container::-webkit-scrollbar-thumb:hover, main::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8; 
+}
+
+/* Sidebar Navigation Buttons */
+.nav-btn {
+    transition: all 0.2s ease-in-out;
+    color: #94a3b8; /* slate-400 */
+}
+.nav-btn:hover {
+    background-color: #1e293b; /* slate-800 */
+    color: #f8fafc;
+}
+.nav-btn.active {
+    background-color: #4f46e5; /* indigo-600 */
+    color: #ffffff;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+/* Roster Tabs */
 .tab {
     padding: 0.5rem 1rem;
     font-size: 0.875rem;
-    font-weight: 500;
-    color: #4b5563;
-    border: 1px solid #e5e7eb;
-    border-radius: 0.5rem 0.5rem 0 0;
+    font-weight: 600;
+    color: #64748b;
+    border-radius: 0.5rem;
     cursor: pointer;
-    margin-bottom: -1px;
+    white-space: nowrap;
+    transition: all 0.2s ease;
 }
 .tab.active {
-    color: #4f46e5;
-    border-color: #4f46e5;
-    font-weight: 600;
-    background-color: white;
-}
-.tab:not(.active) {
-    background-color: #f9fafb;
+    background-color: #e0e7ff; /* indigo-100 */
+    color: #4338ca; /* indigo-700 */
 }
 .tab:not(.active):hover {
-    background-color: #f3f4f6;
+    background-color: #f1f5f9;
+    color: #334155;
 }
 
-canvas {
-    width: 100% !important;
-    height: auto !important;
-}
-
-.nav-btn {
-    padding: 0.5rem 1rem;
-    border-radius: 0.375rem;
-    font-weight: 500;
-    transition: background-color 0.2s;
-}
-.nav-btn:hover { background-color: rgba(255,255,255,0.1); }
-.nav-btn.active { background-color: rgba(255,255,255,0.2); }
+/* Screen Management */
 .screen { display: none; }
-.screen.active { display: block; }
+.screen.active { display: block; animation: fadeIn 0.3s ease-in-out; }
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
+}

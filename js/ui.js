@@ -3,8 +3,10 @@ const UI = {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
         document.getElementById(targetId).classList.add('active');
         
-        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-        document.querySelector(`[data-target="${targetId}"]`).classList.add('active');
+        document.querySelectorAll('.nav-btn').forEach(b => {
+            if (b.getAttribute('data-target') === targetId) b.classList.add('active');
+            else b.classList.remove('active');
+        });
 
         if(targetId === 'player-db-screen') this.renderDatabase();
     },
@@ -24,18 +26,18 @@ const UI = {
         
         let filtered = State.allPlayers.filter(p => {
             if(filterPos && p.Pos !== filterPos) return false;
-            if(search && !p.Player.toLowerCase().includes(search)) return false;
+            if(search && !p.Player.toLowerCase().includes(search) && !p.Team.toLowerCase().includes(search)) return false;
             return true;
         });
 
-        filtered.forEach(p => {
+        filtered.slice(0,200).forEach(p => {
             tbody.innerHTML += `
-                <tr>
-                    <td class="px-6 py-2 text-sm">${p.Player}</td>
-                    <td class="px-6 py-2 text-sm">${p.Pos}</td>
-                    <td class="px-6 py-2 text-sm">${p.Team}</td>
-                    <td class="px-6 py-2 text-sm font-bold text-blue-600">${p.ProjPts.toFixed(1)}</td>
-                    <td class="px-6 py-2 text-sm font-bold text-green-600">${p.VBD.toFixed(1)}</td>
+                <tr class="hover:bg-slate-50 transition-colors">
+                    <td class="px-6 py-3 text-sm font-medium text-gray-900">${p.Player}</td>
+                    <td class="px-6 py-3 text-sm text-gray-500">${p.Pos}</td>
+                    <td class="px-6 py-3 text-sm text-gray-500">${p.Team}</td>
+                    <td class="px-6 py-3 text-sm font-bold text-indigo-600">${p.ProjPts.toFixed(1)}</td>
+                    <td class="px-6 py-3 text-sm font-bold text-emerald-600">${p.VBD.toFixed(1)}</td>
                 </tr>
             `;
         });
@@ -46,14 +48,28 @@ const UI = {
         
         const round = Math.floor(State.currentPick / State.settings.numTeams) + 1;
         document.getElementById('current-round').textContent = round;
-        document.getElementById('current-pick-number').textContent = State.currentPick + 1;
+        document.getElementById('current-pick-number').textContent = (State.currentPick % State.settings.numTeams) + 1;
 
         if (State.currentPick < State.draftOrder.length) {
             const onClockId = State.draftOrder[State.currentPick];
-            document.getElementById('on-the-clock').textContent = State.teamsById[onClockId].name;
+            const onClockTeam = State.teamsById[onClockId];
+            document.getElementById('on-the-clock').textContent = onClockTeam.name;
+            
+            let badgeBadge = document.getElementById('drafting-for-badge');
+            badgeBadge.textContent = `Drafting for: ${onClockTeam.name}`;
+            
+            // Highlight color based on if it's user or not
+            if(onClockId === State.userTeamId) {
+                badgeBadge.className = "text-sm font-bold px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full";
+            } else {
+                badgeBadge.className = "text-sm font-medium px-3 py-1 bg-indigo-50 text-indigo-700 rounded-full";
+            }
+
         } else {
-            document.getElementById('on-the-clock').textContent = "Draft Complete!";
+            document.getElementById('on-the-clock').textContent = "Complete";
+            document.getElementById('drafting-for-badge').textContent = "Draft Complete";
             this.renderStandings();
+            this.switchTab('summary-screen');
         }
 
         this.renderDraftAvailablePlayers();
@@ -65,20 +81,31 @@ const UI = {
         const tbody = document.getElementById('draft-players-body');
         tbody.innerHTML = '';
         
-        // Show top 100 available to prevent browser lag
         let displayList = State.availablePlayers.slice(0, 100);
-
+        
+        // Determine button style based on mode
+        let btnText = "Draft";
+        let isMock = State.settings.draftMode === 'mock';
+        let onClockId = State.draftOrder[State.currentPick];
+        let isUserTurn = isMock && (onClockId === State.userTeamId);
+        
         displayList.forEach(p => {
+            let btnHtml = "";
+            // If it's a mock draft and NOT your turn, disable button. Otherwise active.
+            if(isMock && !isUserTurn) {
+                btnHtml = `<button class="bg-gray-200 text-gray-400 px-3 py-1.5 rounded-lg text-xs font-bold cursor-not-allowed" disabled>Wait</button>`;
+            } else {
+                btnHtml = `<button class="bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 text-xs font-bold shadow-sm draft-btn transition-colors" data-player="${p.Player}">${btnText}</button>`;
+            }
+
             let tr = document.createElement('tr');
-            tr.className = "hover:bg-gray-100";
+            tr.className = "hover:bg-slate-50 border-b border-gray-50";
             tr.innerHTML = `
-                <td class="px-4 py-2 text-sm font-medium">${p.Player} <span class="text-xs text-gray-500">(${p.Team})</span></td>
-                <td class="px-4 py-2 text-sm text-gray-600">${p.Pos}</td>
-                <td class="px-4 py-2 text-sm">${p.ProjPts.toFixed(1)}</td>
-                <td class="px-4 py-2 text-sm font-bold text-green-600">${p.VBD.toFixed(1)}</td>
-                <td class="px-4 py-2 text-sm">
-                    <button class="bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700 text-xs shadow draft-btn" data-player="${p.Player}">Draft</button>
-                </td>
+                <td class="px-4 py-3 text-sm font-semibold text-gray-900">${p.Player} <span class="text-xs font-normal text-gray-400 ml-1">(${p.Team})</span></td>
+                <td class="px-4 py-3 text-sm text-gray-500">${p.Pos}</td>
+                <td class="px-4 py-3 text-sm font-medium">${p.ProjPts.toFixed(1)}</td>
+                <td class="px-4 py-3 text-sm font-bold text-emerald-600">${p.VBD.toFixed(1)}</td>
+                <td class="px-4 py-3 text-right">${btnHtml}</td>
             `;
             tbody.appendChild(tr);
         });
@@ -88,18 +115,28 @@ const UI = {
         const container = document.getElementById('recommendations-container');
         if (State.currentPick >= State.draftOrder.length) return;
 
-        const team = State.teamsById[State.draftOrder[State.currentPick]];
+        // Recommendations ALWAYS target the User's team roster logic
+        const userTeam = State.teamsById[State.userTeamId];
+        document.getElementById('user-team-name-disp').textContent = userTeam.name;
         
-        // Very basic recommendation: Show top 3 VBD players for user
-        let recs = State.availablePlayers.slice(0, 3);
+        // Filter out players the user literally cannot draft (e.g., they have max QBs)
+        let viablePlayers = State.availablePlayers.filter(player => {
+            let pos = player.Pos;
+            if (userTeam.counts[pos] < State.settings.roster[pos].max) return true;
+            if (['RB', 'WR', 'TE'].includes(pos) && userTeam.counts['Flex'] < State.settings.roster.Flex.max) return true;
+            if (userTeam.counts['Bench'] < State.settings.roster.Bench.max) return true;
+            return false;
+        });
+
+        // Top 4 Value based
+        let recs = viablePlayers.sort((a,b) => b.VBD - a.VBD).slice(0, 4);
         
         container.innerHTML = recs.map((p, i) => `
-            <div class="p-3 bg-indigo-50 border border-indigo-100 rounded-lg flex justify-between items-center">
+            <div class="p-3 bg-indigo-800 rounded-xl border border-indigo-700 flex justify-between items-center shadow-inner">
                 <div>
-                    <h4 class="font-bold text-sm">${i+1}. ${p.Player}</h4>
-                    <p class="text-xs text-gray-600">${p.Pos} - VBD: ${p.VBD.toFixed(1)}</p>
+                    <h4 class="font-bold text-sm text-white">${i+1}. ${p.Player}</h4>
+                    <p class="text-xs text-indigo-300 font-medium">${p.Pos} • VBD: ${p.VBD.toFixed(1)}</p>
                 </div>
-                ${!team.isCPU ? `<button class="bg-indigo-600 text-white px-2 py-1 rounded text-xs draft-btn" data-player="${p.Player}">Pick</button>` : ''}
             </div>
         `).join('');
     },
@@ -120,15 +157,19 @@ const UI = {
             
             if (activeTab === team.id) {
                 content.innerHTML = `
-                    <div class="p-4 bg-gray-50">
-                        <h3 class="font-bold mb-2">${team.name} Roster (${team.roster.length}/${State.settings.roster.totalSize})</h3>
-                        <ul class="space-y-1">
+                    <div class="p-4">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="font-bold text-gray-800">${team.name} Roster</h3>
+                            <span class="text-xs font-semibold bg-gray-200 text-gray-600 px-2 py-1 rounded-full">${team.roster.length}/${State.settings.roster.totalSize} Spots</span>
+                        </div>
+                        <ul class="space-y-2">
                             ${team.roster.map(p => `
-                                <li class="text-sm bg-white border p-2 rounded flex justify-between">
-                                    <span><strong>${p.slottedPos}:</strong> ${p.Player}</span>
-                                    <span class="text-gray-500">${p.Pos} - ${p.ProjPts.toFixed(1)} pts</span>
+                                <li class="text-sm bg-white border border-gray-200 p-2.5 rounded-lg flex justify-between shadow-sm">
+                                    <span><strong class="text-indigo-600 mr-2 w-8 inline-block">${p.slottedPos}</strong> <span class="font-medium">${p.Player}</span></span>
+                                    <span class="text-gray-400 text-xs">${p.Pos} • <span class="text-emerald-600 font-semibold">${p.ProjPts.toFixed(1)} pts</span></span>
                                 </li>
                             `).join('')}
+                            ${team.roster.length === 0 ? '<p class="text-sm text-gray-400 italic">No players drafted yet.</p>' : ''}
                         </ul>
                     </div>
                 `;
@@ -142,14 +183,16 @@ const UI = {
         
         let totals = Object.values(State.teamsById).map(team => {
             let pts = team.roster.reduce((sum, p) => sum + p.ProjPts, 0);
-            return { name: team.name, pts };
+            return { name: team.name, pts, isUser: team.id === State.userTeamId };
         }).sort((a,b) => b.pts - a.pts);
 
         totals.forEach((t, i) => {
+            let bg = t.isUser ? 'bg-indigo-50 border-indigo-200' : 'bg-gray-50 border-gray-100';
+            let text = t.isUser ? 'text-indigo-900' : 'text-gray-900';
             list.innerHTML += `
-                <div class="flex justify-between items-center p-3 border rounded-lg bg-gray-50">
-                    <span class="text-lg font-bold">${i+1}. ${t.name}</span>
-                    <span class="text-lg text-blue-600 font-semibold">${t.pts.toFixed(1)} pts</span>
+                <div class="flex justify-between items-center p-4 border rounded-xl ${bg}">
+                    <span class="text-lg font-bold ${text}"><span class="text-gray-400 mr-2">#${i+1}</span> ${t.name}</span>
+                    <span class="text-lg text-emerald-600 font-extrabold">${t.pts.toFixed(1)} pts</span>
                 </div>
             `;
         });
