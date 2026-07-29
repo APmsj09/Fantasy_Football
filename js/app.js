@@ -41,6 +41,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             State.allPlayers = [...offPlayers, ...defPlayers, ...kickerPlayers];
 
+            // ⚡ RUN THE OPTIMIZER CACHE HERE ⚡
+            State.enrichPlayerMap();
+
             // 3. Fetch SOS Data & Merge
             try {
                 const sosRes = await fetch('./SOS_26.tsv');

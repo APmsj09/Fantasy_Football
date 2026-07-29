@@ -72,55 +72,63 @@ const State = {
         return aliases[clean] || clean;
     },
 
-    matchPlayer(name, team, pos) {
+    // Add this caching function right below normalizeName
+    enrichPlayerMap() {
+        // Run this ONCE to pre-compute clean strings for lightning-fast matching
+        this.allPlayers.forEach(p => {
+            p._cleanName = this.normalizeName(p.Player);
+            p._noSpaceName = p._cleanName.replace(/\s/g, '');
+            p._cleanTeam = this.normalizeTeam(p.Team);
+            p._cleanPos = this.normalizePos(p.Pos);
+            
+            let nameParts = p._cleanName.split(' ');
+            if (nameParts.length >= 2) {
+                p._firstInitial = nameParts[0][0];
+                p._lastName = nameParts[nameParts.length - 1];
+            }
+        });
+    },
+
+    // ⚡ Optimized Matcher (Checks pre-computed properties = Instant)
+    matchPlayerFast(name, team, pos) {
         let cleanName = this.normalizeName(name);
+        let noSpaceName = cleanName.replace(/\s/g, '');
         let nTeam = this.normalizeTeam(team);
         let nPos = this.normalizePos(pos);
 
-        // 0. DST Special Case (Match by Team string instead of Name)
+        // 0. DST Special Case
         if (nPos === 'DST') {
-            return this.allPlayers.find(p => p.Pos === 'DST' && 
-                (this.normalizeTeam(p.Team) === nTeam || this.normalizeName(p.Player).includes(cleanName))
+            return this.allPlayers.find(p => p._cleanPos === 'DST' && 
+                (p._cleanTeam === nTeam || p._cleanName.includes(cleanName))
             );
         }
 
-        // 1. Exact Match (Punctuation/Suffixes stripped)
-        let exact = this.allPlayers.find(p => this.normalizeName(p.Player) === cleanName);
+        // 1. Exact Match
+        let exact = this.allPlayers.find(p => p._cleanName === cleanName);
         if (exact) return exact;
 
-        // 2. Exact Match ignoring spaces (e.g., "DJ Moore" vs "D.J. Moore" -> "djmoore")
-        let noSpaceName = cleanName.replace(/\s/g, '');
-        let exactNoSpace = this.allPlayers.find(p => this.normalizeName(p.Player).replace(/\s/g, '') === noSpaceName);
+        // 2. Exact Match ignoring spaces
+        let exactNoSpace = this.allPlayers.find(p => p._noSpaceName === noSpaceName);
         if (exactNoSpace) return exactNoSpace;
 
-        // 3. First Initial + Last Name + Same Team (e.g. "Gabe Davis" JAX vs "Gabriel Davis" JAX)
+        // 3. First Initial + Last Name + Same Team
         let nameParts = cleanName.split(' ');
         if (nameParts.length >= 2) {
             let firstInitial = nameParts[0][0];
             let lastName = nameParts[nameParts.length - 1];
 
             let initialMatch = this.allPlayers.find(p => {
-                let pClean = this.normalizeName(p.Player);
-                let pParts = pClean.split(' ');
-                if (pParts.length < 2) return false;
-                
-                let pFirstInitial = pParts[0][0];
-                let pLastName = pParts[pParts.length - 1];
-                let isSameTeam = (this.normalizeTeam(p.Team) === nTeam) || !nTeam || !p.Team;
-                
-                return isSameTeam && pFirstInitial === firstInitial && pLastName === lastName && this.normalizePos(p.Pos) === nPos;
+                let isSameTeam = (p._cleanTeam === nTeam) || !nTeam || !p.Team;
+                return isSameTeam && p._firstInitial === firstInitial && p._lastName === lastName && p._cleanPos === nPos;
             });
             if (initialMatch) return initialMatch;
         }
 
-        // 4. Fallback Substring Match (ONLY if Team and Pos match exactly to prevent false positives)
-        let substringMatch = this.allPlayers.find(p => {
-            let pClean = this.normalizeName(p.Player);
-            let isSameTeamAndPos = (this.normalizeTeam(p.Team) === nTeam) && (this.normalizePos(p.Pos) === nPos);
-            return isSameTeamAndPos && (pClean.includes(cleanName) || cleanName.includes(pClean));
-        });
-        
-        return substringMatch || null; // Returns null if completely unmatched
+        // 4. Substring Match
+        return this.allPlayers.find(p => {
+            let isSameTeamAndPos = (p._cleanTeam === nTeam) && (p._cleanPos === nPos);
+            return isSameTeamAndPos && (p._cleanName.includes(cleanName) || cleanName.includes(p._cleanName));
+        }) || null;
     },
 
     // 1. Parse SOS_26.tsv
@@ -164,34 +172,34 @@ const State = {
     // 2. Merge SOS & Calculate Estimated Weekly Points
     mergeSOSData(sosList) {
         this.sosData = sosList;
-
-        // Build a dictionary of Team_Pos schedules.
-        // Reason: Every WR on the Bills faces the same secondary schedule. 
-        // This ensures Rookies/Backups get schedules even if they aren't listed in SOS_26.tsv!
         const teamPosMap = {};
+
+        // Loop SOS list ONCE and assign to matched players
         sosList.forEach(s => {
             let key = `${s.Team}_${s.Pos}`;
             if (!teamPosMap[key]) teamPosMap[key] = s;
+            
+            let p = this.matchPlayerFast(s.Player, s.Team, s.Pos);
+            if (p) {
+                p.avgStars = s.avgStars;
+                p.byeWeek = s.byeWeek;
+                p.sosWeeks = s.weeks;
+            }
         });
 
+        // Loop main players ONCE to apply fallbacks and calculate weeklies
         this.allPlayers.forEach(p => {
-            let pTeam = this.normalizeTeam(p.Team);
-            let pPos = this.normalizePos(p.Pos);
-            
-            // 1. Try to find the exact player in the SOS list
-            let exactSosObj = sosList.find(s => this.matchPlayer(s.Player, s.Team, s.Pos) === p);
-
-            // 2. Fallback to Team+Position schedule if player is missing
-            let sosEntry = exactSosObj || teamPosMap[`${pTeam}_${pPos}`];
-
-            if (sosEntry) {
-                p.avgStars = sosEntry.avgStars;
-                p.byeWeek = sosEntry.byeWeek;
-                p.sosWeeks = sosEntry.weeks;
-            } else {
-                p.avgStars = 3.0;
-                p.byeWeek = 'N/A';
-                p.sosWeeks = {};
+            if (!p.avgStars) {
+                let sosEntry = teamPosMap[`${p._cleanTeam}_${p._cleanPos}`];
+                if (sosEntry) {
+                    p.avgStars = sosEntry.avgStars;
+                    p.byeWeek = sosEntry.byeWeek;
+                    p.sosWeeks = sosEntry.weeks;
+                } else {
+                    p.avgStars = 3.0;
+                    p.byeWeek = 'N/A';
+                    p.sosWeeks = {};
+                }
             }
 
             // Playoff SOS (W15, 16, 17)
@@ -262,8 +270,7 @@ const State = {
         this.advancedMetrics = [...this.advancedMetrics, ...advancedDataArray];
         
         advancedDataArray.forEach(advPlayer => {
-            // Find player using our new robust matcher
-            let mainPlayer = this.matchPlayer(advPlayer.Player, advPlayer.Team, advPlayer.Pos);
+            let mainPlayer = this.matchPlayerFast(advPlayer.Player, advPlayer.Team, advPlayer.Pos);
             
             if (mainPlayer) {
                 if (advPlayer['RZ TGT']) mainPlayer.rzTgt = advPlayer['RZ TGT'];
