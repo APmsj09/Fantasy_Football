@@ -127,7 +127,7 @@
         </div>
 
         <!-- Insights Screen -->
-        <div id="insights-screen" class="screen max-w-5xl mx-auto mt-6">
+        <div id="insights-screen" class="screen max-w-5xl mx-auto mt-6 hidden">
             <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
                 <h2 class="text-3xl font-extrabold text-gray-900 mb-2">Manager Tendencies</h2>
                 <p class="text-gray-500 mb-6">Historical data analyzed from 2020-2025. CPU Bots in Mock Drafts will
@@ -225,7 +225,7 @@
         </div>
 
         <!-- 1. Setup Screen -->
-        <div id="setup-screen" class="screen max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div id="setup-screen" class="screen max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8 hidden">
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                 <h2 class="text-xl font-bold mb-6 flex items-center space-x-2"><span
                         class="w-6 h-6 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center text-sm">1</span>
@@ -275,6 +275,15 @@
                             class="w-full border-gray-300 border p-2.5 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
                         <p class="text-xs text-gray-500 mt-1">We need this so we know which team to generate
                             recommendations for.</p>
+                    </div>
+
+                    <!-- NEW: Assign Profiles UI -->
+                    <div class="col-span-2 mt-4 pt-4 border-t border-gray-100">
+                        <label class="block text-sm font-bold text-gray-900 mb-2">Assign Profiles to Teams</label>
+                        <p class="text-xs text-gray-500 mb-3">Choose which historical AI manager plays for each CPU, or set your own team's profile.</p>
+                        <div id="profile-assignments-container" class="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+                            <!-- Populated dynamically via JS -->
+                        </div>
                     </div>
                 </div>
 
@@ -362,7 +371,7 @@
 
         <!-- 2. Player Database Screen -->
         <div id="player-db-screen"
-            class="screen bg-white p-6 rounded-2xl shadow-sm border border-gray-100 max-w-6xl mx-auto">
+            class="screen bg-white p-6 rounded-2xl shadow-sm border border-gray-100 max-w-6xl mx-auto hidden">
             <h2 class="text-2xl font-bold mb-6">Player Database & Projections</h2>
             <div class="flex space-x-4 mb-6">
                 <input type="text" id="db-search" placeholder="Search Player or Team..."
@@ -387,6 +396,9 @@
                             <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Proj Pts</th>
                             <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">VBD</th>
                             <th class="px-6 py-4 text-left text-xs font-semibold text-indigo-600 uppercase tracking-wider">Adv VBD</th>
+                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Tgt Share</th>
+                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Catch Rate</th>
+                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">RZ Tgts</th>
                         </tr>
                     </thead>
                     <tbody id="db-players-body" class="bg-white divide-y divide-gray-100"></tbody>
@@ -395,7 +407,7 @@
         </div>
 
         <!-- 3. Drafting Screen -->
-        <div id="drafting-screen" class="screen grid grid-cols-1 xl:grid-cols-4 gap-6 h-full pb-10">
+        <div id="drafting-screen" class="screen grid grid-cols-1 xl:grid-cols-4 gap-6 h-full pb-10 hidden">
 
             <!-- Left Sidebar for Draft Status & Recommends -->
             <div class="xl:col-span-1 flex flex-col gap-6 overflow-y-auto hide-scrollbar">
@@ -490,7 +502,7 @@
         </div>
 
         <!-- 4. Summary Screen -->
-        <div id="summary-screen" class="screen max-w-3xl mx-auto mt-10">
+        <div id="summary-screen" class="screen max-w-3xl mx-auto mt-10 hidden">
             <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
                 <div class="text-center mb-8">
                     <h2 class="text-3xl font-extrabold text-gray-900">Projected Final Standings</h2>

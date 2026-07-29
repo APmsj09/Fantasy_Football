@@ -406,6 +406,7 @@ const State = {
 
         // Convert profiles to an array to assign randomly to CPUs
         const availableProfiles = Object.values(this.managerProfiles);
+        let usedProfiles = [];
 
         let teamIds = [];
         for (let i = 0; i < this.settings.numTeams; i++) {
@@ -414,15 +415,30 @@ const State = {
 
             if (isUser) this.userTeamId = id;
 
-            // Assign a unique historical profile to each CPU
+            let dropdown = document.getElementById(`profile-team-${i + 1}`);
+            let selectedName = dropdown ? dropdown.value : "";
+
             let profile = null;
             let teamName = isUser ? "My Team" : `CPU ${i + 1}`;
 
-            if (!isUser && availableProfiles.length > 0) {
-                // Pick a random historical manager for this CPU
-                let profileIndex = Math.floor(Math.random() * availableProfiles.length);
-                profile = availableProfiles.splice(profileIndex, 1)[0];
-                teamName = profile.name; // Name the CPU after the historical manager!
+            // 1. If user explicitly picked a profile
+            if (selectedName) {
+                profile = availableProfiles.find(p => p.name === selectedName);
+                if (profile) {
+                    teamName = profile.name + (isUser ? ' (You)' : '');
+                    usedProfiles.push(profile.name);
+                }
+            }
+
+            // 2. If no specific profile was assigned, pick a random unassigned one (for CPU)
+            if (!isUser && !profile && availableProfiles.length > 0) {
+                let unassigned = availableProfiles.filter(p => !usedProfiles.includes(p.name));
+                // Fallback to allowing dupes if we run out of unique profiles
+                let pool = unassigned.length > 0 ? unassigned : availableProfiles;
+                let profileIndex = Math.floor(Math.random() * pool.length);
+                profile = pool[profileIndex];
+                teamName = profile.name;
+                usedProfiles.push(profile.name);
             }
 
             this.teamsById[id] = {

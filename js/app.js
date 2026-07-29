@@ -64,6 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const historyRes = await fetch('./DraftHistory.tsv'); 
                 State.parseHistory(await historyRes.text());
                 if (typeof renderInsightsTable === "function") renderInsightsTable();
+                if (typeof UI.renderProfileAssignments === "function") UI.renderProfileAssignments();
             } catch(e) {}
 
             // Calculate Base Points & VBD initially
@@ -158,6 +159,10 @@ document.addEventListener('DOMContentLoaded', () => {
             renderMetricLeaders(e.target.getAttribute('data-metric'));
         }
     });
+
+    // Hook up Profile Assignment Dynamic Rendering on changes
+    document.getElementById('setting-teams').addEventListener('change', () => UI.renderProfileAssignments());
+    document.getElementById('setting-user-pick').addEventListener('change', () => UI.renderProfileAssignments());
 
     // Helper to render the Insights Tab
     function renderInsightsTable() {

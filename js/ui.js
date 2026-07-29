@@ -39,6 +39,10 @@ const UI = {
             let vbdVal = p.VBD.toFixed(1);
             let advVbdVal = (p.AdvVBD || p.VBD).toFixed(1);
             
+            let tgtShare = p.targetShare ? p.targetShare + '%' : '-';
+            let catchRate = p.trueCatchRate ? p.trueCatchRate.toFixed(1) + '%' : '-';
+            let rzTgt = p.rzTgt ? p.rzTgt : '-';
+            
             // Red for negative VBD, Emerald for positive VBD
             let vbdColor = p.VBD >= 0 ? 'text-emerald-600 font-medium' : 'text-red-500 font-medium';
             let advVbdColor = p.AdvVBD >= 0 ? 'text-indigo-600 font-extrabold' : 'text-red-400 font-bold';
@@ -51,9 +55,52 @@ const UI = {
                     <td class="px-6 py-3 text-sm font-bold text-indigo-600">${p.ProjPts.toFixed(1)}</td>
                     <td class="px-6 py-3 text-sm ${vbdColor}">${vbdVal}</td>
                     <td class="px-6 py-3 text-sm ${advVbdColor}">${advVbdVal}</td>
+                    <td class="px-6 py-3 text-sm font-medium text-gray-500">${tgtShare}</td>
+                    <td class="px-6 py-3 text-sm font-medium text-gray-500">${catchRate}</td>
+                    <td class="px-6 py-3 text-sm font-medium text-gray-500">${rzTgt}</td>
                 </tr>
             `;
         });
+    },
+
+    renderProfileAssignments() {
+        const container = document.getElementById('profile-assignments-container');
+        if (!container) return;
+        
+        const numTeams = parseInt(document.getElementById('setting-teams').value) || 12;
+        const userPick = parseInt(document.getElementById('setting-user-pick').value) || 1;
+        
+        let profiles = Object.values(State.managerProfiles);
+        let optionsHtml = `<option value="">Random AI</option>`;
+        profiles.forEach(p => {
+            optionsHtml += `<option value="${p.name}">${p.name}</option>`;
+        });
+
+        // Preserve previous selections to prevent resetting user progress when settings change
+        const prevSelections = {};
+        for(let i=1; i<=32; i++) {
+            let el = document.getElementById(`profile-team-${i}`);
+            if(el) prevSelections[i] = el.value;
+        }
+
+        container.innerHTML = '';
+        for (let i = 1; i <= numTeams; i++) {
+            let isUser = (i === userPick);
+            container.innerHTML += `
+                <div>
+                    <label class="text-gray-600 block mb-1 text-xs font-semibold">Team ${i} ${isUser ? '<span class="text-indigo-600">(You)</span>' : ''}</label>
+                    <select id="profile-team-${i}" class="w-full border-gray-300 border rounded-lg p-2 text-sm bg-slate-50 focus:ring-2 focus:ring-indigo-500 outline-none">
+                        ${optionsHtml}
+                    </select>
+                </div>
+            `;
+        }
+        
+        // Restore selections after adding to DOM
+        for (let i = 1; i <= numTeams; i++) {
+            let el = document.getElementById(`profile-team-${i}`);
+            if(el && prevSelections[i]) el.value = prevSelections[i];
+        }
     },
 
     updateDraftBoard() {
