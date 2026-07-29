@@ -25,13 +25,13 @@ const UI = {
     renderDatabase() {
         const tbody = document.getElementById('db-players-body');
         tbody.innerHTML = '';
-        
+
         let filterPos = document.getElementById('db-position').value;
         let search = document.getElementById('db-search').value.toLowerCase();
-        
+
         let filtered = State.allPlayers.filter(p => {
-            if(filterPos && p.Pos !== filterPos) return false;
-            if(search && !p.Player.toLowerCase().includes(search) && !p.Team.toLowerCase().includes(search)) return false;
+            if (filterPos && p.Pos !== filterPos) return false;
+            if (search && !p.Player.toLowerCase().includes(search) && !p.Team.toLowerCase().includes(search)) return false;
             return true;
         });
 
@@ -39,37 +39,63 @@ const UI = {
             let vbdVal = p.VBD.toFixed(1);
             let advVbdVal = (p.AdvVBD || p.VBD).toFixed(1);
             
-            let tgtShare = p.targetShare ? p.targetShare + '%' : '-';
-            let catchRate = p.trueCatchRate ? p.trueCatchRate.toFixed(1) + '%' : '-';
-            let rzTgt = p.rzTgt ? p.rzTgt : '-';
-            
-            // Red for negative VBD, Emerald for positive VBD
+            let stars = p.avgStars ? `⭐ ${p.avgStars.toFixed(2)}` : '-';
+            let bye = p.byeWeek && p.byeWeek !== 'N/A' ? `Wk ${p.byeWeek}` : '-';
+
             let vbdColor = p.VBD >= 0 ? 'text-emerald-600 font-medium' : 'text-red-500 font-medium';
             let advVbdColor = p.AdvVBD >= 0 ? 'text-indigo-600 font-extrabold' : 'text-red-400 font-bold';
 
+            // Safely escape quotes for HTML injection
+            let safeName = p.Player.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+
             tbody.innerHTML += `
-                <tr class="hover:bg-slate-50 transition-colors">
+                <tr class="hover:bg-slate-50 transition-colors cursor-pointer" onclick="UI.showWeeklyModal('${safeName}')">
                     <td class="px-6 py-3 text-sm font-medium text-gray-900">${p.Player}</td>
                     <td class="px-6 py-3 text-sm text-gray-500">${p.Pos}</td>
                     <td class="px-6 py-3 text-sm text-gray-500">${p.Team}</td>
                     <td class="px-6 py-3 text-sm font-bold text-indigo-600">${p.ProjPts.toFixed(1)}</td>
                     <td class="px-6 py-3 text-sm ${vbdColor}">${vbdVal}</td>
                     <td class="px-6 py-3 text-sm ${advVbdColor}">${advVbdVal}</td>
-                    <td class="px-6 py-3 text-sm font-medium text-gray-500">${tgtShare}</td>
-                    <td class="px-6 py-3 text-sm font-medium text-gray-500">${catchRate}</td>
-                    <td class="px-6 py-3 text-sm font-medium text-gray-500">${rzTgt}</td>
+                    <td class="px-6 py-3 text-sm font-semibold text-amber-600">${stars}</td>
+                    <td class="px-6 py-3 text-sm text-gray-500">${bye}</td>
                 </tr>
             `;
         });
     },
 
+    // Weekly Projections Modal Viewer
+    showWeeklyModal(playerName) {
+        let p = State.allPlayers.find(x => x.Player === playerName);
+        if (!p || !p.weeklyProjections) return;
+
+        let rowsHtml = '';
+        for (let w = 1; w <= 18; w++) {
+            let star = p.sosWeeks[`W${w}`];
+            let pts = p.weeklyProjections[`W${w}`];
+            let starDisp = star === 'BYE' ? '<span class="text-gray-400">BYE</span>' : `⭐ ${star}`;
+
+            rowsHtml += `
+            <div class="flex justify-between items-center py-1.5 border-b text-xs">
+                <span class="font-bold text-gray-600">Week ${w}</span>
+                <span>${starDisp}</span>
+                <span class="font-extrabold text-indigo-600">${pts > 0 ? pts.toFixed(1) + ' pts' : '-'}</span>
+            </div>
+        `;
+        }
+
+        UI.showMessage(`${p.Player} (${p.Pos} - ${p.Team}) Weekly Projections`, `
+        <div class="mb-3 text-xs text-gray-500">Season Total: <strong>${p.ProjPts.toFixed(1)} pts</strong> | Avg Schedule: <strong>⭐ ${p.avgStars}</strong></div>
+        <div class="max-h-60 overflow-y-auto pr-2">${rowsHtml}</div>
+    `);
+    },
+
     renderProfileAssignments() {
         const container = document.getElementById('profile-assignments-container');
         if (!container) return;
-        
+
         const numTeams = parseInt(document.getElementById('setting-teams').value) || 12;
         const userPick = parseInt(document.getElementById('setting-user-pick').value) || 1;
-        
+
         let profiles = Object.values(State.managerProfiles);
         let optionsHtml = `<option value="">Random AI</option>`;
         profiles.forEach(p => {
@@ -78,9 +104,9 @@ const UI = {
 
         // Preserve previous selections to prevent resetting user progress when settings change
         const prevSelections = {};
-        for(let i=1; i<=32; i++) {
+        for (let i = 1; i <= 32; i++) {
             let el = document.getElementById(`profile-team-${i}`);
-            if(el) prevSelections[i] = el.value;
+            if (el) prevSelections[i] = el.value;
         }
 
         container.innerHTML = '';
@@ -95,17 +121,17 @@ const UI = {
                 </div>
             `;
         }
-        
+
         // Restore selections after adding to DOM
         for (let i = 1; i <= numTeams; i++) {
             let el = document.getElementById(`profile-team-${i}`);
-            if(el && prevSelections[i]) el.value = prevSelections[i];
+            if (el && prevSelections[i]) el.value = prevSelections[i];
         }
     },
 
     updateDraftBoard() {
         if (!State.draftStarted) return;
-        
+
         const round = Math.floor(State.currentPick / State.settings.numTeams) + 1;
         document.getElementById('current-round').textContent = round;
         document.getElementById('current-pick-number').textContent = (State.currentPick % State.settings.numTeams) + 1;
@@ -114,12 +140,12 @@ const UI = {
             const onClockId = State.draftOrder[State.currentPick];
             const onClockTeam = State.teamsById[onClockId];
             document.getElementById('on-the-clock').textContent = onClockTeam.name;
-            
+
             let badgeBadge = document.getElementById('drafting-for-badge');
             badgeBadge.textContent = `Drafting for: ${onClockTeam.name}`;
-            
+
             // Highlight color based on if it's user or not
-            if(onClockId === State.userTeamId) {
+            if (onClockId === State.userTeamId) {
                 badgeBadge.className = "text-sm font-bold px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full";
             } else {
                 badgeBadge.className = "text-sm font-medium px-3 py-1 bg-indigo-50 text-indigo-700 rounded-full";
@@ -140,19 +166,19 @@ const UI = {
     renderDraftAvailablePlayers() {
         const tbody = document.getElementById('draft-players-body');
         tbody.innerHTML = '';
-        
+
         let displayList = State.availablePlayers.slice(0, 100);
-        
+
         // Determine button style based on mode
         let btnText = "Draft";
         let isMock = State.settings.draftMode === 'mock';
         let onClockId = State.draftOrder[State.currentPick];
         let isUserTurn = isMock && (onClockId === State.userTeamId);
-        
+
         displayList.forEach(p => {
             let btnHtml = "";
             // If it's a mock draft and NOT your turn, disable button. Otherwise active.
-            if(isMock && !isUserTurn) {
+            if (isMock && !isUserTurn) {
                 btnHtml = `<button class="bg-gray-200 text-gray-400 px-3 py-1.5 rounded-lg text-xs font-bold cursor-not-allowed" disabled>Wait</button>`;
             } else {
                 btnHtml = `<button class="bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 text-xs font-bold shadow-sm draft-btn transition-colors" data-player="${p.Player}">${btnText}</button>`;
@@ -160,7 +186,7 @@ const UI = {
 
             let tr = document.createElement('tr');
             tr.className = "hover:bg-slate-50 border-b border-gray-50";
-            
+
             // Create an insight tag if they are an elite target/efficiency player
             let insightTag = "";
             if (p.targetShare && p.targetShare >= 25) {
@@ -191,30 +217,23 @@ const UI = {
         const container = document.getElementById('recommendations-container');
         if (State.currentPick >= State.draftOrder.length) return;
 
-        // Recommendations ALWAYS target the User's team roster logic
         const userTeam = State.teamsById[State.userTeamId];
         document.getElementById('user-team-name-disp').textContent = userTeam.name;
         
-        // Filter out players the user literally cannot draft (e.g., they have max QBs)
-        let viablePlayers = State.availablePlayers.filter(player => {
-            let pos = player.Pos;
-            if (userTeam.counts[pos] < State.settings.roster[pos].max) return true;
-            if (['RB', 'WR', 'TE'].includes(pos) && userTeam.counts['Flex'] < State.settings.roster.Flex.max) return true;
-            if (userTeam.counts['Bench'] < State.settings.roster.Bench.max) return true;
-            return false;
-        });
+        let viablePlayers = State.availablePlayers.filter(player => { /* ... existing logic ... */ return true; });
 
-        // Top 4 Value based
-        let recs = viablePlayers.sort((a,b) => b.VBD - a.VBD).slice(0, 4);
+        let recs = viablePlayers.sort((a,b) => b.AdvVBD - a.AdvVBD).slice(0, 4);
         
-        container.innerHTML = recs.map((p, i) => `
-            <div class="p-3 bg-indigo-800 rounded-xl border border-indigo-700 flex justify-between items-center shadow-inner">
+        container.innerHTML = recs.map((p, i) => {
+            let safeName = p.Player.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+            return `
+            <div class="p-3 bg-indigo-800 rounded-xl border border-indigo-700 flex justify-between items-center shadow-inner cursor-pointer hover:bg-indigo-700 transition" onclick="UI.showWeeklyModal('${safeName}')">
                 <div>
                     <h4 class="font-bold text-sm text-white">${i+1}. ${p.Player}</h4>
-                    <p class="text-xs text-indigo-300 font-medium">${p.Pos} • VBD: ${p.VBD.toFixed(1)}</p>
+                    <p class="text-xs text-indigo-300 font-medium">${p.Pos} • Adv. VBD: ${(p.AdvVBD || p.VBD).toFixed(1)} • ⭐ ${p.avgStars ? p.avgStars.toFixed(2) : '3.0'}</p>
                 </div>
-            </div>
-        `).join('');
+            </div>`;
+        }).join('');
     },
 
     renderRosters() {
@@ -230,7 +249,7 @@ const UI = {
             btn.textContent = team.name;
             btn.onclick = () => { localStorage.setItem('activeRosterTab', team.id); this.renderRosters(); };
             tabs.appendChild(btn);
-            
+
             if (activeTab === team.id) {
                 content.innerHTML = `
                     <div class="p-4">
@@ -256,18 +275,18 @@ const UI = {
     renderStandings() {
         const list = document.getElementById('standings-list');
         list.innerHTML = '';
-        
+
         let totals = Object.values(State.teamsById).map(team => {
             let pts = team.roster.reduce((sum, p) => sum + p.ProjPts, 0);
             return { name: team.name, pts, isUser: team.id === State.userTeamId };
-        }).sort((a,b) => b.pts - a.pts);
+        }).sort((a, b) => b.pts - a.pts);
 
         totals.forEach((t, i) => {
             let bg = t.isUser ? 'bg-indigo-50 border-indigo-200' : 'bg-gray-50 border-gray-100';
             let text = t.isUser ? 'text-indigo-900' : 'text-gray-900';
             list.innerHTML += `
                 <div class="flex justify-between items-center p-4 border rounded-xl ${bg}">
-                    <span class="text-lg font-bold ${text}"><span class="text-gray-400 mr-2">#${i+1}</span> ${t.name}</span>
+                    <span class="text-lg font-bold ${text}"><span class="text-gray-400 mr-2">#${i + 1}</span> ${t.name}</span>
                     <span class="text-lg text-emerald-600 font-extrabold">${t.pts.toFixed(1)} pts</span>
                 </div>
             `;

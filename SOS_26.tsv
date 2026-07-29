@@ -1,0 +1,742 @@
+Rank	Player	Team	Pos	Avg Stars	W1	W2	W3	W4	W5	W6	W7	W8	W9	W10	W11	W12	W13	W14	W15	W16	W17	W18
+1	Josh Allen	BUF	QB	3.06	1	3	2	4	3	3	BYE	2	2	4	4	3	4	3	5	1	4	4
+2	Lamar Jackson	BAL	QB	3.18	3	2	5	5	3	2	4	3	3	2	3	1	BYE	4	4	2	4	4
+3	Drake Maye	NE	QB	3.06	1	4	3	3	3	4	5	4	3	3	BYE	2	3	2	3	4	1	4
+4	Joe Burrow	CIN	QB	3.06	4	1	4	3	4	BYE	2	5	3	4	5	2	2	3	3	3	2	2
+5	Jayden Daniels	WAS	QB	3.06	2	5	1	3	3	4	BYE	2	3	3	4	3	5	1	3	2	3	5
+6	Jalen Hurts	PHI	QB	3.59	5	5	5	3	3	3	5	5	3	BYE	4	5	3	3	1	1	4	3
+7	Caleb Williams	CHI	QB	2.88	3	2	2	4	3	3	4	1	4	BYE	2	3	3	4	3	3	3	2
+8	Justin Herbert	LAC	QB	2.76	3	3	3	1	1	3	BYE	3	1	2	4	4	4	3	4	4	3	1
+9	Dak Prescott	DAL	QB	3.06	3	5	2	1	4	3	2	3	3	4	5	2	1	BYE	3	3	3	5
+10	Trevor Lawrence	JAC	QB	3.24	2	1	4	4	2	1	BYE	3	2	5	3	5	5	4	1	5	5	3
+11	Brock Purdy	SF	QB	2.76	3	4	3	1	1	5	3	BYE	3	5	2	1	3	3	2	3	2	3
+12	Jaxson Dart	NYG	QB	3.18	5	3	5	3	5	2	1	BYE	2	5	3	3	4	1	2	3	5	2
+13	Patrick Mahomes II	KC	QB	2.82	1	3	4	3	BYE	2	1	1	4	3	3	3	3	4	4	4	2	3
+14	Bo Nix	DEN	QB	3.06	3	3	3	4	2	1	3	3	3	BYE	3	4	4	4	3	3	4	2
+15	Matthew Stafford	LAR	QB	2.94	4	3	1	2	3	3	3	2	5	3	BYE	3	3	4	5	1	4	1
+16	Jared Goff	DET	QB	3.41	2	3	4	3	3	BYE	3	2	4	4	4	5	3	5	2	3	5	3
+17	Kyler Murray	MIN	QB	3.59	3	5	4	4	2	BYE	3	3	3	3	4	3	3	4	3	5	4	5
+18	Jordan Love	GB	QB	3.29	2	4	3	4	5	5	3	3	4	2	BYE	3	2	3	4	5	1	3
+19	Baker Mayfield	TB	QB	3	4	2	2	3	5	4	3	3	5	BYE	3	3	2	2	2	3	3	2
+20	Tyler Shough	NO	QB	3.18	3	2	3	3	2	3	4	BYE	2	3	5	4	3	3	4	3	3	4
+21	Malik Willis	MIA	QB	3.24	3	4	3	2	4	BYE	4	4	3	3	3	4	1	5	3	2	3	4
+22	C.J. Stroud	HOU	QB	3.35	3	4	3	5	5	3	3	BYE	2	2	3	2	4	5	3	2	3	5
+23	Sam Darnold	SEA	QB	3.29	4	3	5	2	4	1	3	5	3	3	BYE	4	5	3	2	3	3	3
+24	Cam Ward	TEN	QB	3	4	2	3	2	1	3	2	4	BYE	3	5	3	5	3	3	3	4	1
+25	Daniel Jones	IND	QB	3.18	2	3	1	5	4	5	2	3	5	4	1	3	BYE	2	5	4	2	3
+26	Bryce Young	CAR	QB	2.76	5	3	2	3	BYE	2	4	3	1	2	2	4	2	2	4	4	1	3
+27	Jacoby Brissett	ARI	QB	2.88	2	1	4	3	3	3	1	5	1	3	3	5	2	BYE	4	2	3	4
+28	Geno Smith	NYJ	QB	3.18	5	3	3	5	2	4	4	3	3	3	2	4	BYE	1	3	4	2	3
+29	Aaron Rodgers	PIT	QB	2.76	3	4	4	2	3	4	2	2	BYE	4	2	1	1	3	2	3	5	2
+30	Tua Tagovailoa	ATL	QB	3.24	4	3	3	2	2	5	4	4	4	3	BYE	2	3	2	5	4	2	3
+31	Fernando Mendoza	LV	QB	2.76	4	2	2	3	4	3	3	4	4	1	1	2	BYE	2	1	5	3	3
+32	Shedeur Sanders	CLE	QB	3.18	3	4	3	4	4	2	5	4	2	1	BYE	3	4	3	3	2	3	4
+33	Michael Penix Jr.	ATL	QB	3.24	4	3	3	2	2	5	4	4	4	3	BYE	2	3	2	5	4	2	3
+34	Kirk Cousins	LV	QB	2.76	4	2	2	3	4	3	3	4	4	1	1	2	BYE	2	1	5	3	3
+35	Deshaun Watson	CLE	QB	3.18	3	4	3	4	4	2	5	4	2	1	BYE	3	4	3	3	2	3	4
+36	J.J. McCarthy	MIN	QB	3.59	3	5	4	4	2	BYE	3	3	3	3	4	3	3	4	3	5	4	5
+37	Mac Jones	SF	QB	2.76	3	4	3	1	1	5	3	BYE	3	5	2	1	3	3	2	3	2	3
+38	Carson Beck	ARI	QB	2.88	2	1	4	3	3	3	1	5	1	3	3	5	2	BYE	4	2	3	4
+39	Ty Simpson	LAR	QB	2.94	4	3	1	2	3	3	3	2	5	3	BYE	3	3	4	5	1	4	1
+40	Justin Fields	KC	QB	2.82	1	3	4	3	BYE	2	1	1	4	3	3	3	3	4	4	4	2	3
+41	Anthony Richardson Sr.	IND	QB	3.18	2	3	1	5	4	5	2	3	5	4	1	3	BYE	2	5	4	2	3
+42	Joe Flacco	CIN	QB	3.06	4	1	4	3	4	BYE	2	5	3	4	5	2	2	3	3	3	2	2
+43	Jameis Winston	NYG	QB	3.18	5	3	5	3	5	2	1	BYE	2	5	3	3	4	1	2	3	5	2
+44	Marcus Mariota	WAS	QB	3.06	2	5	1	3	3	4	BYE	2	3	3	4	3	5	1	3	2	3	5
+45	Joe Milton III	DAL	QB	3.06	3	5	2	1	4	3	2	3	3	4	5	2	1	BYE	3	3	3	5
+46	Gardner Minshew II	ARI	QB	2.88	2	1	4	3	3	3	1	5	1	3	3	5	2	BYE	4	2	3	4
+47	Quinn Ewers	MIA	QB	3.24	3	4	3	2	4	BYE	4	4	3	3	3	4	1	5	3	2	3	4
+48	Riley Leonard	IND	QB	3.18	2	3	1	5	4	5	2	3	5	4	1	3	BYE	2	5	4	2	3
+49	Tyrod Taylor	GB	QB	3.29	2	4	3	4	5	5	3	3	4	2	BYE	3	2	3	4	5	1	3
+50	Cade Klubnik	NYJ	QB	3.18	5	3	3	5	2	4	4	3	3	3	2	4	BYE	1	3	4	2	3
+51	Spencer Rattler	NO	QB	3.18	3	2	3	3	2	3	4	BYE	2	3	5	4	3	3	4	3	3	4
+52	Trey Lance	LAC	QB	2.76	3	3	3	1	1	3	BYE	3	1	2	4	4	4	3	4	4	3	1
+53	Tyson Bagent	CHI	QB	2.88	3	2	2	4	3	3	4	1	4	BYE	2	3	3	4	3	3	3	2
+54	Kenny Pickett	CAR	QB	2.76	5	3	2	3	BYE	2	4	3	1	2	2	4	2	2	4	4	1	3
+55	Jarrett Stidham	DEN	QB	3.06	3	3	3	4	2	1	3	3	3	BYE	3	4	4	4	3	3	4	2
+56	Tyler Huntley	BAL	QB	3.18	3	2	5	5	3	2	4	3	3	2	3	1	BYE	4	4	2	4	4
+57	Davis Mills	HOU	QB	3.35	3	4	3	5	5	3	3	BYE	2	2	3	2	4	5	3	2	3	5
+58	Kyle Allen	BUF	QB	3.06	1	3	2	4	3	3	BYE	2	2	4	4	3	4	3	5	1	4	4
+59	Jake Browning	TB	QB	3	4	2	2	3	5	4	3	3	5	BYE	3	3	2	2	2	3	3	2
+60	Tanner McKee	PHI	QB	3.59	5	5	5	3	3	3	5	5	3	BYE	4	5	3	3	1	1	4	3
+61	Jalen Milroe	SEA	QB	3.29	4	3	5	2	4	1	3	5	3	3	BYE	4	5	3	2	3	3	3
+62	Tommy DeVito	NE	QB	3.06	1	4	3	3	3	4	5	4	3	3	BYE	2	3	2	3	4	1	4
+63	Mitchell Trubisky	TEN	QB	3	4	2	3	2	1	3	2	4	BYE	3	5	3	5	3	3	3	4	1
+64	Drew Lock	SEA	QB	3.29	4	3	5	2	4	1	3	5	3	3	BYE	4	5	3	2	3	3	3
+65	Drew Allar	PIT	QB	2.76	3	4	4	2	3	4	2	2	BYE	4	2	1	1	3	2	3	5	2
+66	Nick Mullens	JAC	QB	3.24	2	1	4	4	2	1	BYE	3	2	5	3	5	5	4	1	5	5	3
+67	Mason Rudolph	PIT	QB	2.76	3	4	4	2	3	4	2	2	BYE	4	2	1	1	3	2	3	5	2
+68	Teddy Bridgewater	DET	QB	3.41	2	3	4	3	3	BYE	3	2	4	4	4	5	3	5	2	3	5	3
+69	Will Levis	TEN	QB	3	4	2	3	2	1	3	2	4	BYE	3	5	3	5	3	3	3	4	1
+70	Andy Dalton	PHI	QB	3.59	5	5	5	3	3	3	5	5	3	BYE	4	5	3	3	1	1	4	3
+71	Garrett Nussmeier	KC	QB	2.82	1	3	4	3	BYE	2	1	1	4	3	3	3	3	4	4	4	2	3
+72	Zach Wilson	NO	QB	3.18	3	2	3	3	2	3	4	BYE	2	3	5	4	3	3	4	3	3	4
+73	Sam Howell	DAL	QB	3.06	3	5	2	1	4	3	2	3	3	4	5	2	1	BYE	3	3	3	5
+74	Jimmy Garoppolo	LAR	QB	2.94	4	3	1	2	3	3	3	2	5	3	BYE	3	3	4	5	1	4	1
+75	Dillon Gabriel	CLE	QB	3.18	3	4	3	4	4	2	5	4	2	1	BYE	3	4	3	3	2	3	4
+76	Will Howard	PIT	QB	2.76	3	4	4	2	3	4	2	2	BYE	4	2	1	1	3	2	3	5	2
+77	Aidan O'Connell	LV	QB	2.76	4	2	2	3	4	3	3	4	4	1	1	2	BYE	2	1	5	3	3
+78	Carson Wentz	MIN	QB	3.59	3	5	4	4	2	BYE	3	3	3	3	4	3	3	4	3	5	4	5
+79	Brady Cook	NYJ	QB	3.18	5	3	3	5	2	4	4	3	3	3	2	4	BYE	1	3	4	2	3
+80	Josh Johnson	CIN	QB	3.06	4	1	4	3	4	BYE	2	5	3	4	5	2	2	3	3	3	2	2
+81	Brandon Allen	NYG	QB	3.18	5	3	5	3	5	2	1	BYE	2	5	3	3	4	1	2	3	5	2
+82	Hendon Hooker	TEN	QB	3	4	2	3	2	1	3	2	4	BYE	3	5	3	5	3	3	3	4	1
+83	Sam Ehlinger	DEN	QB	3.06	3	3	3	4	2	1	3	3	3	BYE	3	4	4	4	3	3	4	2
+84	Kyle McCord	GB	QB	3.29	2	4	3	4	5	5	3	3	4	2	BYE	3	2	3	4	5	1	3
+85	Luke Altmyer	DET	QB	3.41	2	3	4	3	3	BYE	3	2	4	4	4	5	3	5	2	3	5	3
+86	Adrian Martinez	SF	QB	2.76	3	4	3	1	1	5	3	BYE	3	5	2	1	3	3	2	3	2	3
+87	Skylar Thompson	BAL	QB	3.18	3	2	5	5	3	2	4	3	3	2	3	1	BYE	4	4	2	4	4
+88	Shane Buechele	BUF	QB	3.06	1	3	2	4	3	3	BYE	2	2	4	4	3	4	3	5	1	4	4
+89	Kurtis Rourke	SF	QB	2.76	3	4	3	1	1	5	3	BYE	3	5	2	1	3	3	2	3	2	3
+90	Behren Morton	NE	QB	3.06	1	4	3	3	3	4	5	4	3	3	BYE	2	3	2	3	4	1	4
+91	Case Keenum	CHI	QB	2.88	3	2	2	4	3	3	4	1	4	BYE	2	3	3	4	3	3	3	2
+92	Cam Miller	MIA	QB	3.24	3	4	3	2	4	BYE	4	4	3	3	3	4	1	5	3	2	3	4
+93	Athan Kaliakmanis	WAS	QB	3.06	2	5	1	3	3	4	BYE	2	3	3	4	3	5	1	3	2	3	5
+94	DJ Uiagalelei	LAC	QB	2.76	3	3	3	1	1	3	BYE	3	1	2	4	4	4	3	4	4	3	1
+95	Max Brosmer	MIN	QB	3.59	3	5	4	4	2	BYE	3	3	3	3	4	3	3	4	3	5	4	5
+96	Sam Hartman	WAS	QB	3.06	2	5	1	3	3	4	BYE	2	3	3	4	3	5	1	3	2	3	5
+1	Jahmyr Gibbs	DET	RB	3.41	3	4	4	4	5	BYE	3	3	4	2	3	3	3	4	3	4	3	3
+2	Bijan Robinson	ATL	RB	3.06	2	4	3	3	3	3	4	3	4	2	BYE	3	2	2	4	3	3	4
+3	Jonathan Taylor	IND	RB	3.29	3	2	3	4	2	4	3	3	5	4	3	4	BYE	3	4	4	2	3
+4	Christian McCaffrey	SF	RB	3.06	2	4	5	2	1	4	3	BYE	3	5	3	1	4	2	3	2	3	5
+5	James Cook III	BUF	RB	2.88	3	2	3	2	2	3	BYE	3	3	4	4	2	2	3	3	2	4	4
+6	Derrick Henry	BAL	RB	3.12	2	3	5	4	3	2	4	4	3	3	4	3	BYE	3	2	2	4	2
+7	Saquon Barkley	PHI	RB	3.47	4	4	3	2	3	4	5	4	4	BYE	2	5	5	2	1	3	4	4
+8	Ashton Jeanty	LV	RB	2.88	4	3	3	2	2	4	2	4	4	1	2	2	BYE	3	2	4	5	2
+9	Omarion Hampton	LAC	RB	2.88	5	3	4	1	2	2	BYE	2	3	3	4	2	3	3	4	4	2	2
+10	Kenneth Walker III	KC	RB	3	2	2	4	3	BYE	3	1	2	4	3	5	4	2	4	2	4	3	3
+11	Chase Brown	CIN	RB	2.88	3	3	2	3	4	BYE	3	4	3	2	4	3	2	2	4	2	3	2
+12	De'Von Achane	MIA	RB	3	3	4	2	3	4	BYE	4	2	2	2	4	4	2	3	3	3	4	2
+13	Kyren Williams	LAR	RB	3.29	4	4	2	3	4	5	3	3	4	5	BYE	3	2	4	5	1	3	1
+14	Josh Jacobs	GB	RB	3.12	3	4	3	3	3	5	2	4	2	3	BYE	2	3	4	4	3	3	2
+15	Javonte Williams	DAL	RB	3.24	4	4	3	3	3	3	3	5	2	4	4	3	1	BYE	2	3	4	4
+16	Breece Hall	NYJ	RB	3.06	4	3	2	3	2	2	4	3	2	4	3	4	BYE	2	5	2	3	4
+17	Jeremiyah Love	ARI	RB	2.88	3	1	4	4	2	2	2	5	1	2	2	4	3	BYE	4	3	3	4
+18	Travis Etienne Jr.	NO	RB	3.18	2	3	3	3	3	4	2	BYE	2	4	3	4	3	4	3	5	3	3
+19	Cam Skattebo	NYG	RB	3.24	5	2	4	5	4	3	3	BYE	3	4	3	2	4	1	2	2	5	3
+20	Quinshon Judkins	CLE	RB	3.18	3	3	4	2	4	3	4	2	3	3	BYE	3	4	3	4	3	2	4
+21	Bucky Irving	TB	RB	3.06	4	2	3	3	5	2	4	3	3	BYE	2	4	3	3	3	3	2	3
+22	D'Andre Swift	CHI	RB	2.94	4	3	3	4	3	3	2	1	3	BYE	3	2	3	4	4	3	2	3
+23	David Montgomery	HOU	RB	3.24	4	4	2	5	4	3	4	BYE	3	2	2	3	2	4	3	3	3	4
+24	TreVeyon Henderson	NE	RB	3	1	2	3	4	3	4	3	4	3	2	BYE	3	4	3	2	4	2	4
+25	Bhayshul Tuten	JAC	RB	3.06	2	2	2	4	3	3	BYE	2	3	4	4	4	3	2	3	5	4	2
+26	Jadarian Price	SEA	RB	3.35	2	5	4	3	4	2	2	3	5	3	BYE	4	5	4	3	2	4	2
+27	Tony Pollard	TEN	RB	3.06	4	3	4	3	3	2	2	4	BYE	3	5	3	4	2	2	3	2	3
+28	Jaylen Warren	PIT	RB	2.94	3	2	4	2	2	3	3	2	BYE	4	3	2	3	3	3	4	4	3
+29	Chuba Hubbard	CAR	RB	2.71	3	3	2	2	BYE	3	3	3	2	3	3	3	3	3	4	2	1	3
+30	Rhamondre Stevenson	NE	RB	3	1	2	3	4	3	4	3	4	3	2	BYE	3	4	3	2	4	2	4
+31	Rico Dowdle	PIT	RB	2.94	3	2	4	2	2	3	3	2	BYE	4	3	2	3	3	3	4	4	3
+32	J.K. Dobbins	DEN	RB	3	2	3	2	4	3	1	5	2	4	BYE	3	2	4	4	3	4	2	3
+33	Blake Corum	LAR	RB	3.29	4	4	2	3	4	5	3	3	4	5	BYE	3	2	4	5	1	3	1
+34	Kyle Monangai	CHI	RB	2.94	4	3	3	4	3	3	2	1	3	BYE	3	2	3	4	4	3	2	3
+35	RJ Harvey	DEN	RB	3	2	3	2	4	3	1	5	2	4	BYE	3	2	4	4	3	4	2	3
+36	Jacory Croskey-Merritt	WAS	RB	3.41	3	5	1	2	4	4	BYE	3	2	4	4	5	4	3	3	3	3	5
+37	Rachaad White	WAS	RB	3.41	3	5	1	2	4	4	BYE	3	2	4	4	5	4	3	3	3	3	5
+38	Jordan Mason	MIN	RB	3.12	3	3	3	4	3	BYE	2	2	4	3	4	3	4	2	2	4	4	3
+39	Jonathon Brooks	CAR	RB	2.71	3	3	2	2	BYE	3	3	3	2	3	3	3	3	3	4	2	1	3
+40	Aaron Jones Sr.	MIN	RB	3.12	3	3	3	4	3	BYE	2	2	4	3	4	3	4	2	2	4	4	3
+41	Kenny Gainwell	TB	RB	3.06	4	2	3	3	5	2	4	3	3	BYE	2	4	3	3	3	3	2	3
+42	Chris Rodriguez Jr.	JAC	RB	3.06	2	2	2	4	3	3	BYE	2	3	4	4	4	3	2	3	5	4	2
+43	Tyrone Tracy Jr.	NYG	RB	3.24	5	2	4	5	4	3	3	BYE	3	4	3	2	4	1	2	2	5	3
+44	Woody Marks	HOU	RB	3.24	4	4	2	5	4	3	4	BYE	3	2	2	3	2	4	3	3	3	4
+45	Tyler Allgeier	ARI	RB	2.88	3	1	4	4	2	2	2	5	1	2	2	4	3	BYE	4	3	3	4
+46	Zach Charbonnet	SEA	RB	3.35	2	5	4	3	4	2	2	3	5	3	BYE	4	5	4	3	2	4	2
+47	Isiah Pacheco	DET	RB	3.41	3	4	4	4	5	BYE	3	3	4	2	3	3	3	4	3	4	3	3
+48	Tank Bigsby	PHI	RB	3.47	4	4	3	2	3	4	5	4	4	BYE	2	5	5	2	1	3	4	4
+49	Brian Robinson Jr.	ATL	RB	3.06	2	4	3	3	3	3	4	3	4	2	BYE	3	2	2	4	3	3	4
+50	Keaton Mitchell	LAC	RB	2.88	5	3	4	1	2	2	BYE	2	3	3	4	2	3	3	4	4	2	2
+51	Alvin Kamara	NO	RB	3.18	2	3	3	3	3	4	2	BYE	2	4	3	4	3	4	3	5	3	3
+52	Tyjae Spears	TEN	RB	3.06	4	3	4	3	3	2	2	4	BYE	3	5	3	4	2	2	3	2	3
+53	Dylan Sampson	CLE	RB	3.18	3	3	4	2	4	3	4	2	3	3	BYE	3	4	3	4	3	2	4
+54	Braelon Allen	NYJ	RB	3.06	4	3	2	3	2	2	4	3	2	4	3	4	BYE	2	5	2	3	4
+55	Jonah Coleman	DEN	RB	3	2	3	2	4	3	1	5	2	4	BYE	3	2	4	4	3	4	2	3
+56	Emanuel Wilson	SEA	RB	3.35	2	5	4	3	4	2	2	3	5	3	BYE	4	5	4	3	2	4	2
+57	Kimani Vidal	LAC	RB	2.88	5	3	4	1	2	2	BYE	2	3	3	4	2	3	3	4	4	2	2
+58	Ray Davis	BUF	RB	2.88	3	2	3	2	2	3	BYE	3	3	4	4	2	2	3	3	2	4	4
+59	James Conner	ARI	RB	2.88	3	1	4	4	2	2	2	5	1	2	2	4	3	BYE	4	3	3	4
+60	Sean Tucker	TB	RB	3.06	4	2	3	3	5	2	4	3	3	BYE	2	4	3	3	3	3	2	3
+61	Nicholas Singleton	TEN	RB	3.06	4	3	4	3	3	2	2	4	BYE	3	5	3	4	2	2	3	2	3
+62	Emmett Johnson	KC	RB	3	2	2	4	3	BYE	3	1	2	4	3	5	4	2	4	2	4	3	3
+63	Mike Washington Jr.	LV	RB	2.88	4	3	3	2	2	4	2	4	4	1	2	2	BYE	3	2	4	5	2
+64	Kaytron Allen	WAS	RB	3.41	3	5	1	2	4	4	BYE	3	2	4	4	5	4	3	3	3	3	5
+65	Ollie Gordon II	MIA	RB	3	3	4	2	3	4	BYE	4	2	2	2	4	4	2	3	3	3	4	2
+66	Jaylen Wright	MIA	RB	3	3	4	2	3	4	BYE	4	2	2	2	4	4	2	3	3	3	4	2
+67	MarShawn Lloyd	GB	RB	3.12	3	4	3	3	3	5	2	4	2	3	BYE	2	3	4	4	3	3	2
+68	Jaydon Blue	DAL	RB	3.24	4	4	3	3	3	3	3	5	2	4	4	3	1	BYE	2	3	4	4
+69	Devin Neal	NO	RB	3.18	2	3	3	3	3	4	2	BYE	2	4	3	4	3	4	3	5	3	3
+70	Jordan James	SF	RB	3.06	2	4	5	2	1	4	3	BYE	3	5	3	1	4	2	3	2	3	5
+71	Demond Claiborne	MIN	RB	3.12	3	3	3	4	3	BYE	2	2	4	3	4	3	4	2	2	4	4	3
+72	DJ Giddens	IND	RB	3.29	3	2	3	4	2	4	3	3	5	4	3	4	BYE	3	4	4	2	3
+73	Isaiah Davis	NYJ	RB	3.06	4	3	2	3	2	2	4	3	2	4	3	4	BYE	2	5	2	3	4
+74	George Holani	SEA	RB	3.35	2	5	4	3	4	2	2	3	5	3	BYE	4	5	4	3	2	4	2
+75	Malik Davis	DAL	RB	3.24	4	4	3	3	3	3	3	5	2	4	4	3	1	BYE	2	3	4	4
+76	Ty Johnson	BUF	RB	2.88	3	2	3	2	2	3	BYE	3	3	4	4	2	2	3	3	2	4	4
+77	Justice Hill	BAL	RB	3.12	2	3	5	4	3	2	4	4	3	3	4	3	BYE	3	2	2	4	2
+78	Chris Brooks	GB	RB	3.12	3	4	3	3	3	5	2	4	2	3	BYE	2	3	4	4	3	3	2
+79	Kaleb Johnson	PIT	RB	2.94	3	2	4	2	2	3	3	2	BYE	4	3	2	3	3	3	4	4	3
+80	Samaje Perine	CIN	RB	2.88	3	3	2	3	4	BYE	3	4	3	2	4	3	2	2	4	2	3	2
+81	Kendre Miller	NO	RB	3.18	2	3	3	3	3	4	2	BYE	2	4	3	4	3	4	3	5	3	3
+82	Kaelon Black	SF	RB	3.06	2	4	5	2	1	4	3	BYE	3	5	3	1	4	2	3	2	3	5
+83	Emari Demercado	KC	RB	3	2	2	4	3	BYE	3	1	2	4	3	5	4	2	4	2	4	3	3
+84	Devin Singletary	NYG	RB	3.24	5	2	4	5	4	3	3	BYE	3	4	3	2	4	1	2	2	5	3
+85	Trey Benson	ARI	RB	2.88	3	1	4	4	2	2	2	5	1	2	2	4	3	BYE	4	3	3	4
+86	LeQuint Allen Jr.	JAC	RB	3.06	2	2	2	4	3	3	BYE	2	3	4	4	4	3	2	3	5	4	2
+87	Jerome Ford	WAS	RB	3.41	3	5	1	2	4	4	BYE	3	2	4	4	5	4	3	3	3	3	5
+88	Adam Randall	BAL	RB	3.12	2	3	5	4	3	2	4	4	3	3	4	3	BYE	3	2	2	4	2
+89	Najee Harris	LAC	RB	2.88	5	3	4	1	2	2	BYE	2	3	3	4	2	3	3	4	4	2	2
+90	Brashard Smith	KC	RB	3	2	2	4	3	BYE	3	1	2	4	3	5	4	2	4	2	4	3	3
+91	Seth McGowan	IND	RB	3.29	3	2	3	4	2	4	3	3	5	4	3	4	BYE	3	4	4	2	3
+92	Trevor Etienne	CAR	RB	2.71	3	3	2	2	BYE	3	3	3	2	3	3	3	3	3	4	2	1	3
+93	Jarquez Hunter	LAR	RB	3.29	4	4	2	3	4	5	3	3	4	5	BYE	3	2	4	5	1	3	1
+94	Isaac Guerendo	SF	RB	3.06	2	4	5	2	1	4	3	BYE	3	5	3	1	4	2	3	2	3	5
+95	Tahj Brooks	CIN	RB	2.88	3	3	2	3	4	BYE	3	4	3	2	4	3	2	2	4	2	3	2
+96	Jaleel McLaughlin	DEN	RB	3	2	3	2	4	3	1	5	2	4	BYE	3	2	4	4	3	4	2	3
+97	Audric Estime	NO	RB	3.18	2	3	3	3	3	4	2	BYE	2	4	3	4	3	4	3	5	3	3
+98	Will Shipley	PHI	RB	3.47	4	4	3	2	3	4	5	4	4	BYE	2	5	5	2	1	3	4	4
+99	Joe Mixon	FA	RB	#DIV/0!	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE
+100	Kareem Hunt	FA	RB	#DIV/0!	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE
+101	Bam Knight	ARI	RB	2.88	3	1	4	4	2	2	2	5	1	2	2	4	3	BYE	4	3	3	4
+102	Eli Heidenreich	PIT	RB	2.94	3	2	4	2	2	3	3	2	BYE	4	3	2	3	3	3	4	4	3
+103	Michael Carter	TEN	RB	3.06	4	3	4	3	3	2	2	4	BYE	3	5	3	4	2	2	3	2	3
+104	Nick Chubb	FA	RB	#DIV/0!	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE
+105	J'Mari Taylor	JAC	RB	3.06	2	2	2	4	3	3	BYE	2	3	4	4	4	3	2	3	5	4	2
+106	Jawhar Jordan	HOU	RB	3.24	4	4	2	5	4	3	4	BYE	3	2	2	3	2	4	3	3	3	4
+107	Raheim Sanders	CLE	RB	3.18	3	3	4	2	4	3	4	2	3	3	BYE	3	4	3	4	3	2	4
+108	Dameon Pierce	PHI	RB	3.47	4	4	3	2	3	4	5	4	4	BYE	2	5	5	2	1	3	4	4
+109	Phil Mafah	DAL	RB	3.24	4	4	3	3	3	3	3	5	2	4	4	3	1	BYE	2	3	4	4
+110	Kyle Juszczyk	SF	RB	3.06	2	4	5	2	1	4	3	BYE	3	5	3	1	4	2	3	2	3	5
+111	Jam Miller	NE	RB	3	1	2	3	4	3	4	3	4	3	2	BYE	3	4	3	2	4	2	4
+112	Austin Ekeler	FA	RB	#DIV/0!	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE
+113	Roschon Johnson	CHI	RB	2.94	4	3	3	4	3	3	2	1	3	BYE	3	2	3	4	4	3	2	3
+114	Antonio Gibson	FA	RB	#DIV/0!	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE
+115	Terrell Jennings	NE	RB	3	1	2	3	4	3	4	3	4	3	2	BYE	3	4	3	2	4	2	4
+116	Rasheen Ali	BAL	RB	3.12	2	3	5	4	3	2	4	4	3	3	4	3	BYE	3	2	2	4	2
+117	Sione Vaki	DET	RB	3.41	3	4	4	4	5	BYE	3	3	4	2	3	3	3	4	3	4	3	3
+118	Damien Martinez	GB	RB	3.12	3	4	3	3	3	5	2	4	2	3	BYE	2	3	4	4	3	3	2
+119	Jeremy McNichols	WAS	RB	3.41	3	5	1	2	4	4	BYE	3	2	4	4	5	4	3	3	3	3	5
+120	Dylan Laube	LV	RB	2.88	4	3	3	2	2	4	2	4	4	1	2	2	BYE	3	2	4	5	2
+121	Frank Gore Jr.	BUF	RB	2.88	3	2	3	2	2	3	BYE	3	3	4	4	2	2	3	3	2	4	4
+122	Jaret Patterson	LAC	RB	2.88	5	3	4	1	2	2	BYE	2	3	3	4	2	3	3	4	4	2	2
+123	Robert Henry Jr.	WAS	RB	3.41	3	5	1	2	4	4	BYE	3	2	4	4	5	4	3	3	3	3	5
+124	Cash Jones	ATL	RB	3.06	2	4	3	3	3	3	4	3	4	2	BYE	3	2	2	4	3	3	4
+125	Zavier Scott	MIN	RB	3.12	3	3	3	4	3	BYE	2	2	4	3	4	3	4	2	2	4	4	3
+126	Myles Montgomery	NE	RB	3	1	2	3	4	3	4	3	4	3	2	BYE	3	4	3	2	4	2	4
+127	AJ Dillon	CAR	RB	2.71	3	3	2	2	BYE	3	3	3	2	3	3	3	3	3	4	2	1	3
+128	Miles Davis	CAR	RB	2.71	3	3	2	2	BYE	3	3	3	2	3	3	3	3	3	4	2	1	3
+129	Noah Whittington	HOU	RB	3.24	4	4	2	5	4	3	4	BYE	3	2	2	3	2	4	3	3	3	4
+130	Tyler Goodson	ATL	RB	3.06	2	4	3	3	3	3	4	3	4	2	BYE	3	2	2	4	3	3	4
+131	Hunter Luepke	DAL	RB	3.24	4	4	3	3	3	3	3	5	2	4	4	3	1	BYE	2	3	4	4
+132	Ty Chandler	NO	RB	3.18	2	3	3	3	3	4	2	BYE	2	4	3	4	3	4	3	5	3	3
+133	Jaydn Ott	KC	RB	3	2	2	4	3	BYE	3	1	2	4	3	5	4	2	4	2	4	3	3
+134	Jacob Saylors	DET	RB	3.41	3	4	4	4	5	BYE	3	3	4	2	3	3	3	4	3	4	3	3
+135	Miles Sanders	FA	RB	#DIV/0!	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE
+136	Roman Hemby	LV	RB	2.88	4	3	3	2	2	4	2	4	4	1	2	2	BYE	3	2	4	5	2
+137	Donovan Edwards	MIA	RB	3	3	4	2	3	4	BYE	4	2	2	2	4	4	2	3	3	3	4	2
+138	Ronnie Rivers	LAR	RB	3.29	4	4	2	3	4	5	3	3	4	5	BYE	3	2	4	5	1	3	1
+139	Dontae McMillan	BAL	RB	3.12	2	3	5	4	3	2	4	4	3	3	4	3	BYE	3	2	2	4	2
+140	Pierre Strong Jr.	GB	RB	3.12	3	4	3	3	3	5	2	4	2	3	BYE	2	3	4	4	3	3	2
+141	Elijah Mitchell	PHI	RB	3.47	4	4	3	2	3	4	5	4	4	BYE	2	5	5	2	1	3	4	4
+142	Kenny McIntosh	FA	RB	#DIV/0!	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE
+143	Khalil Herbert	FA	RB	#DIV/0!	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE
+144	Lew Nichols III	PIT	RB	2.94	3	2	4	2	2	3	3	2	BYE	4	3	2	3	3	3	4	4	3
+145	Elijah Tau-Tolliver	BAL	RB	3.12	2	3	5	4	3	2	4	4	3	3	4	3	BYE	3	2	2	4	2
+146	Alec Ingold	LAC	RB	2.88	5	3	4	1	2	2	BYE	2	3	3	4	2	3	3	4	4	2	2
+147	Kalel Mullings	TEN	RB	3.06	4	3	4	3	3	2	2	4	BYE	3	5	3	4	2	2	3	2	3
+148	Graig Cooper	FA	RB	#DIV/0!	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE
+149	Raheem Mostert	LV	RB	2.88	4	3	3	2	2	4	2	4	4	1	2	2	BYE	3	2	4	5	2
+150	Cam Akers	FA	RB	#DIV/0!	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE
+151	Max Bredeson	MIN	RB	3.12	3	3	3	4	3	BYE	2	2	4	3	4	3	4	2	2	4	4	3
+152	Brittain Brown	CHI	RB	2.94	4	3	3	4	3	3	2	1	3	BYE	3	2	3	4	4	3	2	3
+153	Travis Homer	PIT	RB	2.94	3	2	4	2	2	3	3	2	BYE	4	3	2	3	3	3	4	4	3
+154	Corey Kiner	ARI	RB	2.88	3	1	4	4	2	2	2	5	1	2	2	4	3	BYE	4	3	3	4
+155	Alexander Mattison	FA	RB	#DIV/0!	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE
+156	Tyler Badie	DEN	RB	3	2	3	2	4	3	1	5	2	4	BYE	3	2	4	4	3	4	2	3
+157	Jacardia Wright	SEA	RB	3.35	2	5	4	3	4	2	2	3	5	3	BYE	4	5	4	3	2	4	2
+158	Josh Williams	TB	RB	3.06	4	2	3	3	5	2	4	3	3	BYE	2	4	3	3	3	3	2	3
+159	Gary Brightwell	CIN	RB	2.88	3	3	2	3	4	BYE	3	4	3	2	4	3	2	2	4	2	3	2
+160	Michael Burton	CLE	RB	3.18	3	3	4	2	4	3	4	2	3	3	BYE	3	4	3	4	3	2	4
+161	Adam Prentice	DEN	RB	3	2	3	2	4	3	1	5	2	4	BYE	3	2	4	4	3	4	2	3
+162	Zamir White	LV	RB	2.88	4	3	3	2	2	4	2	4	4	1	2	2	BYE	3	2	4	5	2
+163	Kentrel Bullock	CIN	RB	2.88	3	3	2	3	4	BYE	3	4	3	2	4	3	2	2	4	2	3	2
+164	Patrick Ricard	NYG	RB	3.24	5	2	4	5	4	3	3	BYE	3	4	3	2	4	1	2	2	5	3
+165	Joshua Pitsenberger	HOU	RB	3.24	4	4	2	5	4	3	4	BYE	3	2	2	3	2	4	3	3	3	4
+166	Anthony Hankerson	MIA	RB	3	3	4	2	3	4	BYE	4	2	2	2	4	4	2	3	3	3	4	2
+167	Lincoln Pare	IND	RB	3.29	3	2	3	4	2	4	3	3	5	4	3	4	BYE	3	4	4	2	3
+168	Jordan Waters	LAR	RB	3.29	4	4	2	3	4	5	3	3	4	5	BYE	3	2	4	5	1	3	1
+169	Reggie Gilliam	NE	RB	3	1	2	3	4	3	4	3	4	3	2	BYE	3	4	3	2	4	2	4
+170	Ulysses Bentley IV	IND	RB	3.29	3	2	3	4	2	4	3	3	5	4	3	4	BYE	3	4	4	2	3
+171	Davon Booth	CLE	RB	3.18	3	3	4	2	4	3	4	2	3	3	BYE	3	4	3	4	3	2	4
+172	Salvon Ahmed	CHI	RB	2.94	4	3	3	4	3	3	2	1	3	BYE	3	2	3	4	4	3	2	3
+173	Eric Gray	NYG	RB	3.24	5	2	4	5	4	3	3	BYE	3	4	3	2	4	1	2	2	5	3
+174	Dante Miller	NYG	RB	3.24	5	2	4	5	4	3	3	BYE	3	4	3	2	4	1	2	2	5	3
+1	Ja'Marr Chase	CIN	WR	3.29	2	3	3	2	5	BYE	3	4	4	3	4	4	4	2	3	3	3	4
+2	Puka Nacua	LAR	WR	2.71	3	3	2	1	3	3	3	2	4	3	BYE	3	2	3	5	2	2	2
+3	Jaxon Smith-Njigba	SEA	WR	3	4	3	4	2	3	2	2	4	3	3	BYE	3	5	3	1	3	3	3
+4	Amon-Ra St. Brown	DET	WR	3.35	4	3	4	3	3	BYE	3	2	5	4	2	4	4	4	2	3	4	3
+5	CeeDee Lamb	DAL	WR	2.76	3	4	3	3	2	3	1	3	3	3	4	1	2	BYE	3	2	3	4
+6	Justin Jefferson	MIN	WR	3.59	3	4	2	5	4	BYE	3	4	3	3	3	4	3	4	4	4	4	4
+7	Drake London	ATL	WR	3.12	3	3	3	4	3	4	3	2	3	2	BYE	2	4	4	4	2	4	3
+8	A.J. Brown	NE	WR	3.12	2	3	2	3	3	4	4	5	3	4	BYE	2	3	2	2	4	2	5
+9	Nico Collins	HOU	WR	3.06	3	3	3	5	4	2	3	BYE	2	4	3	3	3	4	2	1	3	4
+10	George Pickens	DAL	WR	2.76	3	4	3	3	2	3	1	3	3	3	4	1	2	BYE	3	2	3	4
+11	Rashee Rice	KC	WR	3	2	3	5	3	BYE	2	2	2	4	4	3	3	3	3	4	3	2	3
+12	Chris Olave	NO	WR	3.12	4	3	3	4	2	3	3	BYE	4	3	4	3	3	3	2	3	4	2
+13	Tee Higgins	CIN	WR	3.29	2	3	3	2	5	BYE	3	4	4	3	4	4	4	2	3	3	3	4
+14	Zay Flowers	BAL	WR	3.24	3	4	5	4	4	4	3	3	2	2	3	3	BYE	2	3	4	3	3
+15	DeVonta Smith	PHI	WR	3.35	4	4	4	3	2	3	5	4	3	BYE	3	5	3	3	2	3	3	3
+16	Tetairoa McMillan	CAR	WR	3	4	4	4	4	BYE	1	2	3	2	4	3	2	2	4	3	3	2	4
+17	Emeka Egbuka	TB	WR	3.41	3	4	2	3	5	3	3	4	4	BYE	4	3	2	3	4	4	3	4
+18	Davante Adams	LAR	WR	2.71	3	3	2	1	3	3	3	2	4	3	BYE	3	2	3	5	2	2	2
+19	Malik Nabers	NYG	WR	3.24	5	3	4	3	4	4	3	BYE	1	4	2	3	3	2	4	4	5	1
+20	Terry McLaurin	WAS	WR	2.94	1	5	2	3	3	3	BYE	1	3	3	3	3	4	3	4	2	2	5
+21	Jameson Williams	DET	WR	3.35	4	3	4	3	3	BYE	3	2	5	4	2	4	4	4	2	3	4	3
+22	Ladd McConkey	LAC	WR	2.88	3	3	3	2	2	2	BYE	3	3	3	4	4	2	3	3	5	2	2
+23	Jaylen Waddle	DEN	WR	2.88	2	2	3	3	2	2	3	2	3	BYE	3	3	5	4	3	3	4	2
+24	Christian Watson	GB	WR	3.53	2	4	4	2	4	5	4	3	4	2	BYE	3	4	3	5	4	3	4
+25	Garrett Wilson	NYJ	WR	3.35	4	3	4	4	4	4	5	3	2	3	2	5	BYE	2	3	4	2	3
+26	Mike Evans	SF	WR	2.88	3	5	3	2	2	4	4	BYE	3	5	2	2	3	3	2	2	1	3
+27	Luther Burden III	CHI	WR	3.06	3	2	1	4	3	4	4	2	2	BYE	4	4	2	5	3	3	4	2
+28	Rome Odunze	CHI	WR	3.06	3	2	1	4	3	4	4	2	2	BYE	4	4	2	5	3	3	4	2
+29	DJ Moore	BUF	WR	3.35	3	4	2	4	3	3	BYE	3	2	4	5	2	4	3	4	2	5	4
+30	Marvin Harrison Jr.	ARI	WR	2.94	2	2	3	3	4	3	2	5	2	3	2	4	1	BYE	4	4	3	3
+31	Alec Pierce	IND	WR	3.12	3	2	3	4	3	4	2	2	5	5	3	3	BYE	1	4	3	4	2
+32	Carnell Tate	TEN	WR	3.12	4	1	3	3	3	3	4	3	BYE	2	5	2	4	4	3	3	3	3
+33	Brian Thomas Jr.	JAC	WR	3.29	4	2	4	3	1	3	BYE	3	3	4	3	4	4	3	3	5	4	3
+34	DK Metcalf	PIT	WR	3.06	4	4	3	4	3	2	4	4	BYE	3	1	2	3	2	3	3	4	3
+35	Courtland Sutton	DEN	WR	2.88	2	2	3	3	2	2	3	2	3	BYE	3	3	5	4	3	3	4	2
+36	Parker Washington	JAC	WR	3.29	4	2	4	3	1	3	BYE	3	3	4	3	4	4	3	3	5	4	3
+37	Quentin Johnston	LAC	WR	2.88	3	3	3	2	2	2	BYE	3	3	3	4	4	2	3	3	5	2	2
+38	Jordyn Tyson	NO	WR	3.12	4	3	3	4	2	3	3	BYE	4	3	4	3	3	3	2	3	4	2
+39	Chris Godwin Jr.	TB	WR	3.41	3	4	2	3	5	3	3	4	4	BYE	4	3	2	3	4	4	3	4
+40	Jordan Addison	MIN	WR	3.59	3	4	2	5	4	BYE	3	4	3	3	3	4	3	4	4	4	4	4
+41	Ricky Pearsall	SF	WR	2.88	3	5	3	2	2	4	4	BYE	3	5	2	2	3	3	2	2	1	3
+42	Michael Wilson	ARI	WR	2.94	2	2	3	3	4	3	2	5	2	3	2	4	1	BYE	4	4	3	3
+43	Makai Lemon	PHI	WR	3.35	4	4	4	3	2	3	5	4	3	BYE	3	5	3	3	2	3	3	3
+44	Michael Pittman Jr.	PIT	WR	3.06	4	4	3	4	3	2	4	4	BYE	3	1	2	3	2	3	3	4	3
+45	Jayden Reed	GB	WR	3.53	2	4	4	2	4	5	4	3	4	2	BYE	3	4	3	5	4	3	4
+46	Jakobi Meyers	JAC	WR	3.29	4	2	4	3	1	3	BYE	3	3	4	3	4	4	3	3	5	4	3
+47	Xavier Worthy	KC	WR	3	2	3	5	3	BYE	2	2	2	4	4	3	3	3	3	4	3	2	3
+48	Wan'Dale Robinson	TEN	WR	3.12	4	1	3	3	3	3	4	3	BYE	2	5	2	4	4	3	3	3	3
+49	Josh Downs	IND	WR	3.12	3	2	3	4	3	4	2	2	5	5	3	3	BYE	1	4	3	4	2
+50	Jayden Higgins	HOU	WR	3.06	3	3	3	5	4	2	3	BYE	2	4	3	3	3	4	2	1	3	4
+51	Romeo Doubs	NE	WR	3.12	2	3	2	3	3	4	4	5	3	4	BYE	2	3	2	2	4	2	5
+52	Matthew Golden	GB	WR	3.53	2	4	4	2	4	5	4	3	4	2	BYE	3	4	3	5	4	3	4
+53	Khalil Shakir	BUF	WR	3.35	3	4	2	4	3	3	BYE	3	2	4	5	2	4	3	4	2	5	4
+54	Rashid Shaheed	SEA	WR	3	4	3	4	2	3	2	2	4	3	3	BYE	3	5	3	1	3	3	3
+55	Jalen Coker	CAR	WR	3	4	4	4	4	BYE	1	2	3	2	4	3	2	2	4	3	3	2	4
+56	KC Concepcion	CLE	WR	3.12	2	2	3	3	4	3	4	3	4	3	BYE	3	3	4	3	3	3	3
+57	Jerry Jeudy	CLE	WR	3.12	2	2	3	3	4	3	4	3	4	3	BYE	3	3	4	3	3	3	3
+58	Jauan Jennings	MIN	WR	3.59	3	4	2	5	4	BYE	3	4	3	3	3	4	3	4	4	4	4	4
+59	Adonai Mitchell	NYJ	WR	3.35	4	3	4	4	4	4	5	3	2	3	2	5	BYE	2	3	4	2	3
+60	Jalen McMillan	TB	WR	3.41	3	4	2	3	5	3	3	4	4	BYE	4	3	2	3	4	4	3	4
+61	Denzel Boston	CLE	WR	3.12	2	2	3	3	4	3	4	3	4	3	BYE	3	3	4	3	3	3	3
+62	Tre Tucker	LV	WR	3	5	2	4	2	4	3	3	4	3	2	2	4	BYE	2	2	4	3	2
+63	Travis Hunter	JAC	WR	3.29	4	2	4	3	1	3	BYE	3	3	4	3	4	4	3	3	5	4	3
+64	Omar Cooper Jr.	NYJ	WR	3.35	4	3	4	4	4	4	5	3	2	3	2	5	BYE	2	3	4	2	3
+65	Tre' Harris	LAC	WR	2.88	3	3	3	2	2	2	BYE	3	3	3	4	4	2	3	3	5	2	2
+66	Ryan Flournoy	DAL	WR	2.76	3	4	3	3	2	3	1	3	3	3	4	1	2	BYE	3	2	3	4
+67	Calvin Ridley	TEN	WR	3.12	4	1	3	3	3	3	4	3	BYE	2	5	2	4	4	3	3	3	3
+68	Kayshon Boutte	NE	WR	3.12	2	3	2	3	3	4	4	5	3	4	BYE	2	3	2	2	4	2	5
+69	Isaac TeSlaa	DET	WR	3.35	4	3	4	3	3	BYE	3	2	5	4	2	4	4	4	2	3	4	3
+70	Jaylin Noel	HOU	WR	3.06	3	3	3	5	4	2	3	BYE	2	4	3	3	3	4	2	1	3	4
+71	Troy Franklin	DEN	WR	2.88	2	2	3	3	2	2	3	2	3	BYE	3	3	5	4	3	3	4	2
+72	Rashod Bateman	BAL	WR	3.24	3	4	5	4	4	4	3	3	2	2	3	3	BYE	2	3	4	3	3
+73	Dontayvion Wicks	PHI	WR	3.35	4	4	4	3	2	3	5	4	3	BYE	3	5	3	3	2	3	3	3
+74	Stefon Diggs	FA	WR	#DIV/0!	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE
+75	Jalen Nailor	LV	WR	3	5	2	4	2	4	3	3	4	3	2	2	4	BYE	2	2	4	3	2
+76	Darnell Mooney	NYG	WR	3.24	5	3	4	3	4	4	3	BYE	1	4	2	3	3	2	4	4	5	1
+77	Pat Bryant	DEN	WR	2.88	2	2	3	3	2	2	3	2	3	BYE	3	3	5	4	3	3	4	2
+78	De'Zhaun Stribling	SF	WR	2.88	3	5	3	2	2	4	4	BYE	3	5	2	2	3	3	2	2	1	3
+79	Malik Washington	MIA	WR	3.12	3	3	2	2	3	BYE	4	4	4	3	3	4	2	4	3	2	3	4
+80	Tank Dell	HOU	WR	3.06	3	3	3	5	4	2	3	BYE	2	4	3	3	3	4	2	1	3	4
+81	Antonio Williams	WAS	WR	2.94	1	5	2	3	3	3	BYE	1	3	3	3	3	4	3	4	2	2	5
+82	Deebo Samuel Sr.	FA	WR	#DIV/0!	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE
+83	Elic Ayomanor	TEN	WR	3.12	4	1	3	3	3	3	4	3	BYE	2	5	2	4	4	3	3	3	3
+84	Ted Hurst III	TB	WR	3.41	3	4	2	3	5	3	3	4	4	BYE	4	3	2	3	4	4	3	4
+85	Cooper Kupp	SEA	WR	3	4	3	4	2	3	2	2	4	3	3	BYE	3	5	3	1	3	3	3
+86	Chimere Dike	TEN	WR	3.12	4	1	3	3	3	3	4	3	BYE	2	5	2	4	4	3	3	3	3
+87	Keon Coleman	BUF	WR	3.35	3	4	2	4	3	3	BYE	3	2	4	5	2	4	3	4	2	5	4
+88	Zachariah Branch	ATL	WR	3.12	3	3	3	4	3	4	3	2	3	2	BYE	2	4	4	4	2	4	3
+89	Jack Bech	LV	WR	3	5	2	4	2	4	3	3	4	3	2	2	4	BYE	2	2	4	3	2
+90	Tory Horton	SEA	WR	3	4	3	4	2	3	2	2	4	3	3	BYE	3	5	3	1	3	3	3
+91	Germie Bernard	PIT	WR	3.06	4	4	3	4	3	2	4	4	BYE	3	1	2	3	2	3	3	4	3
+92	Christian Kirk	SF	WR	2.88	3	5	3	2	2	4	4	BYE	3	5	2	2	3	3	2	2	1	3
+93	Tyquan Thornton	KC	WR	3	2	3	5	3	BYE	2	2	2	4	4	3	3	3	3	4	3	2	3
+94	Brandon Aiyuk	SF	WR	2.88	3	5	3	2	2	4	4	BYE	3	5	2	2	3	3	2	2	1	3
+95	Elijah Sarratt	BAL	WR	3.24	3	4	5	4	4	4	3	3	2	2	3	3	BYE	2	3	4	3	3
+96	Darius Slayton	NYG	WR	3.24	5	3	4	3	4	4	3	BYE	1	4	2	3	3	2	4	4	5	1
+97	Marvin Mims Jr.	DEN	WR	2.88	2	2	3	3	2	2	3	2	3	BYE	3	3	5	4	3	3	4	2
+98	Malachi Fields	NYG	WR	3.24	5	3	4	3	4	4	3	BYE	1	4	2	3	3	2	4	4	5	1
+99	Chris Brazzell II	CAR	WR	3	4	4	4	4	BYE	1	2	3	2	4	3	2	2	4	3	3	2	4
+100	Devaughn Vele	NO	WR	3.12	4	3	3	4	2	3	3	BYE	4	3	4	3	3	3	2	3	4	2
+101	Xavier Legette	CAR	WR	3	4	4	4	4	BYE	1	2	3	2	4	3	2	2	4	3	3	2	4
+102	Hollywood Brown	PHI	WR	3.35	4	4	4	3	2	3	5	4	3	BYE	3	5	3	3	2	3	3	3
+103	Chris Bell	MIA	WR	3.12	3	3	2	2	3	BYE	4	4	4	3	3	4	2	4	3	2	3	4
+104	Kyle Williams	NE	WR	3.12	2	3	2	3	3	4	4	5	3	4	BYE	2	3	2	2	4	2	5
+105	Tyreek Hill	FA	WR	#DIV/0!	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE
+106	Isaiah Bond	CLE	WR	3.12	2	2	3	3	4	3	4	3	4	3	BYE	3	3	4	3	3	3	3
+107	Keenan Allen	LAC	WR	2.88	3	3	3	2	2	2	BYE	3	3	3	4	4	2	3	3	5	2	2
+108	Mack Hollins	NE	WR	3.12	2	3	2	3	3	4	4	5	3	4	BYE	2	3	2	2	4	2	5
+109	Skyler Bell	BUF	WR	3.35	3	4	2	4	3	3	BYE	3	2	4	5	2	4	3	4	2	5	4
+110	Ja'Kobi Lane	BAL	WR	3.24	3	4	5	4	4	4	3	3	2	2	3	3	BYE	2	3	4	3	3
+111	Andrei Iosivas	CIN	WR	3.29	2	3	3	2	5	BYE	3	4	4	3	4	4	4	2	3	3	3	4
+112	Jalen Royals	KC	WR	3	2	3	5	3	BYE	2	2	2	4	4	3	3	3	3	4	3	2	3
+113	Cedric Tillman	CLE	WR	3.12	2	2	3	3	4	3	4	3	4	3	BYE	3	3	4	3	3	3	3
+114	Konata Mumpfield	LAR	WR	2.71	3	3	2	1	3	3	3	2	4	3	BYE	3	2	3	5	2	2	2
+115	Luke McCaffrey	WAS	WR	2.94	1	5	2	3	3	3	BYE	1	3	3	3	3	4	3	4	2	2	5
+116	Calvin Austin III	NYG	WR	3.24	5	3	4	3	4	4	3	BYE	1	4	2	3	3	2	4	4	5	1
+117	Tez Johnson	TB	WR	3.41	3	4	2	3	5	3	3	4	4	BYE	4	3	2	3	4	4	3	4
+118	Caleb Douglas	MIA	WR	3.12	3	3	2	2	3	BYE	4	4	4	3	3	4	2	4	3	2	3	4
+119	DeMario Douglas	NE	WR	3.12	2	3	2	3	3	4	4	5	3	4	BYE	2	3	2	2	4	2	5
+120	Olamide Zaccheaus	ATL	WR	3.12	3	3	3	4	3	4	3	2	3	2	BYE	2	4	4	4	2	4	3
+121	Joshua Palmer	BUF	WR	3.35	3	4	2	4	3	3	BYE	3	2	4	5	2	4	3	4	2	5	4
+122	Jalen Tolbert	MIA	WR	3.12	3	3	2	2	3	BYE	4	4	4	3	3	4	2	4	3	2	3	4
+123	Treylon Burks	WAS	WR	2.94	1	5	2	3	3	3	BYE	1	3	3	3	3	4	3	4	2	2	5
+124	Dont'e Thornton Jr.	LV	WR	3	5	2	4	2	4	3	3	4	3	2	2	4	BYE	2	2	4	3	2
+125	Jahan Dotson	ATL	WR	3.12	3	3	3	4	3	4	3	2	3	2	BYE	2	4	4	4	2	4	3
+126	Xavier Hutchinson	HOU	WR	3.06	3	3	3	5	4	2	3	BYE	2	4	3	3	3	4	2	1	3	4
+127	Kendrick Bourne	ARI	WR	2.94	2	2	3	3	4	3	2	5	2	3	2	4	1	BYE	4	4	3	3
+128	Brenen Thompson	LAC	WR	2.88	3	3	3	2	2	2	BYE	3	3	3	4	4	2	3	3	5	2	2
+129	Jaylin Lane	WAS	WR	2.94	1	5	2	3	3	3	BYE	1	3	3	3	3	4	3	4	2	2	5
+130	Bryce Lance	NO	WR	3.12	4	3	3	4	2	3	3	BYE	4	3	4	3	3	3	2	3	4	2
+131	John Metchie III	CAR	WR	3	4	4	4	4	BYE	1	2	3	2	4	3	2	2	4	3	3	2	4
+132	Tutu Atwell	MIA	WR	3.12	3	3	2	2	3	BYE	4	4	4	3	3	4	2	4	3	2	3	4
+133	Savion Williams	GB	WR	3.53	2	4	4	2	4	5	4	3	4	2	BYE	3	4	3	5	4	3	4
+134	Kevin Coleman Jr.	MIA	WR	3.12	3	3	2	2	3	BYE	4	4	4	3	3	4	2	4	3	2	3	4
+135	Kalif Raymond	CHI	WR	3.06	3	2	1	4	3	4	4	2	2	BYE	4	4	2	5	3	3	4	2
+136	Dyami Brown	WAS	WR	2.94	1	5	2	3	3	3	BYE	1	3	3	3	3	4	3	4	2	2	5
+137	Cyrus Allen	KC	WR	3	2	3	5	3	BYE	2	2	2	4	4	3	3	3	3	4	3	2	3
+138	Jordan Whittington	LAR	WR	2.71	3	3	2	1	3	3	3	2	4	3	BYE	3	2	3	5	2	2	2
+139	Zavion Thomas	CHI	WR	3.06	3	2	1	4	3	4	4	2	2	BYE	4	4	2	5	3	3	4	2
+140	Nick Westbrook-Ikhine	IND	WR	3.12	3	2	3	4	3	4	2	2	5	5	3	3	BYE	1	4	3	4	2
+141	KaVontae Turpin	DAL	WR	2.76	3	4	3	3	2	3	1	3	3	3	4	1	2	BYE	3	2	3	4
+142	Devontez Walker	BAL	WR	3.24	3	4	5	4	4	4	3	3	2	2	3	3	BYE	2	3	4	3	3
+143	Deion Burks	IND	WR	3.12	3	2	3	4	3	4	2	2	5	5	3	3	BYE	1	4	3	4	2
+144	Malik Benson	LV	WR	3	5	2	4	2	4	3	3	4	3	2	2	4	BYE	2	2	4	3	2
+145	CJ Daniels	LAR	WR	2.71	3	3	2	1	3	3	3	2	4	3	BYE	3	2	3	5	2	2	2
+146	Colbie Young	CIN	WR	3.29	2	3	3	2	5	BYE	3	4	4	3	4	4	4	2	3	3	3	4
+147	Demarcus Robinson	SF	WR	2.88	3	5	3	2	2	4	4	BYE	3	5	2	2	3	3	2	2	1	3
+148	Greg Dortch	DET	WR	3.35	4	3	4	3	3	BYE	3	2	5	4	2	4	4	4	2	3	4	3
+149	Jahdae Walker	CHI	WR	3.06	3	2	1	4	3	4	4	2	2	BYE	4	4	2	5	3	3	4	2
+150	Ashton Dulin	IND	WR	3.12	3	2	3	4	3	4	2	2	5	5	3	3	BYE	1	4	3	4	2
+151	Derius Davis	LAC	WR	2.88	3	3	3	2	2	2	BYE	3	3	3	4	4	2	3	3	5	2	2
+152	Scotty Miller	CHI	WR	3.06	3	2	1	4	3	4	4	2	2	BYE	4	4	2	5	3	3	4	2
+153	Roman Wilson	PIT	WR	3.06	4	4	3	4	3	2	4	4	BYE	3	1	2	3	2	3	3	4	3
+154	Tim Patrick	NYJ	WR	3.35	4	3	4	4	4	4	5	3	2	3	2	5	BYE	2	3	4	2	3
+155	Elijah Moore	PHI	WR	3.35	4	4	4	3	2	3	5	4	3	BYE	3	5	3	3	2	3	3	3
+156	Tyler Lockett	LV	WR	3	5	2	4	2	4	3	3	4	3	2	2	4	BYE	2	2	4	3	2
+157	Mitch Tinsley	CIN	WR	3.29	2	3	3	2	5	BYE	3	4	4	3	4	4	4	2	3	3	3	4
+158	Jake Bobo	SEA	WR	3	4	3	4	2	3	2	2	4	3	3	BYE	3	5	3	1	3	3	3
+159	DeAndre Hopkins	BAL	WR	3.24	3	4	5	4	4	4	3	3	2	2	3	3	BYE	2	3	4	3	3
+160	Theo Wease Jr.	MIA	WR	3.12	3	3	2	2	3	BYE	4	4	4	3	3	4	2	4	3	2	3	4
+161	Odell Beckham Jr.	NYG	WR	3.24	5	3	4	3	4	4	3	BYE	1	4	2	3	3	2	4	4	5	1
+162	Van Jefferson	WAS	WR	2.94	1	5	2	3	3	3	BYE	1	3	3	3	3	4	3	4	2	2	5
+163	Marquez Valdes-Scantling	DAL	WR	2.76	3	4	3	3	2	3	1	3	3	3	4	1	2	BYE	3	2	3	4
+164	Tai Felton	MIN	WR	3.59	3	4	2	5	4	BYE	3	4	3	3	3	4	3	4	4	4	4	4
+165	Anthony Gould	IND	WR	3.12	3	2	3	4	3	4	2	2	5	5	3	3	BYE	1	4	3	4	2
+166	Xavier Smith	LAR	WR	2.71	3	3	2	1	3	3	3	2	4	3	BYE	3	2	3	5	2	2	2
+167	Reggie Virgil	ARI	WR	2.94	2	2	3	3	4	3	2	5	2	3	2	4	1	BYE	4	4	3	3
+168	Lil'Jordan Humphrey	DEN	WR	2.88	2	2	3	3	2	2	3	2	3	BYE	3	3	5	4	3	3	4	2
+169	Xavier Weaver	ARI	WR	2.94	2	2	3	3	4	3	2	5	2	3	2	4	1	BYE	4	4	3	3
+170	Xavier Restrepo	TEN	WR	3.12	4	1	3	3	3	3	4	3	BYE	2	5	2	4	4	3	3	3	3
+171	Mecole Hardman Jr.	BUF	WR	3.35	3	4	2	4	3	3	BYE	3	2	4	5	2	4	3	4	2	5	4
+172	Josh Cameron	JAC	WR	3.29	4	2	4	3	1	3	BYE	3	3	4	3	4	4	3	3	5	4	3
+173	Brandin Cooks	FA	WR	#DIV/0!	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE
+174	Myles Price	MIN	WR	3.59	3	4	2	5	4	BYE	3	4	3	3	3	4	3	4	4	4	4	4
+175	Skyy Moore	GB	WR	3.53	2	4	4	2	4	5	4	3	4	2	BYE	3	4	3	5	4	3	4
+176	KeAndre Lambert-Smith	LAC	WR	2.88	3	3	3	2	2	2	BYE	3	3	3	4	4	2	3	3	5	2	2
+177	Kendrick Law	DET	WR	3.35	4	3	4	3	3	BYE	3	2	5	4	2	4	4	4	2	3	4	3
+178	Diontae Johnson	FA	WR	#DIV/0!	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE
+179	Mason Tipton	NO	WR	3.12	4	3	3	4	2	3	3	BYE	4	3	4	3	3	3	2	3	4	2
+180	Devonte Boyd	FA	WR	#DIV/0!	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE
+181	JuJu Smith-Schuster	NYG	WR	3.24	5	3	4	3	4	4	3	BYE	1	4	2	3	3	2	4	4	5	1
+182	Jermaine Burton	FA	WR	#DIV/0!	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE
+183	Kaden Wetjen	PIT	WR	3.06	4	4	3	4	3	2	4	4	BYE	3	1	2	3	2	3	3	4	3
+184	Jonathan Mingo	DAL	WR	2.76	3	4	3	3	2	3	1	3	3	3	4	1	2	BYE	3	2	3	4
+185	Isaiah Williams	FA	WR	#DIV/0!	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE
+186	Jimmy Horn Jr.	CAR	WR	3	4	4	4	4	BYE	1	2	3	2	4	3	2	2	4	3	3	2	4
+187	Ben Skowronek	PIT	WR	3.06	4	4	3	4	3	2	4	4	BYE	3	1	2	3	2	3	3	4	3
+188	Montorie Foster Jr.	SEA	WR	3	4	3	4	2	3	2	2	4	3	3	BYE	3	5	3	1	3	3	3
+189	Kevin Austin Jr.	NO	WR	3.12	4	3	3	4	2	3	3	BYE	4	3	4	3	3	3	2	3	4	2
+190	Jordan Watkins	SF	WR	2.88	3	5	3	2	2	4	4	BYE	3	5	2	2	3	3	2	2	1	3
+191	Justin Watson	HOU	WR	3.06	3	3	3	5	4	2	3	BYE	2	4	3	3	3	4	2	1	3	4
+192	Emmanuel Henderson Jr.	SEA	WR	3	4	3	4	2	3	2	2	4	3	3	BYE	3	5	3	1	3	3	3
+193	Michael Bandy	DEN	WR	2.88	2	2	3	3	2	2	3	2	3	BYE	3	3	5	4	3	3	4	2
+194	Jeshaun Jones	MIN	WR	3.59	3	4	2	5	4	BYE	3	4	3	3	3	4	3	4	4	4	4	4
+195	Michael Briscoe	MIN	WR	3.59	3	4	2	5	4	BYE	3	4	3	3	3	4	3	4	4	4	4	4
+196	Michael Woods II	DEN	WR	2.88	2	2	3	3	2	2	3	2	3	BYE	3	3	5	4	3	3	4	2
+197	Barion Brown	NO	WR	3.12	4	3	3	4	2	3	3	BYE	4	3	4	3	3	3	2	3	4	2
+198	Arian Smith	NYJ	WR	3.35	4	3	4	4	4	4	5	3	2	3	2	5	BYE	2	3	4	2	3
+199	Sterling Shepard	FA	WR	#DIV/0!	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE
+200	Darius Cooper	PHI	WR	3.35	4	4	4	3	2	3	5	4	3	BYE	3	5	3	3	2	3	3	3
+201	Gabe Davis	FA	WR	#DIV/0!	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE
+202	Nikko Remigio	KC	WR	3	2	3	5	3	BYE	2	2	2	4	4	3	3	3	3	4	3	2	3
+203	Bryce Oliver	TEN	WR	3.12	4	1	3	3	3	3	4	3	BYE	2	5	2	4	4	3	3	3	3
+204	Cedrick Wilson Jr.	DET	WR	3.35	4	3	4	3	3	BYE	3	2	5	4	2	4	4	4	2	3	4	3
+205	Coleman Owen	IND	WR	3.12	3	2	3	4	3	4	2	2	5	5	3	3	BYE	1	4	3	4	2
+206	Tyler Johnson	DAL	WR	2.76	3	4	3	3	2	3	1	3	3	3	4	1	2	BYE	3	2	3	4
+207	Ja'Lynn Polk	NO	WR	3.12	4	3	3	4	2	3	3	BYE	4	3	4	3	3	3	2	3	4	2
+208	Velus Jones Jr.	SEA	WR	3	4	3	4	2	3	2	2	4	3	3	BYE	3	5	3	1	3	3	3
+209	Josh Reynolds	FA	WR	#DIV/0!	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE
+210	Dylan Drummond	ATL	WR	3.12	3	3	3	4	3	4	3	2	3	2	BYE	2	4	4	4	2	4	3
+211	Devin Duvernay	ARI	WR	2.94	2	2	3	3	4	3	2	5	2	3	2	4	1	BYE	4	4	3	3
+212	Efton Chism III	NE	WR	3.12	2	3	2	3	3	4	4	5	3	4	BYE	2	3	2	2	4	2	5
+213	Tom Kennedy	DET	WR	3.35	4	3	4	3	3	BYE	3	2	5	4	2	4	4	4	2	3	4	3
+214	Ray-Ray McCloud III	FA	WR	#DIV/0!	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE
+215	Braxton Berrios	NYG	WR	3.24	5	3	4	3	4	4	3	BYE	1	4	2	3	3	2	4	4	5	1
+216	Jakobie Keeney-James	FA	WR	#DIV/0!	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE
+217	Kendric Pryor	CIN	WR	3.29	2	3	3	2	5	BYE	3	4	4	3	4	4	4	2	3	3	3	4
+218	CJ Williams	JAC	WR	3.29	4	2	4	3	1	3	BYE	3	3	4	3	4	4	3	3	5	4	3
+219	David Moore	CAR	WR	3	4	4	4	4	BYE	1	2	3	2	4	3	2	2	4	3	3	2	4
+220	Ronnie Bell	NO	WR	3.12	4	3	3	4	2	3	3	BYE	4	3	4	3	3	3	2	3	4	2
+221	Bub Means	NO	WR	3.12	4	3	3	4	2	3	3	BYE	4	3	4	3	3	3	2	3	4	2
+222	JP Richardson	CHI	WR	3.06	3	2	1	4	3	4	4	2	2	BYE	4	4	2	5	3	3	4	2
+223	Ainias Smith	CAR	WR	3	4	4	4	4	BYE	1	2	3	2	4	3	2	2	4	3	3	2	4
+224	Raylen Sharpe	IND	WR	3.12	3	2	3	4	3	4	2	2	5	5	3	3	BYE	1	4	3	4	2
+225	Omari Kelly	CHI	WR	3.06	3	2	1	4	3	4	4	2	2	BYE	4	4	2	5	3	3	4	2
+226	Isaiah Neyor	GB	WR	3.53	2	4	4	2	4	5	4	3	4	2	BYE	3	4	3	5	4	3	4
+227	Jacob Cowing	SF	WR	2.88	3	5	3	2	2	4	4	BYE	3	5	2	2	3	3	2	2	1	3
+228	Zay Jones	FA	WR	#DIV/0!	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE
+229	Tahj Washington	MIA	WR	3.12	3	3	2	2	3	BYE	4	4	4	3	3	4	2	4	3	2	3	4
+230	Noah Brown	FA	WR	#DIV/0!	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE
+231	Lewis Bond	HOU	WR	3.06	3	3	3	5	4	2	3	BYE	2	4	3	3	3	4	2	1	3	4
+232	Isaiah Hodgins	NYG	WR	3.24	5	3	4	3	4	4	3	BYE	1	4	2	3	3	2	4	4	5	1
+233	Kameron Johnson	TB	WR	3.41	3	4	2	3	5	3	3	4	4	BYE	4	3	2	3	4	4	3	4
+234	Luke Grimm	LAC	WR	2.88	3	3	3	2	2	2	BYE	3	3	3	4	4	2	3	3	5	2	2
+235	Johnny Wilson	PHI	WR	3.35	4	4	4	3	2	3	5	4	3	BYE	3	5	3	3	2	3	3	3
+236	Jacob De Jesus	KC	WR	3	2	3	5	3	BYE	2	2	2	4	4	3	3	3	3	4	3	2	3
+237	Anthony Smith	DAL	WR	2.76	3	4	3	3	2	3	1	3	3	3	4	1	2	BYE	3	2	3	4
+238	Xavier Loyd	KC	WR	3	2	3	5	3	BYE	2	2	2	4	4	3	3	3	3	4	3	2	3
+239	Brennan Presley	LAR	WR	2.71	3	3	2	1	3	3	3	2	4	3	BYE	3	2	3	5	2	2	2
+240	Ricky White III	SEA	WR	3	4	3	4	2	3	2	2	4	3	3	BYE	3	5	3	1	3	3	3
+1	Brock Bowers	LV	TE	3.12	3	4	2	3	3	4	2	4	2	3	3	2	BYE	4	3	4	4	3
+2	Trey McBride	ARI	TE	2.94	4	3	2	2	3	2	3	4	3	2	3	5	2	BYE	4	2	4	2
+3	Colston Loveland	CHI	TE	3	3	3	2	4	3	2	3	3	5	BYE	2	3	2	3	4	3	3	3
+4	Tucker Kraft	GB	TE	3.12	3	4	2	5	3	4	3	3	3	3	BYE	2	2	4	3	3	3	3
+5	Tyler Warren	IND	TE	3	2	3	3	5	3	4	3	2	4	3	3	2	BYE	2	4	4	2	2
+6	Sam LaPorta	DET	TE	3.18	2	4	4	3	4	BYE	3	3	3	3	5	3	2	4	3	2	3	3
+7	Kyle Pitts Sr.	ATL	TE	3.12	3	3	3	2	2	3	2	5	4	3	BYE	3	3	2	5	5	2	3
+8	Harold Fannin Jr.	CLE	TE	3.12	2	5	3	3	4	2	4	3	2	3	BYE	4	4	2	2	2	4	4
+9	George Kittle	SF	TE	3.12	2	3	4	3	3	5	2	BYE	4	4	3	3	2	2	4	3	2	4
+10	Dalton Kincaid	BUF	TE	3.12	3	3	4	3	2	4	BYE	2	3	4	3	3	3	3	3	3	3	4
+11	Travis Kelce	KC	TE	3.35	3	4	3	4	BYE	4	3	3	4	2	4	4	2	4	3	2	4	4
+12	Dallas Goedert	PHI	TE	3.24	5	4	3	2	2	3	4	5	2	BYE	3	4	4	4	3	3	2	2
+13	Mark Andrews	BAL	TE	3.24	4	2	4	4	2	2	4	4	2	4	3	3	BYE	5	3	2	4	3
+14	Isaiah Likely	NYG	TE	3.12	4	2	4	4	5	2	3	BYE	2	5	2	4	2	3	2	3	4	2
+15	Jake Ferguson	DAL	TE	3.06	2	5	2	3	5	3	2	4	4	2	4	2	3	BYE	2	2	2	5
+16	Brenton Strange	JAC	TE	3.24	2	3	3	4	2	3	BYE	4	2	4	2	4	3	3	3	4	5	4
+17	Hunter Henry	NE	TE	3.29	3	3	2	4	4	4	3	3	3	3	BYE	4	4	3	3	4	3	3
+18	Oronde Gadsden II	LAC	TE	3.24	4	4	4	3	3	3	BYE	2	3	2	4	3	5	4	2	3	3	3
+19	Juwan Johnson	NO	TE	3.12	3	2	4	2	3	2	3	BYE	2	3	3	4	3	3	5	4	2	5
+20	Chig Okonkwo	WAS	TE	2.88	2	4	3	4	2	2	BYE	2	2	2	4	4	4	3	2	3	2	4
+21	AJ Barner	SEA	TE	3.06	3	4	5	4	2	3	3	3	4	4	BYE	2	4	2	2	2	3	2
+22	Kenyon Sadiq	NYJ	TE	3.29	4	3	3	3	2	3	3	4	3	4	4	3	BYE	3	4	3	3	4
+23	Dalton Schultz	HOU	TE	3.24	4	4	4	4	4	2	2	BYE	4	2	4	2	3	5	2	2	3	4
+24	T.J. Hockenson	MIN	TE	3.24	3	3	5	3	2	BYE	4	3	4	3	2	2	3	3	3	5	4	3
+25	Terrance Ferguson	LAR	TE	3.35	2	2	3	2	4	4	4	4	5	4	BYE	3	3	2	4	3	5	3
+26	Gunnar Helm	TEN	TE	3.12	4	2	2	2	3	4	2	4	BYE	2	4	2	5	3	4	4	3	3
+27	Pat Freiermuth	PIT	TE	2.88	2	3	4	2	4	5	2	2	BYE	4	2	3	3	2	2	3	4	2
+28	Cade Otton	TB	TE	2.76	4	2	3	3	4	3	3	2	3	BYE	3	3	4	2	2	2	2	2
+29	David Njoku	LAC	TE	3.24	4	4	4	3	3	3	BYE	2	3	2	4	3	5	4	2	3	3	3
+30	Evan Engram	DEN	TE	3.24	3	2	2	2	4	3	4	3	3	BYE	4	3	3	4	4	4	3	4
+31	Colby Parkinson	LAR	TE	3.35	2	2	3	2	4	4	4	4	5	4	BYE	3	3	2	4	3	5	3
+32	Oscar Delp	NO	TE	3.12	3	2	4	2	3	2	3	BYE	2	3	3	4	3	3	5	4	2	5
+33	Eli Stowers	PHI	TE	3.24	5	4	3	2	2	3	4	5	2	BYE	3	4	4	4	3	3	2	2
+34	Theo Johnson	NYG	TE	3.12	4	2	4	4	5	2	3	BYE	2	5	2	4	2	3	2	3	4	2
+35	Mason Taylor	NYJ	TE	3.29	4	3	3	3	2	3	3	4	3	4	4	3	BYE	3	4	3	3	4
+36	Greg Dulcich	MIA	TE	3.41	4	2	3	3	4	BYE	4	3	3	4	4	4	3	3	3	4	4	3
+37	Mike Gesicki	CIN	TE	2.94	5	3	3	2	3	BYE	2	4	2	3	5	2	2	3	3	4	2	2
+38	Jake Tonges	SF	TE	3.12	2	3	4	3	3	5	2	BYE	4	4	3	3	2	2	4	3	2	4
+39	Darnell Washington	PIT	TE	2.88	2	3	4	2	4	5	2	2	BYE	4	2	3	3	2	2	3	4	2
+40	Tyler Higbee	LAR	TE	3.35	2	2	3	2	4	4	4	4	5	4	BYE	3	3	2	4	3	5	3
+41	Elijah Arroyo	SEA	TE	3.06	3	4	5	4	2	3	3	3	4	4	BYE	2	4	2	2	2	3	2
+42	Noah Gray	KC	TE	3.35	3	4	3	4	BYE	4	3	3	4	2	4	4	2	4	3	2	4	4
+43	Max Klare	LAR	TE	3.35	2	2	3	2	4	4	4	4	5	4	BYE	3	3	2	4	3	5	3
+44	Cole Kmet	CHI	TE	3	3	3	2	4	3	2	3	3	5	BYE	2	3	2	3	4	3	3	3
+45	Michael Mayer	LV	TE	3.12	3	4	2	3	3	4	2	4	2	3	3	2	BYE	4	3	4	4	3
+46	Ja'Tavion Sanders	CAR	TE	2.88	3	2	2	3	BYE	2	5	3	3	2	2	5	3	2	4	3	3	2
+47	Justin Joly	DEN	TE	3.24	3	2	2	2	4	3	4	3	3	BYE	4	3	3	4	4	4	3	4
+48	Dawson Knox	BUF	TE	3.12	3	3	4	3	2	4	BYE	2	3	4	3	3	3	3	3	3	3	4
+49	Eli Raridon	NE	TE	3.29	3	3	2	4	4	4	3	3	3	3	BYE	4	4	3	3	4	3	3
+50	Noah Fant	NO	TE	3.12	3	2	4	2	3	2	3	BYE	2	3	3	4	3	3	5	4	2	5
+51	Erick All Jr.	CIN	TE	2.94	5	3	3	2	3	BYE	2	4	2	3	5	2	2	3	3	4	2	2
+52	Luke Musgrave	GB	TE	3.12	3	4	2	5	3	4	3	3	3	3	BYE	2	2	4	3	3	3	3
+53	John Bates	WAS	TE	2.88	2	4	3	4	2	2	BYE	2	2	2	4	4	4	3	2	3	2	4
+54	Ben Sinnott	WAS	TE	2.88	2	4	3	4	2	2	BYE	2	2	2	4	4	4	3	2	3	2	4
+55	Tommy Tremble	CAR	TE	2.88	3	2	2	3	BYE	2	5	3	3	2	2	5	3	2	4	3	3	2
+56	Mitchell Evans	CAR	TE	2.88	3	2	2	3	BYE	2	5	3	3	2	2	5	3	2	4	3	3	2
+57	Darren Waller	FA	TE	#DIV/0!	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE
+58	Elijah Higgins	ARI	TE	2.94	4	3	2	2	3	2	3	4	3	2	3	5	2	BYE	4	2	4	2
+59	Nate Boerkircher	JAC	TE	3.24	2	3	3	4	2	3	BYE	4	2	4	2	4	3	3	3	4	5	4
+60	Daniel Bellinger	TEN	TE	3.12	4	2	2	2	3	4	2	4	BYE	2	4	2	5	3	4	4	3	3
+61	Tommy Myers	FA	TE	#DIV/0!	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE
+62	Zach Ertz	FA	TE	#DIV/0!	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE
+63	Josh Oliver	MIN	TE	3.24	3	3	5	3	2	BYE	4	3	4	3	2	2	3	3	3	5	4	3
+64	Austin Hooper	ATL	TE	3.12	3	3	3	2	2	3	2	5	4	3	BYE	3	3	2	5	5	2	3
+65	Luke Schoonmaker	DAL	TE	3.06	2	5	2	3	5	3	2	4	4	2	4	2	3	BYE	2	2	2	5
+66	Marlin Klein	HOU	TE	3.24	4	4	4	4	4	2	2	BYE	4	2	4	2	3	5	2	2	3	4
+67	Jonnu Smith	FA	TE	#DIV/0!	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE
+68	Drew Sample	CIN	TE	2.94	5	3	3	2	3	BYE	2	4	2	3	5	2	2	3	3	4	2	2
+69	Tyler Conklin	DET	TE	3.18	2	4	4	3	4	BYE	3	3	3	3	5	3	2	4	3	2	3	3
+70	Adam Trautman	DEN	TE	3.24	3	2	2	2	4	3	4	3	3	BYE	4	3	3	4	4	4	3	4
+71	Durham Smythe	BAL	TE	3.24	4	2	4	4	2	2	4	4	2	4	3	3	BYE	5	3	2	4	3
+72	Taysom Hill	FA	TE	#DIV/0!	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE
+73	Charlie Kolar	LAC	TE	3.24	4	4	4	3	3	3	BYE	2	3	2	4	3	5	4	2	3	3	3
+74	Sam Roush	CHI	TE	3	3	3	2	4	3	2	3	3	5	BYE	2	3	2	3	4	3	3	3
+75	Jackson Hawes	BUF	TE	3.12	3	3	4	3	2	4	BYE	2	3	4	3	3	3	3	3	3	3	4
+76	Brock Wright	DET	TE	3.18	2	4	4	3	4	BYE	3	3	3	3	5	3	2	4	3	2	3	3
+77	Mo Alie-Cox	IND	TE	3	2	3	3	5	3	4	3	2	4	3	3	2	BYE	2	4	4	2	2
+78	Will Kacmarek	MIA	TE	3.41	4	2	3	3	4	BYE	4	3	3	4	4	4	3	3	3	4	4	3
+79	Cade Stover	HOU	TE	3.24	4	4	4	4	4	2	2	BYE	4	2	4	2	3	5	2	2	3	4
+80	Joe Royer	CLE	TE	3.12	2	5	3	3	4	2	4	3	2	3	BYE	4	4	2	2	2	4	4
+81	Will Dissly	FA	TE	#DIV/0!	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE
+82	Michael Trigg	DAL	TE	3.06	2	5	2	3	5	3	2	4	4	2	4	2	3	BYE	2	2	2	5
+83	Tip Reiman	ARI	TE	2.94	4	3	2	2	3	2	3	4	3	2	3	5	2	BYE	4	2	4	2
+84	Matt Hibner	BAL	TE	3.24	4	2	4	4	2	2	4	4	2	4	3	3	BYE	5	3	2	4	3
+85	Jared Wiley	KC	TE	3.35	3	4	3	4	BYE	4	3	3	4	2	4	4	2	4	3	2	4	4
+86	Jeremy Ruckert	NYJ	TE	3.29	4	3	3	3	2	3	3	4	3	4	4	3	BYE	3	4	3	3	4
+87	Payne Durham	TB	TE	2.76	4	2	3	3	4	3	3	2	3	BYE	3	3	4	2	2	2	2	2
+88	Foster Moreau	HOU	TE	3.24	4	4	4	4	4	2	2	BYE	4	2	4	2	3	5	2	2	3	4
+89	Seydou Traore	MIA	TE	3.41	4	2	3	3	4	BYE	4	3	3	4	4	4	3	3	3	4	4	3
+90	Eric Saubert	SEA	TE	3.06	3	4	5	4	2	3	3	3	4	4	BYE	2	4	2	2	2	3	2
+91	Davis Allen	LAR	TE	3.35	2	2	3	2	4	4	4	4	5	4	BYE	3	3	2	4	3	5	3
+92	Thomas Fidone II	NYG	TE	3.12	4	2	4	4	5	2	3	BYE	2	5	2	4	2	3	2	3	4	2
+93	Charlie Woerner	ATL	TE	3.12	3	3	3	2	2	3	2	5	4	3	BYE	3	3	2	5	5	2	3
+94	Ben Sims	MIA	TE	3.41	4	2	3	3	4	BYE	4	3	3	4	4	4	3	3	3	4	4	3
+95	Nate Adkins	DEN	TE	3.24	3	2	2	2	4	3	4	3	3	BYE	4	3	3	4	4	4	3	4
+96	Will Mallory	IND	TE	3	2	3	3	5	3	4	3	2	4	3	3	2	BYE	2	4	4	2	2
+97	Tanner Hudson	CIN	TE	2.94	5	3	3	2	3	BYE	2	4	2	3	5	2	2	3	3	4	2	2
+98	Tanner Koziol	JAC	TE	3.24	2	3	3	4	2	3	BYE	4	2	4	2	4	3	3	3	4	5	4
+99	Moliki Matavao	NO	TE	3.12	3	2	4	2	3	2	3	BYE	2	3	3	4	3	3	5	4	2	5
+100	Kylen Granson	TEN	TE	3.12	4	2	2	2	3	4	2	4	BYE	2	4	2	5	3	4	4	3	3
+101	Julian Hill	NE	TE	3.29	3	3	2	4	4	4	3	3	3	3	BYE	4	4	3	3	4	3	3
+102	Brevyn Spann-Ford	DAL	TE	3.06	2	5	2	3	5	3	2	4	4	2	4	2	3	BYE	2	2	2	5
+103	Luke Farrell	SF	TE	3.12	2	3	4	3	3	5	2	BYE	4	4	3	3	2	2	4	3	2	4
+104	Josh Whyle	GB	TE	3.12	3	4	2	5	3	4	3	3	3	3	BYE	2	2	4	3	3	3	3
+105	Khalil Dinkins	FA	TE	#DIV/0!	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE
+106	Albert Okwuegbunam Jr.	LV	TE	3.12	3	4	2	3	3	4	2	4	2	3	3	2	BYE	4	3	4	4	3
+107	Jack Endries	CIN	TE	2.94	5	3	3	2	3	BYE	2	4	2	3	5	2	2	3	3	4	2	2
+108	Josh Cuevas	BAL	TE	3.24	4	2	4	4	2	2	4	4	2	4	3	3	BYE	5	3	2	4	3
+109	Jaheim Bell	PIT	TE	2.88	2	3	4	2	4	5	2	2	BYE	4	2	3	3	2	2	3	4	2
+110	Robert Tonyan	PIT	TE	2.88	2	3	4	2	4	5	2	2	BYE	4	2	3	3	2	2	3	4	2
+111	Devin Culp	TB	TE	2.76	4	2	3	3	4	3	3	2	3	BYE	3	3	4	2	2	2	2	2
+112	Hayden Rucci	SF	TE	3.12	2	3	4	3	3	5	2	BYE	4	4	3	3	2	2	4	3	2	4
+113	Miles Kitselman	DET	TE	3.18	2	4	4	3	4	BYE	3	3	3	3	5	3	2	4	3	2	3	3
+114	Brevin Jordan	HOU	TE	3.24	4	4	4	4	4	2	2	BYE	4	2	4	2	3	5	2	2	3	4
+115	Grant Calcaterra	PHI	TE	3.24	5	4	3	2	2	3	4	5	2	BYE	3	4	4	4	3	3	2	2
+116	Jack Stoll	CLE	TE	3.12	2	5	3	3	4	2	4	3	2	3	BYE	4	4	2	2	2	4	4
+117	Harrison Bryant	FA	TE	#DIV/0!	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE
+118	Stone Smartt	PHI	TE	3.24	5	4	3	2	2	3	4	5	2	BYE	3	4	4	4	3	3	2	2
+119	Bauer Sharp	TB	TE	2.76	4	2	3	3	4	3	3	2	3	BYE	3	3	4	2	2	2	2	2
+120	Ben Yurosek	MIN	TE	3.24	3	3	5	3	2	BYE	4	3	4	3	2	2	3	3	3	5	4	3
+121	Jelani Woods	NYJ	TE	3.29	4	3	3	3	2	3	3	4	3	4	4	3	BYE	3	4	3	3	4
+122	Drew Ogletree	IND	TE	3	2	3	3	5	3	4	3	2	4	3	3	2	BYE	2	4	4	2	2
+123	Connor Heyward	LV	TE	3.12	3	4	2	3	3	4	2	4	2	3	3	2	BYE	4	3	4	4	3
+124	Andrew Beck	NYJ	TE	3.29	4	3	3	3	2	3	3	4	3	4	4	3	BYE	3	4	3	3	4
+125	Cam Grandy	CIN	TE	2.94	5	3	3	2	3	BYE	2	4	2	3	5	2	2	3	3	4	2	2
+126	Joshua Simon	ATL	TE	3.12	3	3	3	2	2	3	2	5	4	3	BYE	3	3	2	5	5	2	3
+127	Tanner Conner	NYG	TE	3.12	4	2	4	4	5	2	3	BYE	2	5	2	4	2	3	2	3	4	2
+128	Carsen Ryan	CLE	TE	3.12	2	5	3	3	4	2	4	3	2	3	BYE	4	4	2	2	2	4	4
+129	Blake Whiteheart	CLE	TE	3.12	2	5	3	3	4	2	4	3	2	3	BYE	4	4	2	2	2	4	4
+130	Johnny Mundt	PHI	TE	3.24	5	4	3	2	2	3	4	5	2	BYE	3	4	4	4	3	3	2	2
+131	Gavin Bartholomew	MIN	TE	3.24	3	3	5	3	2	BYE	4	3	4	3	2	2	3	3	3	5	4	3
+132	Drake Dabney	GB	TE	3.12	3	4	2	5	3	4	3	3	3	3	BYE	2	2	4	3	3	3	3
+133	Teagan Quitoriano	ARI	TE	2.94	4	3	2	2	3	2	3	4	3	2	3	5	2	BYE	4	2	4	2
+134	Ko Kieft	TB	TE	2.76	4	2	3	3	4	3	3	2	3	BYE	3	3	4	2	2	2	2	2
+135	Ty Pezza	BAL	TE	3.24	4	2	4	4	2	2	4	4	2	4	3	3	BYE	5	3	2	4	3
+136	Anthony Firkser	WAS	TE	2.88	2	4	3	4	2	2	BYE	2	2	2	4	4	4	3	2	3	2	4
+137	Brayden Willis	SF	TE	3.12	2	3	4	3	3	5	2	BYE	4	4	3	3	2	2	4	3	2	4
+138	John Michael Gyllenborg	KC	TE	3.35	3	4	3	4	BYE	4	3	3	4	2	4	4	2	4	3	2	4	4
+139	Nick Kallerup	SEA	TE	3.06	3	4	5	4	2	3	3	3	4	4	BYE	2	4	2	2	2	3	2
+140	Jack Velling	ATL	TE	3.12	3	3	3	2	2	3	2	5	4	3	BYE	3	3	2	5	5	2	3
+141	Brenden Bates	CLE	TE	3.12	2	5	3	3	4	2	4	3	2	3	BYE	4	4	2	2	2	4	4
+142	Jake Briningstool	KC	TE	3.35	3	4	3	4	BYE	4	3	3	4	2	4	4	2	4	3	2	4	4
+143	Sean McKeon	IND	TE	3	2	3	3	5	3	4	3	2	4	3	3	2	BYE	2	4	4	2	2
+144	Keleki Latu	BUF	TE	3.12	3	3	4	3	2	4	BYE	2	3	4	3	3	3	3	3	3	3	4
+145	Joel Wilson	TEN	TE	3.12	4	2	2	2	3	4	2	4	BYE	2	4	2	5	3	4	4	3	3
+146	Cole Turner	MIA	TE	3.41	4	2	3	3	4	BYE	4	3	3	4	4	4	3	3	3	4	4	3
+147	Colson Yankoff	WAS	TE	2.88	2	4	3	4	2	2	BYE	2	2	2	4	4	4	3	2	3	2	4
+148	Bryson Nesbit	MIN	TE	3.24	3	3	5	3	2	BYE	4	3	4	3	2	2	3	3	3	5	4	3
+149	Rivaldo Fairweather	ARI	TE	2.94	4	3	2	2	3	2	3	4	3	2	3	5	2	BYE	4	2	4	2
+150	Zach Horton	DET	TE	3.18	2	4	4	3	4	BYE	3	3	3	3	5	3	2	4	3	2	3	3
+151	Lucas Krull	DEN	TE	3.24	3	2	2	2	4	3	4	3	3	BYE	4	3	3	4	4	4	3	4
+152	Hunter Long	JAC	TE	3.24	2	3	3	4	2	3	BYE	4	2	4	2	4	3	3	3	4	5	4
+153	CJ Dippre	NE	TE	3.29	3	3	2	4	4	4	3	3	3	3	BYE	4	4	3	3	4	3	3
+154	David Martin-Robinson	TEN	TE	3.12	4	2	2	2	3	4	2	4	BYE	2	4	2	5	3	4	4	3	3
+155	James Mitchell	CAR	TE	2.88	3	2	2	3	BYE	2	5	3	3	2	2	5	3	2	4	3	3	2
+156	Ian Thomas	LV	TE	3.12	3	4	2	3	3	4	2	4	2	3	3	2	BYE	4	3	4	4	3
+157	Lance Mason	SEA	TE	3.06	3	4	5	4	2	3	3	3	4	4	BYE	2	4	2	2	2	3	2
+158	Quintin Morris	JAC	TE	3.24	2	3	3	4	2	3	BYE	4	2	4	2	4	3	3	3	4	5	4
+159	Kenny Yeboah	ARI	TE	2.94	4	3	2	2	3	2	3	4	3	2	3	5	2	BYE	4	2	4	2
+160	Tanner Arkin	NE	TE	3.29	3	3	2	4	4	4	3	3	3	3	BYE	4	4	3	3	4	3	3
+161	Jaren Kanak	TEN	TE	3.13	4	2	2	2	3	4	2	4	BYE	2	4	2	5	3	4	4	3	BYE
+1	Houston Texans		DST	2.88	2	4	1	2	5	2	3	BYE	4	5	1	3	3	4	2	2	1	5
+2	Denver Broncos		DST	3.24	3	2	1	1	4	2	4	3	4	BYE	5	3	4	5	5	2	3	4
+3	Seattle Seahawks		DST	2.65	3	4	4	4	1	2	3	1	4	5	BYE	1	2	3	2	1	4	1
+4	Los Angeles Rams		DST	2.59	1	3	2	2	2	4	5	4	4	4	BYE	1	3	1	2	2	2	2
+5	Philadelphia Eagles		DST	2.59	4	5	1	1	2	4	2	4	3	BYE	3	2	4	1	2	2	1	3
+6	Minnesota Vikings		DST	2.29	1	1	2	4	4	BYE	1	1	2	1	1	3	4	3	1	4	5	1
+7	New England Patriots		DST	3	2	3	2	2	5	5	1	4	1	1	BYE	4	2	5	3	5	2	4
+8	Jacksonville Jaguars		DST	2.82	5	2	3	4	2	2	BYE	1	3	5	3	5	1	3	2	2	4	1
+9	Pittsburgh Steelers		DST	3.18	3	3	4	5	1	2	4	5	BYE	4	2	2	2	2	3	4	5	3
+10	Los Angeles Chargers		DST	2.88	4	5	2	2	2	3	BYE	1	2	3	5	3	2	5	1	4	3	2
+11	Baltimore Ravens		DST	3.24	1	4	2	5	3	5	4	2	2	4	4	2	BYE	2	3	5	4	3
+12	Green Bay Packers		DST	2.71	5	5	3	2	1	2	1	4	3	5	BYE	1	4	2	4	1	2	1
+13	Kansas City Chiefs		DST	3.06	2	1	4	5	BYE	4	2	2	5	3	4	2	1	4	3	1	4	5
+14	Detroit Lions		DST	3.12	4	2	5	4	4	BYE	1	5	4	3	2	1	3	5	5	3	1	1
+15	Buffalo Bills		DST	3.06	2	1	4	3	1	5	BYE	3	5	5	4	3	3	1	1	2	4	5
+16	Cleveland Browns		DST	3.29	2	2	4	3	5	3	5	3	4	2	BYE	5	4	3	3	3	1	4
+17	San Francisco 49ers		DST	3	1	4	4	2	2	4	3	BYE	5	2	5	2	3	1	4	3	2	4
+18	New Orleans Saints		DST	3.12	1	3	5	3	5	3	3	BYE	5	4	1	4	1	4	2	4	3	2
+19	Atlanta Falcons		DST	3	3	4	1	4	3	1	1	2	4	3	BYE	5	1	5	4	2	4	4
+20	Chicago Bears		DST	2.76	4	5	2	5	1	3	3	2	2	BYE	4	1	2	4	2	1	1	5
+21	New York Giants		DST	2.59	2	1	5	4	4	4	2	BYE	2	4	2	1	1	2	5	1	2	2
+22	Indianapolis Colts		DST	3.29	3	3	2	4	3	5	5	2	2	4	2	3	BYE	2	5	4	5	2
+23	Tampa Bay Buccaneers		DST	3.06	4	5	5	1	2	3	4	3	1	BYE	1	4	4	3	4	3	1	4
+24	Dallas Cowboys		DST	2.47	3	4	3	2	2	1	2	4	1	1	5	2	2	BYE	1	2	3	4
+25	Carolina Panthers		DST	2.76	1	3	5	1	BYE	2	2	1	2	4	3	2	5	4	4	3	2	3
+26	Tennessee Titans		DST	2.76	5	2	3	3	2	1	5	4	BYE	2	2	2	4	1	1	5	3	2
+27	Cincinnati Bengals		DST	3.29	2	2	3	2	4	BYE	3	5	3	3	4	4	5	3	4	1	3	5
+28	Washington Commanders		DST	2.59	2	2	2	1	3	1	BYE	2	1	3	4	4	5	2	3	5	2	2
+29	Miami Dolphins		DST	2.82	5	1	3	5	4	BYE	5	3	1	1	2	5	2	1	1	4	2	3
+30	Las Vegas Raiders		DST	3.18	4	4	4	3	3	2	1	5	1	2	2	5	BYE	4	2	5	4	3
+31	New York Jets		DST	3.18	5	1	1	1	5	3	4	5	3	2	4	4	BYE	2	4	3	5	2
+32	Arizona Cardinals		DST	2.53	4	2	1	3	1	1	2	2	2	1	3	4	2	BYE	5	4	5	1
+1	Brandon Aubrey	DAL	K	2.94	5	5	1	3	2	1	1	5	5	1	5	1	1	BYE	3	1	5	5
+2	Ka'imi Fairbairn	HOU	K	2.76	1	5	5	3	5	1	5	BYE	1	1	5	1	1	5	1	1	1	5
+3	Cameron Dicker	LAC	K	2.94	5	5	1	1	5	1	BYE	3	3	1	5	1	2	5	1	5	1	5
+4	Cam Little	JAC	K	3.29	1	5	1	5	1	3	BYE	5	1	5	5	5	2	1	3	3	5	5
+5	Jason Myers	SEA	K	3.06	1	5	5	1	1	5	1	2	5	5	BYE	1	3	5	1	3	5	3
+6	Tyler Loop	BAL	K	2.76	5	2	3	5	5	1	5	1	1	1	5	3	BYE	2	1	1	5	1
+7	Eddy Pineiro	SF	K	3.47	3	5	5	5	1	5	5	BYE	5	3	5	1	5	3	1	1	1	5
+8	Evan McPherson	CIN	K	2.65	2	3	1	1	5	BYE	1	5	5	1	5	2	1	1	5	5	1	1
+9	Jake Bates	DET	K	3.35	2	1	5	5	5	BYE	1	5	5	1	2	2	5	5	5	5	2	1
+10	Cairo Santos	CHI	K	2.65	5	5	1	5	1	5	1	1	2	BYE	2	2	1	5	1	1	2	5
+11	Harrison Mevis	LAR	K	2.59	1	5	5	1	1	5	5	1	5	5	BYE	1	1	1	3	1	2	1
+12	Chris Boswell	PIT	K	2.88	5	1	5	1	5	2	2	1	BYE	5	1	5	3	1	1	5	5	1
+13	Chase McLaughlin	TB	K	2.88	5	1	5	1	3	1	5	5	2	BYE	2	5	1	1	2	5	3	2
+14	Harrison Butker	KC	K	3.47	5	5	5	5	BYE	1	1	5	5	5	5	1	3	5	1	1	1	5
+15	Andy Borregales	NE	K	2.76	1	1	1	1	5	5	2	5	1	2	BYE	1	1	5	1	5	5	5
+16	Wil Lutz	DEN	K	2.53	1	1	3	1	1	1	5	1	5	BYE	5	1	5	5	5	1	1	1
+17	Will Reichard	MIN	K	2.76	1	2	2	5	2	BYE	5	2	1	1	1	5	5	1	2	5	5	2
+18	Jake Elliott	PHI	K	3.41	5	5	2	3	1	5	3	5	5	BYE	1	3	5	5	1	3	1	5
+19	Charlie Smyth	NO	K	3.35	2	1	5	5	5	5	1	BYE	1	5	2	5	1	5	2	5	5	2
+20	Blake Grupe	IND	K	3	1	1	3	5	1	5	5	1	3	5	3	5	BYE	1	5	5	1	1
+21	Chad Ryland	ARI	K	2.65	1	1	1	5	2	3	5	3	1	3	1	5	1	BYE	5	2	5	1
+22	Joey Slye	TEN	K	3.06	5	1	5	1	3	5	1	5	BYE	1	3	1	5	2	5	5	1	3
+23	Nick Folk	ATL	K	2.53	1	5	1	2	1	2	1	2	5	1	BYE	5	2	1	5	2	2	5
+24	Tyler Bass	BUF	K	3	3	2	1	1	3	5	BYE	1	5	5	5	1	1	1	2	5	5	5
+25	Zane Gonzalez	MIA	K	2.76	5	1	1	5	5	BYE	5	1	2	5	1	5	5	2	1	1	1	1
+26	Ryan Fitzgerald	CAR	K	2.53	2	5	1	2	BYE	1	2	1	5	2	1	2	5	2	5	1	1	5
+27	Trey Smack	GB	K	3.12	5	5	5	2	2	3	2	5	1	5	BYE	3	2	1	5	2	3	2
+28	Daniel Carlson	LV	K	2.59	5	1	2	1	1	1	3	5	1	1	5	1	BYE	1	5	5	5	1
+29	Ben Sauls	NYG	K	2.76	3	3	5	5	5	2	3	BYE	1	5	1	5	1	1	1	2	3	1
+30	Jake Moody	WAS	K	3.35	1	3	1	5	5	1	BYE	1	3	5	5	5	5	3	5	5	1	3
+31	Brandon McManus	FA	K	#DIV/0!	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE	BYE
+32	Jason Sanders	NYJ	K	2.76	5	1	2	2	1	1	5	5	1	1	1	5	BYE	5	5	1	5	1
+33	Andre Szmyt	CLE	K	3.35	1	2	5	1	5	1	5	1	2	3	BYE	5	5	5	5	1	5	5
+34	Matt Gay	LV	K	2.59	5	1	2	1	1	1	3	5	1	1	5	1	BYE	1	5	5	5	1
+35	Spencer Shrader	IND	K	3	1	1	3	5	1	5	5	1	3	5	3	5	BYE	1	5	5	1	1
+36	Cade York	NYJ	K	2.76	5	1	2	2	1	1	5	5	1	1	1	5	BYE	5	5	1	5	1
+37	Riley Patterson	MIA	K	2.76	5	1	1	5	5	BYE	5	1	2	5	1	5	5	2	1	1	1	1
+38	B.T. Potter	TB	K	2.94	5	1	5	1	3	1	5	5	2	BYE	2	5	1	1	2	5	3	BYE

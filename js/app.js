@@ -20,71 +20,72 @@ document.addEventListener('DOMContentLoaded', () => {
     // Auto-Load Data Function
     async function autoLoadData() {
         const loadBtn = document.getElementById('load-data-button');
-        if(loadBtn) loadBtn.textContent = "Fetching Projections from GitHub...";
+        if (loadBtn) loadBtn.textContent = "Fetching Projections & Strength of Schedule...";
 
         try {
-            // 1. Fetch Skill Players (QB, RB, WR, TE)
+            // 1. Fetch Skill Players
             const offRes = await fetch('./projected_data_26.tsv');
             const offPlayers = State.parseProjectedData(await offRes.text());
-            
-            // 2. Fetch Defenses
-            let defPlayers = [];
+
+            // 2. Fetch Defenses & Kickers
+            let defPlayers = [], kickerPlayers = [];
             try {
                 const defRes = await fetch('./def_proj_26.tsv');
                 defPlayers = State.parseDefData(await defRes.text());
-            } catch(e) { console.warn("Could not load def_proj_26.tsv"); }
+            } catch (e) { }
 
-            // 3. Fetch Kickers
-            let kickerPlayers = [];
             try {
                 const kRes = await fetch('./k_proj_26.tsv');
                 kickerPlayers = State.parseKickerData(await kRes.text());
-            } catch(e) { console.warn("Could not load k_proj_26.tsv"); }
+            } catch (e) { }
 
-            // Merge all players into State
             State.allPlayers = [...offPlayers, ...defPlayers, ...kickerPlayers];
 
-            // 4. Fetch Advanced Analytics & Merge
+            // 3. Fetch SOS Data & Merge
+            try {
+                const sosRes = await fetch('./SOS_26.tsv');
+                const sosParsed = State.parseSOSData(await sosRes.text());
+                State.mergeSOSData(sosParsed);
+            } catch (e) { console.warn("Could not load SOS_26.tsv"); }
+
+            // 4. Advanced Analytics & History
             const advFiles = ['./AdvancedQBData.tsv', './AdvancedRBData.tsv', './AdvancedWRData.tsv', './AdvancedTEData.tsv'];
             for (let file of advFiles) {
                 try {
                     let advRes = await fetch(file);
-                    let parsedAdv = State.parseAdvancedData(await advRes.text());
-                    State.mergeAdvancedMetrics(parsedAdv);
-                } catch(err) { console.warn(`Could not load ${file}`); }
+                    State.mergeAdvancedMetrics(State.parseAdvancedData(await advRes.text()));
+                } catch (err) { }
             }
 
-            // 5. Fetch Team Targets & Draft History
             try {
                 let tgtRes = await fetch('./Team_Target_Dist_Data.tsv');
                 State.teamTargets = State.parseAdvancedData(await tgtRes.text());
-            } catch(e) {}
+            } catch (e) { }
 
             try {
-                const historyRes = await fetch('./DraftHistory.tsv'); 
+                const historyRes = await fetch('./DraftHistory.tsv');
                 State.parseHistory(await historyRes.text());
                 if (typeof renderInsightsTable === "function") renderInsightsTable();
                 if (typeof UI.renderProfileAssignments === "function") UI.renderProfileAssignments();
-            } catch(e) {}
+            } catch (e) { }
 
-            // Calculate Base Points & VBD initially
+            // Calculate Projections & VBD
             State.calculateProjections();
             State.calculateVBD();
 
-            // Update UI
-            if(loadBtn) {
-                loadBtn.textContent = `✓ Auto-Loaded ${State.allPlayers.length} Players!`;
+            if (loadBtn) {
+                loadBtn.textContent = `✓ Auto-Loaded ${State.allPlayers.length} Players + SOS Ratings!`;
                 loadBtn.classList.replace('bg-slate-900', 'bg-emerald-600');
                 loadBtn.disabled = true;
             }
-            
+
             startBtn.classList.remove('opacity-50', 'cursor-not-allowed');
             startBtn.disabled = false;
             startBtn.textContent = "Start Draft";
 
         } catch (err) {
             console.error(err);
-            if(loadBtn) {
+            if (loadBtn) {
                 loadBtn.textContent = "Failed to load data. Click to retry.";
                 loadBtn.classList.replace('bg-slate-900', 'bg-red-600');
             }
