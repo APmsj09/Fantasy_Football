@@ -124,7 +124,8 @@ const UI = {
                 </td>
                 <td class="px-4 py-3 text-sm text-gray-500">${p.Pos}</td>
                 <td class="px-4 py-3 text-sm font-medium">${p.ProjPts.toFixed(1)}</td>
-                <td class="px-4 py-3 text-sm font-bold text-emerald-600">${p.VBD.toFixed(1)}</td>
+                <td class="px-4 py-3 text-sm font-medium text-emerald-600">${p.VBD.toFixed(1)}</td>
+                <td class="px-4 py-3 text-sm font-extrabold text-indigo-600">${p.AdvVBD ? p.AdvVBD.toFixed(1) : p.VBD.toFixed(1)}</td>
                 <td class="px-4 py-3 text-right">${btnHtml}</td>
             `;
             tbody.appendChild(tr);

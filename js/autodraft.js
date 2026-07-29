@@ -24,7 +24,7 @@ const AutoDraft = {
         const profile = team.profile; // The historical tendencies
 
         // Deep copy players so we can manipulate 'Adjusted VBD' without ruining the master list
-        let evaluatedPlayers = State.availablePlayers.map(p => ({ ...p, adjustedVBD: p.VBD }));
+        let evaluatedPlayers = State.availablePlayers.map(p => ({ ...p, adjustedVBD: (p.AdvVBD || p.VBD) }));
 
         // --- APPLY AI TENDENCIES based on Profile ---
         if (profile) {

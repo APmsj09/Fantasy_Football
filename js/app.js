@@ -20,65 +20,74 @@ document.addEventListener('DOMContentLoaded', () => {
     // Auto-Load Data Function
     async function autoLoadData() {
         const loadBtn = document.getElementById('load-data-button');
-        if (loadBtn) loadBtn.textContent = "Fetching Data from GitHub...";
+        if(loadBtn) loadBtn.textContent = "Fetching Projections from GitHub...";
 
         try {
-            // 1. Fetch Main Player Data (using relative path to github repo)
-            const res = await fetch('./Data.tsv');
-            State.allPlayers = State.parseTSV(await res.text());
+            // 1. Fetch Skill Players (QB, RB, WR, TE)
+            const offRes = await fetch('./projected_data_26.tsv');
+            const offPlayers = State.parseProjectedData(await offRes.text());
+            
+            // 2. Fetch Defenses
+            let defPlayers = [];
+            try {
+                const defRes = await fetch('./def_proj_26.tsv');
+                defPlayers = State.parseDefData(await defRes.text());
+            } catch(e) { console.warn("Could not load def_proj_26.tsv"); }
 
-            // 2. Fetch Advanced Stats
-            const files = [
-                './AdvancedQBData.tsv',
-                './AdvancedRBData.tsv',
-                './AdvancedWRData.tsv',
-                './AdvancedTEData.tsv'
-            ];
+            // 3. Fetch Kickers
+            let kickerPlayers = [];
+            try {
+                const kRes = await fetch('./k_proj_26.tsv');
+                kickerPlayers = State.parseKickerData(await kRes.text());
+            } catch(e) { console.warn("Could not load k_proj_26.tsv"); }
 
-            for (let file of files) {
+            // Merge all players into State
+            State.allPlayers = [...offPlayers, ...defPlayers, ...kickerPlayers];
+
+            // 4. Fetch Advanced Analytics & Merge
+            const advFiles = ['./AdvancedQBData.tsv', './AdvancedRBData.tsv', './AdvancedWRData.tsv', './AdvancedTEData.tsv'];
+            for (let file of advFiles) {
                 try {
                     let advRes = await fetch(file);
                     let parsedAdv = State.parseAdvancedData(await advRes.text());
                     State.mergeAdvancedMetrics(parsedAdv);
-                } catch (err) { console.warn(`Could not load ${file}`); }
+                } catch(err) { console.warn(`Could not load ${file}`); }
             }
 
-            // 3. Fetch Team Target Distributions
+            // 5. Fetch Team Targets & Draft History
             try {
                 let tgtRes = await fetch('./Team_Target_Dist_Data.tsv');
                 State.teamTargets = State.parseAdvancedData(await tgtRes.text());
-                renderTeamTargets('WR'); // Initial Render
-            } catch (err) { console.warn("Could not load Team Targets"); }
+            } catch(e) {}
 
-            // 4. Fetch Draft History
             try {
-                const historyRes = await fetch('./DraftHistory.tsv');
+                const historyRes = await fetch('./DraftHistory.tsv'); 
                 State.parseHistory(await historyRes.text());
-                renderInsightsTable();
-            } catch (historyErr) { console.warn("Could not load DraftHistory.tsv."); }
+                if (typeof renderInsightsTable === "function") renderInsightsTable();
+            } catch(e) {}
 
-            // Initial Render for Metric Leaders
-            renderMetricLeaders('RZ TGT');
+            // Calculate Base Points & VBD initially
+            State.calculateProjections();
+            State.calculateVBD();
 
             // Update UI
-            if (loadBtn) {
-                loadBtn.textContent = "✓ All Data Auto-Loaded!";
+            if(loadBtn) {
+                loadBtn.textContent = `✓ Auto-Loaded ${State.allPlayers.length} Players!`;
                 loadBtn.classList.replace('bg-slate-900', 'bg-emerald-600');
                 loadBtn.disabled = true;
             }
-
+            
             startBtn.classList.remove('opacity-50', 'cursor-not-allowed');
             startBtn.disabled = false;
-            startBtn.textContent = "Initialize Draft Board";
+            startBtn.textContent = "Start Draft";
 
         } catch (err) {
             console.error(err);
-            if (loadBtn) {
+            if(loadBtn) {
                 loadBtn.textContent = "Failed to load data. Click to retry.";
                 loadBtn.classList.replace('bg-slate-900', 'bg-red-600');
-                loadBtn.disabled = false;
             }
-            UI.showMessage('Error', 'Failed to auto-load data. Ensure TSV files are in the repository root.');
+            UI.showMessage('Error', 'Failed to auto-load projection files.');
         }
     }
 
@@ -184,6 +193,29 @@ document.addEventListener('DOMContentLoaded', () => {
         r.DST.max = parseInt(document.getElementById('pos-dst').value);
         r.Bench.max = parseInt(document.getElementById('pos-bn').value);
         r.totalSize = r.QB.max + r.RB.max + r.WR.max + r.TE.max + r.Flex.max + r.PK.max + r.DST.max + r.Bench.max;
+
+        // NEW: Grab user scoring settings
+        State.scoring.passYds = parseFloat(document.getElementById('score-pass-yds').value);
+        State.scoring.passTd = parseFloat(document.getElementById('score-pass-td').value);
+        State.scoring.int = parseFloat(document.getElementById('score-int').value);
+        State.scoring.ppr = parseFloat(document.getElementById('score-ppr').value);
+        State.scoring.rushYds = parseFloat(document.getElementById('score-rush-yds').value);
+        State.scoring.rushTd = parseFloat(document.getElementById('score-rush-td').value);
+        State.scoring.recYds = parseFloat(document.getElementById('score-rec-yds').value);
+        State.scoring.recTd = parseFloat(document.getElementById('score-rec-td').value);
+        State.scoring.fumLost = parseFloat(document.getElementById('score-fum').value);
+
+        // Kicker & DST
+        State.scoring.fg = parseFloat(document.getElementById('score-fg').value);
+        State.scoring.xp = parseFloat(document.getElementById('score-xp').value);
+        State.scoring.sack = parseFloat(document.getElementById('score-sack').value);
+        State.scoring.turnover = parseFloat(document.getElementById('score-turnover').value);
+        State.scoring.defTd = parseFloat(document.getElementById('score-deftd').value);
+        State.scoring.safety = parseFloat(document.getElementById('score-safety').value);
+
+        // Calculate custom points and VBD right before generating the board!
+        State.calculateProjections();
+        State.calculateVBD();
 
         State.initializeTeams();
         UI.switchTab('drafting-screen');
