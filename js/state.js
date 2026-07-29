@@ -14,11 +14,11 @@ const State = {
     settings: {
         numTeams: 12,
         draftMode: 'live',
-        userTeamIndex: 1,
+        userTeamIndex: 1, 
         roster: {
-            QB: { max: 1 }, RB: { max: 3 }, WR: { max: 3 },
-            TE: { max: 1 }, Flex: { max: 2 }, PK: { max: 1 },
-            DST: { max: 1 }, Bench: { max: 5 }, totalSize: 16
+            QB: { max: 1 }, RB: { max: 2 }, WR: { max: 2 }, 
+            TE: { max: 1 }, Flex: { max: 2 }, PK: { max: 1 }, 
+            DST: { max: 1 }, Bench: { max: 6 }, totalSize: 16
         }
     },
 
@@ -81,9 +81,9 @@ const State = {
     },
 
     scoring: {
-        passYds: 0.04, passTd: 4, int: -2,
+        passYds: 0.04, passTd: 6, int: -2,
         rushYds: 0.1, rushTd: 6, recYds: 0.1, recTd: 6, ppr: 1, fumLost: -2,
-        fg: 3, xp: 1, sack: 1, turnover: 2, defTd: 6, safety: 2
+        fg0_29: 3, xp: 1, sack: 1, turnover: 2, defTd: 6, safety: 2
     },
 
     // 1. Parse the raw counting stats
@@ -91,11 +91,9 @@ const State = {
         const rows = text.split(/\r?\n/).filter(row => row.trim() !== '');
         const headers = rows[0].split('\t').map(h => h.trim());
         const parsed = [];
-
+        
         for (let i = 1; i < rows.length; i++) {
             const vals = rows[i].split('\t');
-
-            // Standardize Position names
             let rawPos = vals[headers.indexOf('Position')] || '';
             if (rawPos === 'K') rawPos = 'PK';
             if (rawPos === 'DEF') rawPos = 'DST';
@@ -105,7 +103,7 @@ const State = {
                 Pos: rawPos,
                 Team: vals[headers.indexOf('Team')],
                 stats: {
-                    // Offense
+                    gp: parseFloat(vals[headers.indexOf('GP')]) || 17,
                     passYds: parseFloat(vals[headers.indexOf('Pass Yds')]) || 0,
                     passTd: parseFloat(vals[headers.indexOf('Pass TD')]) || 0,
                     int: parseFloat(vals[headers.indexOf('INT')]) || 0,
@@ -115,26 +113,10 @@ const State = {
                     recTd: parseFloat(vals[headers.indexOf('Rec TD')]) || 0,
                     rec: parseFloat(vals[headers.indexOf('Receptions')]) || 0,
                     fum: parseFloat(vals[headers.indexOf('Fumbles Lost')]) || 0,
-
-                    // Kickers
-                    fg: parseFloat(vals[headers.indexOf('FG')]) || parseFloat(vals[headers.indexOf('FGM')]) || 0,
-                    xp: parseFloat(vals[headers.indexOf('XP')]) || parseFloat(vals[headers.indexOf('XPM')]) || 0,
-
-                    // DST
-                    sack: parseFloat(vals[headers.indexOf('Sacks')]) || parseFloat(vals[headers.indexOf('Sack')]) || 0,
-                    defInt: parseFloat(vals[headers.indexOf('Def INT')]) || parseFloat(vals[headers.indexOf('INTs')]) || 0,
-                    defFum: parseFloat(vals[headers.indexOf('Fum Rec')]) || parseFloat(vals[headers.indexOf('Def Fum')]) || 0,
-                    defTd: parseFloat(vals[headers.indexOf('Def TD')]) || 0,
-                    safety: parseFloat(vals[headers.indexOf('Safety')]) || parseFloat(vals[headers.indexOf('Safeties')]) || 0,
-
-                    // Points Allowed Base (Usually standard projections just give base DST Points Allowed)
-                    dstBasePts: parseFloat(vals[headers.indexOf('PA Pts')]) || 0,
                 },
-                ProjPts: 0,
-                VBD: 0,
-                AdvVBD: 0
+                ProjPts: 0, VBD: 0, AdvVBD: 0
             };
-            if (p.Player) parsed.push(p);
+            if(p.Player) parsed.push(p);
         }
         return parsed;
     },
@@ -143,28 +125,38 @@ const State = {
     calculateProjections() {
         this.allPlayers.forEach(p => {
             let s = p.stats;
-
+            let gp = s.gp || 17;
+            
             if (p.Pos === 'PK') {
-                // Distance Scoring: 3pts for <40, 4pts for 40-49, 5pts for 50+
-                p.ProjPts = (s.fg0_39 * 3) + (s.fg40_49 * 4) + (s.fg50 * 5) + (s.xp * (this.scoring.xp || 1));
-            }
+                // Fractional Field Goal Scoring: 0-29 yds = 3 pts; 30+ yds = 0.1 pts/yd (35yd avg = 3.5pts, 45yd avg = 4.5pts, 53yd avg = 5.3pts)
+                p.ProjPts = (s.fg0_39 * 3.25) + (s.fg40_49 * 4.5) + (s.fg50 * 5.3) + (s.xp * (this.scoring.xp || 1));
+            } 
             else if (p.Pos === 'DST') {
                 // Defensive Scoring
                 let turnoverPts = (s.defInt + s.defFum) * (this.scoring.turnover || 2);
                 let sackPts = s.sack * (this.scoring.sack || 1);
                 let tdPts = s.defTd * (this.scoring.defTd || 6);
                 let safetyPts = s.safety * (this.scoring.safety || 2);
-                let blkPts = s.blk * 2; // Standard 2pts for Blocked Kicks
+                let blkPts = s.blk * 2;
+                
+                // Tiered Points Allowed Weekly Calculation
+                let papg = s.papg || 18.0;
+                let weeklyPaPts = 0;
+                if (papg === 0) weeklyPaPts = 10;
+                else if (papg <= 6) weeklyPaPts = 7;
+                else if (papg <= 13) weeklyPaPts = 4;
+                else if (papg <= 20) weeklyPaPts = 1;
+                else if (papg <= 27) weeklyPaPts = 0;
+                else if (papg <= 35) weeklyPaPts = -1;
+                else weeklyPaPts = -4;
 
-                // Points Allowed Approximation (Base starting at ~100 pts minus total season points allowed penalty)
-                let paBonus = Math.max(0, 100 - (s.ptsAllowed * 0.15));
-
-                p.ProjPts = sackPts + turnoverPts + tdPts + safetyPts + blkPts + paBonus;
-            }
+                p.ProjPts = sackPts + turnoverPts + tdPts + safetyPts + blkPts + (weeklyPaPts * gp);
+            } 
             else {
-                p.ProjPts =
+                // Offense Core Math (6 Pt Pass TD)
+                let basePts = 
                     (s.passYds * this.scoring.passYds) +
-                    (s.passTd * this.scoring.passTd) +
+                    (s.passTd * (this.scoring.passTd || 6)) +
                     (s.int * this.scoring.int) +
                     (s.rushYds * this.scoring.rushYds) +
                     (s.rushTd * this.scoring.rushTd) +
@@ -173,10 +165,24 @@ const State = {
                     (s.rec * this.scoring.ppr) +
                     (s.fum * this.scoring.fumLost);
 
-                // Fallback: If a site only provides generic "FPTS" for a defense, use that instead of counting it as 0
-                if (p.Pos === 'DST' && p.ProjPts === 0) {
-                    p.ProjPts = parseFloat(p.stats.dstBasePts || 100);
-                }
+                // Yardage Milestone Bonus Estimations
+                let passYpg = s.passYds / gp;
+                let rushYpg = s.rushYds / gp;
+                let recYpg = s.recYds / gp;
+
+                let passBonus = 0;
+                if (passYpg >= 220) passBonus += Math.min(gp, (passYpg - 200) / 15) * 1; // 300-399 Yd Bonus (+1)
+                if (passYpg >= 300) passBonus += Math.min(gp, (passYpg - 280) / 25) * 3; // 400+ Yd Bonus (+3)
+
+                let rushBonus = 0;
+                if (rushYpg >= 50) rushBonus += Math.min(gp, (rushYpg - 45) / 10) * 1;  // 100-199 Yd Bonus (+1)
+                if (rushYpg >= 130) rushBonus += Math.min(gp, (rushYpg - 120) / 20) * 3; // 200+ Yd Bonus (+3)
+
+                let recBonus = 0;
+                if (recYpg >= 50) recBonus += Math.min(gp, (recYpg - 45) / 10) * 1;    // 100-199 Yd Bonus (+1)
+                if (recYpg >= 130) recBonus += Math.min(gp, (recYpg - 120) / 20) * 3;   // 200+ Yd Bonus (+3)
+
+                p.ProjPts = basePts + passBonus + rushBonus + recBonus;
             }
         });
     },
@@ -185,38 +191,34 @@ const State = {
     calculateVBD() {
         const baselines = {};
         const positions = ['QB', 'RB', 'WR', 'TE', 'PK', 'DST'];
-
-        // Find baseline players (the worst starter at each position based on league size)
+        
         positions.forEach(pos => {
-            let starters = this.settings.numTeams * this.settings.roster[pos].max;
-            // Flex approximation: add 50% of flex spots to RB and WR baselines
-            if (pos === 'RB' || pos === 'WR') starters += Math.floor((this.settings.numTeams * this.settings.roster.Flex.max) / 2);
-
-            let sortedPos = [...this.allPlayers].filter(p => p.Pos === pos).sort((a, b) => b.ProjPts - a.ProjPts);
-            let baselinePlayer = sortedPos[Math.min(starters - 1, sortedPos.length - 1)];
+            let starters = this.settings.numTeams * (this.settings.roster[pos]?.max || 0);
+            
+            // Add Flex starters to RB/WR baseline
+            if(pos === 'RB' || pos === 'WR') starters += Math.floor((this.settings.numTeams * this.settings.roster.Flex.max) / 2);
+            
+            let sortedPos = [...this.allPlayers].filter(p => p.Pos === pos).sort((a,b) => b.ProjPts - a.ProjPts);
+            let baselinePlayer = sortedPos[Math.min(Math.max(starters - 1, 0), sortedPos.length - 1)];
             baselines[pos] = baselinePlayer ? baselinePlayer.ProjPts : 0;
         });
 
         this.allPlayers.forEach(p => {
-            // Standard VBD
             let basePts = baselines[p.Pos] || 0;
             p.VBD = Math.max(0, p.ProjPts - basePts);
 
-            // Advanced VBD Adjustments based on engineered features
+            // Advanced VBD Multiplier
             let adjMultiplier = 1.0;
-
-            // Apply logic to engineered metrics calculated earlier
-            if (p.trueCatchRate && p.trueCatchRate > 90) adjMultiplier += 0.05; // Elite Hands
-            if (p.dropRate && p.dropRate > 10) adjMultiplier -= 0.05; // Drop Risk
-            if (p.targetShare && p.targetShare >= 25) adjMultiplier += 0.10; // Elite Volume
-            if (p.yaconPercent && p.yaconPercent >= 70) adjMultiplier += 0.10; // O-Line Independent (RB)
-            if (p.trueAccuracy && p.trueAccuracy > 75) adjMultiplier += 0.05; // Elite QB Accuracy
+            if (p.trueCatchRate && p.trueCatchRate > 90) adjMultiplier += 0.05; 
+            if (p.dropRate && p.dropRate > 10) adjMultiplier -= 0.05; 
+            if (p.targetShare && p.targetShare >= 25) adjMultiplier += 0.10; 
+            if (p.yaconPercent && p.yaconPercent >= 70) adjMultiplier += 0.10; 
+            if (p.trueAccuracy && p.trueAccuracy > 75) adjMultiplier += 0.05; 
 
             p.AdvVBD = p.VBD * adjMultiplier;
         });
-
-        // Sort master list by Advanced VBD by default
-        this.allPlayers.sort((a, b) => b.AdvVBD - a.AdvVBD);
+        
+        this.allPlayers.sort((a,b) => b.AdvVBD - a.AdvVBD);
         this.availablePlayers = [...this.allPlayers];
     },
 
@@ -290,24 +292,24 @@ const State = {
             const vals = rows[i].split('\t');
             let city = vals[headers.indexOf('City')] || '';
             let teamName = vals[headers.indexOf('Team')] || '';
-
+            
             let p = {
-                Player: `${city} ${teamName}`.trim(), // e.g., "Denver Broncos"
+                Player: `${city} ${teamName}`.trim(),
                 Pos: 'DST',
-                Team: vals[headers.indexOf('Abv')] || '', // e.g., "DEN"
+                Team: vals[headers.indexOf('Abv')] || '',
                 stats: {
                     defInt: parseFloat(vals[headers.indexOf('INT')]) || 0,
                     safety: parseFloat(vals[headers.indexOf('Safety')]) || 0,
                     sack: parseFloat(vals[headers.indexOf('Sacks')]) || 0,
                     tfl: parseFloat(vals[headers.indexOf('TFL')]) || 0,
-                    defFum: parseFloat(vals[headers.indexOf('FR')]) || 0, // Fumble Recoveries
-                    defTd: parseFloat(vals[headers.indexOf('DTD')]) || 0, // Defensive TDs
-                    ptsAllowed: parseFloat(vals[headers.indexOf('Pts Allowed')]) || 0,
+                    defFum: parseFloat(vals[headers.indexOf('FR')]) || 0,
+                    defTd: parseFloat(vals[headers.indexOf('DTD')]) || 0,
+                    papg: parseFloat(vals[headers.indexOf('PAPG')]) || 18.0, // Points Allowed Per Game
                     blk: parseFloat(vals[headers.indexOf('Blk')]) || 0
                 },
                 ProjPts: 0, VBD: 0, AdvVBD: 0
             };
-            if (p.Player && p.Team) parsed.push(p);
+            if(p.Player && p.Team) parsed.push(p);
         }
         return parsed;
     },
