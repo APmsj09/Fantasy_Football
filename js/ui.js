@@ -71,64 +71,111 @@ const UI = {
     },
 
     // Weekly Projections Modal Viewer
-    showWeeklyModal(cleanName) {
+    showPlayerCard(cleanName) {
         let p = State.allPlayers.find(x => x._cleanName === cleanName);
-        if(!p || !p.weeklyProjections) return;
+        if (!p) return;
 
-        // 1. Build the new Real-World Stats Dashboard
-        let statsHtml = '';
-        if (p.stats && !['PK', 'DST'].includes(p.Pos)) {
-            let s = p.stats;
-            statsHtml = `
-                <div class="bg-indigo-50/50 p-3 rounded-xl border border-indigo-100 mb-4 text-xs text-gray-800 grid grid-cols-2 gap-y-2 gap-x-4 shadow-sm">
-                    ${p.Pos === 'QB' ? `
-                        <div><span class="font-bold text-gray-500 block uppercase text-[9px]">Passing</span> ${s.passCmp} / ${s.passAtt}</div>
-                        <div><span class="font-bold text-gray-500 block uppercase text-[9px]">Pass Yds / Rating</span> ${s.passYds} yds <span class="text-gray-400">(${s.passerRating})</span></div>
-                        <div class="col-span-2 border-b border-indigo-100/50 pb-1"><span class="font-bold text-gray-500 block uppercase text-[9px]">TD:INT Ratio</span> ${s.passTd} TD / ${s.int} INT</div>
-                    ` : ''}
-                    
-                    ${s.rushAtt > 0 ? `
-                        <div><span class="font-bold text-gray-500 block uppercase text-[9px]">Rushing Vol</span> ${s.rushAtt} att</div>
-                        <div><span class="font-bold text-gray-500 block uppercase text-[9px]">Rush Yds</span> ${s.rushYds} <span class="text-emerald-600 font-semibold">(${s.rushAvg} ypc)</span></div>
-                    ` : ''}
-                    
-                    ${s.targets > 0 ? `
-                        <div><span class="font-bold text-gray-500 block uppercase text-[9px]">Receiving Vol</span> ${s.rec} rec / ${s.targets} tgt</div>
-                        <div><span class="font-bold text-gray-500 block uppercase text-[9px]">Rec Yds</span> ${s.recYds} <span class="text-indigo-600 font-semibold">(${s.recAvg} ypr)</span></div>
-                    ` : ''}
-                    
-                    <div class="col-span-2 pt-1 mt-1 border-t border-indigo-100/50 flex justify-between font-bold">
-                        <span>Total TDs: ${(s.rushTd || 0) + (s.recTd || 0)}</span>
-                        ${s.fum > 0 ? `<span class="text-red-500">Fumbles: ${s.fum}</span>` : ''}
+        let s = p.stats || {};
+        let isOffense = !['PK', 'DST'].includes(p.Pos);
+
+        // 1. Header Badges
+        let ppwBadge = p._addedPPW && p._addedPPW > 0.2 
+            ? `<span class="bg-emerald-100 text-emerald-800 text-xs font-bold px-2.5 py-1 rounded-full border border-emerald-200">📈 +${p._addedPPW.toFixed(1)} PPW Lineup Fit</span>` 
+            : '';
+
+        // 2. Projected Volume & Efficiency Dashboard
+        let statsDashboard = '';
+        if (isOffense) {
+            let opps = (s.rushAtt || 0) + (s.targets || 0);
+            statsDashboard = `
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-4 shadow-sm text-xs grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div class="bg-white p-2.5 rounded-lg border border-slate-100">
+                        <span class="text-gray-400 block text-[10px] font-bold uppercase tracking-wider">Opportunity Volume</span>
+                        <span class="text-sm font-extrabold text-slate-800">${opps} Touches/Tgts</span>
+                        ${p.targetShare ? `<span class="block text-[10px] text-indigo-600 font-semibold">${p.targetShare}% Tgt Share</span>` : ''}
+                    </div>
+                    <div class="bg-white p-2.5 rounded-lg border border-slate-100">
+                        <span class="text-gray-400 block text-[10px] font-bold uppercase tracking-wider">Projected Output</span>
+                        <span class="text-sm font-extrabold text-indigo-600">${p.ProjPts.toFixed(1)} Pts</span>
+                        <span class="block text-[10px] text-gray-500">Adv VBD: ${(p.AdvVBD || p.VBD).toFixed(1)}</span>
+                    </div>
+                    <div class="bg-white p-2.5 rounded-lg border border-slate-100">
+                        <span class="text-gray-400 block text-[10px] font-bold uppercase tracking-wider">Schedule Rating</span>
+                        <span class="text-sm font-extrabold text-amber-600">⭐ ${p.avgStars ? p.avgStars.toFixed(2) : '3.0'}</span>
+                        <span class="block text-[10px] text-gray-500">Playoffs: ⭐${(p.playoffSOS || p.avgStars || 3.0).toFixed(1)}</span>
+                    </div>
+                    <div class="bg-white p-2.5 rounded-lg border border-slate-100">
+                        <span class="text-gray-400 block text-[10px] font-bold uppercase tracking-wider">Bye Week</span>
+                        <span class="text-sm font-extrabold text-slate-700">${p.byeWeek && p.byeWeek !== 'N/A' ? 'Week ' + p.byeWeek : 'N/A'}</span>
                     </div>
                 </div>
-            `;
-        }
 
-        // 2. Build the Weekly rows
-        let rowsHtml = '';
-        for(let w = 1; w <= 18; w++) {
-            let star = p.sosWeeks[`W${w}`];
-            let pts = p.weeklyProjections[`W${w}`];
-            let starDisp = star === 'BYE' ? '<span class="text-gray-400">BYE</span>' : `⭐ ${star}`;
-            
-            rowsHtml += `
-                <div class="flex justify-between items-center py-2 border-b border-gray-50 text-xs">
-                    <span class="font-bold text-gray-600 w-16">Week ${w}</span>
-                    <span class="text-amber-500 font-medium">${starDisp}</span>
-                    <span class="font-extrabold ${pts > 0 ? 'text-indigo-600' : 'text-gray-300'}">${pts > 0 ? pts.toFixed(1) + ' pts' : '-'}</span>
+                <!-- Detailed Real-World Stat Line -->
+                <div class="bg-indigo-50/50 p-3.5 rounded-xl border border-indigo-100 mb-4 text-xs text-gray-800 grid grid-cols-2 md:grid-cols-3 gap-y-2.5 gap-x-4">
+                    ${p.Pos === 'QB' ? `
+                        <div><span class="font-bold text-gray-500 block text-[10px] uppercase">Pass Comp / Att</span> ${s.passCmp} / ${s.passAtt}</div>
+                        <div><span class="font-bold text-gray-500 block text-[10px] uppercase">Pass Yds / Rating</span> ${s.passYds} <span class="text-gray-400">(${s.passerRating})</span></div>
+                        <div><span class="font-bold text-gray-500 block text-[10px] uppercase">TD : INT</span> <span class="text-emerald-600 font-bold">${s.passTd} TD</span> / <span class="text-red-500">${s.int} INT</span></div>
+                        ${p.trueAccuracy ? `<div><span class="font-bold text-gray-500 block text-[10px] uppercase">True Accuracy</span> ${p.trueAccuracy.toFixed(1)}%</div>` : ''}
+                    ` : ''}
+
+                    ${s.rushAtt > 0 ? `
+                        <div><span class="font-bold text-gray-500 block text-[10px] uppercase">Rushing Vol</span> ${s.rushAtt} Att</div>
+                        <div><span class="font-bold text-gray-500 block text-[10px] uppercase">Rush Yds / YPC</span> ${s.rushYds} yds <span class="text-emerald-600 font-bold">(${s.rushAvg} YPC)</span></div>
+                        <div><span class="font-bold text-gray-500 block text-[10px] uppercase">Rush TDs</span> ${s.rushTd} TD</div>
+                        ${p.yacAtt ? `<div><span class="font-bold text-gray-500 block text-[10px] uppercase">YAC / Att</span> ${p.yacAtt} yds</div>` : ''}
+                    ` : ''}
+
+                    ${s.targets > 0 ? `
+                        <div><span class="font-bold text-gray-500 block text-[10px] uppercase">Receiving Vol</span> ${s.rec} Rec / ${s.targets} Tgt</div>
+                        <div><span class="font-bold text-gray-500 block text-[10px] uppercase">Rec Yds / YPR</span> ${s.recYds} yds <span class="text-indigo-600 font-bold">(${s.recAvg} YPR)</span></div>
+                        <div><span class="font-bold text-gray-500 block text-[10px] uppercase">Rec TDs</span> ${s.recTd} TD</div>
+                        ${p.rzTgt ? `<div><span class="font-bold text-gray-500 block text-[10px] uppercase">Red Zone Targets</span> <span class="text-red-600 font-bold">${p.rzTgt} RZ Tgts</span></div>` : ''}
+                        ${p.trueCatchRate ? `<div><span class="font-bold text-gray-500 block text-[10px] uppercase">Catch Rate</span> ${p.trueCatchRate.toFixed(1)}%</div>` : ''}
+                        ${p.dropRate ? `<div><span class="font-bold text-gray-500 block text-[10px] uppercase">Drop Rate</span> ${p.dropRate.toFixed(1)}%</div>` : ''}
+                    ` : ''}
                 </div>
             `;
         }
 
-        UI.showMessage(`${p.Player} <span class="text-sm font-normal text-gray-500">| ${p.Pos} - ${p.Team}</span>`, `
-            ${statsHtml}
-            <div class="mb-2 text-[11px] text-gray-500 flex justify-between px-1">
-                <span>Season Total: <strong class="text-gray-800">${p.ProjPts.toFixed(1)} pts</strong></span>
-                <span>Schedule Avg: <strong class="text-amber-600">⭐ ${p.avgStars}</strong></span>
-            </div>
-            <div class="max-h-56 overflow-y-auto pr-2 custom-scrollbar bg-white border rounded-xl p-3 shadow-inner">${rowsHtml}</div>
+        // 3. Week 1 - 18 Schedule & Points Matrix
+        let rowsHtml = '';
+        if (p.weeklyProjections) {
+            for (let w = 1; w <= 18; w++) {
+                let star = p.sosWeeks ? p.sosWeeks[`W${w}`] : 3.0;
+                let pts = p.weeklyProjections[`W${w}`] || 0;
+                let starDisp = star === 'BYE' ? '<span class="text-gray-400 font-semibold">BYE</span>' : `⭐ ${star}`;
+                let isPlayoff = w >= 15 && w <= 17;
+
+                rowsHtml += `
+                    <div class="flex justify-between items-center py-2 border-b border-gray-100 text-xs ${isPlayoff ? 'bg-amber-50/50 px-2 rounded-md' : ''}">
+                        <span class="font-bold text-gray-700 w-20 flex items-center">
+                            Week ${w} ${isPlayoff ? '<span class="ml-1 text-[9px] bg-amber-200 text-amber-900 px-1 rounded font-extrabold">PLAYOFF</span>' : ''}
+                        </span>
+                        <span class="text-amber-600 font-medium">${starDisp}</span>
+                        <span class="font-extrabold ${pts > 0 ? 'text-indigo-600' : 'text-gray-300'}">${pts > 0 ? pts.toFixed(1) + ' pts' : '-'}</span>
+                    </div>
+                `;
+            }
+        }
+
+        // Modal Title & Layout
+        let modalTitle = `<div class="flex items-center space-x-2">
+            <span>${p.Player}</span>
+            <span class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-normal">${p.Pos} • ${p.Team}</span>
+        </div>`;
+
+        UI.showMessage(modalTitle, `
+            <div class="mb-3">${ppwBadge}</div>
+            ${statsDashboard}
+            <h4 class="font-bold text-xs text-gray-700 uppercase tracking-wider mb-2">18-Week Projection & Schedule Matrix</h4>
+            <div class="max-h-52 overflow-y-auto pr-2 bg-white border border-gray-200 rounded-xl p-3 shadow-inner">${rowsHtml}</div>
         `);
+    },
+
+    // Maintain alias compatibility
+    showWeeklyModal(cleanName) {
+        this.showPlayerCard(cleanName);
     },
 
     renderProfileAssignments() {
@@ -221,48 +268,62 @@ const UI = {
         
         displayList.forEach(p => {
             let btnHtml = "";
-            let safeName = p.Player.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+            let safeName = p._cleanName;
             
-            if(isMock && !isUserTurn) {
-                btnHtml = `<button class="bg-gray-200 text-gray-400 px-3 py-1.5 rounded-lg text-xs font-bold cursor-not-allowed" disabled>Wait</button>`;
+            if (isMock && !isUserTurn) {
+                btnHtml = `<button class="bg-gray-200 text-gray-400 px-2.5 py-1.5 rounded-lg text-xs font-bold cursor-not-allowed" disabled>Wait</button>`;
             } else {
-                btnHtml = `<button class="bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 text-xs font-bold shadow-sm draft-btn transition-colors" data-player="${p._cleanName}">${btnText}</button>`;
+                btnHtml = `<button class="bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 text-xs font-bold shadow-sm draft-btn transition-colors" data-player="${safeName}">${btnText}</button>`;
             }
 
-            let insightTag = "";
+            // Usage & Metrics Display
+            let usageStr = "";
             let opps = (p.stats?.rushAtt || 0) + (p.stats?.targets || 0);
-            
-            // Generate Volume / Efficiency Tags based on our newly imported data
-            if (opps >= 300) {
-                insightTag += `<span class="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-purple-100 text-purple-800">👑 Elite Volume</span>`;
-            } else if (p.Pos === 'RB' && p.stats?.rushAvg >= 5.0) {
-                insightTag += `<span class="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-100 text-emerald-800">⚡ Home Run Threat</span>`;
-            } else if (['WR', 'TE'].includes(p.Pos) && p.stats?.recAvg >= 15.0) {
-                insightTag += `<span class="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-800">🚀 Deep Threat</span>`;
-            } else if (p.targetShare && p.targetShare >= 25) {
-                insightTag += `<span class="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-800">🎯 ${p.targetShare}% Tgts</span>`;
-            }
-            if (p._addedPPW && p._addedPPW > 0.5) {
-                insightTag += `<span class="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-800 shadow-sm" title="Adds ${p._addedPPW.toFixed(1)} points per week to your optimal starting lineup">📈 +${p._addedPPW.toFixed(1)} PPW</span>`;
-            }
+            if (opps >= 250) usageStr = `<span class="font-bold text-gray-800">${opps} Touches</span>`;
+            else if (p.stats?.targets > 0) usageStr = `<span class="font-medium text-gray-700">${p.stats.targets} Tgts</span>`;
+            else if (p.stats?.rushAtt > 0) usageStr = `<span class="font-medium text-gray-700">${p.stats.rushAtt} Att</span>`;
+            else usageStr = `<span class="text-gray-400">-</span>`;
+
+            // Insight Badges
+            let insightTag = "";
+            if (opps >= 300) insightTag = `<span class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-purple-100 text-purple-800">👑 Workhorse</span>`;
+            else if (p.targetShare && p.targetShare >= 22) insightTag = `<span class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-800">🎯 ${p.targetShare}% Tgts</span>`;
+            else if (p.Pos === 'RB' && p.stats?.rushAvg >= 4.8) insightTag = `<span class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-100 text-emerald-800">⚡ ${p.stats.rushAvg} YPC</span>`;
+            else if (['WR', 'TE'].includes(p.Pos) && p.stats?.recAvg >= 14.5) insightTag = `<span class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-100 text-blue-800">🚀 Deep Threat</span>`;
+
+            // Lineup Fit Badge
+            let ppwStr = p._addedPPW && p._addedPPW > 0.3 
+                ? `<span class="font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">+${p._addedPPW.toFixed(1)} PPW</span>` 
+                : `<span class="text-gray-400 text-xs">-</span>`;
+
+            // Schedule Stars
+            let sosStr = p.avgStars 
+                ? `<span class="font-semibold text-amber-600">⭐ ${p.avgStars.toFixed(1)}</span> <span class="text-[10px] text-gray-400 ml-0.5">(Playoffs: ⭐${(p.playoffSOS || p.avgStars).toFixed(1)})</span>` 
+                : `<span class="text-gray-400">-</span>`;
+
+            let byeStr = p.byeWeek && p.byeWeek !== 'N/A' ? `<span class="text-xs text-gray-400 ml-1">Wk ${p.byeWeek}</span>` : '';
 
             htmlStr += `
-                <tr class="hover:bg-slate-50 border-b border-gray-50">
-                    <td class="px-4 py-3 text-sm font-semibold text-gray-900 flex items-center">
-                        ${p.Player} 
-                        <span class="text-xs font-normal text-gray-400 ml-1">${p.Team}</span>
-                        ${insightTag}
+                <tr class="hover:bg-slate-50 border-b border-gray-100 transition-colors cursor-pointer" onclick="UI.showPlayerCard('${p._cleanName}')">
+                    <td class="px-3 py-2.5 text-xs font-semibold text-gray-900">
+                        <div class="flex items-center">
+                            <span>${p.Player}</span>
+                            <span class="text-[11px] font-normal text-gray-400 ml-1.5">${p.Team}</span>
+                            ${byeStr}
+                            ${insightTag}
+                        </div>
                     </td>
-                    <td class="px-4 py-3 text-sm text-gray-500">${p.Pos}</td>
-                    <td class="px-4 py-3 text-sm font-medium">${p.ProjPts.toFixed(1)}</td>
-                    <td class="px-4 py-3 text-sm font-medium text-emerald-600">${p.VBD.toFixed(1)}</td>
-                    <td class="px-4 py-3 text-sm font-extrabold text-indigo-600">${p.AdvVBD ? p.AdvVBD.toFixed(1) : p.VBD.toFixed(1)}</td>
-                    <td class="px-4 py-3 text-right">${btnHtml}</td>
+                    <td class="px-2 py-2.5 text-xs text-gray-600 font-medium">${p.Pos}</td>
+                    <td class="px-2 py-2.5 text-xs font-bold text-indigo-600">${p.ProjPts.toFixed(1)}</td>
+                    <td class="px-2 py-2.5 text-xs font-extrabold text-indigo-900">${(p.AdvVBD || p.VBD).toFixed(1)}</td>
+                    <td class="px-2 py-2.5 text-xs">${ppwStr}</td>
+                    <td class="px-2 py-2.5 text-xs">${sosStr}</td>
+                    <td class="px-3 py-2.5 text-xs">${usageStr}</td>
+                    <td class="px-3 py-2.5 text-right" onclick="event.stopPropagation()">${btnHtml}</td>
                 </tr>
             `;
         });
         
-        // Inject DOM exactly once
         tbody.innerHTML = htmlStr;
     },
 
@@ -273,49 +334,78 @@ const UI = {
         const userTeam = State.teamsById[State.userTeamId];
         document.getElementById('user-team-name-disp').textContent = userTeam.name;
         
-        // Viable players were already simulated in evaluateRosterFits
-        let viablePlayers = State.availablePlayers.filter(p => p._addedPPW !== undefined);
+        const currentRound = Math.floor(State.currentPick / State.settings.numTeams) + 1;
 
-        // Find the absolute #1 Best Fit for the roster
-        let bestFit = null;
-        let highestPPW = -1;
-        viablePlayers.forEach(p => {
-            if (p._addedPPW > highestPPW) {
-                highestPPW = p._addedPPW;
-                bestFit = p;
-            }
+        // 1. Filter viable players with Phase Awareness
+        let viablePlayers = State.availablePlayers.filter(p => {
+            let pos = p.Pos;
+
+            // 🚨 RULE: Strictly suppress Kickers and Defenses before Round 14
+            if ((pos === 'PK' || pos === 'DST') && currentRound < 14) return false;
+
+            if (userTeam.counts[pos] < State.settings.roster[pos].max) return true;
+            if (['RB', 'WR', 'TE'].includes(pos) && userTeam.counts['Flex'] < State.settings.roster.Flex.max) return true;
+            if (userTeam.counts['Bench'] < State.settings.roster.Bench.max) return true;
+            return false;
         });
 
-        // Filter out the best fit so they don't appear twice, then get Top 3 by AdvVBD
-        let vbdRecs = viablePlayers
-            .filter(p => p !== bestFit)
-            .sort((a,b) => b.AdvVBD - a.AdvVBD)
-            .slice(0, 3);
+        // 2. Compute Smart Recommendation Score (RecScore)
+        viablePlayers.forEach(p => {
+            let score = p.AdvVBD || p.VBD;
+
+            // Lineup Impact Boost
+            if (p._addedPPW) score += (p._addedPPW * 6);
+
+            // Roster Need Weighting: If starters are full, boost Bench RBs and WRs
+            let isStarterFull = userTeam.counts[p.Pos] >= State.settings.roster[p.Pos].max;
+            if (isStarterFull && ['RB', 'WR'].includes(p.Pos)) {
+                score += 8; // Heavy boost to bench RBs/WRs over backup QBs/TEs
+            }
+            if (isStarterFull && ['QB', 'TE'].includes(p.Pos)) {
+                score -= 10; // Penalize backup QBs/TEs when starters are already filled
+            }
+
+            // Usage & Target Share Boosts
+            if (p.targetShare && p.targetShare >= 20) score += 4;
+            if (p.stats && (p.stats.rushAtt + p.stats.targets) >= 200) score += 4;
+
+            p._recScore = score;
+        });
+
+        // 3. Separate Best Roster Fit and Top Value Targets
+        let sortedByRec = [...viablePlayers].sort((a,b) => b._recScore - a._recScore);
+        
+        // Best Lineup Fit (highest PPW added)
+        let bestFit = [...viablePlayers].sort((a,b) => (b._addedPPW || 0) - (a._addedPPW || 0))[0];
+        if (bestFit && (bestFit._addedPPW || 0) <= 0.1) bestFit = null;
+
+        let vbdRecs = sortedByRec.filter(p => p !== bestFit).slice(0, 3);
         
         let htmlStr = '';
 
-        // Render the #1 Dynamic Roster Fit Card
-        if (bestFit && highestPPW > 0.1) {
+        // Render Best Roster Fit Banner
+        if (bestFit) {
             htmlStr += `
-            <div class="p-3 bg-gradient-to-br from-emerald-600 to-teal-800 rounded-xl border border-emerald-500 flex justify-between items-center shadow-md cursor-pointer hover:shadow-lg transition mb-4" onclick="UI.showWeeklyModal('${bestFit._cleanName}')">
+            <div class="p-3 bg-gradient-to-br from-emerald-600 to-teal-800 rounded-xl border border-emerald-500 flex justify-between items-center shadow-md cursor-pointer hover:shadow-lg transition mb-3" onclick="UI.showPlayerCard('${bestFit._cleanName}')">
                 <div>
-                    <span class="text-[9px] font-extrabold uppercase tracking-widest text-emerald-200 mb-1 block flex items-center"><svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> Optimal Roster Fit</span>
+                    <span class="text-[9px] font-extrabold uppercase tracking-widest text-emerald-200 mb-1 flex items-center">
+                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg> Best Roster Fit
+                    </span>
                     <h4 class="font-bold text-sm text-white">${bestFit.Player}</h4>
-                    <p class="text-xs text-emerald-100 font-medium">${bestFit.Pos} • ⭐ ${bestFit.avgStars ? bestFit.avgStars.toFixed(2) : '3.0'} • <strong class="text-white">Adds ${highestPPW.toFixed(1)} PPW</strong></p>
+                    <p class="text-xs text-emerald-100 font-medium">${bestFit.Pos} • ${bestFit.Team} • <strong class="text-white">Adds +${bestFit._addedPPW.toFixed(1)} PPW</strong></p>
                 </div>
             </div>`;
         }
 
-        // Render the Top Value Targets
-        htmlStr += vbdRecs.map((p, i) => {
-            return `
-            <div class="p-3 bg-indigo-800 rounded-xl border border-indigo-700 flex justify-between items-center shadow-inner cursor-pointer hover:bg-indigo-700 transition mb-2" onclick="UI.showWeeklyModal('${p._cleanName}')">
+        // Render Top Recommended Value Targets
+        htmlStr += vbdRecs.map((p, i) => `
+            <div class="p-3 bg-indigo-800 rounded-xl border border-indigo-700 flex justify-between items-center shadow-inner cursor-pointer hover:bg-indigo-700 transition mb-2" onclick="UI.showPlayerCard('${p._cleanName}')">
                 <div>
-                    <h4 class="font-bold text-sm text-white">${bestFit ? i+2 : i+1}. ${p.Player}</h4>
-                    <p class="text-xs text-indigo-300 font-medium">${p.Pos} • Adv. VBD: ${(p.AdvVBD || p.VBD).toFixed(1)} • ⭐ ${p.avgStars ? p.avgStars.toFixed(2) : '3.0'}</p>
+                    <h4 class="font-bold text-sm text-white">${bestFit ? i+2 : i+1}. ${p.Player} <span class="text-xs font-normal text-indigo-300">(${p.Team})</span></h4>
+                    <p class="text-xs text-indigo-200 font-medium">${p.Pos} • Adv VBD: ${(p.AdvVBD || p.VBD).toFixed(1)} • ⭐ ${p.avgStars ? p.avgStars.toFixed(1) : '3.0'}</p>
                 </div>
-            </div>`;
-        }).join('');
+            </div>
+        `).join('');
 
         container.innerHTML = htmlStr;
     },
