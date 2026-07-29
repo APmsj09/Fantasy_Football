@@ -36,13 +36,21 @@ const UI = {
         });
 
         filtered.slice(0,200).forEach(p => {
+            let vbdVal = p.VBD.toFixed(1);
+            let advVbdVal = (p.AdvVBD || p.VBD).toFixed(1);
+            
+            // Red for negative VBD, Emerald for positive VBD
+            let vbdColor = p.VBD >= 0 ? 'text-emerald-600 font-medium' : 'text-red-500 font-medium';
+            let advVbdColor = p.AdvVBD >= 0 ? 'text-indigo-600 font-extrabold' : 'text-red-400 font-bold';
+
             tbody.innerHTML += `
                 <tr class="hover:bg-slate-50 transition-colors">
                     <td class="px-6 py-3 text-sm font-medium text-gray-900">${p.Player}</td>
                     <td class="px-6 py-3 text-sm text-gray-500">${p.Pos}</td>
                     <td class="px-6 py-3 text-sm text-gray-500">${p.Team}</td>
                     <td class="px-6 py-3 text-sm font-bold text-indigo-600">${p.ProjPts.toFixed(1)}</td>
-                    <td class="px-6 py-3 text-sm font-bold text-emerald-600">${p.VBD.toFixed(1)}</td>
+                    <td class="px-6 py-3 text-sm ${vbdColor}">${vbdVal}</td>
+                    <td class="px-6 py-3 text-sm ${advVbdColor}">${advVbdVal}</td>
                 </tr>
             `;
         });

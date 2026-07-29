@@ -49,12 +49,33 @@ const State = {
 
     mergeAdvancedMetrics(advancedDataArray) {
         this.advancedMetrics = [...this.advancedMetrics, ...advancedDataArray];
+        
         advancedDataArray.forEach(advPlayer => {
-            let mainPlayer = this.allPlayers.find(p => p.Player === advPlayer.Player);
+            // Strip suffixes (Sr., Jr., II, III) for seamless matching
+            let cleanAdvName = advPlayer.Player.replace(/\s+(Sr\.|Jr\.|II|III|IV)$/i, '').trim().toLowerCase();
+            
+            let mainPlayer = this.allPlayers.find(p => {
+                let cleanMainName = p.Player.replace(/\s+(Sr\.|Jr\.|II|III|IV)$/i, '').trim().toLowerCase();
+                return cleanMainName === cleanAdvName || cleanMainName.includes(cleanAdvName) || cleanAdvName.includes(cleanMainName);
+            });
+            
             if (mainPlayer) {
                 if (advPlayer['RZ TGT']) mainPlayer.rzTgt = advPlayer['RZ TGT'];
                 if (advPlayer['YACON/ATT']) mainPlayer.yacAtt = advPlayer['YACON/ATT'];
                 if (advPlayer['% TM']) mainPlayer.targetShare = advPlayer['% TM'];
+                if (advPlayer['CATCHABLE'] && advPlayer['CATCHABLE'] > 0) {
+                    mainPlayer.trueCatchRate = (advPlayer['REC'] / advPlayer['CATCHABLE']) * 100;
+                    mainPlayer.dropRate = (advPlayer['DROP'] / advPlayer['CATCHABLE']) * 100;
+                }
+                if (advPlayer['ATT'] && advPlayer['ATT'] > 0 && advPlayer['BRKTKL']) {
+                    mainPlayer.elusiveness = advPlayer['BRKTKL'] / advPlayer['ATT'];
+                }
+                if (advPlayer['YACON'] && advPlayer['YDS'] > 0) {
+                    mainPlayer.yaconPercent = (advPlayer['YACON'] / advPlayer['YDS']) * 100;
+                }
+                if (advPlayer['ATT'] && advPlayer['POOR']) {
+                    mainPlayer.trueAccuracy = ((advPlayer['COMP'] + advPlayer['DROP']) / advPlayer['ATT']) * 100;
+                }
             }
         });
     },
@@ -96,7 +117,8 @@ const State = {
             const vals = rows[i].split('\t');
             let rawPos = vals[headers.indexOf('Position')] || '';
             if (rawPos === 'K') rawPos = 'PK';
-            if (rawPos === 'DEF') rawPos = 'DST';
+            if (rawPos === 'DEF' || rawPos === 'D/ST') rawPos = 'DST';
+            if (rawPos === 'FB') rawPos = 'RB';
 
             let p = {
                 Player: vals[headers.indexOf('Player')],
@@ -189,23 +211,44 @@ const State = {
 
     // 3. Calculate Standard & Advanced VBD
     calculateVBD() {
+        let numTeams = parseInt(document.getElementById('setting-teams')?.value) || this.settings.numTeams || 12;
+        this.settings.numTeams = numTeams;
+
         const baselines = {};
         const positions = ['QB', 'RB', 'WR', 'TE', 'PK', 'DST'];
         
         positions.forEach(pos => {
-            let starters = this.settings.numTeams * (this.settings.roster[pos]?.max || 0);
+            let maxPos = this.settings.roster[pos]?.max || 1;
+            let starters = numTeams * maxPos;
             
-            // Add Flex starters to RB/WR baseline
-            if(pos === 'RB' || pos === 'WR') starters += Math.floor((this.settings.numTeams * this.settings.roster.Flex.max) / 2);
+            // Add Flex starters to RB/WR/TE baselines
+            if (pos === 'RB' || pos === 'WR') {
+                starters += Math.floor((numTeams * (this.settings.roster.Flex?.max || 2)) / 2);
+            }
+            
+            // DEEPER BASELINE FOR K AND DST (Waiver Wire Replacement Level = 18th K/DST)
+            if (pos === 'PK' || pos === 'DST') {
+                starters = Math.floor(numTeams * 1.5);
+            }
             
             let sortedPos = [...this.allPlayers].filter(p => p.Pos === pos).sort((a,b) => b.ProjPts - a.ProjPts);
-            let baselinePlayer = sortedPos[Math.min(Math.max(starters - 1, 0), sortedPos.length - 1)];
+            let baselineIndex = Math.min(Math.max(starters - 1, 0), sortedPos.length - 1);
+            let baselinePlayer = sortedPos[baselineIndex];
             baselines[pos] = baselinePlayer ? baselinePlayer.ProjPts : 0;
         });
 
         this.allPlayers.forEach(p => {
             let basePts = baselines[p.Pos] || 0;
-            p.VBD = Math.max(0, p.ProjPts - basePts);
+            
+            // 1. ALLOW NEGATIVE VBD (Raw difference without Math.max)
+            let rawVBD = p.ProjPts - basePts;
+
+            // 2. POSITIONAL STREAMABILITY DISCOUNT FOR K AND DST (0.3x Multiplier)
+            if (p.Pos === 'PK' || p.Pos === 'DST') {
+                rawVBD = rawVBD * 0.3;
+            }
+
+            p.VBD = rawVBD;
 
             // Advanced VBD Multiplier
             let adjMultiplier = 1.0;
@@ -215,9 +258,15 @@ const State = {
             if (p.yaconPercent && p.yaconPercent >= 70) adjMultiplier += 0.10; 
             if (p.trueAccuracy && p.trueAccuracy > 75) adjMultiplier += 0.05; 
 
-            p.AdvVBD = p.VBD * adjMultiplier;
+            // Handle positive vs negative Advanced VBD adjustments logically
+            if (p.VBD >= 0) {
+                p.AdvVBD = p.VBD * adjMultiplier;
+            } else {
+                p.AdvVBD = p.VBD / adjMultiplier; 
+            }
         });
         
+        // Sort master list by Advanced VBD
         this.allPlayers.sort((a,b) => b.AdvVBD - a.AdvVBD);
         this.availablePlayers = [...this.allPlayers];
     },
