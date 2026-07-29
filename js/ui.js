@@ -18,7 +18,10 @@ const UI = {
 
     showMessage(title, message) {
         document.getElementById('message-modal-title').textContent = title;
-        document.getElementById('message-modal-content').textContent = message;
+        
+        // ⚡ CHANGE this from .textContent to .innerHTML
+        document.getElementById('message-modal-content').innerHTML = message;
+        
         document.getElementById('message-modal').classList.remove('hidden');
     },
 
@@ -50,7 +53,7 @@ const UI = {
             let safeName = p.Player.replace(/'/g, "\\'").replace(/"/g, '&quot;');
 
             htmlStr += `
-                <tr class="hover:bg-slate-50 transition-colors cursor-pointer" onclick="UI.showWeeklyModal('${safeName}')">
+                <tr class="hover:bg-slate-50 transition-colors cursor-pointer" onclick="UI.showWeeklyModal('${p._cleanName}')">
                     <td class="px-6 py-3 text-sm font-medium text-gray-900">${p.Player}</td>
                     <td class="px-6 py-3 text-sm text-gray-500">${p.Pos}</td>
                     <td class="px-6 py-3 text-sm text-gray-500">${p.Team}</td>
@@ -68,29 +71,64 @@ const UI = {
     },
 
     // Weekly Projections Modal Viewer
-    showWeeklyModal(playerName) {
-        let p = State.allPlayers.find(x => x.Player === playerName);
-        if (!p || !p.weeklyProjections) return;
+    showWeeklyModal(cleanName) {
+        let p = State.allPlayers.find(x => x._cleanName === cleanName);
+        if(!p || !p.weeklyProjections) return;
 
+        // 1. Build the new Real-World Stats Dashboard
+        let statsHtml = '';
+        if (p.stats && !['PK', 'DST'].includes(p.Pos)) {
+            let s = p.stats;
+            statsHtml = `
+                <div class="bg-indigo-50/50 p-3 rounded-xl border border-indigo-100 mb-4 text-xs text-gray-800 grid grid-cols-2 gap-y-2 gap-x-4 shadow-sm">
+                    ${p.Pos === 'QB' ? `
+                        <div><span class="font-bold text-gray-500 block uppercase text-[9px]">Passing</span> ${s.passCmp} / ${s.passAtt}</div>
+                        <div><span class="font-bold text-gray-500 block uppercase text-[9px]">Pass Yds / Rating</span> ${s.passYds} yds <span class="text-gray-400">(${s.passerRating})</span></div>
+                        <div class="col-span-2 border-b border-indigo-100/50 pb-1"><span class="font-bold text-gray-500 block uppercase text-[9px]">TD:INT Ratio</span> ${s.passTd} TD / ${s.int} INT</div>
+                    ` : ''}
+                    
+                    ${s.rushAtt > 0 ? `
+                        <div><span class="font-bold text-gray-500 block uppercase text-[9px]">Rushing Vol</span> ${s.rushAtt} att</div>
+                        <div><span class="font-bold text-gray-500 block uppercase text-[9px]">Rush Yds</span> ${s.rushYds} <span class="text-emerald-600 font-semibold">(${s.rushAvg} ypc)</span></div>
+                    ` : ''}
+                    
+                    ${s.targets > 0 ? `
+                        <div><span class="font-bold text-gray-500 block uppercase text-[9px]">Receiving Vol</span> ${s.rec} rec / ${s.targets} tgt</div>
+                        <div><span class="font-bold text-gray-500 block uppercase text-[9px]">Rec Yds</span> ${s.recYds} <span class="text-indigo-600 font-semibold">(${s.recAvg} ypr)</span></div>
+                    ` : ''}
+                    
+                    <div class="col-span-2 pt-1 mt-1 border-t border-indigo-100/50 flex justify-between font-bold">
+                        <span>Total TDs: ${(s.rushTd || 0) + (s.recTd || 0)}</span>
+                        ${s.fum > 0 ? `<span class="text-red-500">Fumbles: ${s.fum}</span>` : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        // 2. Build the Weekly rows
         let rowsHtml = '';
-        for (let w = 1; w <= 18; w++) {
+        for(let w = 1; w <= 18; w++) {
             let star = p.sosWeeks[`W${w}`];
             let pts = p.weeklyProjections[`W${w}`];
             let starDisp = star === 'BYE' ? '<span class="text-gray-400">BYE</span>' : `⭐ ${star}`;
-
+            
             rowsHtml += `
-            <div class="flex justify-between items-center py-1.5 border-b text-xs">
-                <span class="font-bold text-gray-600">Week ${w}</span>
-                <span>${starDisp}</span>
-                <span class="font-extrabold text-indigo-600">${pts > 0 ? pts.toFixed(1) + ' pts' : '-'}</span>
-            </div>
-        `;
+                <div class="flex justify-between items-center py-2 border-b border-gray-50 text-xs">
+                    <span class="font-bold text-gray-600 w-16">Week ${w}</span>
+                    <span class="text-amber-500 font-medium">${starDisp}</span>
+                    <span class="font-extrabold ${pts > 0 ? 'text-indigo-600' : 'text-gray-300'}">${pts > 0 ? pts.toFixed(1) + ' pts' : '-'}</span>
+                </div>
+            `;
         }
 
-        UI.showMessage(`${p.Player} (${p.Pos} - ${p.Team}) Weekly Projections`, `
-        <div class="mb-3 text-xs text-gray-500">Season Total: <strong>${p.ProjPts.toFixed(1)} pts</strong> | Avg Schedule: <strong>⭐ ${p.avgStars}</strong></div>
-        <div class="max-h-60 overflow-y-auto pr-2">${rowsHtml}</div>
-    `);
+        UI.showMessage(`${p.Player} <span class="text-sm font-normal text-gray-500">| ${p.Pos} - ${p.Team}</span>`, `
+            ${statsHtml}
+            <div class="mb-2 text-[11px] text-gray-500 flex justify-between px-1">
+                <span>Season Total: <strong class="text-gray-800">${p.ProjPts.toFixed(1)} pts</strong></span>
+                <span>Schedule Avg: <strong class="text-amber-600">⭐ ${p.avgStars}</strong></span>
+            </div>
+            <div class="max-h-56 overflow-y-auto pr-2 custom-scrollbar bg-white border rounded-xl p-3 shadow-inner">${rowsHtml}</div>
+        `);
     },
 
     renderProfileAssignments() {
@@ -135,7 +173,11 @@ const UI = {
 
     updateDraftBoard() {
         if (!State.draftStarted) return;
-
+        
+        // ⚡ NEW: Evaluate best roster fits for YOUR team before rendering
+        const userTeam = State.teamsById[State.userTeamId];
+        State.evaluateRosterFits(userTeam, State.availablePlayers);
+        
         const round = Math.floor(State.currentPick / State.settings.numTeams) + 1;
         document.getElementById('current-round').textContent = round;
         document.getElementById('current-pick-number').textContent = (State.currentPick % State.settings.numTeams) + 1;
@@ -184,16 +226,24 @@ const UI = {
             if(isMock && !isUserTurn) {
                 btnHtml = `<button class="bg-gray-200 text-gray-400 px-3 py-1.5 rounded-lg text-xs font-bold cursor-not-allowed" disabled>Wait</button>`;
             } else {
-                btnHtml = `<button class="bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 text-xs font-bold shadow-sm draft-btn transition-colors" data-player="${safeName}">${btnText}</button>`;
+                btnHtml = `<button class="bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 text-xs font-bold shadow-sm draft-btn transition-colors" data-player="${p._cleanName}">${btnText}</button>`;
             }
 
             let insightTag = "";
-            if (p.targetShare && p.targetShare >= 25) {
-                insightTag = `<span class="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-800">🎯 ${p.targetShare}% Tgts</span>`;
-            } else if (p.rzTgt && p.rzTgt >= 15) {
-                insightTag = `<span class="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-100 text-red-800">🚨 High RZ Vol</span>`;
-            } else if (p.yacAtt && p.yacAtt >= 2.2) {
-                insightTag = `<span class="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-800">🏃‍♂️ Elusive</span>`;
+            let opps = (p.stats?.rushAtt || 0) + (p.stats?.targets || 0);
+            
+            // Generate Volume / Efficiency Tags based on our newly imported data
+            if (opps >= 300) {
+                insightTag += `<span class="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-purple-100 text-purple-800">👑 Elite Volume</span>`;
+            } else if (p.Pos === 'RB' && p.stats?.rushAvg >= 5.0) {
+                insightTag += `<span class="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-100 text-emerald-800">⚡ Home Run Threat</span>`;
+            } else if (['WR', 'TE'].includes(p.Pos) && p.stats?.recAvg >= 15.0) {
+                insightTag += `<span class="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-800">🚀 Deep Threat</span>`;
+            } else if (p.targetShare && p.targetShare >= 25) {
+                insightTag += `<span class="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-800">🎯 ${p.targetShare}% Tgts</span>`;
+            }
+            if (p._addedPPW && p._addedPPW > 0.5) {
+                insightTag += `<span class="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-800 shadow-sm" title="Adds ${p._addedPPW.toFixed(1)} points per week to your optimal starting lineup">📈 +${p._addedPPW.toFixed(1)} PPW</span>`;
             }
 
             htmlStr += `
@@ -223,38 +273,73 @@ const UI = {
         const userTeam = State.teamsById[State.userTeamId];
         document.getElementById('user-team-name-disp').textContent = userTeam.name;
         
-        let viablePlayers = State.availablePlayers.filter(player => { /* ... existing logic ... */ return true; });
+        // Viable players were already simulated in evaluateRosterFits
+        let viablePlayers = State.availablePlayers.filter(p => p._addedPPW !== undefined);
 
-        let recs = viablePlayers.sort((a,b) => b.AdvVBD - a.AdvVBD).slice(0, 4);
+        // Find the absolute #1 Best Fit for the roster
+        let bestFit = null;
+        let highestPPW = -1;
+        viablePlayers.forEach(p => {
+            if (p._addedPPW > highestPPW) {
+                highestPPW = p._addedPPW;
+                bestFit = p;
+            }
+        });
+
+        // Filter out the best fit so they don't appear twice, then get Top 3 by AdvVBD
+        let vbdRecs = viablePlayers
+            .filter(p => p !== bestFit)
+            .sort((a,b) => b.AdvVBD - a.AdvVBD)
+            .slice(0, 3);
         
-        container.innerHTML = recs.map((p, i) => {
-            let safeName = p.Player.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-            return `
-            <div class="p-3 bg-indigo-800 rounded-xl border border-indigo-700 flex justify-between items-center shadow-inner cursor-pointer hover:bg-indigo-700 transition" onclick="UI.showWeeklyModal('${safeName}')">
+        let htmlStr = '';
+
+        // Render the #1 Dynamic Roster Fit Card
+        if (bestFit && highestPPW > 0.1) {
+            htmlStr += `
+            <div class="p-3 bg-gradient-to-br from-emerald-600 to-teal-800 rounded-xl border border-emerald-500 flex justify-between items-center shadow-md cursor-pointer hover:shadow-lg transition mb-4" onclick="UI.showWeeklyModal('${bestFit._cleanName}')">
                 <div>
-                    <h4 class="font-bold text-sm text-white">${i+1}. ${p.Player}</h4>
+                    <span class="text-[9px] font-extrabold uppercase tracking-widest text-emerald-200 mb-1 block flex items-center"><svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> Optimal Roster Fit</span>
+                    <h4 class="font-bold text-sm text-white">${bestFit.Player}</h4>
+                    <p class="text-xs text-emerald-100 font-medium">${bestFit.Pos} • ⭐ ${bestFit.avgStars ? bestFit.avgStars.toFixed(2) : '3.0'} • <strong class="text-white">Adds ${highestPPW.toFixed(1)} PPW</strong></p>
+                </div>
+            </div>`;
+        }
+
+        // Render the Top Value Targets
+        htmlStr += vbdRecs.map((p, i) => {
+            return `
+            <div class="p-3 bg-indigo-800 rounded-xl border border-indigo-700 flex justify-between items-center shadow-inner cursor-pointer hover:bg-indigo-700 transition mb-2" onclick="UI.showWeeklyModal('${p._cleanName}')">
+                <div>
+                    <h4 class="font-bold text-sm text-white">${bestFit ? i+2 : i+1}. ${p.Player}</h4>
                     <p class="text-xs text-indigo-300 font-medium">${p.Pos} • Adv. VBD: ${(p.AdvVBD || p.VBD).toFixed(1)} • ⭐ ${p.avgStars ? p.avgStars.toFixed(2) : '3.0'}</p>
                 </div>
             </div>`;
         }).join('');
+
+        container.innerHTML = htmlStr;
     },
 
     renderRosters() {
         const tabs = document.getElementById('roster-tabs');
         const content = document.getElementById('roster-content');
-        tabs.innerHTML = ''; content.innerHTML = '';
-
+        
         let activeTab = localStorage.getItem('activeRosterTab') || State.draftOrder[0];
+
+        // ⚡ OPTIMIZATION: Document Fragments prevent UI Reflows.
+        const fragment = document.createDocumentFragment();
+        let contentHtml = '';
 
         Object.values(State.teamsById).forEach(team => {
             const btn = document.createElement('button');
             btn.className = `tab ${activeTab === team.id ? 'active' : ''}`;
             btn.textContent = team.name;
             btn.onclick = () => { localStorage.setItem('activeRosterTab', team.id); this.renderRosters(); };
-            tabs.appendChild(btn);
-
+            
+            fragment.appendChild(btn); // Add to memory, not the screen
+            
             if (activeTab === team.id) {
-                content.innerHTML = `
+                contentHtml = `
                     <div class="p-4">
                         <div class="flex justify-between items-center mb-4">
                             <h3 class="font-bold text-gray-800">${team.name} Roster</h3>
@@ -273,26 +358,31 @@ const UI = {
                 `;
             }
         });
+
+        // Push to DOM exactly ONCE
+        tabs.innerHTML = ''; 
+        tabs.appendChild(fragment);
+        content.innerHTML = contentHtml;
     },
 
     renderStandings() {
         const list = document.getElementById('standings-list');
-        list.innerHTML = '';
-
         let totals = Object.values(State.teamsById).map(team => {
             let pts = team.roster.reduce((sum, p) => sum + p.ProjPts, 0);
             return { name: team.name, pts, isUser: team.id === State.userTeamId };
-        }).sort((a, b) => b.pts - a.pts);
+        }).sort((a,b) => b.pts - a.pts);
 
+        let htmlStr = '';
         totals.forEach((t, i) => {
             let bg = t.isUser ? 'bg-indigo-50 border-indigo-200' : 'bg-gray-50 border-gray-100';
             let text = t.isUser ? 'text-indigo-900' : 'text-gray-900';
-            list.innerHTML += `
+            htmlStr += `
                 <div class="flex justify-between items-center p-4 border rounded-xl ${bg}">
-                    <span class="text-lg font-bold ${text}"><span class="text-gray-400 mr-2">#${i + 1}</span> ${t.name}</span>
+                    <span class="text-lg font-bold ${text}"><span class="text-gray-400 mr-2">#${i+1}</span> ${t.name}</span>
                     <span class="text-lg text-emerald-600 font-extrabold">${t.pts.toFixed(1)} pts</span>
                 </div>
             `;
         });
+        list.innerHTML = htmlStr;
     }
 };

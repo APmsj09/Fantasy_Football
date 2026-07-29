@@ -12,10 +12,10 @@ const State = {
     settings: {
         numTeams: 12,
         draftMode: 'live',
-        userTeamIndex: 1, 
+        userTeamIndex: 1,
         roster: {
-            QB: { max: 1 }, RB: { max: 2 }, WR: { max: 2 }, 
-            TE: { max: 1 }, Flex: { max: 2 }, PK: { max: 1 }, 
+            QB: { max: 1 }, RB: { max: 2 }, WR: { max: 2 },
+            TE: { max: 1 }, Flex: { max: 2 }, PK: { max: 1 },
             DST: { max: 1 }, Bench: { max: 6 }, totalSize: 16
         }
     },
@@ -33,9 +33,9 @@ const State = {
         let t = team.toUpperCase().trim();
         // Standardize different site abbreviations to NFL official
         const map = {
-            'JAC': 'JAX', 'LAR': 'LA', 'SFO': 'SF', 'NWE': 'NE', 
-            'KCC': 'KC', 'TAM': 'TB', 'TBB': 'TB', 'GBP': 'GB', 
-            'NOR': 'NO', 'WSH': 'WAS', 'ARZ': 'ARI', 'HST': 'HOU', 
+            'JAC': 'JAX', 'LAR': 'LA', 'SFO': 'SF', 'NWE': 'NE',
+            'KCC': 'KC', 'TAM': 'TB', 'TBB': 'TB', 'GBP': 'GB',
+            'NOR': 'NO', 'WSH': 'WAS', 'ARZ': 'ARI', 'HST': 'HOU',
             'CLV': 'CLE', 'BLV': 'BAL', 'OAK': 'LV', 'SD': 'LAC'
         };
         return map[t] || t;
@@ -60,7 +60,7 @@ const State = {
         clean = clean.replace(/[.,'"]/g, '');
         // Replace multiple spaces with a single space
         clean = clean.replace(/\s+/g, ' ').trim();
-        
+
         // Handle notorious fantasy football aliases manually
         const aliases = {
             'marquise brown': 'hollywood brown',
@@ -68,7 +68,7 @@ const State = {
             'gabriel davis': 'gabe davis',
             'mitchell trubisky': 'mitch trubisky'
         };
-        
+
         return aliases[clean] || clean;
     },
 
@@ -80,7 +80,7 @@ const State = {
             p._noSpaceName = p._cleanName.replace(/\s/g, '');
             p._cleanTeam = this.normalizeTeam(p.Team);
             p._cleanPos = this.normalizePos(p.Pos);
-            
+
             let nameParts = p._cleanName.split(' ');
             if (nameParts.length >= 2) {
                 p._firstInitial = nameParts[0][0];
@@ -98,7 +98,7 @@ const State = {
 
         // 0. DST Special Case
         if (nPos === 'DST') {
-            return this.allPlayers.find(p => p._cleanPos === 'DST' && 
+            return this.allPlayers.find(p => p._cleanPos === 'DST' &&
                 (p._cleanTeam === nTeam || p._cleanName.includes(cleanName))
             );
         }
@@ -178,7 +178,7 @@ const State = {
         sosList.forEach(s => {
             let key = `${s.Team}_${s.Pos}`;
             if (!teamPosMap[key]) teamPosMap[key] = s;
-            
+
             let p = this.matchPlayerFast(s.Player, s.Team, s.Pos);
             if (p) {
                 p.avgStars = s.avgStars;
@@ -217,8 +217,104 @@ const State = {
         });
     },
 
+    // ==========================================
+    // DYNAMIC ROSTER MAXIMIZER
+    // ==========================================
+
+    // Simulates the maximum points your starting lineup can score in a given week
+    calculateOptimalWeeklyScore(roster, weekNum) {
+        let pts = { QB: [], RB: [], WR: [], TE: [], PK: [], DST: [] };
+        
+        roster.forEach(p => {
+            let val = p.weeklyProjections[`W${weekNum}`] || 0;
+            if (pts[p.Pos]) pts[p.Pos].push(val);
+        });
+        
+        // Sort highest projected points to the top
+        for (let pos in pts) pts[pos].sort((a,b) => b - a);
+
+        let score = 0;
+        let req = this.settings.roster;
+        let flexCandidates = [];
+        
+        // Helper to sum starters and push the bench players to flex (if eligible)
+        let sumTop = (arr, count, isFlexEligible) => {
+            let s = 0;
+            for(let i = 0; i < count; i++) {
+                if (arr[i]) s += arr[i];
+            }
+            if (isFlexEligible) {
+                for(let i = count; i < arr.length; i++) {
+                    flexCandidates.push(arr[i]);
+                }
+            }
+            return s;
+        };
+
+        score += sumTop(pts.QB, req.QB.max, false);
+        score += sumTop(pts.RB, req.RB.max, true);
+        score += sumTop(pts.WR, req.WR.max, true);
+        score += sumTop(pts.TE, req.TE.max, true);
+        score += sumTop(pts.PK, req.PK.max, false);
+        score += sumTop(pts.DST, req.DST.max, false);
+
+        // Sort leftover RB/WR/TEs to fill the Flex spots optimally
+        flexCandidates.sort((a,b) => b - a);
+        for(let i = 0; i < req.Flex.max; i++) {
+            if (flexCandidates[i]) score += flexCandidates[i];
+        }
+
+        return score;
+    },
+
+    // Evaluates how many Points Per Week (PPW) a player adds to your specific lineup
+    evaluateRosterFits(team, availablePlayers) {
+        let baseSeasonScore = 0;
+        
+        // ⚡ OPTIMIZATION: Only simulate Weeks 1 through 17. 
+        // Week 18 is useless for fantasy and skews the math.
+        for (let w = 1; w <= 17; w++) {
+            baseSeasonScore += this.calculateOptimalWeeklyScore(team.roster, w);
+        }
+
+        // Filter players we can actually fit on the roster
+        let viablePlayers = availablePlayers.filter(player => {
+            let pos = player.Pos;
+            if (team.counts[pos] < this.settings.roster[pos].max) return true;
+            if (['RB', 'WR', 'TE'].includes(pos) && team.counts['Flex'] < this.settings.roster.Flex.max) return true;
+            if (team.counts['Bench'] < this.settings.roster.Bench.max) return true;
+            return false;
+        });
+
+        // Only simulate the top 40 remaining players so the app stays instant
+        let topViable = viablePlayers.sort((a,b) => b.AdvVBD - a.AdvVBD).slice(0, 40);
+
+        topViable.forEach(p => {
+            let simSeasonScore = 0;
+            let simRoster = [...team.roster, p];
+            
+            // ⚡ Ensure we only simulate through Week 17
+            for (let w = 1; w <= 17; w++) {
+                simSeasonScore += this.calculateOptimalWeeklyScore(simRoster, w);
+            }
+            
+            let addedPts = simSeasonScore - baseSeasonScore;
+            
+            // Severe penalty for K/DST so they never dominate this metric just by having a floor
+            if (p.Pos === 'PK' || p.Pos === 'DST') addedPts *= 0.15; 
+
+            // Divide by 17 weeks for a true fantasy PPW average
+            p._addedPPW = addedPts / 17;
+        });
+
+        // Clean up data for players outside the top 40
+        availablePlayers.forEach(p => {
+            if (!topViable.includes(p)) p._addedPPW = 0;
+        });
+    },
+
     // 3. Weekly Points Engine
-     calculateWeeklyProjections(player) {
+    calculateWeeklyProjections(player) {
         player.weeklyProjections = {};
         if (!player.ProjPts || player.ProjPts <= 0) return;
 
@@ -268,10 +364,10 @@ const State = {
 
     mergeAdvancedMetrics(advancedDataArray) {
         this.advancedMetrics = [...this.advancedMetrics, ...advancedDataArray];
-        
+
         advancedDataArray.forEach(advPlayer => {
             let mainPlayer = this.matchPlayerFast(advPlayer.Player, advPlayer.Team, advPlayer.Pos);
-            
+
             if (mainPlayer) {
                 if (advPlayer['RZ TGT']) mainPlayer.rzTgt = advPlayer['RZ TGT'];
                 if (advPlayer['YACON/ATT']) mainPlayer.yacAtt = advPlayer['YACON/ATT'];
@@ -325,33 +421,44 @@ const State = {
         const rows = text.split(/\r?\n/).filter(row => row.trim() !== '');
         const headers = rows[0].split('\t').map(h => h.trim());
         const parsed = [];
-        
+
         for (let i = 1; i < rows.length; i++) {
             const vals = rows[i].split('\t');
-            
-            // USE THE NEW NORMALIZER
             let rawPos = this.normalizePos(vals[headers.indexOf('Position')]);
 
             let p = {
                 Player: vals[headers.indexOf('Player')],
                 Pos: rawPos,
-                // USE THE NEW NORMALIZER
-                Team: this.normalizeTeam(vals[headers.indexOf('Team')]), 
+                Team: this.normalizeTeam(vals[headers.indexOf('Team')]),
                 stats: {
                     gp: parseFloat(vals[headers.indexOf('GP')]) || 17,
+
+                    // NEW: Passing Extensions
+                    passAtt: parseFloat(vals[headers.indexOf('Pass Att')]) || 0,
+                    passCmp: parseFloat(vals[headers.indexOf('Pass Cmp')]) || 0,
                     passYds: parseFloat(vals[headers.indexOf('Pass Yds')]) || 0,
                     passTd: parseFloat(vals[headers.indexOf('Pass TD')]) || 0,
                     int: parseFloat(vals[headers.indexOf('INT')]) || 0,
+                    passerRating: parseFloat(vals[headers.indexOf('Passer Rating')]) || 0,
+
+                    // NEW: Rushing Extensions
+                    rushAtt: parseFloat(vals[headers.indexOf('Rush Att')]) || 0,
                     rushYds: parseFloat(vals[headers.indexOf('Rush Yds')]) || 0,
+                    rushAvg: parseFloat(vals[headers.indexOf('Rush Avg')]) || 0,
                     rushTd: parseFloat(vals[headers.indexOf('Rush TD')]) || 0,
-                    recYds: parseFloat(vals[headers.indexOf('Rec Yds')]) || 0,
-                    recTd: parseFloat(vals[headers.indexOf('Rec TD')]) || 0,
+
+                    // NEW: Receiving Extensions
+                    targets: parseFloat(vals[headers.indexOf('Targets')]) || 0,
                     rec: parseFloat(vals[headers.indexOf('Receptions')]) || 0,
+                    recYds: parseFloat(vals[headers.indexOf('Rec Yds')]) || 0,
+                    recAvg: parseFloat(vals[headers.indexOf('Rec Avg')]) || 0,
+                    recTd: parseFloat(vals[headers.indexOf('Rec TD')]) || 0,
+
                     fum: parseFloat(vals[headers.indexOf('Fumbles Lost')]) || 0,
                 },
                 ProjPts: 0, VBD: 0, AdvVBD: 0
             };
-            if(p.Player) parsed.push(p);
+            if (p.Player) parsed.push(p);
         }
         return parsed;
     },
@@ -361,11 +468,11 @@ const State = {
         this.allPlayers.forEach(p => {
             let s = p.stats;
             let gp = s.gp || 17;
-            
+
             if (p.Pos === 'PK') {
                 // Fractional Field Goal Scoring: 0-29 yds = 3 pts; 30+ yds = 0.1 pts/yd (35yd avg = 3.5pts, 45yd avg = 4.5pts, 53yd avg = 5.3pts)
                 p.ProjPts = (s.fg0_39 * 3.25) + (s.fg40_49 * 4.5) + (s.fg50 * 5.3) + (s.xp * (this.scoring.xp || 1));
-            } 
+            }
             else if (p.Pos === 'DST') {
                 // Defensive Scoring
                 let turnoverPts = (s.defInt + s.defFum) * (this.scoring.turnover || 2);
@@ -373,7 +480,7 @@ const State = {
                 let tdPts = s.defTd * (this.scoring.defTd || 6);
                 let safetyPts = s.safety * (this.scoring.safety || 2);
                 let blkPts = s.blk * 2;
-                
+
                 // Tiered Points Allowed Weekly Calculation
                 let papg = s.papg || 18.0;
                 let weeklyPaPts = 0;
@@ -386,10 +493,10 @@ const State = {
                 else weeklyPaPts = -4;
 
                 p.ProjPts = sackPts + turnoverPts + tdPts + safetyPts + blkPts + (weeklyPaPts * gp);
-            } 
+            }
             else {
                 // Offense Core Math (6 Pt Pass TD)
-                let basePts = 
+                let basePts =
                     (s.passYds * this.scoring.passYds) +
                     (s.passTd * (this.scoring.passTd || 6)) +
                     (s.int * this.scoring.int) +
@@ -441,7 +548,7 @@ const State = {
                 starters = Math.floor(numTeams * 1.5);
             }
 
-            let sortedPos = [...this.allPlayers].filter(p => p.Pos === pos).sort((a,b) => b.ProjPts - a.ProjPts);
+            let sortedPos = [...this.allPlayers].filter(p => p.Pos === pos).sort((a, b) => b.ProjPts - a.ProjPts);
             let baselineIndex = Math.min(Math.max(starters - 1, 0), sortedPos.length - 1);
             let baselinePlayer = sortedPos[baselineIndex];
             baselines[pos] = baselinePlayer ? baselinePlayer.ProjPts : 0;
@@ -471,10 +578,25 @@ const State = {
             if (p.yaconPercent && p.yaconPercent >= 70) adjMultiplier += 0.10;
             if (p.trueAccuracy && p.trueAccuracy > 75) adjMultiplier += 0.05;
 
+            // ==========================================
+            // NEW: VOLUME & EFFICIENCY BOOSTS
+            // ==========================================
+            if (p.stats) {
+                // 1. Elite Volume / Floor Boost (Touches + Targets)
+                let opps = p.stats.rushAtt + p.stats.targets;
+                if (opps >= 300) adjMultiplier += 0.08;       // Workhorse 
+                else if (opps >= 200) adjMultiplier += 0.04;  // Solid Starter
+
+                // 2. Playmaker Efficiency Boosts
+                if (p.Pos === 'RB' && p.stats.rushAvg >= 4.8 && p.stats.rushAtt >= 100) adjMultiplier += 0.04;
+                if (['WR', 'TE'].includes(p.Pos) && p.stats.recAvg >= 14.0 && p.stats.targets >= 80) adjMultiplier += 0.04;
+                if (p.Pos === 'QB' && p.stats.passerRating >= 100.0) adjMultiplier += 0.04;
+            }
+
             p.AdvVBD = p.VBD >= 0 ? (p.VBD * adjMultiplier) : (p.VBD / adjMultiplier);
         });
 
-        this.allPlayers.sort((a,b) => b.AdvVBD - a.AdvVBD);
+        this.allPlayers.sort((a, b) => b.AdvVBD - a.AdvVBD);
         this.availablePlayers = [...this.allPlayers];
     },
 
@@ -548,7 +670,7 @@ const State = {
             const vals = rows[i].split('\t');
             let city = vals[headers.indexOf('City')] || '';
             let teamName = vals[headers.indexOf('Team')] || '';
-            
+
             let p = {
                 Player: `${city} ${teamName}`.trim(),
                 Pos: 'DST',
@@ -565,7 +687,7 @@ const State = {
                 },
                 ProjPts: 0, VBD: 0, AdvVBD: 0
             };
-            if(p.Player && p.Team) parsed.push(p);
+            if (p.Player && p.Team) parsed.push(p);
         }
         return parsed;
     },

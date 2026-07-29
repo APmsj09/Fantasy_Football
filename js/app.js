@@ -171,11 +171,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // Helper to render the Insights Tab
     function renderInsightsTable() {
         const tbody = document.getElementById('insights-table-body');
-        tbody.innerHTML = '';
+        let htmlStr = '';
 
         Object.values(State.managerProfiles).forEach(p => {
             let stratColor = p.strategy === 'RB-Heavy' ? 'text-emerald-600' : (p.strategy === 'Zero-RB' ? 'text-indigo-600' : 'text-gray-600');
-            tbody.innerHTML += `
+            htmlStr += `
                 <tr class="hover:bg-slate-50">
                     <td class="px-4 py-3 font-bold text-gray-900">${p.name}</td>
                     <td class="px-4 py-3 font-semibold ${stratColor}">${p.strategy}</td>
@@ -184,6 +184,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 </tr>
             `;
         });
+        tbody.innerHTML = htmlStr;
     }
 
     // Start Draft Engine
@@ -237,14 +238,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Handle Manual Picks (User picking for themself OR User acting as tracker in Live Draft)
     document.addEventListener('click', (e) => {
-        if (e.target.classList.contains('draft-btn')) {
-            const playerName = e.target.getAttribute('data-player');
-            const player = State.availablePlayers.find(p => p.Player === playerName);
+        const draftBtn = e.target.closest('.draft-btn');
+        if (draftBtn) {
+            const cleanName = draftBtn.getAttribute('data-player');
+            // Look up by the cached, lowercase, punctuation-free name (instant)
+            const player = State.availablePlayers.find(p => p._cleanName === cleanName);
+            if (!player) return;
 
             const teamId = State.draftOrder[State.currentPick];
             const team = State.teamsById[teamId];
 
-            // Assign slotted position visually
             let slot = 'Bench';
             if (team.counts[player.Pos] < State.settings.roster[player.Pos].max) slot = player.Pos;
             else if (['RB', 'WR', 'TE'].includes(player.Pos) && team.counts['Flex'] < State.settings.roster.Flex.max) slot = 'Flex';

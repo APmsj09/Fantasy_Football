@@ -80,7 +80,11 @@ window.AutoDraft = {
     },
 
     executeDraft(player, team, slot) {
-        State.availablePlayers = State.availablePlayers.filter(p => p.Player !== player.Player);
+        // ⚡ OPTIMIZATION: Splice mutates the array in-place. 
+        // This stops the browser from creating 192 cloned arrays during a mock draft.
+        const idx = State.availablePlayers.findIndex(p => p._cleanName === player._cleanName);
+        if (idx !== -1) State.availablePlayers.splice(idx, 1);
+        
         team.roster.push({ ...player, slottedPos: slot });
         team.counts[slot]++;
         State.draftHistory.push({ pickIndex: State.currentPick, player: player, teamId: team.id, slot: slot });
