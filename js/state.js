@@ -331,10 +331,16 @@ const State = {
                 // USE THE NEW NORMALIZER
                 Team: this.normalizeTeam(vals[headers.indexOf('Team')]), 
                 stats: {
-                    // ... [Keep existing stats mapping]
                     gp: parseFloat(vals[headers.indexOf('GP')]) || 17,
                     passYds: parseFloat(vals[headers.indexOf('Pass Yds')]) || 0,
-                    // ...
+                    passTd: parseFloat(vals[headers.indexOf('Pass TD')]) || 0,
+                    int: parseFloat(vals[headers.indexOf('INT')]) || 0,
+                    rushYds: parseFloat(vals[headers.indexOf('Rush Yds')]) || 0,
+                    rushTd: parseFloat(vals[headers.indexOf('Rush TD')]) || 0,
+                    recYds: parseFloat(vals[headers.indexOf('Rec Yds')]) || 0,
+                    recTd: parseFloat(vals[headers.indexOf('Rec TD')]) || 0,
+                    rec: parseFloat(vals[headers.indexOf('Receptions')]) || 0,
+                    fum: parseFloat(vals[headers.indexOf('Fumbles Lost')]) || 0,
                 },
                 ProjPts: 0, VBD: 0, AdvVBD: 0
             };
