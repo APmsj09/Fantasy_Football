@@ -293,6 +293,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // DB Searching logic
-    document.getElementById('db-search').addEventListener('input', () => UI.renderDatabase());
+    let dbSearchTimeout;
+    document.getElementById('db-search').addEventListener('input', () => {
+        clearTimeout(dbSearchTimeout);
+        // Wait 250ms after the user stops typing to render the results
+        dbSearchTimeout = setTimeout(() => UI.renderDatabase(), 250);
+    });
+    
     document.getElementById('db-position').addEventListener('change', () => UI.renderDatabase());
 });

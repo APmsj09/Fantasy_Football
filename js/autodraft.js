@@ -24,17 +24,15 @@ window.AutoDraft = {
         const round = Math.floor(State.currentPick / State.settings.numTeams) + 1;
         const profile = team.profile;
 
-        let evaluatedPlayers = State.availablePlayers.map(p => ({ ...p, adjustedVBD: (p.AdvVBD || p.VBD) }));
-
-        evaluatedPlayers.forEach(p => {
+        // ⚡ OPTIMIZATION: Do not use { ...p } to copy objects. It crashes memory.
+        // Instead, create a tiny wrapper that just holds a reference to the player.
+        let evaluatedWrapper = State.availablePlayers.map(p => {
             let multiplier = 1.0;
 
-            // Factor Schedule Strength into CPU Pick Choice
             if (p.avgStars) {
                 multiplier *= (1 + (p.avgStars - 3.0) * 0.04);
             }
 
-            // Apply profile strategies
             if (profile) {
                 if (round <= 4) {
                     if (profile.strategy === 'RB-Heavy' && p.Pos === 'RB') multiplier *= 1.4;
@@ -52,22 +50,28 @@ window.AutoDraft = {
                 multiplier *= 0.1;
             }
 
-            p.adjustedVBD = (p.AdvVBD || p.VBD) * multiplier;
+            return {
+                player: p, // Direct reference, zero memory cloning
+                adjustedVBD: (p.AdvVBD || p.VBD) * multiplier
+            };
         });
 
-        evaluatedPlayers.sort((a, b) => b.adjustedVBD - a.adjustedVBD);
+        // Sort the wrappers by their newly calculated score
+        evaluatedWrapper.sort((a, b) => b.adjustedVBD - a.adjustedVBD);
 
         let selectedPlayer = null;
         let slottedPos = null;
 
-        for (let player of evaluatedPlayers) {
-            let pos = player.Pos;
+        for (let item of evaluatedWrapper) {
+            let p = item.player;
+            let pos = p.Pos;
+            
             if (team.counts[pos] < State.settings.roster[pos].max) slottedPos = pos;
             else if (['RB', 'WR', 'TE'].includes(pos) && team.counts['Flex'] < State.settings.roster.Flex.max) slottedPos = 'Flex';
             else if (team.counts['Bench'] < State.settings.roster.Bench.max) slottedPos = 'Bench';
 
             if (slottedPos) {
-                selectedPlayer = State.availablePlayers.find(p => p.Player === player.Player);
+                selectedPlayer = p; 
                 break;
             }
         }

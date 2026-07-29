@@ -24,31 +24,32 @@ const UI = {
 
     renderDatabase() {
         const tbody = document.getElementById('db-players-body');
-        tbody.innerHTML = '';
-
+        
         let filterPos = document.getElementById('db-position').value;
-        let search = document.getElementById('db-search').value.toLowerCase();
-
+        let search = document.getElementById('db-search').value.toLowerCase().replace(/[^a-z0-9]/g, ''); // match clean style
+        
         let filtered = State.allPlayers.filter(p => {
-            if (filterPos && p.Pos !== filterPos) return false;
-            if (search && !p.Player.toLowerCase().includes(search) && !p.Team.toLowerCase().includes(search)) return false;
+            if(filterPos && p.Pos !== filterPos) return false;
+            // ⚡ OPTIMIZATION: Check against the pre-computed _cleanName instead of re-lowercasing
+            if(search && !p._cleanName.includes(search) && !p._cleanTeam.toLowerCase().includes(search)) return false;
             return true;
         });
 
-        filtered.slice(0,200).forEach(p => {
+        // ⚡ OPTIMIZATION: Build a single string. Never use tbody.innerHTML += inside a loop.
+        let htmlStr = '';
+        
+        filtered.slice(0, 200).forEach(p => {
             let vbdVal = p.VBD.toFixed(1);
             let advVbdVal = (p.AdvVBD || p.VBD).toFixed(1);
-            
             let stars = p.avgStars ? `⭐ ${p.avgStars.toFixed(2)}` : '-';
             let bye = p.byeWeek && p.byeWeek !== 'N/A' ? `Wk ${p.byeWeek}` : '-';
 
             let vbdColor = p.VBD >= 0 ? 'text-emerald-600 font-medium' : 'text-red-500 font-medium';
             let advVbdColor = p.AdvVBD >= 0 ? 'text-indigo-600 font-extrabold' : 'text-red-400 font-bold';
 
-            // Safely escape quotes for HTML injection
             let safeName = p.Player.replace(/'/g, "\\'").replace(/"/g, '&quot;');
 
-            tbody.innerHTML += `
+            htmlStr += `
                 <tr class="hover:bg-slate-50 transition-colors cursor-pointer" onclick="UI.showWeeklyModal('${safeName}')">
                     <td class="px-6 py-3 text-sm font-medium text-gray-900">${p.Player}</td>
                     <td class="px-6 py-3 text-sm text-gray-500">${p.Pos}</td>
@@ -61,6 +62,9 @@ const UI = {
                 </tr>
             `;
         });
+        
+        // Inject DOM exactly once
+        tbody.innerHTML = htmlStr;
     },
 
     // Weekly Projections Modal Viewer
@@ -165,29 +169,24 @@ const UI = {
 
     renderDraftAvailablePlayers() {
         const tbody = document.getElementById('draft-players-body');
-        tbody.innerHTML = '';
-
+        let htmlStr = '';
+        
         let displayList = State.availablePlayers.slice(0, 100);
-
-        // Determine button style based on mode
         let btnText = "Draft";
         let isMock = State.settings.draftMode === 'mock';
         let onClockId = State.draftOrder[State.currentPick];
         let isUserTurn = isMock && (onClockId === State.userTeamId);
-
+        
         displayList.forEach(p => {
             let btnHtml = "";
-            // If it's a mock draft and NOT your turn, disable button. Otherwise active.
-            if (isMock && !isUserTurn) {
+            let safeName = p.Player.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+            
+            if(isMock && !isUserTurn) {
                 btnHtml = `<button class="bg-gray-200 text-gray-400 px-3 py-1.5 rounded-lg text-xs font-bold cursor-not-allowed" disabled>Wait</button>`;
             } else {
-                btnHtml = `<button class="bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 text-xs font-bold shadow-sm draft-btn transition-colors" data-player="${p.Player}">${btnText}</button>`;
+                btnHtml = `<button class="bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 text-xs font-bold shadow-sm draft-btn transition-colors" data-player="${safeName}">${btnText}</button>`;
             }
 
-            let tr = document.createElement('tr');
-            tr.className = "hover:bg-slate-50 border-b border-gray-50";
-
-            // Create an insight tag if they are an elite target/efficiency player
             let insightTag = "";
             if (p.targetShare && p.targetShare >= 25) {
                 insightTag = `<span class="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-800">🎯 ${p.targetShare}% Tgts</span>`;
@@ -197,20 +196,24 @@ const UI = {
                 insightTag = `<span class="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-800">🏃‍♂️ Elusive</span>`;
             }
 
-            tr.innerHTML = `
-                <td class="px-4 py-3 text-sm font-semibold text-gray-900 flex items-center">
-                    ${p.Player} 
-                    <span class="text-xs font-normal text-gray-400 ml-1">${p.Team}</span>
-                    ${insightTag}
-                </td>
-                <td class="px-4 py-3 text-sm text-gray-500">${p.Pos}</td>
-                <td class="px-4 py-3 text-sm font-medium">${p.ProjPts.toFixed(1)}</td>
-                <td class="px-4 py-3 text-sm font-medium text-emerald-600">${p.VBD.toFixed(1)}</td>
-                <td class="px-4 py-3 text-sm font-extrabold text-indigo-600">${p.AdvVBD ? p.AdvVBD.toFixed(1) : p.VBD.toFixed(1)}</td>
-                <td class="px-4 py-3 text-right">${btnHtml}</td>
+            htmlStr += `
+                <tr class="hover:bg-slate-50 border-b border-gray-50">
+                    <td class="px-4 py-3 text-sm font-semibold text-gray-900 flex items-center">
+                        ${p.Player} 
+                        <span class="text-xs font-normal text-gray-400 ml-1">${p.Team}</span>
+                        ${insightTag}
+                    </td>
+                    <td class="px-4 py-3 text-sm text-gray-500">${p.Pos}</td>
+                    <td class="px-4 py-3 text-sm font-medium">${p.ProjPts.toFixed(1)}</td>
+                    <td class="px-4 py-3 text-sm font-medium text-emerald-600">${p.VBD.toFixed(1)}</td>
+                    <td class="px-4 py-3 text-sm font-extrabold text-indigo-600">${p.AdvVBD ? p.AdvVBD.toFixed(1) : p.VBD.toFixed(1)}</td>
+                    <td class="px-4 py-3 text-right">${btnHtml}</td>
+                </tr>
             `;
-            tbody.appendChild(tr);
         });
+        
+        // Inject DOM exactly once
+        tbody.innerHTML = htmlStr;
     },
 
     renderRecommendations() {
