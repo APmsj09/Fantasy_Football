@@ -1,4 +1,10 @@
 const UI = {
+    getPlayerAge(p) {
+        if (p?.age !== undefined && p?.age !== null && p.age !== '') return p.age;
+        if (p?.Age !== undefined && p?.Age !== null && p.Age !== '') return p.Age;
+        return null;
+    },
+
     switchTab(targetId) {
         const targetScreen = document.getElementById(targetId);
         if (!targetScreen) return;
@@ -17,12 +23,14 @@ const UI = {
     },
 
     showMessage(title, message) {
-        document.getElementById('message-modal-title').textContent = title;
-        
-        // ⚡ CHANGE this from .textContent to .innerHTML
-        document.getElementById('message-modal-content').innerHTML = message;
-        
-        document.getElementById('message-modal').classList.remove('hidden');
+        const titleEl = document.getElementById('message-modal-title');
+        titleEl.innerHTML = title;
+        const contentEl = document.getElementById('message-modal-content');
+        contentEl.innerHTML = message;
+        contentEl.scrollTop = 0;
+        const modalEl = document.getElementById('message-modal');
+        modalEl.classList.remove('hidden');
+        modalEl.classList.add('flex');
     },
 
     renderDatabase() {
@@ -46,6 +54,10 @@ const UI = {
             let advVbdVal = (p.AdvVBD || p.VBD).toFixed(1);
             let stars = p.avgStars ? `⭐ ${p.avgStars.toFixed(2)}` : '-';
             let bye = p.byeWeek && p.byeWeek !== 'N/A' ? `Wk ${p.byeWeek}` : '-';
+            let age = this.getPlayerAge(p) ? `${this.getPlayerAge(p)} y/o` : '—';
+            let adp = p.adp !== undefined && p.adp !== null ? `${p.adp.toFixed(1)}` : '—';
+            let depth = p.depthChart !== undefined && p.depthChart !== null ? `${p.depthChart}` : '—';
+            let snap = p.snapShare !== undefined && p.snapShare !== null ? `${p.snapShare.toFixed(0)}%` : '—';
 
             let vbdColor = p.VBD >= 0 ? 'text-emerald-600 font-medium' : 'text-red-500 font-medium';
             let advVbdColor = p.AdvVBD >= 0 ? 'text-indigo-600 font-extrabold' : 'text-red-400 font-bold';
@@ -61,6 +73,10 @@ const UI = {
                     <td class="px-6 py-3 text-sm ${vbdColor}">${vbdVal}</td>
                     <td class="px-6 py-3 text-sm ${advVbdColor}">${advVbdVal}</td>
                     <td class="px-6 py-3 text-sm font-semibold text-amber-600">${stars}</td>
+                    <td class="px-6 py-3 text-sm text-gray-500">${age}</td>
+                    <td class="px-6 py-3 text-sm text-gray-500">${adp}</td>
+                    <td class="px-6 py-3 text-sm text-gray-500">${depth}</td>
+                    <td class="px-6 py-3 text-sm text-gray-500">${snap}</td>
                     <td class="px-6 py-3 text-sm text-gray-500">${bye}</td>
                 </tr>
             `;
@@ -79,6 +95,7 @@ const UI = {
         let isOffense = !['PK', 'DST'].includes(p.Pos);
 
         // 1. Header Badges
+        let ageDisplay = this.getPlayerAge(p);
         let ppwBadge = p._addedPPW && p._addedPPW > 0.2 
             ? `<span class="bg-emerald-100 text-emerald-800 text-xs font-bold px-2.5 py-1 rounded-full border border-emerald-200">📈 +${p._addedPPW.toFixed(1)} PPW Lineup Fit</span>` 
             : '';
@@ -88,7 +105,7 @@ const UI = {
         if (isOffense) {
             let opps = (s.rushAtt || 0) + (s.targets || 0);
             statsDashboard = `
-                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-4 shadow-sm text-xs grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-4 shadow-sm text-xs grid grid-cols-2 md:grid-cols-5 gap-3">
                     <div class="bg-white p-2.5 rounded-lg border border-slate-100">
                         <span class="text-gray-400 block text-[10px] font-bold uppercase tracking-wider">Opportunity Volume</span>
                         <span class="text-sm font-extrabold text-slate-800">${opps} Touches/Tgts</span>
@@ -107,6 +124,10 @@ const UI = {
                     <div class="bg-white p-2.5 rounded-lg border border-slate-100">
                         <span class="text-gray-400 block text-[10px] font-bold uppercase tracking-wider">Bye Week</span>
                         <span class="text-sm font-extrabold text-slate-700">${p.byeWeek && p.byeWeek !== 'N/A' ? 'Week ' + p.byeWeek : 'N/A'}</span>
+                    </div>
+                    <div class="bg-white p-2.5 rounded-lg border border-slate-100">
+                        <span class="text-gray-400 block text-[10px] font-bold uppercase tracking-wider">Age</span>
+                        <span class="text-sm font-extrabold text-slate-700">${ageDisplay ? ageDisplay : 'N/A'}</span>
                     </div>
                 </div>
 
@@ -138,6 +159,31 @@ const UI = {
             `;
         }
 
+        let contextPanel = '';
+        let advancedContextBits = [];
+        if (p.targetShare) advancedContextBits.push(`${p.targetShare}% target share`);
+        if (p.rzTgt) advancedContextBits.push(`${p.rzTgt} RZ tgts`);
+        if (p.yacAtt) advancedContextBits.push(`${p.yacAtt} YAC/att`);
+        if (p.trueCatchRate) advancedContextBits.push(`${p.trueCatchRate.toFixed(1)}% catch rate`);
+        if (p.dropRate) advancedContextBits.push(`${p.dropRate.toFixed(1)}% drop rate`);
+        if (p.adp !== undefined && p.adp !== null) advancedContextBits.push(`ADP ${p.adp.toFixed(1)}`);
+        if (p.depthChart !== undefined && p.depthChart !== null) advancedContextBits.push(`Depth ${p.depthChart}`);
+        if (p.snapShare !== undefined && p.snapShare !== null) advancedContextBits.push(`Snap ${p.snapShare.toFixed(0)}%`);
+
+        if (advancedContextBits.length > 0) {
+            contextPanel = `
+                <div class="bg-slate-50/80 p-3 rounded-xl border border-slate-200 mb-4 text-xs">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="font-bold text-gray-600 uppercase tracking-wider">Advanced Context</span>
+                        ${p.targetShare ? `<span class="text-indigo-600 font-semibold">${p.targetShare}% of ${p.Team} targets</span>` : ''}
+                    </div>
+                    <div class="text-gray-700 flex flex-wrap gap-2">
+                        ${advancedContextBits.map(bit => `<span class="bg-white px-2 py-1 rounded border border-slate-200">${bit}</span>`).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
         // 3. Week 1 - 18 Schedule & Points Matrix
         let rowsHtml = '';
         if (p.weeklyProjections) {
@@ -160,14 +206,16 @@ const UI = {
         }
 
         // Modal Title & Layout
-        let modalTitle = `<div class="flex items-center space-x-2">
+        let modalTitle = `<div class="flex items-center flex-wrap gap-2">
             <span>${p.Player}</span>
             <span class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-normal">${p.Pos} • ${p.Team}</span>
+            ${ageDisplay ? `<span class="text-xs bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full font-semibold">Age ${ageDisplay}</span>` : ''}
         </div>`;
 
         UI.showMessage(modalTitle, `
             <div class="mb-3">${ppwBadge}</div>
             ${statsDashboard}
+            ${contextPanel}
             <h4 class="font-bold text-xs text-gray-700 uppercase tracking-wider mb-2">18-Week Projection & Schedule Matrix</h4>
             <div class="max-h-52 overflow-y-auto pr-2 bg-white border border-gray-200 rounded-xl p-3 shadow-inner">${rowsHtml}</div>
         `);
@@ -302,14 +350,16 @@ const UI = {
                 : `<span class="text-gray-400">-</span>`;
 
             let byeStr = p.byeWeek && p.byeWeek !== 'N/A' ? `<span class="text-xs text-gray-400 ml-1">Wk ${p.byeWeek}</span>` : '';
+            let ageStr = p.age ? `<span class="text-[10px] font-semibold text-slate-500 ml-1">Age ${p.age}</span>` : '';
 
             htmlStr += `
-                <tr class="hover:bg-slate-50 border-b border-gray-100 transition-colors cursor-pointer" onclick="UI.showPlayerCard('${p._cleanName}')">
+                <tr class="hover:bg-slate-50 border-b border-gray-100 transition-colors cursor-pointer" onclick="if (!event.target.closest('.draft-btn')) UI.showPlayerCard('${p._cleanName}')">
                     <td class="px-3 py-2.5 text-xs font-semibold text-gray-900">
                         <div class="flex items-center">
                             <span>${p.Player}</span>
                             <span class="text-[11px] font-normal text-gray-400 ml-1.5">${p.Team}</span>
                             ${byeStr}
+                            ${ageStr}
                             ${insightTag}
                         </div>
                     </td>
@@ -319,7 +369,7 @@ const UI = {
                     <td class="px-2 py-2.5 text-xs">${ppwStr}</td>
                     <td class="px-2 py-2.5 text-xs">${sosStr}</td>
                     <td class="px-3 py-2.5 text-xs">${usageStr}</td>
-                    <td class="px-3 py-2.5 text-right" onclick="event.stopPropagation()">${btnHtml}</td>
+                    <td class="px-3 py-2.5 text-right">${btnHtml}</td>
                 </tr>
             `;
         });
@@ -402,7 +452,7 @@ const UI = {
             <div class="p-3 bg-indigo-800 rounded-xl border border-indigo-700 flex justify-between items-center shadow-inner cursor-pointer hover:bg-indigo-700 transition mb-2" onclick="UI.showPlayerCard('${p._cleanName}')">
                 <div>
                     <h4 class="font-bold text-sm text-white">${bestFit ? i+2 : i+1}. ${p.Player} <span class="text-xs font-normal text-indigo-300">(${p.Team})</span></h4>
-                    <p class="text-xs text-indigo-200 font-medium">${p.Pos} • Adv VBD: ${(p.AdvVBD || p.VBD).toFixed(1)} • ⭐ ${p.avgStars ? p.avgStars.toFixed(1) : '3.0'}</p>
+                    <p class="text-xs text-indigo-200 font-medium">${p.Pos} • Adv VBD: ${(p.AdvVBD || p.VBD).toFixed(1)} • ⭐ ${p.avgStars ? p.avgStars.toFixed(1) : '3.0'}${p.age ? ` • Age ${p.age}` : ''}</p>
                 </div>
             </div>
         `).join('');
@@ -438,7 +488,7 @@ const UI = {
                         <ul class="space-y-2">
                             ${team.roster.map(p => `
                                 <li class="text-sm bg-white border border-gray-200 p-2.5 rounded-lg flex justify-between shadow-sm">
-                                    <span><strong class="text-indigo-600 mr-2 w-8 inline-block">${p.slottedPos}</strong> <span class="font-medium">${p.Player}</span></span>
+                                    <span><strong class="text-indigo-600 mr-2 w-8 inline-block">${p.slottedPos}</strong> <span class="font-medium">${p.Player}</span>${p.age ? ` <span class="text-[10px] text-slate-500">Age ${p.age}</span>` : ''}</span>
                                     <span class="text-gray-400 text-xs">${p.Pos} • <span class="text-emerald-600 font-semibold">${p.ProjPts.toFixed(1)} pts</span></span>
                                 </li>
                             `).join('')}

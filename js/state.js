@@ -131,6 +131,108 @@ const State = {
         }) || null;
     },
 
+    parseADPData(text) {
+        const rows = text.split(/\r?\n/).filter(row => row.trim() !== '');
+        if (rows.length < 2) return [];
+        const headers = rows[0].split('\t').map(h => h.trim());
+        const getValue = (name) => {
+            const index = headers.indexOf(name);
+            return index >= 0 ? headers[index] : null;
+        };
+        const parsed = [];
+
+        for (let i = 1; i < rows.length; i++) {
+            const vals = rows[i].split('\t').map(v => v.trim());
+            if (vals.length < 4) continue;
+
+            const name = vals[headers.indexOf('Name')] || vals[headers.indexOf('Player')];
+            const team = this.normalizeTeam(vals[headers.indexOf('Team')]);
+            const posKey = headers.indexOf('POS.RK') >= 0 ? 'POS.RK' : (headers.indexOf('POS') >= 0 ? 'POS' : null);
+            const pos = this.normalizePos(posKey ? vals[headers.indexOf(posKey)] : '');
+            const adpIndex = headers.indexOf('REAL-TIME');
+            const adpValue = parseFloat(adpIndex >= 0 ? vals[adpIndex] : (headers.indexOf('ADP') >= 0 ? vals[headers.indexOf('ADP')] : (headers.indexOf('Pick Num') >= 0 ? vals[headers.indexOf('Pick Num')] : '')));
+
+            if (!name) continue;
+            parsed.push({ name, team, pos, adp: isNaN(adpValue) ? null : adpValue });
+        }
+        return parsed;
+    },
+
+    mergeADPData(adpList) {
+        adpList.forEach(entry => {
+            const player = this.matchPlayerFast(entry.name, entry.team, entry.pos);
+            if (player) {
+                player.adp = entry.adp;
+            }
+        });
+    },
+
+    parseDepthChartData(text) {
+        const rows = text.split(/\r?\n/).filter(row => row.trim() !== '');
+        if (rows.length < 2) return [];
+        const headers = rows[0].split('\t').map(h => h.trim());
+        const parsed = [];
+
+        for (let i = 1; i < rows.length; i++) {
+            const vals = rows[i].split('\t').map(v => v.trim());
+            if (vals.length < 4) continue;
+
+            const team = this.normalizeTeam(vals[headers.indexOf('Team')]);
+            const playerName = vals[headers.indexOf('Player')];
+            const position = this.normalizePos(vals[headers.indexOf('Position')]);
+            const depth = parseInt(vals[headers.indexOf('Depth')], 10);
+            const ecr = parseFloat(vals[headers.indexOf('ECR')]);
+
+            if (!playerName) continue;
+            parsed.push({ name: playerName, team, pos: position, depth: isNaN(depth) ? null : depth, ecr: isNaN(ecr) ? null : ecr });
+        }
+        return parsed;
+    },
+
+    mergeDepthChartData(depthList) {
+        depthList.forEach(entry => {
+            const player = this.matchPlayerFast(entry.name, entry.team, entry.pos);
+            if (player) {
+                player.depthChart = entry.depth;
+                player.ecr = entry.ecr;
+            }
+        });
+    },
+
+    parseSnapCountData(text) {
+        const rows = text.split(/\r?\n/).filter(row => row.trim() !== '');
+        if (rows.length < 2) return [];
+        const headers = rows[0].split('\t').map(h => h.trim());
+        const parsed = [];
+
+        for (let i = 1; i < rows.length; i++) {
+            const vals = rows[i].split('\t').map(v => v.trim());
+            if (vals.length < 4) continue;
+
+            const playerName = vals[headers.indexOf('PLAYER')] || vals[headers.indexOf('Player')];
+            const position = this.normalizePos(vals[headers.indexOf('POS')] || vals[headers.indexOf('Position')]);
+            const team = this.normalizeTeam(vals[headers.indexOf('TEAM')] || vals[headers.indexOf('Team')]);
+            const snapShare = parseFloat(vals[headers.indexOf('SNAP %')] || vals[headers.indexOf('SNAP%')]);
+            const snaps = parseInt(vals[headers.indexOf('SNAPS')], 10);
+            const games = parseInt(vals[headers.indexOf('GAMES')], 10);
+
+            if (!playerName) continue;
+            parsed.push({ name: playerName, team, pos: position, snapShare: isNaN(snapShare) ? null : snapShare, snaps, games });
+        }
+        return parsed;
+    },
+
+    mergeSnapCountData(snapList) {
+        snapList.forEach(entry => {
+            const player = this.matchPlayerFast(entry.name, entry.team, entry.pos);
+            if (player) {
+                player.snapShare = entry.snapShare;
+                player.snaps = entry.snaps;
+                player.games = entry.games;
+            }
+        });
+    },
+
     // 1. Parse SOS_26.tsv
     parseSOSData(text) {
         const rows = text.split(/\r?\n/).filter(row => row.trim() !== '');
@@ -564,6 +666,29 @@ const State = {
             // Advanced VBD Multiplier
             let adjMultiplier = 1.0;
 
+            // ADP pressure: later ADP should be a small boost since the player is cheaper than the market expects
+            if (p.adp !== undefined && p.adp !== null && p.adp > 0) {
+                if (p.adp <= 5) adjMultiplier += 0.06;
+                else if (p.adp <= 10) adjMultiplier += 0.03;
+                else if (p.adp <= 20) adjMultiplier += 0.01;
+            }
+
+            // Depth chart: lower depth chart number is stronger opportunity
+            if (p.depthChart !== undefined && p.depthChart !== null) {
+                if (p.depthChart === 1) adjMultiplier += 0.08;
+                else if (p.depthChart === 2) adjMultiplier += 0.04;
+                else if (p.depthChart >= 3) adjMultiplier -= 0.01 * Math.min(p.depthChart - 2, 3);
+            }
+
+            // Snap share: more usage means more advanced VBD upside
+            if (p.snapShare !== undefined && p.snapShare !== null) {
+                if (p.snapShare >= 80) adjMultiplier += 0.08;
+                else if (p.snapShare >= 70) adjMultiplier += 0.05;
+                else if (p.snapShare >= 60) adjMultiplier += 0.03;
+                else if (p.snapShare >= 45) adjMultiplier += 0.01;
+                else if (p.snapShare < 30) adjMultiplier -= 0.02;
+            }
+
             // SOS Factor: Schedule bonus or penalty
             if (p.avgStars) {
                 adjMultiplier += (p.avgStars - 3.0) * 0.03; // +/- 3% per star above/below 3.0
@@ -621,7 +746,9 @@ const State = {
                     totalDrafts: 0,
                     earlyRBs: 0, earlyWRs: 0,
                     qbAvgRound: 0, qbCount: 0,
-                    teAvgRound: 0, teCount: 0
+                    teAvgRound: 0, teCount: 0,
+                    pkAvgRound: 0, pkCount: 0,
+                    dstAvgRound: 0, dstCount: 0
                 };
             }
 
@@ -640,6 +767,14 @@ const State = {
                 profiles[teamName].teAvgRound += round;
                 profiles[teamName].teCount++;
             }
+            if (pos === 'PK' && round < 15) {
+                profiles[teamName].pkAvgRound += round;
+                profiles[teamName].pkCount++;
+            }
+            if (pos === 'DST' && round < 15) {
+                profiles[teamName].dstAvgRound += round;
+                profiles[teamName].dstCount++;
+            }
         }
 
         // Finalize averages
@@ -647,6 +782,8 @@ const State = {
             let p = profiles[key];
             p.qbAvgRound = p.qbCount > 0 ? (p.qbAvgRound / p.qbCount) : 10;
             p.teAvgRound = p.teCount > 0 ? (p.teAvgRound / p.teCount) : 10;
+            p.pkAvgRound = p.pkCount > 0 ? (p.pkAvgRound / p.pkCount) : 10;
+            p.dstAvgRound = p.dstCount > 0 ? (p.dstAvgRound / p.dstCount) : 10;
 
             // Calculate Core Strategy
             if (p.earlyRBs > p.earlyWRs * 1.5) p.strategy = "RB-Heavy";

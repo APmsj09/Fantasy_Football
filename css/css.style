@@ -1,5 +1,43 @@
 body {
     background-color: #f8fafc;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.sidebar-shell {
+    position: relative;
+}
+
+.sidebar-toggle {
+    border: 1px solid rgba(255,255,255,0.06);
+}
+
+.sidebar-collapsed {
+    width: 5rem !important;
+}
+
+.sidebar-collapsed .sidebar-title,
+.sidebar-collapsed .nav-label,
+.sidebar-collapsed .sidebar-footer {
+    display: none;
+}
+
+.sidebar-collapsed .nav-btn {
+    justify-content: center;
+    padding-left: 0;
+    padding-right: 0;
+}
+
+.sidebar-collapsed .nav-btn .nav-label {
+    display: none;
+}
+
+main {
+    scroll-behavior: smooth;
+    height: 100%;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
 }
 
 /* Hide scrollbar for Chrome, Safari and Opera but keep functionality */
@@ -14,6 +52,21 @@ body {
 /* Custom stylish scrollbar for tables/content */
 .table-container, .roster-content, main {
     overflow-y: auto;
+}
+.table-container {
+    overflow: auto;
+    position: relative;
+}
+.table-container table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+.table-container thead th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background-color: #f8fafc;
 }
 .table-container::-webkit-scrollbar, .roster-content::-webkit-scrollbar, main::-webkit-scrollbar {
     width: 6px;
@@ -70,6 +123,17 @@ body {
 .screen.active { display: block; animation: fadeIn 0.3s ease-in-out; }
 .screen.active.grid { display: grid; }
 .screen.active.flex { display: flex; }
+
+.modal-panel {
+    display: flex;
+    flex-direction: column;
+}
+
+#message-modal-content {
+    max-height: min(60vh, 42rem);
+    overflow-y: auto;
+    padding-right: 0.25rem;
+}
 
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(5px); }

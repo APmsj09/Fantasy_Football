@@ -6,6 +6,19 @@ window.appGoToSetup = function (mode) {
 
 document.addEventListener('DOMContentLoaded', () => {
 
+    const sidebar = document.getElementById('sidebar');
+    const sidebarToggle = document.getElementById('sidebar-toggle');
+    const storedSidebarState = localStorage.getItem('draft-pro-sidebar-collapsed');
+    if (sidebar && sidebarToggle) {
+        if (storedSidebarState === 'true') {
+            sidebar.classList.add('sidebar-collapsed');
+        }
+        sidebarToggle.addEventListener('click', () => {
+            const collapsed = sidebar.classList.toggle('sidebar-collapsed');
+            localStorage.setItem('draft-pro-sidebar-collapsed', String(collapsed));
+        });
+    }
+
     // Navigation routing
     document.querySelectorAll('.nav-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
@@ -16,6 +29,31 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     const startBtn = document.getElementById('start-draft-btn');
+
+    async function enrichPlayerAges() {
+        try {
+            const response = await fetch('https://api.sleeper.app/v1/players/nfl');
+            if (!response.ok) return;
+            const data = await response.json();
+            const ageMap = {};
+
+            Object.values(data || {}).forEach(entry => {
+                if (!entry || !entry.full_name) return;
+                ageMap[State.normalizeName(entry.full_name)] = entry.age;
+            });
+
+            State.allPlayers.forEach(player => {
+                if (!player.age && ageMap[State.normalizeName(player.Player)] !== undefined) {
+                    player.age = ageMap[State.normalizeName(player.Player)];
+                }
+            });
+
+            if (typeof UI.renderDatabase === 'function') UI.renderDatabase();
+            if (typeof UI.renderDraftAvailablePlayers === 'function' && State.draftStarted) UI.renderDraftAvailablePlayers();
+        } catch (err) {
+            console.warn('Could not load player ages', err);
+        }
+    }
 
     // Auto-Load Data Function
     async function autoLoadData() {
@@ -43,6 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // ⚡ RUN THE OPTIMIZER CACHE HERE ⚡
             State.enrichPlayerMap();
+            await enrichPlayerAges();
 
             // 3. Fetch SOS Data & Merge
             try {
@@ -66,6 +105,21 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (e) { }
 
             try {
+                const adpRes = await fetch('./ADP_26.tsv');
+                State.mergeADPData(State.parseADPData(await adpRes.text()));
+            } catch (e) { }
+
+            try {
+                const depthRes = await fetch('./Depth_Chart_26.tsv');
+                State.mergeDepthChartData(State.parseDepthChartData(await depthRes.text()));
+            } catch (e) { }
+
+            try {
+                const snapRes = await fetch('./Snap_Count_26.tsv');
+                State.mergeSnapCountData(State.parseSnapCountData(await snapRes.text()));
+            } catch (e) { }
+
+            try {
                 const historyRes = await fetch('./DraftHistory.tsv');
                 State.parseHistory(await historyRes.text());
                 if (typeof renderInsightsTable === "function") renderInsightsTable();
@@ -81,6 +135,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 loadBtn.classList.replace('bg-slate-900', 'bg-emerald-600');
                 loadBtn.disabled = true;
             }
+
+            renderTeamTargets('WR');
+            renderMetricLeaders('RZ TGT');
 
             startBtn.classList.remove('opacity-50', 'cursor-not-allowed');
             startBtn.disabled = false;
@@ -181,6 +238,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td class="px-4 py-3 font-semibold ${stratColor}">${p.strategy}</td>
                     <td class="px-4 py-3 text-sm">${p.qbAvgRound.toFixed(1)} ${p.draftsEarlyQB ? '⚠️ (Early)' : ''}</td>
                     <td class="px-4 py-3 text-sm">${p.teAvgRound.toFixed(1)} ${p.draftsEarlyTE ? '⚠️ (Early)' : ''}</td>
+                    <td class="px-4 py-3 text-sm">${p.pkAvgRound.toFixed(1)}</td>
+                    <td class="px-4 py-3 text-sm">${p.dstAvgRound.toFixed(1)}</td>
                 </tr>
             `;
         });
@@ -292,7 +351,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Close Modals
     document.getElementById('message-modal-close').addEventListener('click', () => {
-        document.getElementById('message-modal').classList.add('hidden');
+        const modal = document.getElementById('message-modal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
     });
 
     // DB Searching logic
