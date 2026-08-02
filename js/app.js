@@ -1,4 +1,3 @@
-// Helper for Home screen buttons to route properly
 window.appGoToSetup = function (mode) {
     document.getElementById('setting-draft-type').value = mode;
     UI.switchTab('setup-screen');
@@ -19,12 +18,26 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Navigation routing
     document.querySelectorAll('.nav-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
-            // Find closest button in case SVG is clicked
             let target = e.target.closest('button').getAttribute('data-target');
             UI.switchTab(target);
+        });
+    });
+
+    // Handle Draft Sub-Tabs logic
+    document.querySelectorAll('.draft-tab-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            document.querySelectorAll('.draft-tab-btn').forEach(b => {
+                b.classList.remove('text-indigo-600', 'border-b-2', 'border-indigo-600', 'bg-white');
+                b.classList.add('text-gray-500', 'hover:bg-gray-100');
+            });
+            let t = e.target;
+            t.classList.remove('text-gray-500', 'hover:bg-gray-100');
+            t.classList.add('text-indigo-600', 'border-b-2', 'border-indigo-600', 'bg-white');
+
+            document.querySelectorAll('.draft-tab-content').forEach(c => c.classList.add('hidden'));
+            document.getElementById(t.getAttribute('data-target')).classList.remove('hidden');
         });
     });
 
@@ -55,17 +68,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Auto-Load Data Function
     async function autoLoadData() {
         const loadBtn = document.getElementById('load-data-button');
         if (loadBtn) loadBtn.textContent = "Fetching Projections & Strength of Schedule...";
 
         try {
-            // 1. Fetch Skill Players
             const offRes = await fetch('./projected_data_26.tsv');
             const offPlayers = State.parseProjectedData(await offRes.text());
 
-            // 2. Fetch Defenses & Kickers
             let defPlayers = [], kickerPlayers = [];
             try {
                 const defRes = await fetch('./def_proj_26.tsv');
@@ -79,18 +89,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
             State.allPlayers = [...offPlayers, ...defPlayers, ...kickerPlayers];
 
-            // ⚡ RUN THE OPTIMIZER CACHE HERE ⚡
             State.enrichPlayerMap();
             await enrichPlayerAges();
 
-            // 3. Fetch SOS Data & Merge
             try {
                 const sosRes = await fetch('./SOS_26.tsv');
                 const sosParsed = State.parseSOSData(await sosRes.text());
                 State.mergeSOSData(sosParsed);
             } catch (e) { console.warn("Could not load SOS_26.tsv"); }
 
-            // 4. Advanced Analytics & History
             const advFiles = ['./AdvancedQBData.tsv', './AdvancedRBData.tsv', './AdvancedWRData.tsv', './AdvancedTEData.tsv'];
             for (let file of advFiles) {
                 try {
@@ -131,7 +138,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (typeof UI.renderProfileAssignments === "function") UI.renderProfileAssignments();
             } catch (e) { }
 
-            // Calculate Projections & VBD
             State.calculateProjections();
             State.calculateVBD();
 
@@ -158,13 +164,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Call it immediately!
     autoLoadData();
-
-    // Allow manual retry if it fails
     document.getElementById('load-data-button').addEventListener('click', autoLoadData);
 
-    // Render Team Target Dist
     function renderTeamTargets(position) {
         const tbody = document.getElementById('team-targets-body');
         if (!tbody || State.teamTargets.length === 0) return;
@@ -180,7 +182,6 @@ document.addEventListener('DOMContentLoaded', () => {
         `).join('');
     }
 
-    // Render Advanced Metric Leaders
     function renderMetricLeaders(metric) {
         const tbody = document.getElementById('metric-leaders-body');
         if (!tbody || State.advancedMetrics.length === 0) return;
@@ -203,7 +204,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }).join('');
     }
 
-    // Handle Insight Tab Clicks
     document.addEventListener('click', (e) => {
         if (e.target.classList.contains('target-tab-btn')) {
             document.querySelectorAll('.target-tab-btn').forEach(b => {
@@ -226,11 +226,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Hook up Profile Assignment Dynamic Rendering on changes
     document.getElementById('setting-teams').addEventListener('change', () => UI.renderProfileAssignments());
     document.getElementById('setting-user-pick').addEventListener('change', () => UI.renderProfileAssignments());
 
-    // Helper to render the Insights Tab
     function renderInsightsTable() {
         const tbody = document.getElementById('insights-table-body');
         let htmlStr = '';
@@ -251,7 +249,6 @@ document.addEventListener('DOMContentLoaded', () => {
         tbody.innerHTML = htmlStr;
     }
 
-    // Start Draft Engine
     startBtn.addEventListener('click', () => {
         State.settings.numTeams = parseInt(document.getElementById('setting-teams').value);
         State.settings.draftMode = document.getElementById('setting-draft-type').value;
@@ -268,7 +265,6 @@ document.addEventListener('DOMContentLoaded', () => {
         r.Bench.max = parseInt(document.getElementById('pos-bn').value);
         r.totalSize = r.QB.max + r.RB.max + r.WR.max + r.TE.max + r.Flex.max + r.PK.max + r.DST.max + r.Bench.max;
 
-        // NEW: Grab user scoring settings
         State.scoring.passYds = parseFloat(document.getElementById('score-pass-yds').value);
         State.scoring.passTd = parseFloat(document.getElementById('score-pass-td').value);
         State.scoring.int = parseFloat(document.getElementById('score-int').value);
@@ -278,8 +274,6 @@ document.addEventListener('DOMContentLoaded', () => {
         State.scoring.recYds = parseFloat(document.getElementById('score-rec-yds').value);
         State.scoring.recTd = parseFloat(document.getElementById('score-rec-td').value);
         State.scoring.fumLost = parseFloat(document.getElementById('score-fum').value);
-
-        // Kicker & DST
         State.scoring.fg = parseFloat(document.getElementById('score-fg').value);
         State.scoring.xp = parseFloat(document.getElementById('score-xp').value);
         State.scoring.sack = parseFloat(document.getElementById('score-sack').value);
@@ -287,11 +281,10 @@ document.addEventListener('DOMContentLoaded', () => {
         State.scoring.defTd = parseFloat(document.getElementById('score-deftd').value);
         State.scoring.safety = parseFloat(document.getElementById('score-safety').value);
 
-        // Calculate custom points and VBD right before generating the board!
         State.calculateProjections();
         State.calculateVBD();
-
         State.initializeTeams();
+        
         UI.switchTab('drafting-screen');
         UI.updateDraftBoard();
 
@@ -300,12 +293,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Handle Manual Picks (User picking for themself OR User acting as tracker in Live Draft)
     document.addEventListener('click', (e) => {
         const draftBtn = e.target.closest('.draft-btn');
         if (draftBtn) {
             const cleanName = draftBtn.getAttribute('data-player');
-            // Look up by the cached, lowercase, punctuation-free name (instant)
             const player = State.availablePlayers.find(p => p._cleanName === cleanName);
             if (!player) return;
 
@@ -325,49 +316,145 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Undo Pick Logic
     document.getElementById('undo-pick-button').addEventListener('click', () => {
         if (State.draftHistory.length === 0) return UI.showMessage("Error", "No picks to undo.");
 
-        // Find last pick
         let lastPick = State.draftHistory.pop();
         let team = State.teamsById[lastPick.teamId];
 
-        // Remove from team
         team.roster = team.roster.filter(p => p.Player !== lastPick.player.Player);
         team.counts[lastPick.slot]--;
 
-        // Return to available players and re-sort
         State.availablePlayers.push(lastPick.player);
-        State.availablePlayers.sort((a, b) => b.VBD - a.VBD); // Keep sorted high to low
+        State.availablePlayers.sort((a, b) => b.VBD - a.VBD); 
 
-        // Decrement pick counter
         State.currentPick--;
-        State.draftStarted = true; // In case we undid the final pick
+        State.draftStarted = true; 
 
         UI.updateDraftBoard();
 
-        // If mock draft, stop the bot temporarily so user can review
         if (State.settings.draftMode === 'mock' && AutoDraft.isDrafting) {
-            // Let it finish its current tick, but next tick will rely on user
             console.log("Mock draft interrupted by Undo.");
         }
     });
 
-    // Close Modals
     document.getElementById('message-modal-close').addEventListener('click', () => {
         const modal = document.getElementById('message-modal');
         modal.classList.add('hidden');
         modal.classList.remove('flex');
     });
 
-    // DB Searching logic
     let dbSearchTimeout;
     document.getElementById('db-search').addEventListener('input', () => {
         clearTimeout(dbSearchTimeout);
-        // Wait 250ms after the user stops typing to render the results
         dbSearchTimeout = setTimeout(() => UI.renderDatabase(), 250);
     });
     
     document.getElementById('db-position').addEventListener('change', () => UI.renderDatabase());
 });
+
+window.AutoDraft = {
+    isDrafting: false,
+
+    async processQueue() {
+        if (!State.draftStarted || State.currentPick >= State.draftOrder.length || this.isDrafting) return;
+        if (State.settings.draftMode === 'live') return;
+
+        const teamId = State.draftOrder[State.currentPick];
+        const team = State.teamsById[teamId];
+
+        if (team && team.isCPU) {
+            this.isDrafting = true;
+            await new Promise(r => setTimeout(r, 400)); 
+            this.makeCPUPick(team);
+            this.isDrafting = false;
+
+            UI.updateDraftBoard();
+            this.processQueue();
+        }
+    },
+
+    makeCPUPick(team) {
+        const round = Math.floor(State.currentPick / State.settings.numTeams) + 1;
+        const profile = team.profile;
+
+        let evaluatedWrapper = State.availablePlayers.map(p => {
+            let multiplier = 1.0;
+
+            if (p.avgStars) {
+                multiplier *= (1 + (p.avgStars - 3.0) * 0.04);
+            }
+
+            if (profile) {
+                if (round <= 4) {
+                    if (profile.strategy === 'RB-Heavy' && p.Pos === 'RB') multiplier *= 1.4;
+                    if (profile.strategy === 'Zero-RB' && p.Pos === 'WR') multiplier *= 1.4;
+                }
+                if (p.Pos === 'QB' && profile.draftsEarlyQB && round >= (profile.qbAvgRound - 1) && round <= (profile.qbAvgRound + 1)) {
+                    multiplier *= 1.8;
+                }
+                if (p.Pos === 'TE' && profile.draftsEarlyTE && round >= (profile.teAvgRound - 1) && round <= (profile.teAvgRound + 1)) {
+                    multiplier *= 1.8;
+                }
+            }
+
+            // DIMINISHING RETURNS FIX to stop algorithm hoarding a single position endlessly
+            let starterMax = State.settings.roster[p.Pos].max;
+            let currentCount = team.counts[p.Pos];
+            
+            if (currentCount >= starterMax) {
+                let overage = currentCount - starterMax; 
+                if (['QB', 'TE', 'PK', 'DST'].includes(p.Pos)) {
+                    // Massive penalty for backup QBs/TEs/Ks
+                    multiplier *= (overage === 0 ? 0.05 : 0.01); 
+                } else if (['RB', 'WR'].includes(p.Pos)) {
+                    // Gradual exponential decay for bench RBs/WRs (e.g. 0.5, 0.25, 0.125)
+                    multiplier *= Math.pow(0.5, overage + 1);
+                }
+            } else {
+                // High urgency if a position is completely empty late in the draft
+                if (round >= 6 && currentCount === 0) {
+                    multiplier *= 1.5; 
+                }
+            }
+
+            return {
+                player: p,
+                adjustedVBD: (p.AdvVBD || p.VBD) * multiplier
+            };
+        });
+
+        evaluatedWrapper.sort((a, b) => b.adjustedVBD - a.adjustedVBD);
+
+        let selectedPlayer = null;
+        let slottedPos = null;
+
+        for (let item of evaluatedWrapper) {
+            let p = item.player;
+            let pos = p.Pos;
+            
+            if (team.counts[pos] < State.settings.roster[pos].max) slottedPos = pos;
+            else if (['RB', 'WR', 'TE'].includes(pos) && team.counts['Flex'] < State.settings.roster.Flex.max) slottedPos = 'Flex';
+            else if (team.counts['Bench'] < State.settings.roster.Bench.max) slottedPos = 'Bench';
+
+            if (slottedPos) {
+                selectedPlayer = p; 
+                break;
+            }
+        }
+
+        if (selectedPlayer) this.executeDraft(selectedPlayer, team, slottedPos);
+    },
+
+    executeDraft(player, team, slot) {
+        const idx = State.availablePlayers.findIndex(p => p._cleanName === player._cleanName);
+        if (idx !== -1) State.availablePlayers.splice(idx, 1);
+        
+        team.roster.push({ ...player, slottedPos: slot });
+        team.counts[slot]++;
+        State.draftHistory.push({ pickIndex: State.currentPick, player: player, teamId: team.id, slot: slot });
+        State.currentPick++;
+    }
+};
+
+const AutoDraft = window.AutoDraft;
