@@ -786,43 +786,40 @@ const State = {
 
             let adjMultiplier = 1.0;
 
+            // 1. ADP Value Validation (Softened)
             if (p.adp && p.adp > 0) {
-                if (p.adp <= 12) adjMultiplier += 0.08;
-                else if (p.adp <= 36) adjMultiplier += 0.04;
-                else if (p.adp <= 72) adjMultiplier += 0.02;
+                if (p.adp <= 12) adjMultiplier += 0.03;
+                else if (p.adp <= 36) adjMultiplier += 0.02;
             }
 
-            if (p.depthChart !== undefined && p.depthChart !== null) {
-                if (p.depthChart === 1) adjMultiplier += 0.10;
-                else if (p.depthChart === 2 && p.Pos === 'RB') adjMultiplier += 0.04;
-                else if (p.depthChart >= 3) adjMultiplier -= 0.03 * Math.min(p.depthChart - 2, 3);
-            }
-
+            // 2. Role Security (De-duplicated: Snap Share takes priority over Depth Chart)
             if (p.snapShare) {
-                if (p.snapShare >= 80) adjMultiplier += 0.10;
-                else if (p.snapShare >= 65) adjMultiplier += 0.06;
-                else if (p.snapShare < 30) adjMultiplier -= 0.04;
+                if (p.snapShare >= 80) adjMultiplier += 0.05;
+                else if (p.snapShare >= 65) adjMultiplier += 0.03;
+                else if (p.snapShare < 35) adjMultiplier -= 0.03;
+            } else if (p.depthChart !== undefined && p.depthChart !== null) {
+                if (p.depthChart === 1) adjMultiplier += 0.04;
+                else if (p.depthChart >= 3) adjMultiplier -= 0.02;
             }
 
-            if (p.avgStars) adjMultiplier += (p.avgStars - 3.0) * 0.04; 
-            if (p.playoffSOS && p.playoffSOS >= 4.0) adjMultiplier += 0.04; 
+            // 3. Schedule Strength
+            if (p.avgStars) adjMultiplier += (p.avgStars - 3.0) * 0.02; 
+            if (p.playoffSOS && p.playoffSOS >= 4.0) adjMultiplier += 0.02; 
 
+            // 4. Offensive Line Quality
             if (p.Pos === 'RB' && p.olRunBlk) {
-                if (p.olRunBlk <= 5) adjMultiplier += 0.08;
-                else if (p.olRunBlk <= 12) adjMultiplier += 0.04;
-                else if (p.olRunBlk >= 25) adjMultiplier -= 0.06;
+                if (p.olRunBlk <= 5) adjMultiplier += 0.04;
+                else if (p.olRunBlk >= 25) adjMultiplier -= 0.03;
             }
             if (['QB', 'WR', 'TE'].includes(p.Pos) && p.olPassBlk) {
-                if (p.olPassBlk <= 5) adjMultiplier += 0.06;
-                else if (p.olPassBlk <= 12) adjMultiplier += 0.03;
-                else if (p.olPassBlk >= 25) adjMultiplier -= 0.05;
+                if (p.olPassBlk <= 5) adjMultiplier += 0.03;
+                else if (p.olPassBlk >= 25) adjMultiplier -= 0.03;
             }
 
+            // 5. Inherited Role Volume (for Rookies / Team Changers)
             let lacksIndividualMetrics = (p.targetShare === undefined) && (p.brokenTackles === undefined) && (p.yacAtt === undefined);
-
             if (lacksIndividualMetrics) {
                 p.isNewRole = true;
-
                 let teamDist = this.teamTargets.find(t => t.Team === p.Team);
 
                 if (teamDist && p.depthChart) {
@@ -830,52 +827,34 @@ const State = {
                     let teamPosPct = teamDist[posPctKey] || 0;
 
                     if (p.depthChart === 1) {
-                        if (p.Pos === 'RB' && teamPosPct >= 20.0) {
-                            adjMultiplier += 0.08; 
-                        } else if (p.Pos === 'WR' && teamPosPct >= 60.0) {
-                            adjMultiplier += 0.08; 
-                        } else if (p.Pos === 'TE' && teamPosPct >= 25.0) {
-                            adjMultiplier += 0.08; 
-                        } else if (p.Pos === 'RB' && teamPosPct < 12.0) {
-                            adjMultiplier -= 0.04; 
-                        }
-                    } 
-                    else if (p.depthChart === 2) {
-                        if (p.Pos === 'RB' && teamPosPct >= 22.0) adjMultiplier += 0.04;
-                        else if (p.Pos === 'WR' && teamPosPct >= 62.0) adjMultiplier += 0.04;
+                        if (p.Pos === 'RB' && teamPosPct >= 20.0) adjMultiplier += 0.04; 
+                        else if (p.Pos === 'WR' && teamPosPct >= 60.0) adjMultiplier += 0.04; 
+                        else if (p.Pos === 'TE' && teamPosPct >= 25.0) adjMultiplier += 0.04; 
                     }
                 }
-
-                if (p.Pos === 'RB' && p.olRunBlk && p.olRunBlk <= 10) {
-                    adjMultiplier += 0.06; 
-                }
-                if (p.Pos === 'QB' && p.olPassBlk && p.olPassBlk <= 10) {
-                    adjMultiplier += 0.05;
-                }
+                if (p.Pos === 'RB' && p.olRunBlk && p.olRunBlk <= 10) adjMultiplier += 0.03;
             }
 
+            // 6. Efficiency Metrics (Target Share, Tackle Breaking, Deep Ball)
             if (p.targetShare) {
-                if (p.targetShare >= 25) adjMultiplier += 0.12;
-                else if (p.targetShare >= 20) adjMultiplier += 0.06;
+                if (p.targetShare >= 25) adjMultiplier += 0.05;
+                else if (p.targetShare >= 20) adjMultiplier += 0.03;
             }
 
-            if (p.targetShare >= 22 && p.aDOT >= 10.0) adjMultiplier += 0.05;
+            if (p.targetShare >= 22 && p.aDOT >= 10.0) adjMultiplier += 0.03;
 
             if (p.Pos === 'RB') {
-                if (p.rzAtt && p.rzAtt >= 40) adjMultiplier += 0.05;
-                if (p.brokenTackles && p.brokenTackles >= 20) adjMultiplier += 0.04;
-                if (p.yacAtt && p.yacAtt >= 2.5) adjMultiplier += 0.03;
+                if (p.rzAtt && p.rzAtt >= 40) adjMultiplier += 0.03;
+                if (p.brokenTackles && p.brokenTackles >= 20) adjMultiplier += 0.02;
             }
 
-            if (p.trueCatchRate && p.trueCatchRate > 90) adjMultiplier += 0.05;
-            if (p.dropRate && p.dropRate > 10) adjMultiplier -= 0.06;
+            if (p.trueCatchRate && p.trueCatchRate > 90) adjMultiplier += 0.02;
+            if (p.dropRate && p.dropRate > 10) adjMultiplier -= 0.03;
 
-            if (p.Pos === 'QB') {
-                if (p.trueAccuracy && p.trueAccuracy > 78) adjMultiplier += 0.05;
-                if (p.stats && p.stats.rushAtt >= 80) adjMultiplier += 0.08;
-            }
+            if (p.Pos === 'QB' && p.stats && p.stats.rushAtt >= 80) adjMultiplier += 0.04;
 
-            adjMultiplier = Math.max(0.6, Math.min(1.5, adjMultiplier));
+            // NARROW CAP RANGE: Keeps Adv VBD realistic without blowing up Round 1 scores
+            adjMultiplier = Math.max(0.85, Math.min(1.25, adjMultiplier));
 
             if (p.VBD >= 0) {
                 p.AdvVBD = p.VBD * adjMultiplier;
