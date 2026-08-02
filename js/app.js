@@ -99,15 +99,18 @@ document.addEventListener('DOMContentLoaded', () => {
         const loadBtn = document.getElementById('load-data-button');
         if (loadBtn) loadBtn.textContent = "Fetching Projections & Advanced Data...";
 
+        // NATIVE CACHE BYPASS: Forces browser to grab the newest file without breaking local server URLs
+        const fetchOpts = { cache: 'no-store' };
+
         try {
-            const offRes = await fetch('./projected_data_26.tsv');
+            const offRes = await fetch('./projected_data_26.tsv', fetchOpts);
             const offPlayers = State.parseProjectedData(await offRes.text());
 
             let defPlayers = [], kickerPlayers = [];
             try {
-                const defRes = await fetch('./def_proj_26.tsv');
+                const defRes = await fetch('./def_proj_26.tsv', fetchOpts);
                 defPlayers = State.parseDefData(await defRes.text());
-                const kRes = await fetch('./k_proj_26.tsv');
+                const kRes = await fetch('./k_proj_26.tsv', fetchOpts);
                 kickerPlayers = State.parseKickerData(await kRes.text());
             } catch (e) { }
 
@@ -117,45 +120,56 @@ document.addEventListener('DOMContentLoaded', () => {
             await enrichPlayerAges();
 
             try {
-                const sosRes = await fetch('./SOS_26.tsv');
+                const sosRes = await fetch('./SOS_26.tsv', fetchOpts);
                 State.mergeSOSData(State.parseSOSData(await sosRes.text()));
             } catch (e) { }
 
-            const advFiles = ['./AdvancedQBData.tsv', './AdvancedRBData.tsv', './AdvancedWRData.tsv', './AdvancedTEData.tsv'];
+            try {
+                const handcuffRes = await fetch('./RB_Handcuff_26.tsv', fetchOpts);
+                State.mergeHandcuffData(State.parseHandcuffData(await handcuffRes.text()));
+            } catch (e) { }
+
+            const advFiles = [
+                './AdvancedQBData.tsv', 
+                './AdvancedRBData.tsv', 
+                './AdvancedWRData.tsv', 
+                './AdvancedTEData.tsv'
+            ];
+            
             for (let file of advFiles) {
                 try {
-                    let advRes = await fetch(file);
+                    let advRes = await fetch(file, fetchOpts);
                     State.mergeAdvancedMetrics(State.parseAdvancedData(await advRes.text()));
                 } catch (err) { }
             }
 
             try {
-                let tgtRes = await fetch('./Team_Target_Dist_Data.tsv');
+                let tgtRes = await fetch('./Team_Target_Dist_Data.tsv', fetchOpts);
                 State.teamTargets = State.parseAdvancedData(await tgtRes.text());
             } catch (e) { }
 
             try {
-                const adpRes = await fetch('./ADP_26.tsv');
+                const adpRes = await fetch('./ADP_26.tsv', fetchOpts);
                 State.mergeADPData(State.parseADPData(await adpRes.text()));
             } catch (e) { }
 
             try {
-                const depthRes = await fetch('./Depth_Chart_26.tsv');
+                const depthRes = await fetch('./Depth_Chart_26.tsv', fetchOpts);
                 State.mergeDepthChartData(State.parseDepthChartData(await depthRes.text()));
             } catch (e) { }
 
             try {
-                const snapRes = await fetch('./Snap_Count_26.tsv');
+                const snapRes = await fetch('./Snap_Count_26.tsv', fetchOpts);
                 State.mergeSnapCountData(State.parseSnapCountData(await snapRes.text()));
             } catch (e) { }
 
             try {
-                const olRes = await fetch('./OL_Rank_26.tsv');
+                const olRes = await fetch('./OL_Rank_26.tsv', fetchOpts);
                 State.mergeOLRankData(State.parseOLRankData(await olRes.text()));
             } catch (e) { }
 
             try {
-                const historyRes = await fetch('./DraftHistory.tsv');
+                const historyRes = await fetch('./DraftHistory.tsv', fetchOpts);
                 State.parseHistory(await historyRes.text());
                 if (typeof renderInsightsTable === "function") renderInsightsTable();
                 if (typeof UI.renderProfileAssignments === "function") UI.renderProfileAssignments();

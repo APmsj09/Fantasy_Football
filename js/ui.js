@@ -132,10 +132,12 @@ const UI = {
         }
 
         let pastStatsHTML = '';
-        if (p.pastStats && p.pastPts) {
+        if (p.pastStats && p.pastPts !== undefined) {
             let ps = p.pastStats;
             let volumeStr = '';
-            let tdCount = ps.totalTd || ps.passTd || ps.rushTd || ps.recTd || 0;
+            
+            // Safely grab TD count without dropping to 0 unexpectedly
+            let tdCount = ps.totalTd ?? ps.passTd ?? ps.rushTd ?? ps.recTd ?? 0;
             
             if (p.Pos === 'QB') volumeStr = `${ps.passYds || 0} Pass Yds, ${ps.rushYds || 0} Rush Yds, ${tdCount} TD`;
             else if (p.Pos === 'RB') volumeStr = `${ps.rushAtt || 0} Att, ${ps.rushYds || 0} Rush Yds, ${ps.targets || 0} Tgt, ${tdCount} TD`;
