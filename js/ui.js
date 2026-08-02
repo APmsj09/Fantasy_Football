@@ -131,6 +131,30 @@ const UI = {
             }
         }
 
+        let pastStatsHTML = '';
+        if (p.pastStats && p.pastPts) {
+            let ps = p.pastStats;
+            let volumeStr = '';
+            let tdCount = ps.totalTd || ps.passTd || ps.rushTd || ps.recTd || 0;
+            
+            if (p.Pos === 'QB') volumeStr = `${ps.passYds || 0} Pass Yds, ${ps.rushYds || 0} Rush Yds, ${tdCount} TD`;
+            else if (p.Pos === 'RB') volumeStr = `${ps.rushAtt || 0} Att, ${ps.rushYds || 0} Rush Yds, ${ps.targets || 0} Tgt, ${tdCount} TD`;
+            else volumeStr = `${ps.targets || 0} Tgt, ${ps.rec || 0} Rec, ${ps.recYds || 0} Rec Yds, ${tdCount} TD`;
+
+            pastStatsHTML = `
+                <div class="bg-indigo-50/50 border border-indigo-100 p-3.5 rounded-xl mb-4 flex justify-between items-center shadow-sm">
+                    <div>
+                        <span class="text-[10px] uppercase font-bold text-indigo-400 block mb-0.5">2025 Season (Actuals)</span>
+                        <span class="text-xs font-bold text-indigo-900">${volumeStr}</span>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-[10px] uppercase font-bold text-indigo-400 block mb-0.5">2025 Pts Generated</span>
+                        <span class="text-sm font-extrabold text-emerald-600">${p.pastPts.toFixed(1)}</span>
+                    </div>
+                </div>
+            `;
+        }
+
         let statsDashboard = '';
         if (isOffense) {
             let opps = (s.rushAtt || 0) + (s.targets || 0);
@@ -199,6 +223,7 @@ const UI = {
         UI.showMessage(modalTitle, `
             <div class="mb-3">${ppwBadge}</div>
             ${statsDashboard}
+            ${pastStatsHTML} 
             ${advancedMetricsHTML}
             
             <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">

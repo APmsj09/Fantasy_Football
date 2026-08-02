@@ -170,7 +170,7 @@ const State = {
     parseHandcuffData(text) {
         const rows = text.split(/\r?\n/).filter(row => row.trim() !== '');
         if (rows.length < 2) return [];
-        
+
         // Uppercase all headers to handle any capitalization format
         const headers = rows[0].split('\t').map(h => h.trim().toUpperCase());
         const parsed = [];
@@ -305,10 +305,10 @@ const State = {
             const team = this.normalizeTeam(vals[headers.indexOf('Team')]);
             const playerName = vals[headers.indexOf('Player')];
             const position = this.normalizePos(vals[headers.indexOf('Position')]);
-            
+
             const rawDepth = vals[headers.indexOf('Depth')] || '';
             const depth = parseInt(rawDepth.replace(/\D/g, ''), 10);
-            
+
             const ecr = parseFloat(vals[headers.indexOf('ECR')]);
 
             if (!playerName) continue;
@@ -450,7 +450,7 @@ const State = {
         let pk = this._simCache.pk; pk.length = 0;
         let dst = this._simCache.dst; dst.length = 0;
         let flex = this._simCache.flex; flex.length = 0;
-        
+
         for (let i = 0; i < roster.length; i++) {
             let p = roster[i];
             let val = p.weeklyProjections[`W${weekNum}`] || 0;
@@ -462,13 +462,13 @@ const State = {
             else if (pos === 'PK') pk.push(val);
             else if (pos === 'DST') dst.push(val);
         }
-        
-        qb.sort((a,b) => b - a);
-        rb.sort((a,b) => b - a);
-        wr.sort((a,b) => b - a);
-        te.sort((a,b) => b - a);
-        pk.sort((a,b) => b - a);
-        dst.sort((a,b) => b - a);
+
+        qb.sort((a, b) => b - a);
+        rb.sort((a, b) => b - a);
+        wr.sort((a, b) => b - a);
+        te.sort((a, b) => b - a);
+        pk.sort((a, b) => b - a);
+        dst.sort((a, b) => b - a);
 
         let score = 0;
         let req = this.settings.roster;
@@ -480,7 +480,7 @@ const State = {
             let bVal = b[posKey] || 0;
             for (let i = 0; i < maxReq; i++) {
                 if (i < arr.length) s += arr[i];
-                else s += bVal; 
+                else s += bVal;
             }
             return s;
         };
@@ -507,7 +507,7 @@ const State = {
         score += processFlexPos(te, req.TE.max, 'TE');
 
         let flexBaseline = ((b.RB || 11) + (b.WR || 11)) / 2;
-        flex.sort((a,b) => b - a);
+        flex.sort((a, b) => b - a);
         for (let i = 0; i < req.Flex.max; i++) {
             if (i < flex.length) score += flex[i];
             else score += flexBaseline;
@@ -531,21 +531,21 @@ const State = {
         });
 
         // Limit the pool to 45 to keep memory footprint hyper-light but accurate
-        let topViable = viablePlayers.sort((a,b) => b.AdvVBD - a.AdvVBD).slice(0, 45);
+        let topViable = viablePlayers.sort((a, b) => b.AdvVBD - a.AdvVBD).slice(0, 45);
 
         topViable.forEach(p => {
             let simSeasonScore = 0;
-            
+
             // Push player onto existing array instead of generating a cloned copy
             team.roster.push(p);
             for (let w = 1; w <= 17; w++) {
                 simSeasonScore += this.calculateOptimalWeeklyScore(team.roster, w);
             }
             team.roster.pop(); // Remove them cleanly
-            
+
             let addedPts = simSeasonScore - baseSeasonScore;
-            
-            if (p.Pos === 'PK' || p.Pos === 'DST') addedPts *= 0.15; 
+
+            if (p.Pos === 'PK' || p.Pos === 'DST') addedPts *= 0.15;
             p._addedPPW = addedPts / 17;
         });
 
@@ -585,17 +585,21 @@ const State = {
 
     parseAdvancedData(text) {
         const rows = text.split(/\r?\n/).filter(row => row.trim() !== '');
-        const headers = rows[0].split('\t').map(h => h.trim());
+        // Force headers to uppercase for safe matching
+        const headers = rows[0].split('\t').map(h => h.trim().toUpperCase());
         const parsed = [];
+
         for (let i = 1; i < rows.length; i++) {
             const values = rows[i].split('\t').map(v => v.trim());
             let obj = {};
             headers.forEach((h, idx) => {
-                let val = values[idx];
-                if (val && val.includes('%')) {
+                let val = values[idx] || '';
+                let cleanVal = val.replace(/,/g, '');
+
+                if (val.includes('%')) {
                     obj[h] = parseFloat(val.replace('%', ''));
-                } else if (!isNaN(parseFloat(val)) && !val.includes(',')) {
-                    obj[h] = parseFloat(val);
+                } else if (cleanVal !== '' && !isNaN(cleanVal)) {
+                    obj[h] = parseFloat(cleanVal);
                 } else {
                     obj[h] = val;
                 }
@@ -615,23 +619,48 @@ const State = {
                 if (advPlayer['RZ TGT'] !== undefined) p.rzTgt = advPlayer['RZ TGT'];
                 if (advPlayer['RZ ATT'] !== undefined) p.rzAtt = advPlayer['RZ ATT'];
                 if (advPlayer['% TM'] !== undefined) p.targetShare = advPlayer['% TM'];
-                
+
                 if (advPlayer['AIR/R'] !== undefined) p.aDOT = advPlayer['AIR/R'];
                 if (advPlayer['AIR/A'] !== undefined) p.aDOT = advPlayer['AIR/A'];
-                
+
                 if (advPlayer['YACON/ATT'] !== undefined) p.yacAtt = advPlayer['YACON/ATT'];
                 if (advPlayer['BRKTKL'] !== undefined) p.brokenTackles = advPlayer['BRKTKL'];
                 if (advPlayer['PKT TIME'] !== undefined) p.pktTime = advPlayer['PKT TIME'];
-                
+
                 if (advPlayer['CATCHABLE'] && advPlayer['CATCHABLE'] > 0) {
                     p.catchable = advPlayer['CATCHABLE'];
                     p.trueCatchRate = ((advPlayer['REC'] || 0) / advPlayer['CATCHABLE']) * 100;
                     p.dropRate = ((advPlayer['DROP'] || 0) / advPlayer['CATCHABLE']) * 100;
                 }
-                
+
                 if (advPlayer['ATT'] && advPlayer['POOR']) {
                     p.trueAccuracy = (((advPlayer['COMP'] || 0) + (advPlayer['DROP'] || 0)) / advPlayer['ATT']) * 100;
                 }
+                if (!p.pastStats) p.pastStats = {};
+
+                if (advPlayer['G']) p.pastStats.gp = advPlayer['G'];
+
+                // Passing
+                if (advPlayer['COMP']) p.pastStats.passCmp = advPlayer['COMP'];
+                if (p.Pos === 'QB' && advPlayer['ATT']) p.pastStats.passAtt = advPlayer['ATT'];
+                if (p.Pos === 'QB' && advPlayer['YDS']) p.pastStats.passYds = advPlayer['YDS'];
+
+                // Rushing
+                if (p.Pos === 'RB' && advPlayer['ATT']) p.pastStats.rushAtt = advPlayer['ATT'];
+                if (p.Pos === 'RB' && advPlayer['YDS']) p.pastStats.rushYds = advPlayer['YDS'];
+
+                // Receiving
+                if (advPlayer['TGT']) p.pastStats.targets = advPlayer['TGT'];
+                if (advPlayer['REC']) p.pastStats.rec = advPlayer['REC'];
+                if (['WR', 'TE'].includes(p.Pos) && advPlayer['YDS']) p.pastStats.recYds = advPlayer['YDS'];
+
+                // TDs & INTs
+                if (advPlayer['INT']) p.pastStats.int = advPlayer['INT'];
+                if (advPlayer['TD'] !== undefined) p.pastStats.totalTd = advPlayer['TD'];
+                if (advPlayer['PASS TD']) p.pastStats.passTd = advPlayer['PASS TD'];
+                if (advPlayer['RUSH TD']) p.pastStats.rushTd = advPlayer['RUSH TD'];
+                if (advPlayer['REC TD']) p.pastStats.recTd = advPlayer['REC TD'];
+                // ===========================================================
             }
         });
     },
@@ -725,19 +754,40 @@ const State = {
                 let recYpg = s.recYds / gp;
 
                 let passBonus = 0;
-                if (passYpg >= 220) passBonus += Math.min(gp, (passYpg - 200) / 15) * 1; 
-                if (passYpg >= 300) passBonus += Math.min(gp, (passYpg - 280) / 25) * 3; 
+                if (passYpg >= 220) passBonus += Math.min(gp, (passYpg - 200) / 15) * 1;
+                if (passYpg >= 300) passBonus += Math.min(gp, (passYpg - 280) / 25) * 3;
 
                 let rushBonus = 0;
-                if (rushYpg >= 50) rushBonus += Math.min(gp, (rushYpg - 45) / 10) * 1;  
-                if (rushYpg >= 130) rushBonus += Math.min(gp, (rushYpg - 120) / 20) * 3; 
+                if (rushYpg >= 50) rushBonus += Math.min(gp, (rushYpg - 45) / 10) * 1;
+                if (rushYpg >= 130) rushBonus += Math.min(gp, (rushYpg - 120) / 20) * 3;
 
                 let recBonus = 0;
-                if (recYpg >= 50) recBonus += Math.min(gp, (recYpg - 45) / 10) * 1;    
-                if (recYpg >= 130) recBonus += Math.min(gp, (recYpg - 120) / 20) * 3;   
+                if (recYpg >= 50) recBonus += Math.min(gp, (recYpg - 45) / 10) * 1;
+                if (recYpg >= 130) recBonus += Math.min(gp, (recYpg - 120) / 20) * 3;
 
                 p.ProjPts = basePts + passBonus + rushBonus + recBonus;
             }
+
+            if (p.pastStats) {
+                let ps = p.pastStats;
+                let pastPts = 0;
+
+                pastPts += (ps.passYds || 0) * this.scoring.passYds;
+                pastPts += (ps.rushYds || 0) * this.scoring.rushYds;
+                pastPts += (ps.recYds || 0) * this.scoring.recYds;
+                pastPts += (ps.rec || 0) * this.scoring.ppr;
+                pastPts += (ps.int || 0) * this.scoring.int;
+
+                if (ps.passTd) pastPts += ps.passTd * this.scoring.passTd;
+                if (ps.rushTd) pastPts += ps.rushTd * this.scoring.rushTd;
+                if (ps.recTd) pastPts += ps.recTd * this.scoring.recTd;
+                if (ps.totalTd && !ps.passTd && !ps.rushTd && !ps.recTd) {
+                    if (p.Pos === 'QB') pastPts += ps.totalTd * this.scoring.passTd;
+                    else pastPts += ps.totalTd * this.scoring.rushTd;
+                }
+                p.pastPts = pastPts;
+            }
+            // ===========================================================
 
             this.calculateWeeklyProjections(p);
         });
@@ -803,8 +853,8 @@ const State = {
             }
 
             // 3. Schedule Strength
-            if (p.avgStars) adjMultiplier += (p.avgStars - 3.0) * 0.02; 
-            if (p.playoffSOS && p.playoffSOS >= 4.0) adjMultiplier += 0.02; 
+            if (p.avgStars) adjMultiplier += (p.avgStars - 3.0) * 0.02;
+            if (p.playoffSOS && p.playoffSOS >= 4.0) adjMultiplier += 0.02;
 
             // 4. Offensive Line Quality
             if (p.Pos === 'RB' && p.olRunBlk) {
@@ -827,9 +877,9 @@ const State = {
                     let teamPosPct = teamDist[posPctKey] || 0;
 
                     if (p.depthChart === 1) {
-                        if (p.Pos === 'RB' && teamPosPct >= 20.0) adjMultiplier += 0.04; 
-                        else if (p.Pos === 'WR' && teamPosPct >= 60.0) adjMultiplier += 0.04; 
-                        else if (p.Pos === 'TE' && teamPosPct >= 25.0) adjMultiplier += 0.04; 
+                        if (p.Pos === 'RB' && teamPosPct >= 20.0) adjMultiplier += 0.04;
+                        else if (p.Pos === 'WR' && teamPosPct >= 60.0) adjMultiplier += 0.04;
+                        else if (p.Pos === 'TE' && teamPosPct >= 25.0) adjMultiplier += 0.04;
                     }
                 }
                 if (p.Pos === 'RB' && p.olRunBlk && p.olRunBlk <= 10) adjMultiplier += 0.03;
@@ -877,7 +927,7 @@ const State = {
 
             const round = parseInt(cols[0]);
             const teamName = cols[2].replace(/,/g, '').trim();
-            
+
             // FIX: Normalize the position string so "Def" successfully translates to "DST"
             const pos = this.normalizePos(cols[4]);
 
@@ -900,7 +950,7 @@ const State = {
 
             // Keep the round filter for QB/TE to ignore late backups, 
             // but remove it entirely for PK/DST since they naturally go late!
-            if (pos === 'QB' && round < 12) { 
+            if (pos === 'QB' && round < 12) {
                 profiles[teamName].qbAvgRound += round;
                 profiles[teamName].qbCount++;
             }
@@ -922,7 +972,7 @@ const State = {
             let p = profiles[key];
             p.qbAvgRound = p.qbCount > 0 ? (p.qbAvgRound / p.qbCount) : 10;
             p.teAvgRound = p.teCount > 0 ? (p.teAvgRound / p.teCount) : 10;
-            
+
             // FIX: Change fallback for K/DST to 15 (instead of 10) for managers lacking history
             p.pkAvgRound = p.pkCount > 0 ? (p.pkAvgRound / p.pkCount) : 15;
             p.dstAvgRound = p.dstCount > 0 ? (p.dstAvgRound / p.dstCount) : 15;
@@ -959,7 +1009,7 @@ const State = {
                     tfl: parseFloat(vals[headers.indexOf('TFL')]) || 0,
                     defFum: parseFloat(vals[headers.indexOf('FR')]) || 0,
                     defTd: parseFloat(vals[headers.indexOf('DTD')]) || 0,
-                    papg: parseFloat(vals[headers.indexOf('PAPG')]) || 18.0, 
+                    papg: parseFloat(vals[headers.indexOf('PAPG')]) || 18.0,
                     blk: parseFloat(vals[headers.indexOf('Blk')]) || 0
                 },
                 ProjPts: 0, VBD: 0, AdvVBD: 0
@@ -1033,7 +1083,7 @@ const State = {
                 id: id,
                 name: teamName,
                 isCPU: this.settings.draftMode === 'mock' ? !isUser : false,
-                profile: profile, 
+                profile: profile,
                 roster: [],
                 counts: { QB: 0, RB: 0, WR: 0, TE: 0, Flex: 0, PK: 0, DST: 0, Bench: 0 }
             };
