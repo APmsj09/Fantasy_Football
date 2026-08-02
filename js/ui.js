@@ -483,14 +483,36 @@ const UI = {
     // ⚡ OVERHAULED RECOMMENDATIONS TO MAXIMIZE PPW, MANAGE KICKERS, AND PREVENT SCARCITY DROP-OFFS
     renderRecommendations() {
         const container = document.getElementById('recommendations-container');
-        if (State.currentPick >= State.draftOrder.length) return;
+        if (!container || State.currentPick >= State.draftOrder.length) return;
 
         const userTeam = State.teamsById[State.userTeamId];
-        document.getElementById('user-team-name-disp').textContent = userTeam.name;
+        if (!userTeam) return;
+
+        const dispNameEl = document.getElementById('user-team-name-disp');
+        if (dispNameEl) dispNameEl.textContent = userTeam.name;
 
         const currentRound = Math.floor(State.currentPick / State.settings.numTeams) + 1;
         const totalRounds = State.settings.roster.totalSize;
-        const currentOverallPick = State.currentPick + 1;
+        const currentOverallPick = State.currentPick + 1; // Declared ONCE here
+
+        // 1. Calculate the user's EXACT next draft pick overall number
+        let nextPickIdx = State.draftOrder.findIndex((teamId, idx) => idx > State.currentPick && teamId === State.userTeamId);
+        let nextUserOverallPick = nextPickIdx !== -1 ? (nextPickIdx + 1) : (currentOverallPick + 2);
+
+        // Helper: Calculate probability a player survives until your next pick (0.0 to 1.0)
+        const getSurvivalProb = (adp) => {
+            let playerAdp = adp || currentOverallPick;
+            let diff = playerAdp - nextUserOverallPick;
+            return 1 / (1 + Math.exp(-0.25 * diff));
+        };
+
+        // Helper: Calculate Opportunity-Adjusted Recommendation Score
+        const getOpportunityScore = (p) => {
+            let baseVal = ((p._addedPPW || 0) * 15) + (p.AdvVBD || p.VBD);
+            let survivalProb = getSurvivalProb(p.adp);
+            let urgency = 1 - survivalProb; // 1.0 = High Urgency (will be taken), 0.0 = Can wait
+            return baseVal * (1 + (0.6 * urgency));
+        };
 
         // Calculate Positional Tier Scarcity
         let scarcity = {};
@@ -499,7 +521,6 @@ const UI = {
             if (avail.length > 5) {
                 let top = avail[0].AdvVBD || avail[0].VBD;
                 let fifth = avail[4].AdvVBD || avail[4].VBD;
-                // Reward up to 0.5 additional score points per point of VBD drop-off
                 scarcity[pos] = Math.max(0, top - fifth) * 0.5;
             } else {
                 scarcity[pos] = 0;
@@ -516,17 +537,18 @@ const UI = {
             let pos = p.Pos;
             if (pos === 'PK' && currentRound <= totalRounds - 3) return false;
 
-            if (userTeam.counts[pos] < State.settings.roster[pos].max) return true;
-            if (['RB', 'WR', 'TE'].includes(pos) && userTeam.counts['Flex'] < State.settings.roster.Flex.max) return true;
+            let posRoster = State.settings.roster[pos];
+            let starterMax = posRoster ? posRoster.max : 1;
+
+            if (userTeam.counts[pos] < starterMax) return true;
+            if (State.isPositionFlexEligible(pos) && userTeam.counts['Flex'] < State.settings.roster.Flex.max) return true;
             if (userTeam.counts['Bench'] < State.settings.roster.Bench.max) return true;
             return false;
         });
 
         viablePlayers.forEach(p => {
-            // 1. BASE: Points Per Week + Adv VBD
             let score = ((p._addedPPW || 0) * 20) + ((p.AdvVBD || p.VBD) * 0.5);
 
-            // 2. DYNAMIC FLEX & STARTER SCORING
             let posRoster = State.settings.roster[p.Pos];
             let starterMax = posRoster ? posRoster.max : 0;
             let currentCount = userTeam.counts[p.Pos] || 0;
@@ -535,89 +557,62 @@ const UI = {
             let isFlexOpen = State.isPositionFlexEligible(p.Pos) && (userTeam.counts['Flex'] < State.settings.roster.Flex.max);
 
             if (isStarterOpen) {
-                score += 25; // Starter slot open
+                score += 25;
             } else if (isFlexOpen) {
-                score += 15; // Flex slot open
+                if (p.Pos === 'TE') {
+                    let teAdvantage = (p.AdvVBD || p.VBD) - avgTopFlexVBD;
+                    if (teAdvantage > 5) score += 18 + teAdvantage;
+                    else score += 5;
+                } else {
+                    score += 18;
+                }
             } else {
                 let overage = currentCount - starterMax;
                 if (State.isPositionFlexEligible(p.Pos)) {
-                    score -= (overage * 10); // Soft penalty for flex-eligible depth (RB/WR/TE, or QB in Superflex)
+                    score -= (overage * 10);
                 } else {
-                    score -= 100; // Heavy penalty for non-flex positions (K, DST, or QB in 1-QB)
+                    score -= 100;
                 }
             }
 
-            // 3. APPLY SCARCITY BOOST
             let scarcityBonus = 0;
             let posRank = State.availablePlayers.filter(x => x.Pos === p.Pos).findIndex(x => x._cleanName === p._cleanName);
             if (posRank < 3 && scarcity[p.Pos]) {
-                // Ignore TE scarcity warnings if TE1 is already drafted and TE2 isn't an elite Flex option
                 if (currentCount < starterMax || p.Pos !== 'TE' || ((p.AdvVBD || p.VBD) - avgTopFlexVBD > 5)) {
                     scarcityBonus = scarcity[p.Pos];
                 }
             }
             score += scarcityBonus;
-            p._scarcityBoost = scarcityBonus;
-
-            // 4. ADP VALUE
-            if (p.adp) {
-                let adpDiff = p.adp - currentOverallPick;
-                if (adpDiff > 12) {
-                    score -= Math.min(10, adpDiff * 0.3);
-                } else if (adpDiff < -12) {
-                    score += 8;
-                }
-            }
 
             let userOwnsStarter = p.starterName && userTeam.roster.some(r => r._cleanName === State.normalizeName(p.starterName));
-            if (userOwnsStarter) {
-                score += 5; // Bonus for securing your elite RB's backup
-                p._isInsuranceBoost = true;
-            }
+            if (userOwnsStarter) score += 5;
 
             p._recScore = score;
         });
 
-        let sortedByRec = [...viablePlayers].sort((a, b) => b._recScore - a._recScore);
-
-        // 1. Calculate the user's EXACT next draft pick overall number
-        let currentOverallPick = State.currentPick + 1;
-        let nextPickIdx = State.draftOrder.findIndex((teamId, idx) => idx > State.currentPick && teamId === State.userTeamId);
-        let nextUserOverallPick = nextPickIdx !== -1 ? (nextPickIdx + 1) : (currentOverallPick + 2);
-
-        // Helper: Calculate probability a player survives until your next pick (0.0 to 1.0)
-        const getSurvivalProb = (adp) => {
-            let playerAdp = adp || currentOverallPick;
-            let diff = playerAdp - nextUserOverallPick;
-            return 1 / (1 + Math.exp(-0.25 * diff));
-        };
-
-        // Helper: Calculate Opportunity-Adjusted Recommendation Score
-        const getOpportunityScore = (p) => {
-            let baseVal = ((p._addedPPW || 0) * 15) + (p.AdvVBD || p.VBD);
-            let survivalProb = getSurvivalProb(p.adp);
-            let urgency = 1 - survivalProb; // 1.0 = High Urgency (will be taken), 0.0 = Can wait
-            
-            return baseVal * (1 + (0.6 * urgency));
-        };
-
-        // 2. Select #1 Best Lineup Addition using Opportunity Cost Score
+        // Select #1 Best Lineup Addition using Opportunity Cost Score
         let bestFit = [...viablePlayers]
             .filter(p => {
-                // Suppress 2nd QB/TE/PK/DST as #1 fit before Round 12
-                if (['QB', 'TE', 'PK', 'DST'].includes(p.Pos) && userTeam.counts[p.Pos] >= State.settings.roster[p.Pos].max && currentRound < 12) {
+                let posRoster = State.settings.roster[p.Pos];
+                let starterMax = posRoster ? posRoster.max : 1;
+                if (['QB', 'TE', 'PK', 'DST'].includes(p.Pos) && userTeam.counts[p.Pos] >= starterMax && currentRound < 12) {
                     return false;
                 }
                 return true;
             })
             .sort((a, b) => getOpportunityScore(b) - getOpportunityScore(a))[0];
+
         if (bestFit && (bestFit._addedPPW || 0) <= 0.1) bestFit = null;
 
+        let sortedByRec = [...viablePlayers].sort((a, b) => b._recScore - a._recScore);
         let vbdRecs = sortedByRec.filter(p => p !== bestFit).slice(0, 3);
 
         let htmlStr = '';
 
         if (bestFit) {
+            let survivalProb = getSurvivalProb(bestFit.adp);
+            let urgencyTag = survivalProb < 0.15 ? `🔥 Must Pick Now` : `📈 +${bestFit._addedPPW.toFixed(1)} PPW Lineup Fit`;
+
             htmlStr += `
             <div class="p-3 bg-gradient-to-br from-emerald-600 to-teal-800 rounded-xl border border-emerald-500 flex justify-between items-center shadow-md cursor-pointer hover:shadow-lg transition mb-2" onclick="UI.showPlayerCard('${bestFit._cleanName}')">
                 <div>
@@ -625,18 +620,17 @@ const UI = {
                         <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg> Best Lineup Addition
                     </span>
                     <h4 class="font-bold text-sm text-white">${bestFit.Player}</h4>
-                    <p class="text-[10px] text-emerald-100 font-medium">${bestFit.Pos} • Adds +${bestFit._addedPPW.toFixed(1)} PPW</p>
+                    <p class="text-[10px] text-emerald-100 font-medium">${bestFit.Pos} • ${urgencyTag}</p>
                 </div>
             </div>`;
         }
 
         htmlStr += vbdRecs.map((p, i) => {
             let userOwnsStarter = p.starterName && userTeam.roster.some(r => r._cleanName === State.normalizeName(p.starterName));
-            let starterMax = State.settings.roster[p.Pos] ? State.settings.roster[p.Pos].max : 1;
-            let isStarterNeeded = userTeam.counts[p.Pos] < starterMax;
-
             let survivalProb = getSurvivalProb(p.adp);
-            let isStarterNeeded = userTeam.counts[p.Pos] < (State.settings.roster[p.Pos] ? State.settings.roster[p.Pos].max : 1);
+            let posRoster = State.settings.roster[p.Pos];
+            let starterMax = posRoster ? posRoster.max : 1;
+            let isStarterNeeded = userTeam.counts[p.Pos] < starterMax;
 
             let highlight = '';
             if (userOwnsStarter) highlight = `🔒 Insurance for ${p.starterName}`;
@@ -654,8 +648,8 @@ const UI = {
                     <h4 class="font-bold text-xs text-white">${bestFit ? i + 2 : i + 1}. ${p.Player} <span class="text-[10px] font-normal text-indigo-300">(${p.Team})</span></h4>
                     <p class="text-[10px] text-indigo-200 font-medium mt-0.5">${p.Pos} • ${highlight}</p>
                 </div>
-            </div>
-        `}).join('');
+            </div>`;
+        }).join('');
 
         container.innerHTML = htmlStr;
     },
