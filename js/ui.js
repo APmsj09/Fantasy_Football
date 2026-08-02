@@ -751,8 +751,12 @@ const UI = {
     renderStandings() {
         const list = document.getElementById('standings-list');
         let totals = Object.values(State.teamsById).map(team => {
-            let pts = team.roster.reduce((sum, p) => sum + p.ProjPts, 0);
-            return { name: team.name, pts, isUser: team.id === State.userTeamId };
+            // Calculates true starting lineup points across 17 weeks (handling starters & byes)
+            let seasonStartingPts = 0;
+            for (let w = 1; w <= 17; w++) {
+                seasonStartingPts += State.calculateOptimalWeeklyScore(team.roster, w);
+            }
+            return { name: team.name, pts: seasonStartingPts, isUser: team.id === State.userTeamId };
         }).sort((a, b) => b.pts - a.pts);
 
         let htmlStr = '';
@@ -761,7 +765,7 @@ const UI = {
             let text = t.isUser ? 'text-indigo-900' : 'text-gray-900';
             htmlStr += `
                 <div class="flex justify-between items-center p-4 border rounded-xl ${bg} mb-3">
-                    <span class="text-lg font-bold ${text}"><span class="text-gray-400 mr-2">#${i + 1}</span> ${t.name}</span>
+                    <span class="text-lg font-bold ${text}"><span class="text-gray-400 mr-2">#${i+1}</span> ${t.name}</span>
                     <span class="text-lg text-emerald-600 font-extrabold">${t.pts.toFixed(1)} pts</span>
                 </div>
             `;
