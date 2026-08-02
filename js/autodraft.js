@@ -62,30 +62,24 @@ window.AutoDraft = {
                 if (p.Pos === 'TE' && profile.draftsEarlyTE && round >= (profile.teAvgRound - 1) && round <= (profile.teAvgRound + 1)) multiplier *= 1.8;
             }
 
-            let starterMax = State.settings.roster[p.Pos].max;
-            let currentCount = team.counts[p.Pos];
-            let flexOpen = ['RB', 'WR', 'TE'].includes(p.Pos) && (team.counts['Flex'] < State.settings.roster.Flex.max);
+            let posRoster = State.settings.roster[p.Pos];
+            let starterMax = posRoster ? posRoster.max : 0;
+            let currentCount = team.counts[p.Pos] || 0;
+
+            let isStarterOpen = currentCount < starterMax;
+            let isFlexOpen = State.isPositionFlexEligible(p.Pos) && (team.counts['Flex'] < State.settings.roster.Flex.max);
 
             let starterBonus = 0;
-            if (currentCount < starterMax) {
-                starterBonus = 25; 
-            } else if (flexOpen) {
-                if (p.Pos === 'TE') {
-                    let teAdvantage = (p.AdvVBD || p.VBD) - avgTopFlexVBD;
-                    if (teAdvantage > 5) {
-                        starterBonus = 18 + teAdvantage; // Elite TE2Flex
-                    } else {
-                        starterBonus = 5; 
-                    }
-                } else {
-                    starterBonus = 18; 
-                }
+            if (isStarterOpen) {
+                starterBonus = 25; // Direct starter slot open
+            } else if (isFlexOpen) {
+                starterBonus = 15; // Flex slot open
             } else {
-                let overage = currentCount - starterMax; 
-                if (['QB', 'TE', 'PK', 'DST'].includes(p.Pos)) {
-                    multiplier *= (overage === 0 ? 0.05 : 0.01); 
-                } else if (['RB', 'WR'].includes(p.Pos)) {
-                    multiplier *= Math.pow(0.5, overage + 1);
+                let overage = currentCount - starterMax;
+                if (State.isPositionFlexEligible(p.Pos)) {
+                    multiplier *= Math.pow(0.5, overage + 1); // Soft multiplier for flex depth
+                } else {
+                    multiplier *= (overage === 0 ? 0.05 : 0.01); // Severe multiplier for non-flex positions
                 }
             }
 

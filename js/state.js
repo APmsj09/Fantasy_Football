@@ -84,6 +84,22 @@ const State = {
         return p;
     },
 
+    // Helper: Checks if a position is Flex/Superflex eligible under active roster settings
+    isPositionFlexEligible(pos) {
+        const r = this.settings.roster;
+        if (!r) return false;
+        
+        // Standard Flex (RB, WR, TE)
+        if (['RB', 'WR', 'TE'].includes(pos)) return true;
+        
+        // Superflex / 2-QB League check
+        if (pos === 'QB' && ((r.Superflex && r.Superflex.max > 0) || (r.QB && r.QB.max >= 2))) {
+            return true;
+        }
+        
+        return false;
+    },
+
     normalizeName(name) {
         if (!name) return '';
         let clean = name.toLowerCase().trim();
@@ -903,6 +919,9 @@ const State = {
         positions.forEach(pos => {
             let maxPos = this.settings.roster[pos]?.max || 1;
             let starters = numTeams * maxPos;
+            if (pos === 'QB') {
+                starters = Math.floor(numTeams * 1.25); // Baseline at QB15 instead of QB12
+            }
 
             if (pos === 'RB' || pos === 'WR') {
                 starters += Math.floor((numTeams * (this.settings.roster.Flex?.max || 2)) / 2);
@@ -1013,7 +1032,13 @@ const State = {
             if (p.trueCatchRate && p.trueCatchRate > 90) adjMultiplier += 0.02;
             if (p.dropRate && p.dropRate > 10) adjMultiplier -= 0.03;
 
-            if (p.Pos === 'QB' && p.stats && p.stats.rushAtt >= 80) adjMultiplier += 0.04;
+            if (p.Pos === 'QB') {
+                // Rushing floor boost for dual-threat QBs (Allen, Hurts, Lamar, Daniels)
+                if (p.stats && p.stats.rushAtt >= 60) adjMultiplier += 0.08;
+
+                // Top-tier elite passer projection boost
+                if (rawVBD >= 30) adjMultiplier += 0.06;
+            }
 
             // ===========================================================
             // ADVANCED TEAM ENVIRONMENT METRICS (ZERO OVERLAP)
@@ -1041,9 +1066,9 @@ const State = {
 
             // TARGET QUALITY: Evaluate Actual Starting QB Accuracy (Fallback to Team OnTgt%)
             if (['WR', 'TE'].includes(p.Pos)) {
-                let teamQB = this.allPlayers.find(q => 
-                    q._cleanTeam === tTeam && 
-                    q._cleanPos === 'QB' && 
+                let teamQB = this.allPlayers.find(q =>
+                    q._cleanTeam === tTeam &&
+                    q._cleanPos === 'QB' &&
                     q.depthChart === 1
                 );
 

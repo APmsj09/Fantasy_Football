@@ -527,29 +527,24 @@ const UI = {
             let score = ((p._addedPPW || 0) * 20) + ((p.AdvVBD || p.VBD) * 0.5);
 
             // 2. DYNAMIC FLEX & STARTER SCORING
-            let starterMax = State.settings.roster[p.Pos].max;
-            let currentCount = userTeam.counts[p.Pos];
-            let flexOpen = ['RB', 'WR', 'TE'].includes(p.Pos) && (userTeam.counts['Flex'] < State.settings.roster.Flex.max);
+            let posRoster = State.settings.roster[p.Pos];
+            let starterMax = posRoster ? posRoster.max : 0;
+            let currentCount = userTeam.counts[p.Pos] || 0;
 
-            if (currentCount < starterMax) {
-                score += 25; // Main position slot open (e.g., WR1, RB1, TE1)
-            } else if (flexOpen) {
-                // Candidate is competing for a FLEX slot!
-                if (p.Pos === 'TE') {
-                    // Compare 2nd TE directly to available RBs/WRs:
-                    let teAdvantage = (p.AdvVBD || p.VBD) - avgTopFlexVBD;
-                    if (teAdvantage > 5) {
-                        score += 18 + teAdvantage; // Elite TE2 that easily beats available RBs/WRs!
-                    } else {
-                        score += 5; // Average TE2 takes back seat to empty WR/RB starter slots
-                    }
-                } else {
-                    score += 18; // RB/WR Flex starter slot open
-                }
+            let isStarterOpen = currentCount < starterMax;
+            let isFlexOpen = State.isPositionFlexEligible(p.Pos) && (userTeam.counts['Flex'] < State.settings.roster.Flex.max);
+
+            if (isStarterOpen) {
+                score += 25; // Starter slot open
+            } else if (isFlexOpen) {
+                score += 15; // Flex slot open
             } else {
                 let overage = currentCount - starterMax;
-                if (['PK', 'DST', 'QB', 'TE'].includes(p.Pos)) score -= 40;
-                else if (['RB', 'WR'].includes(p.Pos)) score -= (overage * 8);
+                if (State.isPositionFlexEligible(p.Pos)) {
+                    score -= (overage * 10); // Soft penalty for flex-eligible depth (RB/WR/TE, or QB in Superflex)
+                } else {
+                    score -= 100; // Heavy penalty for non-flex positions (K, DST, or QB in 1-QB)
+                }
             }
 
             // 3. APPLY SCARCITY BOOST
@@ -585,7 +580,15 @@ const UI = {
 
         let sortedByRec = [...viablePlayers].sort((a, b) => b._recScore - a._recScore);
 
-        let bestFit = [...viablePlayers].sort((a, b) => (b._addedPPW || 0) - (a._addedPPW || 0))[0];
+        let bestFit = [...viablePlayers]
+            .filter(p => {
+                // Do NOT feature a 2nd QB, 2nd TE, K, or DST as Best Lineup Fit before Round 12
+                if (['QB', 'TE', 'PK', 'DST'].includes(p.Pos) && userTeam.counts[p.Pos] >= State.settings.roster[p.Pos].max && currentRound < 12) {
+                    return false;
+                }
+                return true;
+            })
+            .sort((a, b) => (b._addedPPW || 0) - (a._addedPPW || 0))[0];
         if (bestFit && (bestFit._addedPPW || 0) <= 0.1) bestFit = null;
 
         let vbdRecs = sortedByRec.filter(p => p !== bestFit).slice(0, 3);
@@ -765,7 +768,7 @@ const UI = {
             let text = t.isUser ? 'text-indigo-900' : 'text-gray-900';
             htmlStr += `
                 <div class="flex justify-between items-center p-4 border rounded-xl ${bg} mb-3">
-                    <span class="text-lg font-bold ${text}"><span class="text-gray-400 mr-2">#${i+1}</span> ${t.name}</span>
+                    <span class="text-lg font-bold ${text}"><span class="text-gray-400 mr-2">#${i + 1}</span> ${t.name}</span>
                     <span class="text-lg text-emerald-600 font-extrabold">${t.pts.toFixed(1)} pts</span>
                 </div>
             `;
