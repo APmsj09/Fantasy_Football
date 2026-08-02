@@ -778,6 +778,42 @@ const State = {
                 else if (p.olPassBlk >= 25) adjMultiplier -= 0.05;
             }
 
+            let lacksIndividualMetrics = (p.targetShare === undefined) && (p.brokenTackles === undefined) && (p.yacAtt === undefined);
+
+            if (lacksIndividualMetrics) {
+                p.isNewRole = true;
+
+                let teamDist = this.teamTargets.find(t => t.Team === p.Team);
+
+                if (teamDist && p.depthChart) {
+                    let posPctKey = `${p.Pos} %`;
+                    let teamPosPct = teamDist[posPctKey] || 0;
+
+                    if (p.depthChart === 1) {
+                        if (p.Pos === 'RB' && teamPosPct >= 20.0) {
+                            adjMultiplier += 0.08; 
+                        } else if (p.Pos === 'WR' && teamPosPct >= 60.0) {
+                            adjMultiplier += 0.08; 
+                        } else if (p.Pos === 'TE' && teamPosPct >= 25.0) {
+                            adjMultiplier += 0.08; 
+                        } else if (p.Pos === 'RB' && teamPosPct < 12.0) {
+                            adjMultiplier -= 0.04; 
+                        }
+                    } 
+                    else if (p.depthChart === 2) {
+                        if (p.Pos === 'RB' && teamPosPct >= 22.0) adjMultiplier += 0.04;
+                        else if (p.Pos === 'WR' && teamPosPct >= 62.0) adjMultiplier += 0.04;
+                    }
+                }
+
+                if (p.Pos === 'RB' && p.olRunBlk && p.olRunBlk <= 10) {
+                    adjMultiplier += 0.06; 
+                }
+                if (p.Pos === 'QB' && p.olPassBlk && p.olPassBlk <= 10) {
+                    adjMultiplier += 0.05;
+                }
+            }
+
             if (p.targetShare) {
                 if (p.targetShare >= 25) adjMultiplier += 0.12;
                 else if (p.targetShare >= 20) adjMultiplier += 0.06;
