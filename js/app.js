@@ -191,7 +191,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (e) { }
 
             try {
-                const handcuffRes = await fetch('./RB_Handcuff_26.tsv');
+                const handcuffRes = await fetch('./RB_Handcuffs_26.tsv', fetchOpts);
                 State.mergeHandcuffData(State.parseHandcuffData(await handcuffRes.text()));
             } catch (e) { }
 
