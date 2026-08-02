@@ -25,6 +25,8 @@ const State = {
     sosData: [],
     olRankings: [],
 
+    _simCache: { qb: [], rb: [], wr: [], te: [], pk: [], dst: [], flex: [] },
+
     normalizeTeam(team) {
         if (!team) return '';
         let t = team.toUpperCase().trim();
@@ -389,42 +391,51 @@ const State = {
     },
 
     calculateOptimalWeeklyScore(roster, weekNum) {
-        let pts = { QB: [], RB: [], WR: [], TE: [], PK: [], DST: [] };
+        // Fast reset the pre-allocated cache instead of creating new arrays
+        let qb = this._simCache.qb; qb.length = 0;
+        let rb = this._simCache.rb; rb.length = 0;
+        let wr = this._simCache.wr; wr.length = 0;
+        let te = this._simCache.te; te.length = 0;
+        let pk = this._simCache.pk; pk.length = 0;
+        let dst = this._simCache.dst; dst.length = 0;
+        let flex = this._simCache.flex; flex.length = 0;
         
-        roster.forEach(p => {
+        // Populate cache natively
+        for (let i = 0; i < roster.length; i++) {
+            let p = roster[i];
             let val = p.weeklyProjections[`W${weekNum}`] || 0;
-            if (pts[p.Pos]) pts[p.Pos].push(val);
-        });
+            let pos = p.Pos;
+            if (pos === 'QB') qb.push(val);
+            else if (pos === 'RB') rb.push(val);
+            else if (pos === 'WR') wr.push(val);
+            else if (pos === 'TE') te.push(val);
+            else if (pos === 'PK') pk.push(val);
+            else if (pos === 'DST') dst.push(val);
+        }
         
-        for (let pos in pts) pts[pos].sort((a,b) => b - a);
+        // Sort descending
+        qb.sort((a,b) => b - a);
+        rb.sort((a,b) => b - a);
+        wr.sort((a,b) => b - a);
+        te.sort((a,b) => b - a);
+        pk.sort((a,b) => b - a);
+        dst.sort((a,b) => b - a);
 
         let score = 0;
         let req = this.settings.roster;
-        let flexCandidates = [];
         
-        let sumTop = (arr, count, isFlexEligible) => {
-            let s = 0;
-            for(let i = 0; i < count; i++) {
-                if (arr[i]) s += arr[i];
-            }
-            if (isFlexEligible) {
-                for(let i = count; i < arr.length; i++) {
-                    flexCandidates.push(arr[i]);
-                }
-            }
-            return s;
-        };
+        // Sum top starters, push leftovers to flex pool instantly
+        for(let i=0; i<qb.length; i++) { if(i < req.QB.max) score += qb[i]; }
+        for(let i=0; i<pk.length; i++) { if(i < req.PK.max) score += pk[i]; }
+        for(let i=0; i<dst.length; i++) { if(i < req.DST.max) score += dst[i]; }
 
-        score += sumTop(pts.QB, req.QB.max, false);
-        score += sumTop(pts.RB, req.RB.max, true);
-        score += sumTop(pts.WR, req.WR.max, true);
-        score += sumTop(pts.TE, req.TE.max, true);
-        score += sumTop(pts.PK, req.PK.max, false);
-        score += sumTop(pts.DST, req.DST.max, false);
+        for(let i=0; i<rb.length; i++) { if(i < req.RB.max) score += rb[i]; else flex.push(rb[i]); }
+        for(let i=0; i<wr.length; i++) { if(i < req.WR.max) score += wr[i]; else flex.push(wr[i]); }
+        for(let i=0; i<te.length; i++) { if(i < req.TE.max) score += te[i]; else flex.push(te[i]); }
 
-        flexCandidates.sort((a,b) => b - a);
-        for(let i = 0; i < req.Flex.max; i++) {
-            if (flexCandidates[i]) score += flexCandidates[i];
+        flex.sort((a,b) => b - a);
+        for(let i=0; i<flex.length && i < req.Flex.max; i++) {
+            score += flex[i];
         }
 
         return score;
@@ -439,30 +450,31 @@ const State = {
         let viablePlayers = availablePlayers.filter(player => {
             let pos = player.Pos;
             if (team.counts[pos] < this.settings.roster[pos].max) return true;
-            if (['RB', 'WR', 'TE'].includes(pos) && team.counts['Flex'] < this.settings.roster.Flex.max) return true;
+            if ((pos === 'RB' || pos === 'WR' || pos === 'TE') && team.counts['Flex'] < this.settings.roster.Flex.max) return true;
             if (team.counts['Bench'] < this.settings.roster.Bench.max) return true;
             return false;
         });
 
-        // ⚡ Expanded to Top 75 to ensure players dropping via ADP are still simulated
-        let topViable = viablePlayers.sort((a,b) => b.AdvVBD - a.AdvVBD).slice(0, 75);
+        // Limit the pool to 45 to keep memory footprint hyper-light but accurate
+        let topViable = viablePlayers.sort((a,b) => b.AdvVBD - a.AdvVBD).slice(0, 45);
 
         topViable.forEach(p => {
             let simSeasonScore = 0;
-            let simRoster = [...team.roster, p];
             
+            // Push player onto existing array instead of generating a cloned copy
+            team.roster.push(p);
             for (let w = 1; w <= 17; w++) {
-                simSeasonScore += this.calculateOptimalWeeklyScore(simRoster, w);
+                simSeasonScore += this.calculateOptimalWeeklyScore(team.roster, w);
             }
+            team.roster.pop(); // Remove them cleanly
             
             let addedPts = simSeasonScore - baseSeasonScore;
             
-            // Still heavily diminish Kicker/DST points from skewing PPW value so they don't break algorithms
             if (p.Pos === 'PK' || p.Pos === 'DST') addedPts *= 0.15; 
-
             p._addedPPW = addedPts / 17;
         });
 
+        // Reset non-viable players safely
         availablePlayers.forEach(p => {
             if (!topViable.includes(p)) p._addedPPW = 0;
         });
