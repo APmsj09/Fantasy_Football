@@ -580,15 +580,37 @@ const UI = {
 
         let sortedByRec = [...viablePlayers].sort((a, b) => b._recScore - a._recScore);
 
+        // 1. Calculate the user's EXACT next draft pick overall number
+        let currentOverallPick = State.currentPick + 1;
+        let nextPickIdx = State.draftOrder.findIndex((teamId, idx) => idx > State.currentPick && teamId === State.userTeamId);
+        let nextUserOverallPick = nextPickIdx !== -1 ? (nextPickIdx + 1) : (currentOverallPick + 2);
+
+        // Helper: Calculate probability a player survives until your next pick (0.0 to 1.0)
+        const getSurvivalProb = (adp) => {
+            let playerAdp = adp || currentOverallPick;
+            let diff = playerAdp - nextUserOverallPick;
+            return 1 / (1 + Math.exp(-0.25 * diff));
+        };
+
+        // Helper: Calculate Opportunity-Adjusted Recommendation Score
+        const getOpportunityScore = (p) => {
+            let baseVal = ((p._addedPPW || 0) * 15) + (p.AdvVBD || p.VBD);
+            let survivalProb = getSurvivalProb(p.adp);
+            let urgency = 1 - survivalProb; // 1.0 = High Urgency (will be taken), 0.0 = Can wait
+            
+            return baseVal * (1 + (0.6 * urgency));
+        };
+
+        // 2. Select #1 Best Lineup Addition using Opportunity Cost Score
         let bestFit = [...viablePlayers]
             .filter(p => {
-                // Do NOT feature a 2nd QB, 2nd TE, K, or DST as Best Lineup Fit before Round 12
+                // Suppress 2nd QB/TE/PK/DST as #1 fit before Round 12
                 if (['QB', 'TE', 'PK', 'DST'].includes(p.Pos) && userTeam.counts[p.Pos] >= State.settings.roster[p.Pos].max && currentRound < 12) {
                     return false;
                 }
                 return true;
             })
-            .sort((a, b) => (b._addedPPW || 0) - (a._addedPPW || 0))[0];
+            .sort((a, b) => getOpportunityScore(b) - getOpportunityScore(a))[0];
         if (bestFit && (bestFit._addedPPW || 0) <= 0.1) bestFit = null;
 
         let vbdRecs = sortedByRec.filter(p => p !== bestFit).slice(0, 3);
@@ -613,16 +635,19 @@ const UI = {
             let starterMax = State.settings.roster[p.Pos] ? State.settings.roster[p.Pos].max : 1;
             let isStarterNeeded = userTeam.counts[p.Pos] < starterMax;
 
+            let survivalProb = getSurvivalProb(p.adp);
+            let isStarterNeeded = userTeam.counts[p.Pos] < (State.settings.roster[p.Pos] ? State.settings.roster[p.Pos].max : 1);
+
             let highlight = '';
             if (userOwnsStarter) highlight = `🔒 Insurance for ${p.starterName}`;
+            else if (survivalProb < 0.15 && isStarterNeeded) highlight = `🔥 Must Pick Now (Gone by Pick ${nextUserOverallPick})`;
+            else if (survivalProb > 0.85 && currentRound < 10) highlight = `⏳ Can Wait (${(survivalProb * 100).toFixed(0)}% chance at Pick ${nextUserOverallPick})`;
             else if (p.isNewRole && p.depthChart === 1) highlight = `📋 Inherits ${p.Team} ${p.Pos}1 Role Volume`;
             else if (p.adp && (p.adp < currentOverallPick)) highlight = `Value Pick (ADP ${p.adp.toFixed(0)})`;
             else if (p._scarcityBoost > 3 && isStarterNeeded) highlight = `Tier Drop-off: Grab a ${p.Pos} now`;
-            else if (p.targetShare && p.targetShare >= 25) highlight = `Alpha ${p.targetShare}% Target Share`;
-            else if (p.olRunBlk && p.olRunBlk <= 5 && p.Pos === 'RB') highlight = `Elite Run Blocking (OL Rank #${p.olRunBlk})`;
             else if (isStarterNeeded) highlight = `Strong Team Need`;
             else highlight = `Flex / Bench Depth`;
-            
+
             return `
             <div class="p-3 bg-indigo-800/80 rounded-xl border border-indigo-700/50 flex justify-between items-center shadow-inner cursor-pointer hover:bg-indigo-700 transition mb-2" onclick="UI.showPlayerCard('${p._cleanName}')">
                 <div>
