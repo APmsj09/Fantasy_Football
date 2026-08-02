@@ -585,17 +585,16 @@ const State = {
 
     parseAdvancedData(text) {
         const rows = text.split(/\r?\n/).filter(row => row.trim() !== '');
-        // Force headers to uppercase for safe matching
-        const headers = rows[0].split('\t').map(h => h.trim().toUpperCase());
+        const headers = rows[0].split('\t').map(h => h.trim());
         const parsed = [];
-
+        
         for (let i = 1; i < rows.length; i++) {
             const values = rows[i].split('\t').map(v => v.trim());
             let obj = {};
             headers.forEach((h, idx) => {
                 let val = values[idx] || '';
-                let cleanVal = val.replace(/,/g, '');
-
+                let cleanVal = val.replace(/,/g, ''); 
+                
                 if (val.includes('%')) {
                     obj[h] = parseFloat(val.replace('%', ''));
                 } else if (cleanVal !== '' && !isNaN(cleanVal)) {
@@ -613,54 +612,57 @@ const State = {
         this.advancedMetrics = [...this.advancedMetrics, ...advancedDataArray];
 
         advancedDataArray.forEach(advPlayer => {
-            let p = this.matchPlayerFast(advPlayer.Player, advPlayer.Team, advPlayer.Pos);
+            let p = this.matchPlayerFast(advPlayer.Player, advPlayer.Team, advPlayer.Pos || advPlayer.Position);
 
             if (p) {
                 if (advPlayer['RZ TGT'] !== undefined) p.rzTgt = advPlayer['RZ TGT'];
                 if (advPlayer['RZ ATT'] !== undefined) p.rzAtt = advPlayer['RZ ATT'];
                 if (advPlayer['% TM'] !== undefined) p.targetShare = advPlayer['% TM'];
-
+                
                 if (advPlayer['AIR/R'] !== undefined) p.aDOT = advPlayer['AIR/R'];
                 if (advPlayer['AIR/A'] !== undefined) p.aDOT = advPlayer['AIR/A'];
-
+                
+                // Add fallback for WR/TEs who use YACON/R instead of YACON/ATT
                 if (advPlayer['YACON/ATT'] !== undefined) p.yacAtt = advPlayer['YACON/ATT'];
+                if (advPlayer['YACON/R'] !== undefined) p.yacAtt = advPlayer['YACON/R'];
+                
                 if (advPlayer['BRKTKL'] !== undefined) p.brokenTackles = advPlayer['BRKTKL'];
                 if (advPlayer['PKT TIME'] !== undefined) p.pktTime = advPlayer['PKT TIME'];
-
+                
                 if (advPlayer['CATCHABLE'] && advPlayer['CATCHABLE'] > 0) {
                     p.catchable = advPlayer['CATCHABLE'];
                     p.trueCatchRate = ((advPlayer['REC'] || 0) / advPlayer['CATCHABLE']) * 100;
                     p.dropRate = ((advPlayer['DROP'] || 0) / advPlayer['CATCHABLE']) * 100;
                 }
-
+                
                 if (advPlayer['ATT'] && advPlayer['POOR']) {
                     p.trueAccuracy = (((advPlayer['COMP'] || 0) + (advPlayer['DROP'] || 0)) / advPlayer['ATT']) * 100;
                 }
+
                 if (!p.pastStats) p.pastStats = {};
-
+                
                 if (advPlayer['G']) p.pastStats.gp = advPlayer['G'];
-
+                
                 // Passing
                 if (advPlayer['COMP']) p.pastStats.passCmp = advPlayer['COMP'];
                 if (p.Pos === 'QB' && advPlayer['ATT']) p.pastStats.passAtt = advPlayer['ATT'];
                 if (p.Pos === 'QB' && advPlayer['YDS']) p.pastStats.passYds = advPlayer['YDS'];
-
+                
                 // Rushing
                 if (p.Pos === 'RB' && advPlayer['ATT']) p.pastStats.rushAtt = advPlayer['ATT'];
                 if (p.Pos === 'RB' && advPlayer['YDS']) p.pastStats.rushYds = advPlayer['YDS'];
-
+                
                 // Receiving
                 if (advPlayer['TGT']) p.pastStats.targets = advPlayer['TGT'];
                 if (advPlayer['REC']) p.pastStats.rec = advPlayer['REC'];
                 if (['WR', 'TE'].includes(p.Pos) && advPlayer['YDS']) p.pastStats.recYds = advPlayer['YDS'];
-
+                
                 // TDs & INTs
                 if (advPlayer['INT']) p.pastStats.int = advPlayer['INT'];
                 if (advPlayer['TD'] !== undefined) p.pastStats.totalTd = advPlayer['TD'];
                 if (advPlayer['PASS TD']) p.pastStats.passTd = advPlayer['PASS TD'];
                 if (advPlayer['RUSH TD']) p.pastStats.rushTd = advPlayer['RUSH TD'];
                 if (advPlayer['REC TD']) p.pastStats.recTd = advPlayer['REC TD'];
-                // ===========================================================
             }
         });
     },
