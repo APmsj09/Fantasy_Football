@@ -152,6 +152,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (typeof UI.renderProfileAssignments === "function") UI.renderProfileAssignments();
             } catch (e) { }
 
+            try {
+                const handcuffRes = await fetch('./RB_Handcuff_26.tsv');
+                State.mergeHandcuffData(State.parseHandcuffData(await handcuffRes.text()));
+            } catch (e) { }
+
             State.calculateProjections();
             State.calculateVBD(); 
 

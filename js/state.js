@@ -8,6 +8,7 @@ const State = {
     draftHistory: [],
     userTeamId: null,
     managerProfiles: {},
+    handcuffData: [],
 
     settings: {
         numTeams: 12,
@@ -164,6 +165,52 @@ const State = {
         }) || null;
     },
 
+    parseHandcuffData(text) {
+        const rows = text.split(/\r?\n/).filter(row => row.trim() !== '');
+        if (rows.length < 2) return [];
+        
+        // Uppercase all headers to handle any capitalization format
+        const headers = rows[0].split('\t').map(h => h.trim().toUpperCase());
+        const parsed = [];
+
+        const teamIdx = headers.indexOf('TEAM');
+        const starterIdx = headers.findIndex(h => h.includes('STARTER'));
+        const handcuffIdx = headers.findIndex(h => h.includes('HANDCUFF'));
+
+        if (starterIdx === -1 || handcuffIdx === -1) return [];
+
+        for (let i = 1; i < rows.length; i++) {
+            const vals = rows[i].split('\t').map(v => v.trim());
+            if (vals.length <= Math.max(starterIdx, handcuffIdx)) continue;
+
+            const team = teamIdx !== -1 ? this.normalizeTeam(vals[teamIdx]) : '';
+            const starter = vals[starterIdx];
+            const handcuff = vals[handcuffIdx];
+
+            if (!starter || !handcuff) continue;
+            parsed.push({ team, starter, handcuff });
+        }
+        return parsed;
+    },
+
+    mergeHandcuffData(handcuffList) {
+        this.handcuffData = handcuffList;
+        handcuffList.forEach(entry => {
+            // Match starter with team context; match handcuff globally by name to prevent team mismatches
+            let starterPlayer = this.matchPlayerFast(entry.starter, entry.team, 'RB');
+            let handcuffPlayer = this.matchPlayerFast(entry.handcuff, '', 'RB');
+
+            if (starterPlayer) {
+                starterPlayer.isRBStarter = true;
+                starterPlayer.handcuffName = entry.handcuff;
+            }
+            if (handcuffPlayer) {
+                handcuffPlayer.isRBHandcuff = true;
+                handcuffPlayer.starterName = entry.starter;
+            }
+        });
+    },
+
     parseOLRankData(text) {
         const rows = text.split(/\r?\n/).filter(row => row.trim() !== '');
         if (rows.length < 2) return [];
@@ -256,7 +303,10 @@ const State = {
             const team = this.normalizeTeam(vals[headers.indexOf('Team')]);
             const playerName = vals[headers.indexOf('Player')];
             const position = this.normalizePos(vals[headers.indexOf('Position')]);
-            const depth = parseInt(vals[headers.indexOf('Depth')], 10);
+            
+            const rawDepth = vals[headers.indexOf('Depth')] || '';
+            const depth = parseInt(rawDepth.replace(/\D/g, ''), 10);
+            
             const ecr = parseFloat(vals[headers.indexOf('ECR')]);
 
             if (!playerName) continue;
@@ -772,7 +822,9 @@ const State = {
 
             const round = parseInt(cols[0]);
             const teamName = cols[2].replace(/,/g, '').trim();
-            const pos = cols[4];
+            
+            // FIX: Normalize the position string so "Def" successfully translates to "DST"
+            const pos = this.normalizePos(cols[4]);
 
             if (!profiles[teamName]) {
                 profiles[teamName] = {
@@ -791,19 +843,21 @@ const State = {
                 if (pos === 'WR') profiles[teamName].earlyWRs++;
             }
 
-            if (pos === 'QB' && round < 15) { 
+            // Keep the round filter for QB/TE to ignore late backups, 
+            // but remove it entirely for PK/DST since they naturally go late!
+            if (pos === 'QB' && round < 12) { 
                 profiles[teamName].qbAvgRound += round;
                 profiles[teamName].qbCount++;
             }
-            if (pos === 'TE' && round < 15) {
+            if (pos === 'TE' && round < 12) {
                 profiles[teamName].teAvgRound += round;
                 profiles[teamName].teCount++;
             }
-            if (pos === 'PK' && round < 15) {
+            if (pos === 'PK') {
                 profiles[teamName].pkAvgRound += round;
                 profiles[teamName].pkCount++;
             }
-            if (pos === 'DST' && round < 15) {
+            if (pos === 'DST') {
                 profiles[teamName].dstAvgRound += round;
                 profiles[teamName].dstCount++;
             }
@@ -813,8 +867,10 @@ const State = {
             let p = profiles[key];
             p.qbAvgRound = p.qbCount > 0 ? (p.qbAvgRound / p.qbCount) : 10;
             p.teAvgRound = p.teCount > 0 ? (p.teAvgRound / p.teCount) : 10;
-            p.pkAvgRound = p.pkCount > 0 ? (p.pkAvgRound / p.pkCount) : 10;
-            p.dstAvgRound = p.dstCount > 0 ? (p.dstAvgRound / p.dstCount) : 10;
+            
+            // FIX: Change fallback for K/DST to 15 (instead of 10) for managers lacking history
+            p.pkAvgRound = p.pkCount > 0 ? (p.pkAvgRound / p.pkCount) : 15;
+            p.dstAvgRound = p.dstCount > 0 ? (p.dstAvgRound / p.dstCount) : 15;
 
             if (p.earlyRBs > p.earlyWRs * 1.5) p.strategy = "RB-Heavy";
             else if (p.earlyWRs > p.earlyRBs * 1.5) p.strategy = "Zero-RB";

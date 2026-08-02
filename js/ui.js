@@ -181,9 +181,17 @@ const UI = {
             `;
         }
 
+        let handcuffBadge = '';
+        if (p.isRBStarter && p.handcuffName) {
+            handcuffBadge = `<span class="text-xs bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full font-semibold">🛡️ Handcuff: ${p.handcuffName}</span>`;
+        } else if (p.isRBHandcuff && p.starterName) {
+            handcuffBadge = `<span class="text-xs bg-indigo-50 text-indigo-700 border border-indigo-200 px-2 py-0.5 rounded-full font-semibold">🔒 Handcuff for ${p.starterName}</span>`;
+        }
+
         let modalTitle = `<div class="flex items-center flex-wrap gap-2">
             <span>${p.Player}</span>
             <span class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-normal">${p.Pos} • ${p.Team}</span>
+            ${handcuffBadge}
             ${ageDisplay ? `<span class="text-xs bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full font-semibold">Age ${ageDisplay}</span>` : ''}
             ${p.byeWeek && p.byeWeek !== 'N/A' ? `<span class="text-xs border border-gray-200 text-gray-500 px-2 py-0.5 rounded-full font-semibold">Wk ${p.byeWeek} Bye</span>` : ''}
         </div>`;
@@ -351,6 +359,15 @@ const UI = {
             if (p.aDOT && p.aDOT > 12) advTags.push(`<span class="bg-rose-100 text-rose-700 px-1.5 py-0.5 rounded">${p.aDOT} aDOT</span>`);
             if (p.brokenTackles && p.brokenTackles > 15) advTags.push(`<span class="bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded">${p.brokenTackles} B-Tkl</span>`);
             
+            const userTeam = State.teamsById[State.userTeamId];
+            const userOwnsStarter = p.starterName && userTeam?.roster.some(r => r._cleanName === State.normalizeName(p.starterName));
+
+            if (userOwnsStarter) {
+                advTags.push(`<span class="bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded">🔒 Handcuff for ${p.starterName}</span>`);
+            } else if (p.isRBHandcuff) {
+                advTags.push(`<span class="bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">Handcuff (${p.starterName})</span>`);
+            }
+
             let tagHTML = advTags.length > 0 ? `<div class="flex gap-1 mt-1 text-[9px] font-bold">${advTags.join('')}</div>` : '';
 
             let ppwStr = p._addedPPW && p._addedPPW > 0.1 
@@ -423,22 +440,25 @@ const UI = {
         });
 
         viablePlayers.forEach(p => {
-            // 1. BASE: Heavily weight Points Per Week added to lineup
+            // 1. BASE: Points Per Week + Adv VBD
             let score = ((p._addedPPW || 0) * 20) + ((p.AdvVBD || p.VBD) * 0.5); 
 
-            // 2. ROSTER NEEDS: Prioritize starting lineup gaps, punish backups
+            // 2. ROSTER NEEDS: Include FLEX awareness so WRs/RBs aren't ignored
             let starterMax = State.settings.roster[p.Pos].max;
             let currentCount = userTeam.counts[p.Pos];
+            let flexOpen = ['RB', 'WR', 'TE'].includes(p.Pos) && (userTeam.counts['Flex'] < State.settings.roster.Flex.max);
 
             if (currentCount < starterMax) {
-                score += 25; 
+                score += 25; // Main starter slot open
+            } else if (flexOpen) {
+                score += 18; // Flex starter slot open
             } else {
                 let overage = currentCount - starterMax;
                 if (['PK', 'DST', 'QB', 'TE'].includes(p.Pos)) score -= 40; 
                 else if (['RB', 'WR'].includes(p.Pos)) score -= (overage * 8);
             }
 
-            // 3. APPLY SCARCITY BOOST (for top 3 remaining players at their position)
+            // 3. APPLY SCARCITY BOOST (Dampened for onesie positions like TE/QB)
             let posRank = State.availablePlayers.filter(x => x.Pos === p.Pos).findIndex(x => x._cleanName === p._cleanName);
             if (posRank < 3 && scarcity[p.Pos]) {
                 score += scarcity[p.Pos];
@@ -447,14 +467,20 @@ const UI = {
                 p._scarcityBoost = 0;
             }
 
-            // 4. ADP VALUE: Softened penalty so reaching isn't overly punished
+            // 4. ADP VALUE: Cap max penalty to 10pts so high VBD players aren't killed
             if (p.adp) {
                 let adpDiff = p.adp - currentOverallPick;
                 if (adpDiff > 12) {
-                    score -= (adpDiff * 0.5); // Allow getting "your guy" without destroying the score
+                    score -= Math.min(10, adpDiff * 0.3); 
                 } else if (adpDiff < -12) {
-                    score += 8; // Boost players who have fallen past their ADP
+                    score += 8; 
                 }
+            }
+
+            let userOwnsStarter = p.starterName && userTeam.roster.some(r => r._cleanName === State.normalizeName(p.starterName));
+            if (userOwnsStarter) {
+                score += 14; // Bonus for securing your elite RB's backup
+                p._isInsuranceBoost = true;
             }
 
             p._recScore = score;
@@ -483,8 +509,10 @@ const UI = {
         }
 
         htmlStr += vbdRecs.map((p, i) => {
+            let userOwnsStarter = p.starterName && userTeam.roster.some(r => r._cleanName === State.normalizeName(p.starterName));
             let highlight = '';
-            if (p.adp && (p.adp < currentOverallPick)) highlight = `Value Pick (ADP ${p.adp.toFixed(0)})`;
+            if (userOwnsStarter) highlight = `🔒 Insurance for ${p.starterName}`;
+            else if (p.adp && (p.adp < currentOverallPick)) highlight = `Value Pick (ADP ${p.adp.toFixed(0)})`;
             else if (p._scarcityBoost > 3) highlight = `Tier Drop-off: Grab a ${p.Pos} now`;
             else if (p.targetShare && p.targetShare >= 25) highlight = `Alpha ${p.targetShare}% Target Share`;
             else if (p.olRunBlk && p.olRunBlk <= 5 && p.Pos === 'RB') highlight = `Elite Run Blocking (OL Rank #${p.olRunBlk})`;

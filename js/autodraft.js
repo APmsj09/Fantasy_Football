@@ -58,17 +58,20 @@ window.AutoDraft = {
 
             let starterMax = State.settings.roster[p.Pos].max;
             let currentCount = team.counts[p.Pos];
-            
-            if (currentCount >= starterMax) {
+            let flexOpen = ['RB', 'WR', 'TE'].includes(p.Pos) && (team.counts['Flex'] < State.settings.roster.Flex.max);
+
+            // FLEX-AWARE STARTER BONUS
+            let starterBonus = 0;
+            if (currentCount < starterMax) {
+                starterBonus = 25; // Main position slot open
+            } else if (flexOpen) {
+                starterBonus = 18; // Flex starter slot open
+            } else {
                 let overage = currentCount - starterMax; 
                 if (['QB', 'TE', 'PK', 'DST'].includes(p.Pos)) {
                     multiplier *= (overage === 0 ? 0.05 : 0.01); 
                 } else if (['RB', 'WR'].includes(p.Pos)) {
                     multiplier *= Math.pow(0.5, overage + 1);
-                }
-            } else {
-                if (round >= 6 && currentCount === 0) {
-                    multiplier *= 1.5; 
                 }
             }
 
@@ -82,16 +85,19 @@ window.AutoDraft = {
             let posRank = State.availablePlayers.filter(x => x.Pos === p.Pos).findIndex(x => x._cleanName === p._cleanName);
             let scarcityBonus = (posRank < 3 && scarcity[p.Pos]) ? scarcity[p.Pos] : 0;
 
-            // ADP PENALTY (Softened)
+            // ADP PENALTY (Capped at 10pts so high VBD players aren't killed)
             let adpPenalty = 0;
             if (p.adp) {
                 let adpDiff = p.adp - currentOverallPick;
-                if (adpDiff > 12) adpPenalty = (adpDiff * 0.5);
+                if (adpDiff > 12) adpPenalty = Math.min(10, adpDiff * 0.3);
             }
+
+            let cpuOwnsStarter = p.starterName && team.roster.some(r => r._cleanName === State.normalizeName(p.starterName));
+            let handcuffInsurance = cpuOwnsStarter ? 10 : 0;
 
             return {
                 player: p,
-                adjustedVBD: (baseValue + ppwValue + scarcityBonus) - adpPenalty
+                adjustedVBD: (baseValue + ppwValue + starterBonus + scarcityBonus + handcuffInsurance) - adpPenalty
             };
         });
 
