@@ -22,10 +22,13 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.addEventListener('click', (e) => {
             let target = e.target.closest('button').getAttribute('data-target');
             UI.switchTab(target);
+            
+            if(target === 'insights-screen' && State.teamTargets.length > 0) {
+                renderTeamInsightsChart();
+            }
         });
     });
 
-    // Handle Draft Sub-Tabs logic
     document.querySelectorAll('.draft-tab-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             document.querySelectorAll('.draft-tab-btn').forEach(b => {
@@ -64,13 +67,13 @@ document.addEventListener('DOMContentLoaded', () => {
             if (typeof UI.renderDatabase === 'function') UI.renderDatabase();
             if (typeof UI.renderDraftAvailablePlayers === 'function' && State.draftStarted) UI.renderDraftAvailablePlayers();
         } catch (err) {
-            console.warn('Could not load player ages', err);
+            console.warn('Could not load player ages');
         }
     }
 
     async function autoLoadData() {
         const loadBtn = document.getElementById('load-data-button');
-        if (loadBtn) loadBtn.textContent = "Fetching Projections & Strength of Schedule...";
+        if (loadBtn) loadBtn.textContent = "Fetching Projections & Advanced Data...";
 
         try {
             const offRes = await fetch('./projected_data_26.tsv');
@@ -80,9 +83,6 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 const defRes = await fetch('./def_proj_26.tsv');
                 defPlayers = State.parseDefData(await defRes.text());
-            } catch (e) { }
-
-            try {
                 const kRes = await fetch('./k_proj_26.tsv');
                 kickerPlayers = State.parseKickerData(await kRes.text());
             } catch (e) { }
@@ -94,9 +94,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             try {
                 const sosRes = await fetch('./SOS_26.tsv');
-                const sosParsed = State.parseSOSData(await sosRes.text());
-                State.mergeSOSData(sosParsed);
-            } catch (e) { console.warn("Could not load SOS_26.tsv"); }
+                State.mergeSOSData(State.parseSOSData(await sosRes.text()));
+            } catch (e) { }
 
             const advFiles = ['./AdvancedQBData.tsv', './AdvancedRBData.tsv', './AdvancedWRData.tsv', './AdvancedTEData.tsv'];
             for (let file of advFiles) {
@@ -129,7 +128,7 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 const olRes = await fetch('./OL_Rank_26.tsv');
                 State.mergeOLRankData(State.parseOLRankData(await olRes.text()));
-            } catch (e) { console.warn('Could not load OL_Rank_26.tsv'); }
+            } catch (e) { }
 
             try {
                 const historyRes = await fetch('./DraftHistory.tsv');
@@ -139,10 +138,10 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (e) { }
 
             State.calculateProjections();
-            State.calculateVBD();
+            State.calculateVBD(); 
 
             if (loadBtn) {
-                loadBtn.textContent = `✓ Auto-Loaded ${State.allPlayers.length} Players + SOS Ratings!`;
+                loadBtn.textContent = `✓ Auto-Loaded ${State.allPlayers.length} Players + Advanced Stats!`;
                 loadBtn.classList.replace('bg-slate-900', 'bg-emerald-600');
                 loadBtn.disabled = true;
             }
@@ -152,7 +151,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             startBtn.classList.remove('opacity-50', 'cursor-not-allowed');
             startBtn.disabled = false;
-            startBtn.textContent = "Start Draft";
+            startBtn.textContent = "Start Draft Engine";
 
         } catch (err) {
             console.error(err);
@@ -160,12 +159,64 @@ document.addEventListener('DOMContentLoaded', () => {
                 loadBtn.textContent = "Failed to load data. Click to retry.";
                 loadBtn.classList.replace('bg-slate-900', 'bg-red-600');
             }
-            UI.showMessage('Error', 'Failed to auto-load projection files.');
         }
     }
 
     autoLoadData();
     document.getElementById('load-data-button').addEventListener('click', autoLoadData);
+
+    function renderTeamInsightsChart() {
+        let ctx = document.getElementById('team-targets-chart');
+        if (!ctx) {
+            let container = document.getElementById('insights-screen').querySelector('.bg-white');
+            let chartDiv = document.createElement('div');
+            chartDiv.innerHTML = `
+                <h3 class="text-xl font-extrabold text-gray-900 mt-10 mb-4 border-t pt-8">Offensive Positional Target Distribution</h3>
+                <div class="w-full h-80 relative bg-slate-50 border border-slate-200 rounded-xl p-4">
+                    <canvas id="team-targets-chart"></canvas>
+                </div>`;
+            container.appendChild(chartDiv);
+            ctx = document.getElementById('team-targets-chart');
+        }
+
+        if (window.teamTargetsChartInst) window.teamTargetsChartInst.destroy();
+
+        let labels = [];
+        let wrData = [], rbData = [], teData = [];
+
+        let sorted = [...State.teamTargets].sort((a, b) => (b['WR %'] || 0) - (a['WR %'] || 0));
+
+        sorted.forEach(t => {
+            labels.push(t.Team);
+            wrData.push(t['WR %'] || 0);
+            rbData.push(t['RB %'] || 0);
+            teData.push(t['TE %'] || 0);
+        });
+
+        window.teamTargetsChartInst = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    { label: 'WR %', data: wrData, backgroundColor: 'rgba(79, 70, 229, 0.8)' },
+                    { label: 'TE %', data: teData, backgroundColor: 'rgba(245, 158, 11, 0.8)' },
+                    { label: 'RB %', data: rbData, backgroundColor: 'rgba(16, 185, 129, 0.8)' }
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                scales: {
+                    x: { stacked: true, grid: { display: false } },
+                    y: { stacked: true, max: 100 }
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: { label: function(context) { return context.dataset.label + ': ' + context.raw + '%'; } }
+                    }
+                }
+            }
+        });
+    }
 
     function renderTeamTargets(position) {
         const tbody = document.getElementById('team-targets-body');
@@ -332,10 +383,6 @@ document.addEventListener('DOMContentLoaded', () => {
         State.draftStarted = true; 
 
         UI.updateDraftBoard();
-
-        if (State.settings.draftMode === 'mock' && AutoDraft.isDrafting) {
-            console.log("Mock draft interrupted by Undo.");
-        }
     });
 
     document.getElementById('message-modal-close').addEventListener('click', () => {
@@ -375,8 +422,25 @@ window.AutoDraft = {
     },
 
     makeCPUPick(team) {
+        State.evaluateRosterFits(team, State.availablePlayers);
+
         const round = Math.floor(State.currentPick / State.settings.numTeams) + 1;
+        const totalRounds = State.settings.roster.totalSize;
+        const currentOverallPick = State.currentPick + 1;
         const profile = team.profile;
+
+        // CALCULATE POSITIONAL SCARCITY (Tier Drop-offs)
+        let scarcity = {};
+        ['QB', 'RB', 'WR', 'TE'].forEach(pos => {
+            let avail = State.availablePlayers.filter(p => p.Pos === pos);
+            if (avail.length > 5) {
+                let top = avail[0].AdvVBD || avail[0].VBD;
+                let fifth = avail[4].AdvVBD || avail[4].VBD;
+                scarcity[pos] = Math.max(0, top - fifth) * 0.5;
+            } else {
+                scarcity[pos] = 0;
+            }
+        });
 
         let evaluatedWrapper = State.availablePlayers.map(p => {
             let multiplier = 1.0;
@@ -390,37 +454,46 @@ window.AutoDraft = {
                     if (profile.strategy === 'RB-Heavy' && p.Pos === 'RB') multiplier *= 1.4;
                     if (profile.strategy === 'Zero-RB' && p.Pos === 'WR') multiplier *= 1.4;
                 }
-                if (p.Pos === 'QB' && profile.draftsEarlyQB && round >= (profile.qbAvgRound - 1) && round <= (profile.qbAvgRound + 1)) {
-                    multiplier *= 1.8;
-                }
-                if (p.Pos === 'TE' && profile.draftsEarlyTE && round >= (profile.teAvgRound - 1) && round <= (profile.teAvgRound + 1)) {
-                    multiplier *= 1.8;
-                }
+                if (p.Pos === 'QB' && profile.draftsEarlyQB && round >= (profile.qbAvgRound - 1) && round <= (profile.qbAvgRound + 1)) multiplier *= 1.8;
+                if (p.Pos === 'TE' && profile.draftsEarlyTE && round >= (profile.teAvgRound - 1) && round <= (profile.teAvgRound + 1)) multiplier *= 1.8;
             }
 
-            // DIMINISHING RETURNS FIX to stop algorithm hoarding a single position endlessly
             let starterMax = State.settings.roster[p.Pos].max;
             let currentCount = team.counts[p.Pos];
             
             if (currentCount >= starterMax) {
                 let overage = currentCount - starterMax; 
                 if (['QB', 'TE', 'PK', 'DST'].includes(p.Pos)) {
-                    // Massive penalty for backup QBs/TEs/Ks
                     multiplier *= (overage === 0 ? 0.05 : 0.01); 
                 } else if (['RB', 'WR'].includes(p.Pos)) {
-                    // Gradual exponential decay for bench RBs/WRs (e.g. 0.5, 0.25, 0.125)
                     multiplier *= Math.pow(0.5, overage + 1);
                 }
             } else {
-                // High urgency if a position is completely empty late in the draft
                 if (round >= 6 && currentCount === 0) {
                     multiplier *= 1.5; 
                 }
             }
 
+            // KICKERS ONLY in bottom 3 rounds
+            if (p.Pos === 'PK' && round <= totalRounds - 3) multiplier *= 0.001;
+
+            let baseValue = (p.AdvVBD || p.VBD) * multiplier;
+            let ppwValue = (p._addedPPW || 0) * 15;
+
+            // SCARCITY BONUS (Apply if player is top 3 remaining at position)
+            let posRank = State.availablePlayers.filter(x => x.Pos === p.Pos).findIndex(x => x._cleanName === p._cleanName);
+            let scarcityBonus = (posRank < 3 && scarcity[p.Pos]) ? scarcity[p.Pos] : 0;
+
+            // ADP PENALTY (Softened)
+            let adpPenalty = 0;
+            if (p.adp) {
+                let adpDiff = p.adp - currentOverallPick;
+                if (adpDiff > 12) adpPenalty = (adpDiff * 0.5);
+            }
+
             return {
                 player: p,
-                adjustedVBD: (p.AdvVBD || p.VBD) * multiplier
+                adjustedVBD: (baseValue + ppwValue + scarcityBonus) - adpPenalty
             };
         });
 

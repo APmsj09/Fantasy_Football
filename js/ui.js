@@ -35,7 +35,6 @@ const UI = {
 
     renderDatabase() {
         const tbody = document.getElementById('db-players-body');
-        
         let filterPos = document.getElementById('db-position').value;
         let search = document.getElementById('db-search').value.toLowerCase().replace(/[^a-z0-9]/g, ''); 
         
@@ -90,126 +89,156 @@ const UI = {
         let isOffense = !['PK', 'DST'].includes(p.Pos);
 
         let ageDisplay = this.getPlayerAge(p);
-        let ppwBadge = p._addedPPW && p._addedPPW > 0.2 
+        let ppwBadge = p._addedPPW && p._addedPPW > 0.1 
             ? `<span class="bg-emerald-100 text-emerald-800 text-xs font-bold px-2.5 py-1 rounded-full border border-emerald-200">📈 +${p._addedPPW.toFixed(1)} PPW Lineup Fit</span>` 
             : '';
+
+        let advancedMetricsHTML = '';
+        
+        if (isOffense) {
+            const buildBar = (label, value, max, unit = '', color = 'indigo') => {
+                if(value === undefined || value === null) return '';
+                let pct = Math.min(100, Math.max(0, (value / max) * 100));
+                return `
+                <div class="mb-3">
+                   <div class="flex justify-between text-[10px] uppercase font-bold text-gray-500 mb-1">
+                       <span>${label}</span>
+                       <span class="text-gray-900">${value}${unit}</span>
+                   </div>
+                   <div class="w-full bg-slate-200 rounded-full h-1.5 shadow-inner">
+                       <div class="bg-${color}-500 h-1.5 rounded-full" style="width: ${pct}%"></div>
+                   </div>
+                </div>`;
+            };
+
+            let barHTML = '';
+            if (p.targetShare) barHTML += buildBar('Target Share', p.targetShare, 35, '%', 'indigo');
+            if (p.snapShare) barHTML += buildBar('Snap Share', p.snapShare, 100, '%', 'emerald');
+            if (p.trueCatchRate) barHTML += buildBar('True Catch Rate', p.trueCatchRate.toFixed(1), 100, '%', 'blue');
+            if (p.aDOT) barHTML += buildBar('Average Depth of Target', p.aDOT, 15, ' yds', 'amber');
+            if (p.yacAtt) barHTML += buildBar('Yards After Contact', p.yacAtt, 4, ' yds', 'purple');
+            if (p.brokenTackles) barHTML += buildBar('Broken Tackles', p.brokenTackles, 30, '', 'red');
+            if (p.rzTgt || p.rzAtt) barHTML += buildBar('Red Zone Opps', (p.rzTgt||0) + (p.rzAtt||0), 60, '', 'rose');
+
+            if (barHTML) {
+                advancedMetricsHTML = `
+                <div class="bg-slate-50 border border-slate-200 p-4 rounded-xl mb-4">
+                    <h4 class="font-bold text-xs text-gray-700 uppercase tracking-wider mb-3">Advanced Usage Analytics</h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6">
+                        ${barHTML}
+                    </div>
+                </div>`;
+            }
+        }
 
         let statsDashboard = '';
         if (isOffense) {
             let opps = (s.rushAtt || 0) + (s.targets || 0);
             statsDashboard = `
-                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-4 shadow-sm text-xs grid grid-cols-2 md:grid-cols-5 gap-3">
-                    <div class="bg-white p-2.5 rounded-lg border border-slate-100">
-                        <span class="text-gray-400 block text-[10px] font-bold uppercase tracking-wider">Opportunity Volume</span>
-                        <span class="text-sm font-extrabold text-slate-800">${opps} Touches/Tgts</span>
-                        ${p.targetShare ? `<span class="block text-[10px] text-indigo-600 font-semibold">${p.targetShare}% Tgt Share</span>` : ''}
+                <div class="bg-indigo-900 text-white p-4 rounded-xl border border-indigo-800 mb-4 shadow-sm text-xs grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div class="p-2">
+                        <span class="text-indigo-300 block text-[10px] font-bold uppercase tracking-wider">Projected Output</span>
+                        <span class="text-lg font-extrabold text-white">${p.ProjPts.toFixed(1)} Pts</span>
+                        <span class="block text-[10px] text-emerald-400 font-bold mt-1">Adv VBD: ${(p.AdvVBD || p.VBD).toFixed(1)}</span>
                     </div>
-                    <div class="bg-white p-2.5 rounded-lg border border-slate-100">
-                        <span class="text-gray-400 block text-[10px] font-bold uppercase tracking-wider">Projected Output</span>
-                        <span class="text-sm font-extrabold text-indigo-600">${p.ProjPts.toFixed(1)} Pts</span>
-                        <span class="block text-[10px] text-gray-500">Adv VBD: ${(p.AdvVBD || p.VBD).toFixed(1)}</span>
+                    <div class="p-2 border-l border-indigo-700/50">
+                        <span class="text-indigo-300 block text-[10px] font-bold uppercase tracking-wider">Total Volume</span>
+                        <span class="text-lg font-extrabold text-white">${opps}</span>
+                        <span class="block text-[10px] text-indigo-200 mt-1">Touches / Tgts</span>
                     </div>
-                    <div class="bg-white p-2.5 rounded-lg border border-slate-100">
-                        <span class="text-gray-400 block text-[10px] font-bold uppercase tracking-wider">Schedule Rating</span>
-                        <span class="text-sm font-extrabold text-amber-600">⭐ ${p.avgStars ? p.avgStars.toFixed(2) : '3.0'}</span>
-                        <span class="block text-[10px] text-gray-500">Playoffs: ⭐${(p.playoffSOS || p.avgStars || 3.0).toFixed(1)}</span>
+                    <div class="p-2 border-l border-indigo-700/50">
+                        <span class="text-indigo-300 block text-[10px] font-bold uppercase tracking-wider">Schedule Grade</span>
+                        <span class="text-lg font-extrabold text-amber-400">⭐ ${p.avgStars ? p.avgStars.toFixed(2) : '3.0'}</span>
+                        <span class="block text-[10px] text-indigo-200 mt-1">Playoffs: ⭐${(p.playoffSOS || p.avgStars || 3.0).toFixed(1)}</span>
                     </div>
-                    <div class="bg-white p-2.5 rounded-lg border border-slate-100">
-                        <span class="text-gray-400 block text-[10px] font-bold uppercase tracking-wider">Bye Week</span>
-                        <span class="text-sm font-extrabold text-slate-700">${p.byeWeek && p.byeWeek !== 'N/A' ? 'Week ' + p.byeWeek : 'N/A'}</span>
-                    </div>
-                    <div class="bg-white p-2.5 rounded-lg border border-slate-100">
-                        <span class="text-gray-400 block text-[10px] font-bold uppercase tracking-wider">Age</span>
-                        <span class="text-sm font-extrabold text-slate-700">${ageDisplay ? ageDisplay : 'N/A'}</span>
+                    <div class="p-2 border-l border-indigo-700/50">
+                        <span class="text-indigo-300 block text-[10px] font-bold uppercase tracking-wider">Line Protection</span>
+                        <span class="text-lg font-extrabold text-white">${p.olTier ? p.olTier : 'N/A'}</span>
+                        ${p.olRunBlk ? `<span class="block text-[10px] text-indigo-200 mt-1">Run Blk #${p.olRunBlk} | Pass Blk #${p.olPassBlk}</span>` : '<span class="block text-[10px] text-indigo-200 mt-1">No Line Data</span>'}
                     </div>
                 </div>
 
-                <div class="bg-indigo-50/50 p-3.5 rounded-xl border border-indigo-100 mb-4 text-xs text-gray-800 grid grid-cols-2 md:grid-cols-3 gap-y-2.5 gap-x-4">
+                <div class="bg-white p-3.5 rounded-xl border border-slate-200 mb-4 text-xs text-gray-800 grid grid-cols-2 md:grid-cols-3 gap-y-3 gap-x-4">
                     ${p.Pos === 'QB' ? `
-                        <div><span class="font-bold text-gray-500 block text-[10px] uppercase">Pass Comp / Att</span> ${s.passCmp} / ${s.passAtt}</div>
-                        <div><span class="font-bold text-gray-500 block text-[10px] uppercase">Pass Yds / Rating</span> ${s.passYds} <span class="text-gray-400">(${s.passerRating})</span></div>
-                        <div><span class="font-bold text-gray-500 block text-[10px] uppercase">TD : INT</span> <span class="text-emerald-600 font-bold">${s.passTd} TD</span> / <span class="text-red-500">${s.int} INT</span></div>
-                        ${p.trueAccuracy ? `<div><span class="font-bold text-gray-500 block text-[10px] uppercase">True Accuracy</span> ${p.trueAccuracy.toFixed(1)}%</div>` : ''}
+                        <div><span class="font-bold text-gray-400 block text-[10px] uppercase">Pass Comp / Att</span> ${s.passCmp} / ${s.passAtt}</div>
+                        <div><span class="font-bold text-gray-400 block text-[10px] uppercase">Pass Yds / Rating</span> ${s.passYds} <span class="text-gray-400">(${s.passerRating})</span></div>
+                        <div><span class="font-bold text-gray-400 block text-[10px] uppercase">TD : INT</span> <span class="text-emerald-600 font-bold">${s.passTd} TD</span> / <span class="text-red-500">${s.int} INT</span></div>
+                        ${p.trueAccuracy ? `<div><span class="font-bold text-gray-400 block text-[10px] uppercase">True Accuracy</span> ${p.trueAccuracy.toFixed(1)}%</div>` : ''}
                     ` : ''}
 
                     ${s.rushAtt > 0 ? `
-                        <div><span class="font-bold text-gray-500 block text-[10px] uppercase">Rushing Vol</span> ${s.rushAtt} Att</div>
-                        <div><span class="font-bold text-gray-500 block text-[10px] uppercase">Rush Yds / YPC</span> ${s.rushYds} yds <span class="text-emerald-600 font-bold">(${s.rushAvg} YPC)</span></div>
-                        <div><span class="font-bold text-gray-500 block text-[10px] uppercase">Rush TDs</span> ${s.rushTd} TD</div>
-                        ${p.yacAtt ? `<div><span class="font-bold text-gray-500 block text-[10px] uppercase">YAC / Att</span> ${p.yacAtt} yds</div>` : ''}
+                        <div><span class="font-bold text-gray-400 block text-[10px] uppercase">Rushing Vol</span> ${s.rushAtt} Att</div>
+                        <div><span class="font-bold text-gray-400 block text-[10px] uppercase">Rush Yds / YPC</span> ${s.rushYds} yds <span class="text-emerald-600 font-bold">(${s.rushAvg} YPC)</span></div>
+                        <div><span class="font-bold text-gray-400 block text-[10px] uppercase">Rush TDs</span> ${s.rushTd} TD</div>
                     ` : ''}
 
                     ${s.targets > 0 ? `
-                        <div><span class="font-bold text-gray-500 block text-[10px] uppercase">Receiving Vol</span> ${s.rec} Rec / ${s.targets} Tgt</div>
-                        <div><span class="font-bold text-gray-500 block text-[10px] uppercase">Rec Yds / YPR</span> ${s.recYds} yds <span class="text-indigo-600 font-bold">(${s.recAvg} YPR)</span></div>
-                        <div><span class="font-bold text-gray-500 block text-[10px] uppercase">Rec TDs</span> ${s.recTd} TD</div>
-                        ${p.rzTgt ? `<div><span class="font-bold text-gray-500 block text-[10px] uppercase">Red Zone Targets</span> <span class="text-red-600 font-bold">${p.rzTgt} RZ Tgts</span></div>` : ''}
-                        ${p.trueCatchRate ? `<div><span class="font-bold text-gray-500 block text-[10px] uppercase">Catch Rate</span> ${p.trueCatchRate.toFixed(1)}%</div>` : ''}
-                        ${p.dropRate ? `<div><span class="font-bold text-gray-500 block text-[10px] uppercase">Drop Rate</span> ${p.dropRate.toFixed(1)}%</div>` : ''}
+                        <div><span class="font-bold text-gray-400 block text-[10px] uppercase">Receiving Vol</span> ${s.rec} Rec / ${s.targets} Tgt</div>
+                        <div><span class="font-bold text-gray-400 block text-[10px] uppercase">Rec Yds / YPR</span> ${s.recYds} yds <span class="text-indigo-600 font-bold">(${s.recAvg} YPR)</span></div>
+                        <div><span class="font-bold text-gray-400 block text-[10px] uppercase">Rec TDs</span> ${s.recTd} TD</div>
                     ` : ''}
                 </div>
             `;
-        }
-
-        let contextPanel = '';
-        let advancedContextBits = [];
-        if (p.targetShare) advancedContextBits.push(`${p.targetShare}% target share`);
-        if (p.rzTgt) advancedContextBits.push(`${p.rzTgt} RZ tgts`);
-        if (p.yacAtt) advancedContextBits.push(`${p.yacAtt} YAC/att`);
-        if (p.trueCatchRate) advancedContextBits.push(`${p.trueCatchRate.toFixed(1)}% catch rate`);
-        if (p.dropRate) advancedContextBits.push(`${p.dropRate.toFixed(1)}% drop rate`);
-        if (p.adp !== undefined && p.adp !== null) advancedContextBits.push(`ADP ${p.adp.toFixed(1)}`);
-        if (p.depthChart !== undefined && p.depthChart !== null) advancedContextBits.push(`Depth ${p.depthChart}`);
-        if (p.snapShare !== undefined && p.snapShare !== null) advancedContextBits.push(`Snap ${p.snapShare.toFixed(0)}%`);
-        if (p.olTier) advancedContextBits.push(`OL ${p.olTier}${p.olRank ? ` #${p.olRank}` : ''}`);
-
-        if (advancedContextBits.length > 0) {
-            contextPanel = `
-                <div class="bg-slate-50/80 p-3 rounded-xl border border-slate-200 mb-4 text-xs">
-                    <div class="flex items-center justify-between mb-2">
-                        <span class="font-bold text-gray-600 uppercase tracking-wider">Advanced Context</span>
-                        ${p.targetShare ? `<span class="text-indigo-600 font-semibold">${p.targetShare}% of ${p.Team} targets</span>` : ''}
-                    </div>
-                    <div class="text-gray-700 flex flex-wrap gap-2">
-                        ${advancedContextBits.map(bit => `<span class="bg-white px-2 py-1 rounded border border-slate-200">${bit}</span>`).join('')}
-                    </div>
-                </div>
-            `;
-        }
-
-        let rowsHtml = '';
-        if (p.weeklyProjections) {
-            for (let w = 1; w <= 18; w++) {
-                let star = p.sosWeeks ? p.sosWeeks[`W${w}`] : 3.0;
-                let pts = p.weeklyProjections[`W${w}`] || 0;
-                let starDisp = star === 'BYE' ? '<span class="text-gray-400 font-semibold">BYE</span>' : `⭐ ${star}`;
-                let isPlayoff = w >= 15 && w <= 17;
-
-                rowsHtml += `
-                    <div class="flex justify-between items-center py-2 border-b border-gray-100 text-xs ${isPlayoff ? 'bg-amber-50/50 px-2 rounded-md' : ''}">
-                        <span class="font-bold text-gray-700 w-20 flex items-center">
-                            Week ${w} ${isPlayoff ? '<span class="ml-1 text-[9px] bg-amber-200 text-amber-900 px-1 rounded font-extrabold">PLAYOFF</span>' : ''}
-                        </span>
-                        <span class="text-amber-600 font-medium">${starDisp}</span>
-                        <span class="font-extrabold ${pts > 0 ? 'text-indigo-600' : 'text-gray-300'}">${pts > 0 ? pts.toFixed(1) + ' pts' : '-'}</span>
-                    </div>
-                `;
-            }
         }
 
         let modalTitle = `<div class="flex items-center flex-wrap gap-2">
             <span>${p.Player}</span>
             <span class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-normal">${p.Pos} • ${p.Team}</span>
             ${ageDisplay ? `<span class="text-xs bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full font-semibold">Age ${ageDisplay}</span>` : ''}
+            ${p.byeWeek && p.byeWeek !== 'N/A' ? `<span class="text-xs border border-gray-200 text-gray-500 px-2 py-0.5 rounded-full font-semibold">Wk ${p.byeWeek} Bye</span>` : ''}
         </div>`;
 
         UI.showMessage(modalTitle, `
             <div class="mb-3">${ppwBadge}</div>
             ${statsDashboard}
-            ${contextPanel}
-            <h4 class="font-bold text-xs text-gray-700 uppercase tracking-wider mb-2">18-Week Projection & Schedule Matrix</h4>
-            <div class="max-h-52 overflow-y-auto pr-2 bg-white border border-gray-200 rounded-xl p-3 shadow-inner">${rowsHtml}</div>
+            ${advancedMetricsHTML}
+            
+            <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+                <h4 class="font-bold text-xs text-gray-700 uppercase tracking-wider mb-2">18-Week Weekly Projection Trajectory</h4>
+                <div class="relative h-40 w-full">
+                    <canvas id="player-weekly-chart"></canvas>
+                </div>
+            </div>
         `);
+
+        setTimeout(() => {
+            const ctx = document.getElementById('player-weekly-chart');
+            if (ctx && p.weeklyProjections) {
+                if (window.playerChartInst) window.playerChartInst.destroy();
+                
+                let labels = [], data = [], colors = [];
+                for (let w = 1; w <= 18; w++) {
+                    labels.push(`Wk ${w}`);
+                    let pts = p.weeklyProjections[`W${w}`] || 0;
+                    data.push(pts.toFixed(1));
+                    
+                    if (w >= 15 && w <= 17) colors.push('rgba(245, 158, 11, 0.7)');
+                    else colors.push('rgba(79, 70, 229, 0.7)');
+                }
+
+                window.playerChartInst = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Projected Fantasy Pts',
+                            data: data,
+                            backgroundColor: colors,
+                            borderRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            y: { beginAtZero: true, grid: { display: false } },
+                            x: { grid: { display: false }, ticks: { font: { size: 9 } } }
+                        }
+                    }
+                });
+            }
+        }, 50);
     },
 
     showWeeklyModal(cleanName) {
@@ -311,9 +340,14 @@ const UI = {
             }
 
             let adpStr = p.adp ? p.adp.toFixed(1) : '-';
-            let byeStr = p.byeWeek && p.byeWeek !== 'N/A' ? p.byeWeek : '-';
-            let depthStr = p.depthChart ? p.depthChart : '-';
             
+            let advTags = [];
+            if (p.targetShare && p.targetShare > 22) advTags.push(`<span class="bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">${p.targetShare}% Tgts</span>`);
+            if (p.aDOT && p.aDOT > 12) advTags.push(`<span class="bg-rose-100 text-rose-700 px-1.5 py-0.5 rounded">${p.aDOT} aDOT</span>`);
+            if (p.brokenTackles && p.brokenTackles > 15) advTags.push(`<span class="bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded">${p.brokenTackles} B-Tkl</span>`);
+            
+            let tagHTML = advTags.length > 0 ? `<div class="flex gap-1 mt-1 text-[9px] font-bold">${advTags.join('')}</div>` : '';
+
             let ppwStr = p._addedPPW && p._addedPPW > 0.1 
                 ? `<span class="font-bold text-emerald-600">+${p._addedPPW.toFixed(1)}</span>` 
                 : `<span class="text-gray-300">-</span>`;
@@ -324,20 +358,19 @@ const UI = {
 
             htmlStr += `
                 <tr class="hover:bg-slate-50 border-b border-gray-100 transition-colors cursor-pointer" onclick="if (!event.target.closest('.draft-btn')) UI.showPlayerCard('${p._cleanName}')">
-                    <td class="px-3 py-2 text-[11px] font-bold text-gray-900">
+                    <td class="px-3 py-2 text-[11px] font-bold text-gray-900 w-1/3">
                         <div class="flex items-center">
                             <span>${p.Player}</span>
                             <span class="font-normal text-gray-400 ml-1.5">${p.Team}</span>
                             ${ageStr} ${olBadge} ${sosBadge}
                         </div>
+                        ${tagHTML}
                     </td>
                     <td class="px-2 py-2 text-[11px] text-gray-600 font-medium">${p.Pos}</td>
                     <td class="px-2 py-2 text-[11px] font-bold text-indigo-600">${p.ProjPts.toFixed(1)}</td>
                     <td class="px-2 py-2 text-[11px] font-extrabold text-indigo-900">${(p.AdvVBD || p.VBD).toFixed(1)}</td>
                     <td class="px-2 py-2 text-[11px]">${ppwStr}</td>
                     <td class="px-2 py-2 text-[11px] text-gray-600">${adpStr}</td>
-                    <td class="px-2 py-2 text-[11px] text-gray-600">${byeStr}</td>
-                    <td class="px-2 py-2 text-[11px] text-gray-600">${depthStr}</td>
                     <td class="px-3 py-2 text-right">${btnHtml}</td>
                 </tr>
             `;
@@ -346,6 +379,7 @@ const UI = {
         tbody.innerHTML = htmlStr;
     },
 
+    // ⚡ OVERHAULED RECOMMENDATIONS TO MAXIMIZE PPW, MANAGE KICKERS, AND PREVENT SCARCITY DROP-OFFS
     renderRecommendations() {
         const container = document.getElementById('recommendations-container');
         if (State.currentPick >= State.draftOrder.length) return;
@@ -354,10 +388,28 @@ const UI = {
         document.getElementById('user-team-name-disp').textContent = userTeam.name;
         
         const currentRound = Math.floor(State.currentPick / State.settings.numTeams) + 1;
+        const totalRounds = State.settings.roster.totalSize;
+        const currentOverallPick = State.currentPick + 1;
+
+        // Calculate Positional Tier Scarcity
+        let scarcity = {};
+        ['QB', 'RB', 'WR', 'TE'].forEach(pos => {
+            let avail = State.availablePlayers.filter(p => p.Pos === pos);
+            if (avail.length > 5) {
+                let top = avail[0].AdvVBD || avail[0].VBD;
+                let fifth = avail[4].AdvVBD || avail[4].VBD;
+                // Reward up to 0.5 additional score points per point of VBD drop-off
+                scarcity[pos] = Math.max(0, top - fifth) * 0.5; 
+            } else {
+                scarcity[pos] = 0;
+            }
+        });
 
         let viablePlayers = State.availablePlayers.filter(p => {
             let pos = p.Pos;
-            if ((pos === 'PK' || pos === 'DST') && currentRound < 14) return false;
+            
+            // Softened Gating: Kickers ONLY allowed in the bottom 3 rounds.
+            if (pos === 'PK' && currentRound <= totalRounds - 3) return false;
 
             if (userTeam.counts[pos] < State.settings.roster[pos].max) return true;
             if (['RB', 'WR', 'TE'].includes(pos) && userTeam.counts['Flex'] < State.settings.roster.Flex.max) return true;
@@ -366,26 +418,39 @@ const UI = {
         });
 
         viablePlayers.forEach(p => {
-            let score = p.AdvVBD || p.VBD;
-            if (p._addedPPW) score += (p._addedPPW * 5); 
+            // 1. BASE: Heavily weight Points Per Week added to lineup
+            let score = ((p._addedPPW || 0) * 20) + ((p.AdvVBD || p.VBD) * 0.5); 
 
+            // 2. ROSTER NEEDS: Prioritize starting lineup gaps, punish backups
             let starterMax = State.settings.roster[p.Pos].max;
             let currentCount = userTeam.counts[p.Pos];
 
-            // Smarter Positional Weighting
             if (currentCount < starterMax) {
-                score += 15; // High priority to fill starting lineup
+                score += 25; 
             } else {
                 let overage = currentCount - starterMax;
-                if (['PK', 'DST', 'QB', 'TE'].includes(p.Pos)) {
-                    score -= 20; // Severe penalty for backup onesie positions
-                } else if (['RB', 'WR'].includes(p.Pos)) {
-                    score -= (overage * 8); // Diminishing returns penalty for bench depth
-                }
+                if (['PK', 'DST', 'QB', 'TE'].includes(p.Pos)) score -= 40; 
+                else if (['RB', 'WR'].includes(p.Pos)) score -= (overage * 8);
             }
 
-            if (p.targetShare && p.targetShare >= 20) score += 4;
-            if (p.stats && (p.stats.rushAtt + p.stats.targets) >= 200) score += 4;
+            // 3. APPLY SCARCITY BOOST (for top 3 remaining players at their position)
+            let posRank = State.availablePlayers.filter(x => x.Pos === p.Pos).findIndex(x => x._cleanName === p._cleanName);
+            if (posRank < 3 && scarcity[p.Pos]) {
+                score += scarcity[p.Pos];
+                p._scarcityBoost = scarcity[p.Pos];
+            } else {
+                p._scarcityBoost = 0;
+            }
+
+            // 4. ADP VALUE: Softened penalty so reaching isn't overly punished
+            if (p.adp) {
+                let adpDiff = p.adp - currentOverallPick;
+                if (adpDiff > 12) {
+                    score -= (adpDiff * 0.5); // Allow getting "your guy" without destroying the score
+                } else if (adpDiff < -12) {
+                    score += 8; // Boost players who have fallen past their ADP
+                }
+            }
 
             p._recScore = score;
         });
@@ -404,22 +469,30 @@ const UI = {
             <div class="p-3 bg-gradient-to-br from-emerald-600 to-teal-800 rounded-xl border border-emerald-500 flex justify-between items-center shadow-md cursor-pointer hover:shadow-lg transition mb-2" onclick="UI.showPlayerCard('${bestFit._cleanName}')">
                 <div>
                     <span class="text-[9px] font-extrabold uppercase tracking-widest text-emerald-200 mb-1 flex items-center">
-                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg> Best Roster Fit
+                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg> Best Lineup Addition
                     </span>
                     <h4 class="font-bold text-sm text-white">${bestFit.Player}</h4>
-                    <p class="text-[10px] text-emerald-100 font-medium">${bestFit.Pos} • ${bestFit.Team} • <strong class="text-white">Adds +${bestFit._addedPPW.toFixed(1)} PPW</strong></p>
+                    <p class="text-[10px] text-emerald-100 font-medium">${bestFit.Pos} • Adds +${bestFit._addedPPW.toFixed(1)} PPW</p>
                 </div>
             </div>`;
         }
 
-        htmlStr += vbdRecs.map((p, i) => `
+        htmlStr += vbdRecs.map((p, i) => {
+            let highlight = '';
+            if (p.adp && (p.adp < currentOverallPick)) highlight = `Value Pick (ADP ${p.adp.toFixed(0)})`;
+            else if (p._scarcityBoost > 3) highlight = `Tier Drop-off: Grab a ${p.Pos} now`;
+            else if (p.targetShare && p.targetShare >= 25) highlight = `Alpha ${p.targetShare}% Target Share`;
+            else if (p.olRunBlk && p.olRunBlk <= 5 && p.Pos === 'RB') highlight = `Elite Run Blocking (OL Rank #${p.olRunBlk})`;
+            else highlight = `Strong Team Need`;
+            
+            return `
             <div class="p-3 bg-indigo-800/80 rounded-xl border border-indigo-700/50 flex justify-between items-center shadow-inner cursor-pointer hover:bg-indigo-700 transition mb-2" onclick="UI.showPlayerCard('${p._cleanName}')">
                 <div>
                     <h4 class="font-bold text-xs text-white">${bestFit ? i+2 : i+1}. ${p.Player} <span class="text-[10px] font-normal text-indigo-300">(${p.Team})</span></h4>
-                    <p class="text-[10px] text-indigo-200 font-medium mt-0.5">${p.Pos} • Adv VBD: ${(p.AdvVBD || p.VBD).toFixed(1)}</p>
+                    <p class="text-[10px] text-indigo-200 font-medium mt-0.5">${p.Pos} • ${highlight}</p>
                 </div>
             </div>
-        `).join('');
+        `}).join('');
 
         container.innerHTML = htmlStr;
     },
@@ -484,7 +557,7 @@ const UI = {
                     else if (p.Pos === 'TE') posColor = 'bg-amber-50 text-amber-800 border-amber-200';
                     else posColor = 'bg-slate-50 text-slate-800 border-slate-200';
 
-                    htmlStr += `<td class="p-2 border border-slate-200 ${posColor} relative group">
+                    htmlStr += `<td class="p-2 border border-slate-200 ${posColor} relative group cursor-pointer hover:opacity-80" onclick="UI.showPlayerCard('${p._cleanName}')">
                         <div class="font-bold truncate max-w-[90px] mx-auto">${p.Player}</div>
                         <div class="text-[9px] opacity-75">${p.Pos} - ${p.Team}</div>
                     </td>`;
@@ -527,7 +600,7 @@ const UI = {
                         </div>
                         <ul class="space-y-2 grid grid-cols-1 md:grid-cols-2 gap-2">
                             ${team.roster.map(p => `
-                                <li class="text-xs bg-white border border-gray-200 p-2.5 rounded-lg flex justify-between shadow-sm">
+                                <li class="text-xs bg-white border border-gray-200 p-2.5 rounded-lg flex justify-between shadow-sm cursor-pointer hover:bg-slate-50" onclick="UI.showPlayerCard('${p._cleanName}')">
                                     <span><strong class="text-indigo-600 mr-2 w-8 inline-block">${p.slottedPos}</strong> <span class="font-medium">${p.Player}</span></span>
                                     <span class="text-gray-400 text-[10px]">${p.Pos} • <span class="text-emerald-600 font-semibold">${p.ProjPts.toFixed(1)} pts</span></span>
                                 </li>
