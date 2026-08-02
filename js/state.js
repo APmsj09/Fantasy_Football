@@ -820,8 +820,10 @@ const State = {
             if (pos === 'RB' || pos === 'WR') {
                 starters += Math.floor((numTeams * (this.settings.roster.Flex?.max || 2)) / 2);
             }
-            if (pos === 'PK' || pos === 'DST') {
-                starters = Math.floor(numTeams * 1.5);
+            if (pos === 'PK') {
+                starters = Math.floor(numTeams * 1.1); // Baseline at 13th Kicker
+            } else if (pos === 'DST') {
+                starters = Math.floor(numTeams * 1.25); // Baseline at 15th DST
             }
 
             let sortedPos = [...this.allPlayers].filter(p => p.Pos === pos).sort((a, b) => b.ProjPts - a.ProjPts);
@@ -844,7 +846,12 @@ const State = {
             let basePts = baselines[p.Pos] || 0;
             let rawVBD = p.ProjPts - basePts;
 
-            if (p.Pos === 'PK' || p.Pos === 'DST') rawVBD = rawVBD * 0.3;
+            //Kicker and Defense VBD multipliers
+            if (p.Pos === 'PK') {
+                rawVBD = rawVBD * 0.05; // from 0.3
+            } else if (p.Pos === 'DST') {
+                rawVBD = rawVBD * 0.20; // from 0.3
+            }
             p.VBD = rawVBD;
 
             let adjMultiplier = 1.0;

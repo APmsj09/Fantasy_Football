@@ -101,7 +101,8 @@ window.AutoDraft = {
             // Kickers strictly in bottom 3 rounds
             if (p.Pos === 'PK' && round <= totalRounds - 3) multiplier *= 0.001;
 
-            let baseValue = (p.AdvVBD || p.VBD) * multiplier;
+            let rawVbd = p.AdvVBD || p.VBD;
+            let baseValue = rawVbd >= 0 ? (rawVbd * multiplier) : (rawVbd / multiplier);
             let ppwValue = (p._addedPPW || 0) * 15;
 
             let adpPenalty = 0;
