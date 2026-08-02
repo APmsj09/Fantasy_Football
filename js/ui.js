@@ -712,41 +712,56 @@ const UI = {
     renderRosters() {
         const tabs = document.getElementById('roster-tabs');
         const content = document.getElementById('roster-content');
-
-        let activeTab = localStorage.getItem('activeRosterTab') || State.draftOrder[0];
+        if (!tabs || !content) return;
+        
+        let activeTab = localStorage.getItem('activeRosterTab') || State.draftOrder[0] || 'team-1';
         const fragment = document.createDocumentFragment();
         let contentHtml = '';
 
         Object.values(State.teamsById).forEach(team => {
             const btn = document.createElement('button');
-            btn.className = `tab ${activeTab === team.id ? 'active' : ''}`;
+            const isActive = activeTab === team.id;
+            const isUser = team.id === State.userTeamId;
+
+            // Sleek Tailwind Pill Button Styling
+            if (isActive) {
+                btn.className = `px-3.5 py-1.5 text-xs font-bold rounded-xl bg-indigo-600 text-white shadow-sm whitespace-nowrap transition-all border border-indigo-600 shrink-0`;
+            } else if (isUser) {
+                btn.className = `px-3.5 py-1.5 text-xs font-bold rounded-xl bg-indigo-50 text-indigo-700 hover:bg-indigo-100 whitespace-nowrap transition-all border border-indigo-200 shrink-0`;
+            } else {
+                btn.className = `px-3.5 py-1.5 text-xs font-medium rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900 whitespace-nowrap transition-all border border-slate-200 shrink-0`;
+            }
+
             btn.textContent = team.name;
-            btn.onclick = () => { localStorage.setItem('activeRosterTab', team.id); this.renderRosters(); };
-
+            btn.onclick = () => { 
+                localStorage.setItem('activeRosterTab', team.id); 
+                this.renderRosters(); 
+            };
+            
             fragment.appendChild(btn);
-
-            if (activeTab === team.id) {
+            
+            if (isActive) {
                 contentHtml = `
                     <div class="p-2">
-                        <div class="flex justify-between items-center mb-4">
-                            <h3 class="font-bold text-gray-800">${team.name} Roster</h3>
-                            <span class="text-[10px] font-bold bg-white text-gray-500 px-2 py-1 border border-gray-200 rounded-full">${team.roster.length}/${State.settings.roster.totalSize} Spots</span>
+                        <div class="flex justify-between items-center mb-4 pb-2 border-b border-gray-100">
+                            <h3 class="font-extrabold text-sm text-gray-900">${team.name} Roster</h3>
+                            <span class="text-[11px] font-bold bg-slate-100 text-slate-700 px-3 py-1 border border-slate-200 rounded-full">${team.roster.length}/${State.settings.roster.totalSize} Spots Filled</span>
                         </div>
                         <ul class="space-y-2 grid grid-cols-1 md:grid-cols-2 gap-2">
                             ${team.roster.map(p => `
-                                <li class="text-xs bg-white border border-gray-200 p-2.5 rounded-lg flex justify-between shadow-sm cursor-pointer hover:bg-slate-50" onclick="UI.showPlayerCard('${p._cleanName}')">
-                                    <span><strong class="text-indigo-600 mr-2 w-8 inline-block">${p.slottedPos}</strong> <span class="font-medium">${p.Player}</span></span>
-                                    <span class="text-gray-400 text-[10px]">${p.Pos} • <span class="text-emerald-600 font-semibold">${p.ProjPts.toFixed(1)} pts</span></span>
+                                <li class="text-xs bg-white border border-gray-200 p-2.5 rounded-xl flex justify-between items-center shadow-sm cursor-pointer hover:bg-slate-50 transition-colors" onclick="UI.showPlayerCard('${p._cleanName}')">
+                                    <span class="truncate"><strong class="text-indigo-600 mr-2 w-8 inline-block text-[10px] uppercase font-bold">${p.slottedPos}</strong> <span class="font-semibold text-gray-800">${p.Player}</span></span>
+                                    <span class="text-gray-500 text-[11px] whitespace-nowrap ml-2">${p.Pos} • <span class="text-emerald-600 font-bold">${p.ProjPts.toFixed(1)} pts</span></span>
                                 </li>
                             `).join('')}
-                            ${team.roster.length === 0 ? '<p class="text-xs text-gray-400 italic">No players drafted yet.</p>' : ''}
+                            ${team.roster.length === 0 ? '<p class="text-xs text-gray-400 italic p-2">No players drafted yet.</p>' : ''}
                         </ul>
                     </div>
                 `;
             }
         });
 
-        tabs.innerHTML = '';
+        tabs.innerHTML = ''; 
         tabs.appendChild(fragment);
         content.innerHTML = contentHtml;
     },
