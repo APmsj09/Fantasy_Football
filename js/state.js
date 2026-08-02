@@ -443,7 +443,6 @@ const State = {
     },
 
     calculateOptimalWeeklyScore(roster, weekNum) {
-        // Fast reset the pre-allocated cache instead of creating new arrays
         let qb = this._simCache.qb; qb.length = 0;
         let rb = this._simCache.rb; rb.length = 0;
         let wr = this._simCache.wr; wr.length = 0;
@@ -452,7 +451,6 @@ const State = {
         let dst = this._simCache.dst; dst.length = 0;
         let flex = this._simCache.flex; flex.length = 0;
         
-        // Populate cache natively
         for (let i = 0; i < roster.length; i++) {
             let p = roster[i];
             let val = p.weeklyProjections[`W${weekNum}`] || 0;
@@ -465,7 +463,6 @@ const State = {
             else if (pos === 'DST') dst.push(val);
         }
         
-        // Sort descending
         qb.sort((a,b) => b - a);
         rb.sort((a,b) => b - a);
         wr.sort((a,b) => b - a);
@@ -475,19 +472,45 @@ const State = {
 
         let score = 0;
         let req = this.settings.roster;
-        
-        // Sum top starters, push leftovers to flex pool instantly
-        for(let i=0; i<qb.length; i++) { if(i < req.QB.max) score += qb[i]; }
-        for(let i=0; i<pk.length; i++) { if(i < req.PK.max) score += pk[i]; }
-        for(let i=0; i<dst.length; i++) { if(i < req.DST.max) score += dst[i]; }
+        let b = this.positionalWeeklyBaselines || { QB: 18, RB: 11, WR: 11, TE: 8, PK: 7, DST: 7 };
 
-        for(let i=0; i<rb.length; i++) { if(i < req.RB.max) score += rb[i]; else flex.push(rb[i]); }
-        for(let i=0; i<wr.length; i++) { if(i < req.WR.max) score += wr[i]; else flex.push(wr[i]); }
-        for(let i=0; i<te.length; i++) { if(i < req.TE.max) score += te[i]; else flex.push(te[i]); }
+        // Fill empty starter slots with positional replacement baselines instead of 0
+        let sumPosition = (arr, maxReq, posKey) => {
+            let s = 0;
+            let bVal = b[posKey] || 0;
+            for (let i = 0; i < maxReq; i++) {
+                if (i < arr.length) s += arr[i];
+                else s += bVal; 
+            }
+            return s;
+        };
 
+        score += sumPosition(qb, req.QB.max, 'QB');
+        score += sumPosition(pk, req.PK.max, 'PK');
+        score += sumPosition(dst, req.DST.max, 'DST');
+
+        let processFlexPos = (arr, maxReq, posKey) => {
+            let s = 0;
+            let bVal = b[posKey] || 0;
+            for (let i = 0; i < maxReq; i++) {
+                if (i < arr.length) s += arr[i];
+                else s += bVal;
+            }
+            for (let i = maxReq; i < arr.length; i++) {
+                flex.push(arr[i]);
+            }
+            return s;
+        };
+
+        score += processFlexPos(rb, req.RB.max, 'RB');
+        score += processFlexPos(wr, req.WR.max, 'WR');
+        score += processFlexPos(te, req.TE.max, 'TE');
+
+        let flexBaseline = ((b.RB || 11) + (b.WR || 11)) / 2;
         flex.sort((a,b) => b - a);
-        for(let i=0; i<flex.length && i < req.Flex.max; i++) {
-            score += flex[i];
+        for (let i = 0; i < req.Flex.max; i++) {
+            if (i < flex.length) score += flex[i];
+            else score += flexBaseline;
         }
 
         return score;
@@ -743,6 +766,16 @@ const State = {
             let baselinePlayer = sortedPos[baselineIndex];
             baselines[pos] = baselinePlayer ? baselinePlayer.ProjPts : 0;
         });
+
+        // SAVE WEEKLY REPLACEMENT-LEVEL BASELINES FOR SIMULATION
+        this.positionalWeeklyBaselines = {
+            QB: (baselines.QB || 300) / 17,
+            RB: (baselines.RB || 180) / 17,
+            WR: (baselines.WR || 180) / 17,
+            TE: (baselines.TE || 120) / 17,
+            PK: (baselines.PK || 120) / 17,
+            DST: (baselines.DST || 120) / 17
+        };
 
         this.allPlayers.forEach(p => {
             let basePts = baselines[p.Pos] || 0;
