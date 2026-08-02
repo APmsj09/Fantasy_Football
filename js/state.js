@@ -585,6 +585,7 @@ const State = {
 
     parseAdvancedData(text) {
         const rows = text.split(/\r?\n/).filter(row => row.trim() !== '');
+        // NO .toUpperCase() here, so Player, Team, Pos remain case-sensitive matches
         const headers = rows[0].split('\t').map(h => h.trim());
         const parsed = [];
         
@@ -593,6 +594,7 @@ const State = {
             let obj = {};
             headers.forEach((h, idx) => {
                 let val = values[idx] || '';
+                // Fix comma bug: "1,585" becomes "1585" so parseFloat doesn't break
                 let cleanVal = val.replace(/,/g, ''); 
                 
                 if (val.includes('%')) {
@@ -612,19 +614,19 @@ const State = {
         this.advancedMetrics = [...this.advancedMetrics, ...advancedDataArray];
 
         advancedDataArray.forEach(advPlayer => {
-            let rowYear = advPlayer['Year'] || advPlayer['YEAR'];
+            // Match using exact casing from the TSV (Player, Team, Pos or Position)
+            let p = this.matchPlayerFast(advPlayer.Player, advPlayer.Team, advPlayer.Pos || advPlayer.Position);
+
             if (p) {
-                // ===========================================================
-                // SAVE HISTORICAL DATA
-                // ===========================================================
+                // Save historical stats for years prior to 2025
                 let rowYear = advPlayer['Year'] || advPlayer['YEAR'];
-                
                 if (rowYear && rowYear < 2025) {
                     if (!p.historicalStats) p.historicalStats = {};
-                    p.historicalStats[rowYear] = advPlayer; // Save the old year safely
-                    return; // Stop here so it doesn't overwrite the 2025 main stats below
+                    p.historicalStats[rowYear] = advPlayer;
+                    return; 
                 }
-                // ===========================================================
+
+                // Advanced metrics
                 if (advPlayer['RZ TGT'] !== undefined) p.rzTgt = advPlayer['RZ TGT'];
                 if (advPlayer['RZ ATT'] !== undefined) p.rzAtt = advPlayer['RZ ATT'];
                 if (advPlayer['% TM'] !== undefined) p.targetShare = advPlayer['% TM'];
@@ -632,7 +634,6 @@ const State = {
                 if (advPlayer['AIR/R'] !== undefined) p.aDOT = advPlayer['AIR/R'];
                 if (advPlayer['AIR/A'] !== undefined) p.aDOT = advPlayer['AIR/A'];
                 
-                // Add fallback for WR/TEs who use YACON/R instead of YACON/ATT
                 if (advPlayer['YACON/ATT'] !== undefined) p.yacAtt = advPlayer['YACON/ATT'];
                 if (advPlayer['YACON/R'] !== undefined) p.yacAtt = advPlayer['YACON/R'];
                 
@@ -649,8 +650,8 @@ const State = {
                     p.trueAccuracy = (((advPlayer['COMP'] || 0) + (advPlayer['DROP'] || 0)) / advPlayer['ATT']) * 100;
                 }
 
+                // 2025 Actuals
                 if (!p.pastStats) p.pastStats = {};
-                
                 if (advPlayer['G']) p.pastStats.gp = advPlayer['G'];
                 
                 // Passing
