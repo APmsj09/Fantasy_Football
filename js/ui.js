@@ -36,16 +36,16 @@ const UI = {
     renderDatabase() {
         const tbody = document.getElementById('db-players-body');
         let filterPos = document.getElementById('db-position').value;
-        let search = document.getElementById('db-search').value.toLowerCase().replace(/[^a-z0-9]/g, ''); 
-        
+        let search = document.getElementById('db-search').value.toLowerCase().replace(/[^a-z0-9]/g, '');
+
         let filtered = State.allPlayers.filter(p => {
-            if(filterPos && p.Pos !== filterPos) return false;
-            if(search && !p._cleanName.includes(search) && !p._cleanTeam.toLowerCase().includes(search)) return false;
+            if (filterPos && p.Pos !== filterPos) return false;
+            if (search && !p._cleanName.includes(search) && !p._cleanTeam.toLowerCase().includes(search)) return false;
             return true;
         });
 
         let htmlStr = '';
-        
+
         filtered.slice(0, 200).forEach(p => {
             let vbdVal = p.VBD.toFixed(1);
             let advVbdVal = (p.AdvVBD || p.VBD).toFixed(1);
@@ -77,7 +77,7 @@ const UI = {
                 </tr>
             `;
         });
-        
+
         tbody.innerHTML = htmlStr;
     },
 
@@ -89,15 +89,36 @@ const UI = {
         let isOffense = !['PK', 'DST'].includes(p.Pos);
 
         let ageDisplay = this.getPlayerAge(p);
-        let ppwBadge = p._addedPPW && p._addedPPW > 0.1 
-            ? `<span class="bg-emerald-100 text-emerald-800 text-xs font-bold px-2.5 py-1 rounded-full border border-emerald-200">📈 +${p._addedPPW.toFixed(1)} PPW Lineup Fit</span>` 
+
+        let envBadges = [];
+        const tTeam = State.normalizeTeam(p.Team);
+        const passEnv = State.teamAdvPass ? State.teamAdvPass[tTeam] : null;
+        const rushEnv = State.teamAdvRush ? State.teamAdvRush[tTeam] : null;
+
+        if (rushEnv && rushEnv.ybcAtt >= 2.8 && p.Pos === 'RB') {
+            envBadges.push(`<span class="bg-emerald-100 text-emerald-800 text-xs font-bold px-2.5 py-1 rounded-full border border-emerald-200">⚡ High YBC Scheme (${rushEnv.ybcAtt} YBC)</span>`);
+        }
+        if (passEnv && passEnv.onTgtPct >= 76.0 && ['WR', 'TE'].includes(p.Pos)) {
+            envBadges.push(`<span class="bg-blue-100 text-blue-800 text-xs font-bold px-2.5 py-1 rounded-full border border-blue-200">🎯 High QB Accuracy Env (${passEnv.onTgtPct}%)</span>`);
+        }
+        if (passEnv && passEnv.playActionYds >= 950 && ['QB', 'WR', 'TE'].includes(p.Pos)) {
+            envBadges.push(`<span class="bg-indigo-100 text-indigo-800 text-xs font-bold px-2.5 py-1 rounded-full border border-indigo-200">🚀 Play-Action Heavy Scheme</span>`);
+        }
+        if (passEnv && passEnv.prssPct >= 25.0) {
+            envBadges.push(`<span class="bg-rose-100 text-rose-800 text-xs font-bold px-2.5 py-1 rounded-full border border-rose-200">⚠️ High Pass Pressure Env (${passEnv.prssPct}%)</span>`);
+        }
+
+        let envBadgesHTML = envBadges.length > 0 ? `<div class="flex flex-wrap gap-2 mb-2">${envBadges.join('')}</div>` : '';
+
+        let ppwBadge = p._addedPPW && p._addedPPW > 0.1
+            ? `<span class="bg-emerald-100 text-emerald-800 text-xs font-bold px-2.5 py-1 rounded-full border border-emerald-200">📈 +${p._addedPPW.toFixed(1)} PPW Lineup Fit</span>`
             : '';
 
         let advancedMetricsHTML = '';
-        
+
         if (isOffense) {
             const buildBar = (label, value, max, unit = '', color = 'indigo') => {
-                if(value === undefined || value === null) return '';
+                if (value === undefined || value === null) return '';
                 let pct = Math.min(100, Math.max(0, (value / max) * 100));
                 return `
                 <div class="mb-3">
@@ -118,7 +139,7 @@ const UI = {
             if (p.aDOT) barHTML += buildBar('Average Depth of Target', p.aDOT, 15, ' yds', 'amber');
             if (p.yacAtt) barHTML += buildBar('Yards After Contact', p.yacAtt, 4, ' yds', 'purple');
             if (p.brokenTackles) barHTML += buildBar('Broken Tackles', p.brokenTackles, 30, '', 'red');
-            if (p.rzTgt || p.rzAtt) barHTML += buildBar('Red Zone Opps', (p.rzTgt||0) + (p.rzAtt||0), 60, '', 'rose');
+            if (p.rzTgt || p.rzAtt) barHTML += buildBar('Red Zone Opps', (p.rzTgt || 0) + (p.rzAtt || 0), 60, '', 'rose');
 
             if (barHTML) {
                 advancedMetricsHTML = `
@@ -135,10 +156,10 @@ const UI = {
         if (p.pastStats && p.pastPts !== undefined) {
             let ps = p.pastStats;
             let volumeStr = '';
-            
+
             // Safely grab TD count without dropping to 0 unexpectedly
             let tdCount = ps.totalTd ?? ((ps.passTd || 0) + (ps.rushTd || 0) + (ps.recTd || 0));
-            
+
             if (p.Pos === 'QB') volumeStr = `${ps.passYds || 0} Pass Yds, ${ps.rushYds || 0} Rush Yds, ${tdCount} TD`;
             else if (p.Pos === 'RB') volumeStr = `${ps.rushAtt || 0} Att, ${ps.rushYds || 0} Rush Yds, ${ps.targets || 0} Tgt, ${tdCount} TD`;
             else volumeStr = `${ps.targets || 0} Tgt, ${ps.rec || 0} Rec, ${ps.recYds || 0} Rec Yds, ${tdCount} TD`;
@@ -223,7 +244,7 @@ const UI = {
         </div>`;
 
         UI.showMessage(modalTitle, `
-            <div class="mb-3">${ppwBadge}</div>
+            <div class="mb-3">${envBadgesHTML}${ppwBadge}</div>
             ${statsDashboard}
             ${pastStatsHTML} 
             ${advancedMetricsHTML}
@@ -254,13 +275,13 @@ const UI = {
                 ctx.innerHTML = '<div class="flex h-full items-center justify-center text-sm text-gray-500">Chart unavailable in this environment.</div>';
                 return;
             }
-            
+
             let labels = [], data = [], colors = [];
             for (let w = 1; w <= 18; w++) {
                 labels.push(`Wk ${w}`);
                 let pts = Number(p.weeklyProjections[`W${w}`] || 0);
                 data.push(pts);
-                
+
                 if (w >= 15 && w <= 17) colors.push('rgba(245, 158, 11, 0.7)');
                 else colors.push('rgba(79, 70, 229, 0.7)');
             }
@@ -333,10 +354,10 @@ const UI = {
 
     updateDraftBoard() {
         if (!State.draftStarted) return;
-        
+
         const userTeam = State.teamsById[State.userTeamId];
         State.evaluateRosterFits(userTeam, State.availablePlayers);
-        
+
         const round = Math.floor(State.currentPick / State.settings.numTeams) + 1;
         document.getElementById('current-round').textContent = round;
         document.getElementById('current-pick-number').textContent = (State.currentPick % State.settings.numTeams) + 1;
@@ -371,16 +392,16 @@ const UI = {
     renderDraftAvailablePlayers() {
         const tbody = document.getElementById('draft-players-body');
         let htmlStr = '';
-        
+
         let displayList = State.availablePlayers.slice(0, 100);
         let isMock = State.settings.draftMode === 'mock';
         let onClockId = State.draftOrder[State.currentPick];
         let isUserTurn = isMock && (onClockId === State.userTeamId);
-        
+
         displayList.forEach(p => {
             let btnHtml = "";
             let safeName = p._cleanName;
-            
+
             if (isMock && !isUserTurn) {
                 btnHtml = `<button class="bg-gray-200 text-gray-400 px-3 py-1.5 rounded-lg text-[11px] font-bold cursor-not-allowed" disabled>Wait</button>`;
             } else {
@@ -390,7 +411,7 @@ const UI = {
             let adpStr = p.adp ? p.adp.toFixed(1) : '-';
             let byeStr = p.byeWeek && p.byeWeek !== 'N/A' ? `Wk ${p.byeWeek}` : '-';
             let depthStr = p.depthChart ? `#${p.depthChart}` : '-';
-            
+
             let advTags = [];
 
             if (p.isNewRole && p.depthChart) {
@@ -399,7 +420,7 @@ const UI = {
             if (p.targetShare && p.targetShare > 22) advTags.push(`<span class="bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">${p.targetShare}% Tgts</span>`);
             if (p.aDOT && p.aDOT > 12) advTags.push(`<span class="bg-rose-100 text-rose-700 px-1.5 py-0.5 rounded">${p.aDOT} aDOT</span>`);
             if (p.brokenTackles && p.brokenTackles > 15) advTags.push(`<span class="bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded">${p.brokenTackles} B-Tkl</span>`);
-            
+
             const userTeam = State.teamsById[State.userTeamId];
             const userOwnsStarter = p.starterName && userTeam?.roster.some(r => r._cleanName === State.normalizeName(p.starterName));
 
@@ -411,8 +432,8 @@ const UI = {
 
             let tagHTML = advTags.length > 0 ? `<div class="flex gap-1 mt-1 text-[9px] font-bold">${advTags.join('')}</div>` : '';
 
-            let ppwStr = p._addedPPW && p._addedPPW > 0.1 
-                ? `<span class="font-bold text-emerald-600">+${p._addedPPW.toFixed(1)}</span>` 
+            let ppwStr = p._addedPPW && p._addedPPW > 0.1
+                ? `<span class="font-bold text-emerald-600">+${p._addedPPW.toFixed(1)}</span>`
                 : `<span class="text-gray-300">-</span>`;
 
             let ageStr = p.age ? `<span class="text-[9px] font-semibold text-slate-400 ml-1">Age ${p.age}</span>` : '';
@@ -440,7 +461,7 @@ const UI = {
                 </tr>
             `;
         });
-        
+
         tbody.innerHTML = htmlStr;
     },
 
@@ -448,7 +469,7 @@ const UI = {
         if (type === 'draft') {
             if (State.draftSortKey === key) State.draftSortAsc = !State.draftSortAsc;
             else { State.draftSortKey = key; State.draftSortAsc = false; }
-            
+
             State.availablePlayers.sort((a, b) => {
                 let valA = a[key] ?? (key === 'AdvVBD' ? (a.AdvVBD || a.VBD) : 0);
                 let valB = b[key] ?? (key === 'AdvVBD' ? (b.AdvVBD || b.VBD) : 0);
@@ -466,7 +487,7 @@ const UI = {
 
         const userTeam = State.teamsById[State.userTeamId];
         document.getElementById('user-team-name-disp').textContent = userTeam.name;
-        
+
         const currentRound = Math.floor(State.currentPick / State.settings.numTeams) + 1;
         const totalRounds = State.settings.roster.totalSize;
         const currentOverallPick = State.currentPick + 1;
@@ -479,7 +500,7 @@ const UI = {
                 let top = avail[0].AdvVBD || avail[0].VBD;
                 let fifth = avail[4].AdvVBD || avail[4].VBD;
                 // Reward up to 0.5 additional score points per point of VBD drop-off
-                scarcity[pos] = Math.max(0, top - fifth) * 0.5; 
+                scarcity[pos] = Math.max(0, top - fifth) * 0.5;
             } else {
                 scarcity[pos] = 0;
             }
@@ -503,7 +524,7 @@ const UI = {
 
         viablePlayers.forEach(p => {
             // 1. BASE: Points Per Week + Adv VBD
-            let score = ((p._addedPPW || 0) * 20) + ((p.AdvVBD || p.VBD) * 0.5); 
+            let score = ((p._addedPPW || 0) * 20) + ((p.AdvVBD || p.VBD) * 0.5);
 
             // 2. DYNAMIC FLEX & STARTER SCORING
             let starterMax = State.settings.roster[p.Pos].max;
@@ -527,7 +548,7 @@ const UI = {
                 }
             } else {
                 let overage = currentCount - starterMax;
-                if (['PK', 'DST', 'QB', 'TE'].includes(p.Pos)) score -= 40; 
+                if (['PK', 'DST', 'QB', 'TE'].includes(p.Pos)) score -= 40;
                 else if (['RB', 'WR'].includes(p.Pos)) score -= (overage * 8);
             }
 
@@ -547,7 +568,7 @@ const UI = {
             if (p.adp) {
                 let adpDiff = p.adp - currentOverallPick;
                 if (adpDiff > 12) {
-                    score -= Math.min(10, adpDiff * 0.3); 
+                    score -= Math.min(10, adpDiff * 0.3);
                 } else if (adpDiff < -12) {
                     score += 8;
                 }
@@ -562,13 +583,13 @@ const UI = {
             p._recScore = score;
         });
 
-        let sortedByRec = [...viablePlayers].sort((a,b) => b._recScore - a._recScore);
-        
-        let bestFit = [...viablePlayers].sort((a,b) => (b._addedPPW || 0) - (a._addedPPW || 0))[0];
+        let sortedByRec = [...viablePlayers].sort((a, b) => b._recScore - a._recScore);
+
+        let bestFit = [...viablePlayers].sort((a, b) => (b._addedPPW || 0) - (a._addedPPW || 0))[0];
         if (bestFit && (bestFit._addedPPW || 0) <= 0.1) bestFit = null;
 
         let vbdRecs = sortedByRec.filter(p => p !== bestFit).slice(0, 3);
-        
+
         let htmlStr = '';
 
         if (bestFit) {
@@ -594,11 +615,11 @@ const UI = {
             else if (p.targetShare && p.targetShare >= 25) highlight = `Alpha ${p.targetShare}% Target Share`;
             else if (p.olRunBlk && p.olRunBlk <= 5 && p.Pos === 'RB') highlight = `Elite Run Blocking (OL Rank #${p.olRunBlk})`;
             else highlight = `Strong Team Need`;
-            
+
             return `
             <div class="p-3 bg-indigo-800/80 rounded-xl border border-indigo-700/50 flex justify-between items-center shadow-inner cursor-pointer hover:bg-indigo-700 transition mb-2" onclick="UI.showPlayerCard('${p._cleanName}')">
                 <div>
-                    <h4 class="font-bold text-xs text-white">${bestFit ? i+2 : i+1}. ${p.Player} <span class="text-[10px] font-normal text-indigo-300">(${p.Team})</span></h4>
+                    <h4 class="font-bold text-xs text-white">${bestFit ? i + 2 : i + 1}. ${p.Player} <span class="text-[10px] font-normal text-indigo-300">(${p.Team})</span></h4>
                     <p class="text-[10px] text-indigo-200 font-medium mt-0.5">${p.Pos} • ${highlight}</p>
                 </div>
             </div>
@@ -610,7 +631,7 @@ const UI = {
     renderMyRoster() {
         const container = document.getElementById('my-roster-container');
         if (!container) return;
-        
+
         const userTeam = State.teamsById[State.userTeamId];
         if (!userTeam) return;
 
@@ -636,32 +657,32 @@ const UI = {
 
         const numTeams = State.settings.numTeams;
         const totalRounds = State.settings.roster.totalSize;
-        
+
         let htmlStr = `<table class="min-w-full text-[10px] text-center border-collapse bg-white shadow-sm rounded-lg overflow-hidden">
             <thead class="bg-slate-800 text-white"><tr>
             <th class="p-2 border border-slate-700 w-10">Rnd</th>`;
-            
-        for(let i=0; i<numTeams; i++) {
-            let team = State.teamsById[`team-${i+1}`];
+
+        for (let i = 0; i < numTeams; i++) {
+            let team = State.teamsById[`team-${i + 1}`];
             let isUser = team.id === State.userTeamId;
             htmlStr += `<th class="p-2 border border-slate-700 truncate max-w-[100px] ${isUser ? 'text-emerald-400 font-extrabold' : 'font-semibold'}">${team.name}</th>`;
         }
         htmlStr += `</tr></thead><tbody>`;
 
         for (let r = 0; r < totalRounds; r++) {
-            htmlStr += `<tr><td class="p-2 border border-slate-200 bg-slate-50 font-bold text-slate-500">${r+1}</td>`;
-            
+            htmlStr += `<tr><td class="p-2 border border-slate-200 bg-slate-50 font-bold text-slate-500">${r + 1}</td>`;
+
             for (let c = 0; c < numTeams; c++) {
                 let isSnakeReverse = r % 2 !== 0;
                 let pickInRound = isSnakeReverse ? (numTeams - 1 - c) : c;
                 let overallPick = (r * numTeams) + pickInRound;
-                
+
                 let pickData = State.draftHistory.find(d => d.pickIndex === overallPick);
-                
+
                 if (pickData) {
                     let p = pickData.player;
                     let posColor = '';
-                    if(p.Pos === 'RB') posColor = 'bg-emerald-50 text-emerald-800 border-emerald-200';
+                    if (p.Pos === 'RB') posColor = 'bg-emerald-50 text-emerald-800 border-emerald-200';
                     else if (p.Pos === 'WR') posColor = 'bg-blue-50 text-blue-800 border-blue-200';
                     else if (p.Pos === 'QB') posColor = 'bg-red-50 text-red-800 border-red-200';
                     else if (p.Pos === 'TE') posColor = 'bg-amber-50 text-amber-800 border-amber-200';
@@ -688,7 +709,7 @@ const UI = {
     renderRosters() {
         const tabs = document.getElementById('roster-tabs');
         const content = document.getElementById('roster-content');
-        
+
         let activeTab = localStorage.getItem('activeRosterTab') || State.draftOrder[0];
         const fragment = document.createDocumentFragment();
         let contentHtml = '';
@@ -698,9 +719,9 @@ const UI = {
             btn.className = `tab ${activeTab === team.id ? 'active' : ''}`;
             btn.textContent = team.name;
             btn.onclick = () => { localStorage.setItem('activeRosterTab', team.id); this.renderRosters(); };
-            
+
             fragment.appendChild(btn);
-            
+
             if (activeTab === team.id) {
                 contentHtml = `
                     <div class="p-2">
@@ -722,7 +743,7 @@ const UI = {
             }
         });
 
-        tabs.innerHTML = ''; 
+        tabs.innerHTML = '';
         tabs.appendChild(fragment);
         content.innerHTML = contentHtml;
     },
@@ -732,7 +753,7 @@ const UI = {
         let totals = Object.values(State.teamsById).map(team => {
             let pts = team.roster.reduce((sum, p) => sum + p.ProjPts, 0);
             return { name: team.name, pts, isUser: team.id === State.userTeamId };
-        }).sort((a,b) => b.pts - a.pts);
+        }).sort((a, b) => b.pts - a.pts);
 
         let htmlStr = '';
         totals.forEach((t, i) => {
@@ -740,7 +761,7 @@ const UI = {
             let text = t.isUser ? 'text-indigo-900' : 'text-gray-900';
             htmlStr += `
                 <div class="flex justify-between items-center p-4 border rounded-xl ${bg} mb-3">
-                    <span class="text-lg font-bold ${text}"><span class="text-gray-400 mr-2">#${i+1}</span> ${t.name}</span>
+                    <span class="text-lg font-bold ${text}"><span class="text-gray-400 mr-2">#${i + 1}</span> ${t.name}</span>
                     <span class="text-lg text-emerald-600 font-extrabold">${t.pts.toFixed(1)} pts</span>
                 </div>
             `;

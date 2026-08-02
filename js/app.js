@@ -169,6 +169,21 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (e) { }
 
             try {
+                const passTeamRes = await fetch('./Team_Adv_Pass_25.tsv', fetchOpts);
+                State.parseTeamAdvPassData(await passTeamRes.text());
+            } catch (e) { }
+
+            try {
+                const rushTeamRes = await fetch('./Team_Adv_Rush_25.tsv', fetchOpts);
+                State.parseTeamAdvRushData(await rushTeamRes.text());
+            } catch (e) { }
+
+            try {
+                const recTeamRes = await fetch('./Team_Adv_Rec_25.tsv', fetchOpts);
+                State.parseTeamAdvRecData(await recTeamRes.text());
+            } catch (e) { }
+
+            try {
                 const historyRes = await fetch('./DraftHistory.tsv', fetchOpts);
                 State.parseHistory(await historyRes.text());
                 if (typeof renderInsightsTable === "function") renderInsightsTable();

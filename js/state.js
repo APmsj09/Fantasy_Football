@@ -167,6 +167,93 @@ const State = {
         }) || null;
     },
 
+    // ===========================================================
+    // TEAM ADVANCED STATS STATE & PARSERS
+    // ===========================================================
+    teamAdvPass: {},
+    teamAdvRush: {},
+    teamAdvRec: {},
+
+    parseTeamAdvPassData(text) {
+        const rows = text.split(/\r?\n/).filter(row => row.trim() !== '');
+        if (rows.length < 2) return {};
+        const headers = rows[0].split('\t').map(h => h.trim());
+        const data = {};
+
+        for (let i = 1; i < rows.length; i++) {
+            const vals = rows[i].split('\t').map(v => v.trim());
+            const rawTeam = vals[headers.indexOf('Team')];
+            if (!rawTeam) continue;
+            const team = this.normalizeTeam(rawTeam);
+
+            data[team] = {
+                prssPct: parseFloat(vals[headers.indexOf('Prss%')]) || 0,
+                pktTime: parseFloat(vals[headers.indexOf('PktTime')]) || 0,
+                onTgtPct: parseFloat(vals[headers.indexOf('OnTgt%')]) || 0,
+                badPct: parseFloat(vals[headers.indexOf('Bad%')]) || 0,
+                playActionYds: parseFloat(vals[headers.indexOf('PlayActionPassYds')]) || 0,
+                rpoYds: parseFloat(vals[headers.indexOf('RPOYds')]) || 0,
+                rpoPlays: parseFloat(vals[headers.indexOf('RPOPlays')]) || 0,
+                dropPct: parseFloat(vals[headers.indexOf('Drop%')]) || 0,
+                bltz: parseFloat(vals[headers.indexOf('Bltz')]) || 0,
+                scrmYds: parseFloat(vals[headers.indexOf('Yds/Scr')]) || 0
+            };
+        }
+        this.teamAdvPass = data;
+        return data;
+    },
+
+    parseTeamAdvRushData(text) {
+        const rows = text.split(/\r?\n/).filter(row => row.trim() !== '');
+        if (rows.length < 2) return {};
+        const headers = rows[0].split('\t').map(h => h.trim());
+        const data = {};
+
+        for (let i = 1; i < rows.length; i++) {
+            const vals = rows[i].split('\t').map(v => v.trim());
+            const rawTeam = vals[headers.indexOf('Team')];
+            if (!rawTeam) continue;
+            const team = this.normalizeTeam(rawTeam);
+
+            const att = parseFloat(vals[headers.indexOf('Att')]) || 1;
+            const firstDowns = parseFloat(vals[headers.indexOf('1D')]) || 0;
+
+            data[team] = {
+                ybcAtt: parseFloat(vals[headers.indexOf('YBC/Att')]) || 0,
+                yacAtt: parseFloat(vals[headers.indexOf('YAC/Att')]) || 0,
+                brkTkl: parseFloat(vals[headers.indexOf('BrkTkl')]) || 0,
+                attPerBrk: parseFloat(vals[headers.indexOf('Att/Br')]) || 0,
+                firstDownRate: att > 0 ? (firstDowns / att) * 100 : 0
+            };
+        }
+        this.teamAdvRush = data;
+        return data;
+    },
+
+    parseTeamAdvRecData(text) {
+        const rows = text.split(/\r?\n/).filter(row => row.trim() !== '');
+        if (rows.length < 2) return {};
+        const headers = rows[0].split('\t').map(h => h.trim());
+        const data = {};
+
+        for (let i = 1; i < rows.length; i++) {
+            const vals = rows[i].split('\t').map(v => v.trim());
+            const rawTeam = vals[headers.indexOf('Team')];
+            if (!rawTeam) continue;
+            const team = this.normalizeTeam(rawTeam);
+
+            data[team] = {
+                yacPerRec: parseFloat(vals[headers.indexOf('YAC/R')]) || 0,
+                ybcPerRec: parseFloat(vals[headers.indexOf('YBC/R')]) || 0,
+                adot: parseFloat(vals[headers.indexOf('ADOT')]) || 0,
+                dropPct: parseFloat(vals[headers.indexOf('Drop%')]) || 0,
+                brkTkl: parseFloat(vals[headers.indexOf('BrkTkl')]) || 0
+            };
+        }
+        this.teamAdvRec = data;
+        return data;
+    },
+
     parseHandcuffData(text) {
         const rows = text.split(/\r?\n/).filter(row => row.trim() !== '');
         if (rows.length < 2) return [];
@@ -927,6 +1014,79 @@ const State = {
             if (p.dropRate && p.dropRate > 10) adjMultiplier -= 0.03;
 
             if (p.Pos === 'QB' && p.stats && p.stats.rushAtt >= 80) adjMultiplier += 0.04;
+
+            // ===========================================================
+            // ADVANCED TEAM ENVIRONMENT METRICS (ZERO OVERLAP)
+            // ===========================================================
+            const tTeam = this.normalizeTeam(p.Team);
+            const passEnv = this.teamAdvPass[tTeam];
+            const rushEnv = this.teamAdvRush[tTeam];
+            const recEnv = this.teamAdvRec[tTeam];
+
+            // 1. VETERAN & TEAM SCHEME METRICS
+            if (passEnv) {
+                if (['QB', 'WR', 'TE'].includes(p.Pos)) {
+                    if (passEnv.playActionYds >= 950 || passEnv.rpoYds >= 550) {
+                        adjMultiplier += 0.02;
+                    } else if (passEnv.playActionYds < 500 && passEnv.rpoYds < 200) {
+                        adjMultiplier -= 0.01;
+                    }
+                }
+
+                if (['QB', 'WR', 'TE'].includes(p.Pos) && (!p.olPassBlk || (p.olPassBlk > 5 && p.olPassBlk < 25))) {
+                    if (passEnv.prssPct >= 25.0) adjMultiplier -= 0.02;
+                    else if (passEnv.prssPct <= 18.0) adjMultiplier += 0.01;
+                }
+            }
+
+            // TARGET QUALITY: Evaluate Actual Starting QB Accuracy (Fallback to Team OnTgt%)
+            if (['WR', 'TE'].includes(p.Pos)) {
+                let teamQB = this.allPlayers.find(q => 
+                    q._cleanTeam === tTeam && 
+                    q._cleanPos === 'QB' && 
+                    q.depthChart === 1
+                );
+
+                if (!teamQB) {
+                    teamQB = this.allPlayers
+                        .filter(q => q._cleanTeam === tTeam && q._cleanPos === 'QB')
+                        .sort((a, b) => b.ProjPts - a.ProjPts)[0];
+                }
+
+                if (teamQB && teamQB.trueAccuracy !== undefined) {
+                    if (teamQB.trueAccuracy >= 74.0) adjMultiplier += 0.025;
+                    else if (teamQB.trueAccuracy <= 63.0) adjMultiplier -= 0.025;
+                } else if (passEnv) {
+                    if (passEnv.onTgtPct >= 76.0) adjMultiplier += 0.02;
+                    else if (passEnv.badPct >= 19.0) adjMultiplier -= 0.02;
+                }
+            }
+
+            // 2. ROOKIES & TEAM CHANGERS (`p.isNewRole`)
+            if (p.isNewRole) {
+                if (p.Pos === 'RB' && rushEnv) {
+                    if (rushEnv.ybcAtt >= 2.8) adjMultiplier += 0.03;
+                    else if (rushEnv.ybcAtt <= 2.0) adjMultiplier -= 0.03;
+
+                    if (rushEnv.yacAtt >= 2.0) adjMultiplier += 0.02;
+                    if (rushEnv.firstDownRate >= 28.0) adjMultiplier += 0.01;
+                }
+
+                if (['WR', 'TE'].includes(p.Pos) && recEnv) {
+                    if (recEnv.yacPerRec >= 5.8) adjMultiplier += 0.03;
+                    else if (recEnv.yacPerRec <= 4.6) adjMultiplier -= 0.02;
+
+                    if (recEnv.adot >= 8.0) adjMultiplier += 0.01;
+                    if (recEnv.dropPct >= 6.0) adjMultiplier -= 0.02;
+                }
+
+                if (p.Pos === 'QB' && passEnv) {
+                    if (passEnv.pktTime >= 2.4 && passEnv.prssPct < 22.0) adjMultiplier += 0.03;
+                    else if (passEnv.prssPct >= 25.0) adjMultiplier -= 0.03;
+
+                    if (passEnv.dropPct >= 6.0) adjMultiplier -= 0.02;
+                }
+            }
 
             // NARROW CAP RANGE: Keeps Adv VBD realistic without blowing up Round 1 scores
             adjMultiplier = Math.max(0.85, Math.min(1.25, adjMultiplier));
