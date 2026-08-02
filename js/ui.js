@@ -485,10 +485,14 @@ const UI = {
             }
         });
 
+        let topWRs = State.availablePlayers.filter(p => p.Pos === 'WR').slice(0, 3);
+        let topRBs = State.availablePlayers.filter(p => p.Pos === 'RB').slice(0, 3);
+        let avgTopFlexVBD = 0, flexBenchCount = 0;
+        [...topWRs, ...topRBs].forEach(p => { avgTopFlexVBD += (p.AdvVBD || p.VBD); flexBenchCount++; });
+        avgTopFlexVBD = flexBenchCount > 0 ? (avgTopFlexVBD / flexBenchCount) : 20;
+
         let viablePlayers = State.availablePlayers.filter(p => {
             let pos = p.Pos;
-            
-            // Softened Gating: Kickers ONLY allowed in the bottom 3 rounds.
             if (pos === 'PK' && currentRound <= totalRounds - 3) return false;
 
             if (userTeam.counts[pos] < State.settings.roster[pos].max) return true;
@@ -501,43 +505,57 @@ const UI = {
             // 1. BASE: Points Per Week + Adv VBD
             let score = ((p._addedPPW || 0) * 20) + ((p.AdvVBD || p.VBD) * 0.5); 
 
-            // 2. ROSTER NEEDS: Include FLEX awareness so WRs/RBs aren't ignored
+            // 2. DYNAMIC FLEX & STARTER SCORING
             let starterMax = State.settings.roster[p.Pos].max;
             let currentCount = userTeam.counts[p.Pos];
             let flexOpen = ['RB', 'WR', 'TE'].includes(p.Pos) && (userTeam.counts['Flex'] < State.settings.roster.Flex.max);
 
             if (currentCount < starterMax) {
-                score += 25; // Main starter slot open
+                score += 25; // Main position slot open (e.g., WR1, RB1, TE1)
             } else if (flexOpen) {
-                score += 18; // Flex starter slot open
+                // Candidate is competing for a FLEX slot!
+                if (p.Pos === 'TE') {
+                    // Compare 2nd TE directly to available RBs/WRs:
+                    let teAdvantage = (p.AdvVBD || p.VBD) - avgTopFlexVBD;
+                    if (teAdvantage > 5) {
+                        score += 18 + teAdvantage; // Elite TE2 that easily beats available RBs/WRs!
+                    } else {
+                        score += 5; // Average TE2 takes back seat to empty WR/RB starter slots
+                    }
+                } else {
+                    score += 18; // RB/WR Flex starter slot open
+                }
             } else {
                 let overage = currentCount - starterMax;
                 if (['PK', 'DST', 'QB', 'TE'].includes(p.Pos)) score -= 40; 
                 else if (['RB', 'WR'].includes(p.Pos)) score -= (overage * 8);
             }
 
-            // 3. APPLY SCARCITY BOOST (Dampened for onesie positions like TE/QB)
+            // 3. APPLY SCARCITY BOOST
+            let scarcityBonus = 0;
             let posRank = State.availablePlayers.filter(x => x.Pos === p.Pos).findIndex(x => x._cleanName === p._cleanName);
             if (posRank < 3 && scarcity[p.Pos]) {
-                score += scarcity[p.Pos];
-                p._scarcityBoost = scarcity[p.Pos];
-            } else {
-                p._scarcityBoost = 0;
+                // Ignore TE scarcity warnings if TE1 is already drafted and TE2 isn't an elite Flex option
+                if (currentCount < starterMax || p.Pos !== 'TE' || ((p.AdvVBD || p.VBD) - avgTopFlexVBD > 5)) {
+                    scarcityBonus = scarcity[p.Pos];
+                }
             }
+            score += scarcityBonus;
+            p._scarcityBoost = scarcityBonus;
 
-            // 4. ADP VALUE: Cap max penalty to 10pts so high VBD players aren't killed
+            // 4. ADP VALUE
             if (p.adp) {
                 let adpDiff = p.adp - currentOverallPick;
                 if (adpDiff > 12) {
                     score -= Math.min(10, adpDiff * 0.3); 
                 } else if (adpDiff < -12) {
-                    score += 8; 
+                    score += 8;
                 }
             }
 
             let userOwnsStarter = p.starterName && userTeam.roster.some(r => r._cleanName === State.normalizeName(p.starterName));
             if (userOwnsStarter) {
-                score += 14; // Bonus for securing your elite RB's backup
+                score += 5; // Bonus for securing your elite RB's backup
                 p._isInsuranceBoost = true;
             }
 

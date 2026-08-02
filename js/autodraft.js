@@ -40,6 +40,12 @@ window.AutoDraft = {
             }
         });
 
+        let topWRs = State.availablePlayers.filter(p => p.Pos === 'WR').slice(0, 3);
+        let topRBs = State.availablePlayers.filter(p => p.Pos === 'RB').slice(0, 3);
+        let avgTopFlexVBD = 0, flexBenchCount = 0;
+        [...topWRs, ...topRBs].forEach(p => { avgTopFlexVBD += (p.AdvVBD || p.VBD); flexBenchCount++; });
+        avgTopFlexVBD = flexBenchCount > 0 ? (avgTopFlexVBD / flexBenchCount) : 20;
+
         let evaluatedWrapper = State.availablePlayers.map(p => {
             let multiplier = 1.0;
 
@@ -60,12 +66,20 @@ window.AutoDraft = {
             let currentCount = team.counts[p.Pos];
             let flexOpen = ['RB', 'WR', 'TE'].includes(p.Pos) && (team.counts['Flex'] < State.settings.roster.Flex.max);
 
-            // FLEX-AWARE STARTER BONUS
             let starterBonus = 0;
             if (currentCount < starterMax) {
-                starterBonus = 25; // Main position slot open
+                starterBonus = 25; 
             } else if (flexOpen) {
-                starterBonus = 18; // Flex starter slot open
+                if (p.Pos === 'TE') {
+                    let teAdvantage = (p.AdvVBD || p.VBD) - avgTopFlexVBD;
+                    if (teAdvantage > 5) {
+                        starterBonus = 18 + teAdvantage; // Elite TE2Flex
+                    } else {
+                        starterBonus = 5; 
+                    }
+                } else {
+                    starterBonus = 18; 
+                }
             } else {
                 let overage = currentCount - starterMax; 
                 if (['QB', 'TE', 'PK', 'DST'].includes(p.Pos)) {
@@ -75,29 +89,30 @@ window.AutoDraft = {
                 }
             }
 
-            // KICKERS ONLY in bottom 3 rounds
+            // Scarcity Bonus
+            let posRank = State.availablePlayers.filter(x => x.Pos === p.Pos).findIndex(x => x._cleanName === p._cleanName);
+            let scarcityBonus = 0;
+            if (posRank < 3 && scarcity[p.Pos]) {
+                if (currentCount < starterMax || p.Pos !== 'TE' || ((p.AdvVBD || p.VBD) - avgTopFlexVBD > 5)) {
+                    scarcityBonus = scarcity[p.Pos];
+                }
+            }
+
+            // Kickers strictly in bottom 3 rounds
             if (p.Pos === 'PK' && round <= totalRounds - 3) multiplier *= 0.001;
 
             let baseValue = (p.AdvVBD || p.VBD) * multiplier;
             let ppwValue = (p._addedPPW || 0) * 15;
 
-            // SCARCITY BONUS (Apply if player is top 3 remaining at position)
-            let posRank = State.availablePlayers.filter(x => x.Pos === p.Pos).findIndex(x => x._cleanName === p._cleanName);
-            let scarcityBonus = (posRank < 3 && scarcity[p.Pos]) ? scarcity[p.Pos] : 0;
-
-            // ADP PENALTY (Capped at 10pts so high VBD players aren't killed)
             let adpPenalty = 0;
             if (p.adp) {
                 let adpDiff = p.adp - currentOverallPick;
                 if (adpDiff > 12) adpPenalty = Math.min(10, adpDiff * 0.3);
             }
 
-            let cpuOwnsStarter = p.starterName && team.roster.some(r => r._cleanName === State.normalizeName(p.starterName));
-            let handcuffInsurance = cpuOwnsStarter ? 10 : 0;
-
             return {
                 player: p,
-                adjustedVBD: (baseValue + ppwValue + starterBonus + scarcityBonus + handcuffInsurance) - adpPenalty
+                adjustedVBD: (baseValue + ppwValue + starterBonus + scarcityBonus) - adpPenalty
             };
         });
 
