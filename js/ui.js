@@ -211,46 +211,54 @@ const UI = {
 
         setTimeout(() => {
             const ctx = document.getElementById('player-weekly-chart');
-            if (ctx && p.weeklyProjections) {
-                if (window.playerChartInst) window.playerChartInst.destroy();
+            if (!ctx) return;
 
-                if (typeof Chart === 'undefined' || typeof Chart !== 'function') {
-                    ctx.innerHTML = '<div class="flex h-full items-center justify-center text-sm text-gray-500">Chart unavailable in this environment.</div>';
-                    return;
-                }
-                
-                let labels = [], data = [], colors = [];
-                for (let w = 1; w <= 18; w++) {
-                    labels.push(`Wk ${w}`);
-                    let pts = p.weeklyProjections[`W${w}`] || 0;
-                    data.push(pts.toFixed(1));
-                    
-                    if (w >= 15 && w <= 17) colors.push('rgba(245, 158, 11, 0.7)');
-                    else colors.push('rgba(79, 70, 229, 0.7)');
-                }
-
-                window.playerChartInst = new Chart(ctx, {
-                    type: 'bar',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            label: 'Projected Fantasy Pts',
-                            data: data,
-                            backgroundColor: colors,
-                            borderRadius: 4
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: { legend: { display: false } },
-                        scales: {
-                            y: { beginAtZero: true, grid: { display: false } },
-                            x: { grid: { display: false }, ticks: { font: { size: 9 } } }
-                        }
-                    }
-                });
+            if (window.playerChartInst) {
+                window.playerChartInst.destroy();
+                window.playerChartInst = null;
             }
+
+            if (!p.weeklyProjections || Object.keys(p.weeklyProjections).length === 0) {
+                ctx.innerHTML = '<div class="flex h-full items-center justify-center text-sm text-gray-500">No weekly projection data available.</div>';
+                return;
+            }
+
+            if (typeof window.Chart !== 'function') {
+                ctx.innerHTML = '<div class="flex h-full items-center justify-center text-sm text-gray-500">Chart unavailable in this environment.</div>';
+                return;
+            }
+            
+            let labels = [], data = [], colors = [];
+            for (let w = 1; w <= 18; w++) {
+                labels.push(`Wk ${w}`);
+                let pts = Number(p.weeklyProjections[`W${w}`] || 0);
+                data.push(pts);
+                
+                if (w >= 15 && w <= 17) colors.push('rgba(245, 158, 11, 0.7)');
+                else colors.push('rgba(79, 70, 229, 0.7)');
+            }
+
+            window.playerChartInst = new window.Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Projected Fantasy Pts',
+                        data: data,
+                        backgroundColor: colors,
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true, grid: { display: false } },
+                        x: { grid: { display: false }, ticks: { font: { size: 9 } } }
+                    }
+                }
+            });
         }, 50);
     },
 
