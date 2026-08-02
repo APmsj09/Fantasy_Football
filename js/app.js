@@ -120,6 +120,11 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (e) { }
 
             try {
+                const olRes = await fetch('./OL_Rank_26.tsv');
+                State.mergeOLRankData(State.parseOLRankData(await olRes.text()));
+            } catch (e) { console.warn('Could not load OL_Rank_26.tsv'); }
+
+            try {
                 const historyRes = await fetch('./DraftHistory.tsv');
                 State.parseHistory(await historyRes.text());
                 if (typeof renderInsightsTable === "function") renderInsightsTable();

@@ -23,6 +23,7 @@ const State = {
     teamTargets: [],
     advancedMetrics: [],
     sosData: [],
+    olRankings: [],
 
     // ==========================================
     // BULLETPROOF DATA NORMALIZATION ENGINE
@@ -31,12 +32,44 @@ const State = {
     normalizeTeam(team) {
         if (!team) return '';
         let t = team.toUpperCase().trim();
-        // Standardize different site abbreviations to NFL official
+        // Standardize different site abbreviations and full team names to NFL official abbreviations
         const map = {
             'JAC': 'JAX', 'LAR': 'LA', 'SFO': 'SF', 'NWE': 'NE',
             'KCC': 'KC', 'TAM': 'TB', 'TBB': 'TB', 'GBP': 'GB',
             'NOR': 'NO', 'WSH': 'WAS', 'ARZ': 'ARI', 'HST': 'HOU',
-            'CLV': 'CLE', 'BLV': 'BAL', 'OAK': 'LV', 'SD': 'LAC'
+            'CLV': 'CLE', 'BLV': 'BAL', 'OAK': 'LV', 'SD': 'LAC',
+            'DENVER BRONCOS': 'DEN', 'BRONCOS': 'DEN',
+            'PHILADELPHIA EAGLES': 'PHI', 'EAGLES': 'PHI',
+            'LOS ANGELES RAMS': 'LAR', 'RAMS': 'LAR',
+            'CHICAGO BEARS': 'CHI', 'BEARS': 'CHI',
+            'TAMPA BAY BUCCANEERS': 'TB', 'BUCCANEERS': 'TB',
+            'BUFFALO BILLS': 'BUF', 'BILLS': 'BUF',
+            'CAROLINA PANTHERS': 'CAR', 'PANTHERS': 'CAR',
+            'SAN FRANCISCO 49ERS': 'SF', '49ERS': 'SF',
+            'INDIANAPOLIS COLTS': 'IND', 'COLTS': 'IND',
+            'LOS ANGELES CHARGERS': 'LAC', 'CHARGERS': 'LAC',
+            'ATLANTA FALCONS': 'ATL', 'FALCONS': 'ATL',
+            'DETROIT LIONS': 'DET', 'LIONS': 'DET',
+            'MINNESOTA VIKINGS': 'MIN', 'VIKINGS': 'MIN',
+            'DALLAS COWBOYS': 'DAL', 'COWBOYS': 'DAL',
+            'SEATTLE SEAHAWKS': 'SEA', 'SEAHAWKS': 'SEA',
+            'NEW ENGLAND PATRIOTS': 'NE', 'PATRIOTS': 'NE',
+            'NEW ORLEANS SAINTS': 'NO', 'SAINTS': 'NO',
+            'NEW YORK JETS': 'NYJ', 'JETS': 'NYJ',
+            'KANSAS CITY CHIEFS': 'KC', 'CHIEFS': 'KC',
+            'NEW YORK GIANTS': 'NYG', 'GIANTS': 'NYG',
+            'ARIZONA CARDINALS': 'ARI', 'CARDINALS': 'ARI',
+            'PITTSBURGH STEELERS': 'PIT', 'STEELERS': 'PIT',
+            'JACKSONVILLE JAGUARS': 'JAX', 'JAGUARS': 'JAX',
+            'BALTIMORE RAVENS': 'BAL', 'RAVENS': 'BAL',
+            'MIAMI DOLPHINS': 'MIA', 'DOLPHINS': 'MIA',
+            'GREEN BAY PACKERS': 'GB', 'PACKERS': 'GB',
+            'HOUSTON TEXANS': 'HOU', 'TEXANS': 'HOU',
+            'CINCINNATI BENGALS': 'CIN', 'BENGALS': 'CIN',
+            'LAS VEGAS RAIDERS': 'LV', 'RAIDERS': 'LV',
+            'WASHINGTON COMMANDERS': 'WAS', 'COMMANDERS': 'WAS',
+            'TENNESSEE TITANS': 'TEN', 'TITANS': 'TEN',
+            'CLEVELAND BROWNS': 'CLE', 'BROWNS': 'CLE'
         };
         return map[t] || t;
     },
@@ -54,11 +87,14 @@ const State = {
     normalizeName(name) {
         if (!name) return '';
         let clean = name.toLowerCase().trim();
-        // Remove Sr, Jr, II, III, IV, V
+
+        // Remove suffixes like Sr, Jr, II, III, IV, V
         clean = clean.replace(/\b(jr\.?|sr\.?|iii?|iv|v)\b/g, '');
-        // Remove punctuation (periods, apostrophes, commas) but keep spaces
-        clean = clean.replace(/[.,'"]/g, '');
-        // Replace multiple spaces with a single space
+
+        // Remove punctuation (periods, apostrophes, commas, hyphens) but keep spaces
+        clean = clean.replace(/[.,'"\-]/g, '');
+
+        // Normalize spacing
         clean = clean.replace(/\s+/g, ' ').trim();
 
         // Handle notorious fantasy football aliases manually
@@ -66,7 +102,13 @@ const State = {
             'marquise brown': 'hollywood brown',
             'nathaniel dell': 'tank dell',
             'gabriel davis': 'gabe davis',
-            'mitchell trubisky': 'mitch trubisky'
+            'mitchell trubisky': 'mitch trubisky',
+            'patrick mahomes i': 'patrick mahomes',
+            'patrick mahomes ii': 'patrick mahomes',
+            'patrick mahomes iii': 'patrick mahomes',
+            'chris brooks': 'christopher brooks',
+            'kenny gainwell': 'kenneth gainwell',
+            'chig okonkwo': 'chigoziem okonkwo'
         };
 
         return aliases[clean] || clean;
@@ -96,6 +138,8 @@ const State = {
         let nTeam = this.normalizeTeam(team);
         let nPos = this.normalizePos(pos);
 
+        if (!this.allPlayers || !this.allPlayers.length) return null;
+
         // 0. DST Special Case
         if (nPos === 'DST') {
             return this.allPlayers.find(p => p._cleanPos === 'DST' &&
@@ -111,24 +155,83 @@ const State = {
         let exactNoSpace = this.allPlayers.find(p => p._noSpaceName === noSpaceName);
         if (exactNoSpace) return exactNoSpace;
 
-        // 3. First Initial + Last Name + Same Team
+        // 3. Same team + same position + shared last name or shared first initial/last name
         let nameParts = cleanName.split(' ');
         if (nameParts.length >= 2) {
             let firstInitial = nameParts[0][0];
             let lastName = nameParts[nameParts.length - 1];
 
-            let initialMatch = this.allPlayers.find(p => {
-                let isSameTeam = (p._cleanTeam === nTeam) || !nTeam || !p.Team;
-                return isSameTeam && p._firstInitial === firstInitial && p._lastName === lastName && p._cleanPos === nPos;
+            let sameTeamPosMatch = this.allPlayers.find(p => {
+                const sameTeam = (p._cleanTeam === nTeam) || !nTeam || !p.Team;
+                const samePos = (p._cleanPos === nPos) || !nPos || !p.Pos;
+                if (!sameTeam || !samePos) return false;
+
+                const sameLastName = p._lastName === lastName;
+                const sameInitialLastName = p._firstInitial === firstInitial && p._lastName === lastName;
+                const nameContains = p._cleanName.includes(cleanName) || cleanName.includes(p._cleanName);
+                return sameLastName || sameInitialLastName || nameContains;
             });
-            if (initialMatch) return initialMatch;
+
+            if (sameTeamPosMatch) return sameTeamPosMatch;
         }
 
-        // 4. Substring Match
+        // 4. Flexible substring match only if the team and position line up
         return this.allPlayers.find(p => {
             let isSameTeamAndPos = (p._cleanTeam === nTeam) && (p._cleanPos === nPos);
             return isSameTeamAndPos && (p._cleanName.includes(cleanName) || cleanName.includes(p._cleanName));
         }) || null;
+    },
+
+    parseOLRankData(text) {
+        const rows = text.split(/\r?\n/).filter(row => row.trim() !== '');
+        if (rows.length < 2) return [];
+
+        const headers = rows[0].split('\t').map(h => h.trim());
+        const parsed = [];
+
+        for (let i = 1; i < rows.length; i++) {
+            const vals = rows[i].split('\t').map(v => v.trim());
+            if (vals.length < 5) continue;
+
+            const rank = parseInt(vals[headers.indexOf('Rank')], 10);
+            const tier = vals[headers.indexOf('Tier')] || '';
+            const teamName = vals[headers.indexOf('Team')] || '';
+            const runBlk = parseInt(vals[headers.indexOf('2025 Run Blk')], 10);
+            const passBlk = parseInt(vals[headers.indexOf('2025 Pass Blk')], 10);
+
+            if (!teamName) continue;
+
+            parsed.push({
+                rank: isNaN(rank) ? null : rank,
+                tier,
+                team: this.normalizeTeam(teamName),
+                runBlk: isNaN(runBlk) ? null : runBlk,
+                passBlk: isNaN(passBlk) ? null : passBlk,
+                teamDisplay: teamName
+            });
+        }
+
+        return parsed;
+    },
+
+    mergeOLRankData(olRankList) {
+        this.olRankings = olRankList;
+
+        const rankMap = new Map((olRankList || []).map(entry => [entry.team, entry]));
+        this.allPlayers.forEach(player => {
+            const entry = rankMap.get(this.normalizeTeam(player.Team));
+            if (!entry) return;
+
+            const tierScore = { S: 4, A: 3, B: 2, C: 1, D: 0, E: -1, F: -2 }[entry.tier] ?? 0;
+            const rankBonus = Math.max(-0.18, Math.min(0.18, (entry.rank ? (33 - entry.rank) / 200 : 0)));
+            const lineBonus = (tierScore * 0.03) + rankBonus;
+
+            player.olRank = entry.rank;
+            player.olTier = entry.tier;
+            player.olRunBlk = entry.runBlk;
+            player.olPassBlk = entry.passBlk;
+            player.olRankBonus = lineBonus;
+        });
     },
 
     parseADPData(text) {
@@ -702,6 +805,11 @@ const State = {
             if (p.targetShare && p.targetShare >= 25) adjMultiplier += 0.10;
             if (p.yaconPercent && p.yaconPercent >= 70) adjMultiplier += 0.10;
             if (p.trueAccuracy && p.trueAccuracy > 75) adjMultiplier += 0.05;
+
+            // Offensive-line ranking bonus for skill-position players
+            if (p.olRankBonus) {
+                adjMultiplier += p.olRankBonus;
+            }
 
             // ==========================================
             // NEW: VOLUME & EFFICIENCY BOOSTS

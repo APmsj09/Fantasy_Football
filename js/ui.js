@@ -58,6 +58,7 @@ const UI = {
             let adp = p.adp !== undefined && p.adp !== null ? `${p.adp.toFixed(1)}` : '—';
             let depth = p.depthChart !== undefined && p.depthChart !== null ? `${p.depthChart}` : '—';
             let snap = p.snapShare !== undefined && p.snapShare !== null ? `${p.snapShare.toFixed(0)}%` : '—';
+            let olTag = p.olTier ? `<span class="ml-2 text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">OL ${p.olTier}</span>` : '';
 
             let vbdColor = p.VBD >= 0 ? 'text-emerald-600 font-medium' : 'text-red-500 font-medium';
             let advVbdColor = p.AdvVBD >= 0 ? 'text-indigo-600 font-extrabold' : 'text-red-400 font-bold';
@@ -66,7 +67,7 @@ const UI = {
 
             htmlStr += `
                 <tr class="hover:bg-slate-50 transition-colors cursor-pointer" onclick="UI.showWeeklyModal('${p._cleanName}')">
-                    <td class="px-6 py-3 text-sm font-medium text-gray-900">${p.Player}</td>
+                    <td class="px-6 py-3 text-sm font-medium text-gray-900">${p.Player}${olTag}</td>
                     <td class="px-6 py-3 text-sm text-gray-500">${p.Pos}</td>
                     <td class="px-6 py-3 text-sm text-gray-500">${p.Team}</td>
                     <td class="px-6 py-3 text-sm font-bold text-indigo-600">${p.ProjPts.toFixed(1)}</td>
@@ -169,6 +170,7 @@ const UI = {
         if (p.adp !== undefined && p.adp !== null) advancedContextBits.push(`ADP ${p.adp.toFixed(1)}`);
         if (p.depthChart !== undefined && p.depthChart !== null) advancedContextBits.push(`Depth ${p.depthChart}`);
         if (p.snapShare !== undefined && p.snapShare !== null) advancedContextBits.push(`Snap ${p.snapShare.toFixed(0)}%`);
+        if (p.olTier) advancedContextBits.push(`OL ${p.olTier}${p.olRank ? ` #${p.olRank}` : ''}`);
 
         if (advancedContextBits.length > 0) {
             contextPanel = `
@@ -351,6 +353,7 @@ const UI = {
 
             let byeStr = p.byeWeek && p.byeWeek !== 'N/A' ? `<span class="text-xs text-gray-400 ml-1">Wk ${p.byeWeek}</span>` : '';
             let ageStr = p.age ? `<span class="text-[10px] font-semibold text-slate-500 ml-1">Age ${p.age}</span>` : '';
+            let olBadge = p.olTier ? `<span class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-100 text-slate-700">OL ${p.olTier}</span>` : '';
 
             htmlStr += `
                 <tr class="hover:bg-slate-50 border-b border-gray-100 transition-colors cursor-pointer" onclick="if (!event.target.closest('.draft-btn')) UI.showPlayerCard('${p._cleanName}')">
@@ -360,6 +363,7 @@ const UI = {
                             <span class="text-[11px] font-normal text-gray-400 ml-1.5">${p.Team}</span>
                             ${byeStr}
                             ${ageStr}
+                            ${olBadge}
                             ${insightTag}
                         </div>
                     </td>
