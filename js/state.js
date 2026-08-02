@@ -538,19 +538,22 @@ const State = {
 
         let activeWeeks = 0;
         for (let w = 1; w <= 18; w++) {
-            if (player.sosWeeks[`W${w}`] !== 'BYE') activeWeeks++;
+            let weekVal = player.sosWeeks ? player.sosWeeks[`W${w}`] : 3.0;
+            if (weekVal !== 'BYE') activeWeeks++;
         }
         if (activeWeeks === 0) activeWeeks = 17;
 
         const baseWeeklyPts = player.ProjPts / activeWeeks;
 
         for (let w = 1; w <= 18; w++) {
-            let weekRating = player.sosWeeks[`W${w}`];
+            let weekRating = player.sosWeeks ? player.sosWeeks[`W${w}`] : 3.0;
 
-            if (weekRating === 'BYE' || weekRating === undefined) {
+            if (weekRating === 'BYE') {
                 player.weeklyProjections[`W${w}`] = 0;
             } else {
-                let starDiff = weekRating - 3.0;
+                // Fallback undefined or non-numeric ratings to neutral 3.0 stars
+                let ratingVal = (typeof weekRating === 'number') ? weekRating : 3.0;
+                let starDiff = ratingVal - 3.0;
                 let multiplier = 1 + (starDiff * 0.08);
                 player.weeklyProjections[`W${w}`] = Math.max(0, baseWeeklyPts * multiplier);
             }
@@ -712,6 +715,8 @@ const State = {
 
                 p.ProjPts = basePts + passBonus + rushBonus + recBonus;
             }
+
+            this.calculateWeeklyProjections(p);
         });
     },
 
