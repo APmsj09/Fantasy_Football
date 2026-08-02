@@ -1,4 +1,3 @@
-// Make AutoDraft globally available
 window.AutoDraft = {
     isDrafting: false,
 
@@ -11,7 +10,7 @@ window.AutoDraft = {
 
         if (team && team.isCPU) {
             this.isDrafting = true;
-            await new Promise(r => setTimeout(r, 400)); // Thinking time delay
+            await new Promise(r => setTimeout(r, 400)); 
             this.makeCPUPick(team);
             this.isDrafting = false;
 
@@ -21,11 +20,26 @@ window.AutoDraft = {
     },
 
     makeCPUPick(team) {
+        State.evaluateRosterFits(team, State.availablePlayers);
+
         const round = Math.floor(State.currentPick / State.settings.numTeams) + 1;
+        const totalRounds = State.settings.roster.totalSize;
+        const currentOverallPick = State.currentPick + 1;
         const profile = team.profile;
 
-        // ⚡ OPTIMIZATION: Do not use { ...p } to copy objects. It crashes memory.
-        // Instead, create a tiny wrapper that just holds a reference to the player.
+        // CALCULATE POSITIONAL SCARCITY (Tier Drop-offs)
+        let scarcity = {};
+        ['QB', 'RB', 'WR', 'TE'].forEach(pos => {
+            let avail = State.availablePlayers.filter(p => p.Pos === pos);
+            if (avail.length > 5) {
+                let top = avail[0].AdvVBD || avail[0].VBD;
+                let fifth = avail[4].AdvVBD || avail[4].VBD;
+                scarcity[pos] = Math.max(0, top - fifth) * 0.5;
+            } else {
+                scarcity[pos] = 0;
+            }
+        });
+
         let evaluatedWrapper = State.availablePlayers.map(p => {
             let multiplier = 1.0;
 
@@ -38,25 +52,49 @@ window.AutoDraft = {
                     if (profile.strategy === 'RB-Heavy' && p.Pos === 'RB') multiplier *= 1.4;
                     if (profile.strategy === 'Zero-RB' && p.Pos === 'WR') multiplier *= 1.4;
                 }
-                if (p.Pos === 'QB' && profile.draftsEarlyQB && round >= (profile.qbAvgRound - 1) && round <= (profile.qbAvgRound + 1)) {
-                    multiplier *= 1.8;
+                if (p.Pos === 'QB' && profile.draftsEarlyQB && round >= (profile.qbAvgRound - 1) && round <= (profile.qbAvgRound + 1)) multiplier *= 1.8;
+                if (p.Pos === 'TE' && profile.draftsEarlyTE && round >= (profile.teAvgRound - 1) && round <= (profile.teAvgRound + 1)) multiplier *= 1.8;
+            }
+
+            let starterMax = State.settings.roster[p.Pos].max;
+            let currentCount = team.counts[p.Pos];
+            
+            if (currentCount >= starterMax) {
+                let overage = currentCount - starterMax; 
+                if (['QB', 'TE', 'PK', 'DST'].includes(p.Pos)) {
+                    multiplier *= (overage === 0 ? 0.05 : 0.01); 
+                } else if (['RB', 'WR'].includes(p.Pos)) {
+                    multiplier *= Math.pow(0.5, overage + 1);
                 }
-                if (p.Pos === 'TE' && profile.draftsEarlyTE && round >= (profile.teAvgRound - 1) && round <= (profile.teAvgRound + 1)) {
-                    multiplier *= 1.8;
+            } else {
+                if (round >= 6 && currentCount === 0) {
+                    multiplier *= 1.5; 
                 }
             }
 
-            if (team.counts[p.Pos] > 0 && ['QB', 'TE', 'PK', 'DST'].includes(p.Pos)) {
-                multiplier *= 0.1;
+            // KICKERS ONLY in bottom 3 rounds
+            if (p.Pos === 'PK' && round <= totalRounds - 3) multiplier *= 0.001;
+
+            let baseValue = (p.AdvVBD || p.VBD) * multiplier;
+            let ppwValue = (p._addedPPW || 0) * 15;
+
+            // SCARCITY BONUS (Apply if player is top 3 remaining at position)
+            let posRank = State.availablePlayers.filter(x => x.Pos === p.Pos).findIndex(x => x._cleanName === p._cleanName);
+            let scarcityBonus = (posRank < 3 && scarcity[p.Pos]) ? scarcity[p.Pos] : 0;
+
+            // ADP PENALTY (Softened)
+            let adpPenalty = 0;
+            if (p.adp) {
+                let adpDiff = p.adp - currentOverallPick;
+                if (adpDiff > 12) adpPenalty = (adpDiff * 0.5);
             }
 
             return {
-                player: p, // Direct reference, zero memory cloning
-                adjustedVBD: (p.AdvVBD || p.VBD) * multiplier
+                player: p,
+                adjustedVBD: (baseValue + ppwValue + scarcityBonus) - adpPenalty
             };
         });
 
-        // Sort the wrappers by their newly calculated score
         evaluatedWrapper.sort((a, b) => b.adjustedVBD - a.adjustedVBD);
 
         let selectedPlayer = null;
@@ -80,8 +118,6 @@ window.AutoDraft = {
     },
 
     executeDraft(player, team, slot) {
-        // ⚡ OPTIMIZATION: Splice mutates the array in-place. 
-        // This stops the browser from creating 192 cloned arrays during a mock draft.
         const idx = State.availablePlayers.findIndex(p => p._cleanName === player._cleanName);
         if (idx !== -1) State.availablePlayers.splice(idx, 1);
         
@@ -92,5 +128,4 @@ window.AutoDraft = {
     }
 };
 
-// Global reference
 const AutoDraft = window.AutoDraft;

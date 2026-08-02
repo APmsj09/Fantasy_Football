@@ -440,5 +440,3 @@ document.addEventListener('DOMContentLoaded', () => {
     const dbPosition = document.getElementById('db-position');
     if (dbPosition) dbPosition.addEventListener('change', () => UI.renderDatabase());
 });
-
-const AutoDraft = window.AutoDraft;
