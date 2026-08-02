@@ -12,6 +12,15 @@ document.addEventListener('DOMContentLoaded', () => {
         return null;
     };
 
+    const messageModalXClose = document.getElementById('message-modal-x-close');
+    if (messageModalXClose) messageModalXClose.addEventListener('click', () => {
+        const modal = document.getElementById('message-modal');
+        if (modal) {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+    });
+
     const sidebar = document.getElementById('sidebar');
     const sidebarToggle = document.getElementById('sidebar-toggle');
     const storedSidebarState = localStorage.getItem('draft-pro-sidebar-collapsed');

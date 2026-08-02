@@ -353,6 +353,8 @@ const UI = {
             }
 
             let adpStr = p.adp ? p.adp.toFixed(1) : '-';
+            let byeStr = p.byeWeek && p.byeWeek !== 'N/A' ? `Wk ${p.byeWeek}` : '-';
+            let depthStr = p.depthChart ? `#${p.depthChart}` : '-';
             
             let advTags = [];
 
@@ -397,12 +399,29 @@ const UI = {
                     <td class="px-2 py-2 text-[11px] font-extrabold text-indigo-900">${(p.AdvVBD || p.VBD).toFixed(1)}</td>
                     <td class="px-2 py-2 text-[11px]">${ppwStr}</td>
                     <td class="px-2 py-2 text-[11px] text-gray-600">${adpStr}</td>
+                    <td class="px-2 py-2 text-[11px] text-gray-600">${byeStr}</td>
+                    <td class="px-2 py-2 text-[11px] text-gray-600">${depthStr}</td>
                     <td class="px-3 py-2 text-right">${btnHtml}</td>
                 </tr>
             `;
         });
         
         tbody.innerHTML = htmlStr;
+    },
+
+    sortTable(type, key) {
+        if (type === 'draft') {
+            if (State.draftSortKey === key) State.draftSortAsc = !State.draftSortAsc;
+            else { State.draftSortKey = key; State.draftSortAsc = false; }
+            
+            State.availablePlayers.sort((a, b) => {
+                let valA = a[key] ?? (key === 'AdvVBD' ? (a.AdvVBD || a.VBD) : 0);
+                let valB = b[key] ?? (key === 'AdvVBD' ? (b.AdvVBD || b.VBD) : 0);
+                if (typeof valA === 'string') return State.draftSortAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+                return State.draftSortAsc ? valA - valB : valB - valA;
+            });
+            this.renderDraftAvailablePlayers();
+        }
     },
 
     // ⚡ OVERHAULED RECOMMENDATIONS TO MAXIMIZE PPW, MANAGE KICKERS, AND PREVENT SCARCITY DROP-OFFS

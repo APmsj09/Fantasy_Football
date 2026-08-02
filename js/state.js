@@ -25,6 +25,8 @@ const State = {
     advancedMetrics: [],
     sosData: [],
     olRankings: [],
+    draftSortKey: 'AdvVBD',
+    draftSortAsc: false,
 
     _simCache: { qb: [], rb: [], wr: [], te: [], pk: [], dst: [], flex: [] },
 
