@@ -610,15 +610,19 @@ const UI = {
 
         htmlStr += vbdRecs.map((p, i) => {
             let userOwnsStarter = p.starterName && userTeam.roster.some(r => r._cleanName === State.normalizeName(p.starterName));
+            let starterMax = State.settings.roster[p.Pos] ? State.settings.roster[p.Pos].max : 1;
+            let isStarterNeeded = userTeam.counts[p.Pos] < starterMax;
+
             let highlight = '';
             if (userOwnsStarter) highlight = `🔒 Insurance for ${p.starterName}`;
             else if (p.isNewRole && p.depthChart === 1) highlight = `📋 Inherits ${p.Team} ${p.Pos}1 Role Volume`;
             else if (p.adp && (p.adp < currentOverallPick)) highlight = `Value Pick (ADP ${p.adp.toFixed(0)})`;
-            else if (p._scarcityBoost > 3) highlight = `Tier Drop-off: Grab a ${p.Pos} now`;
+            else if (p._scarcityBoost > 3 && isStarterNeeded) highlight = `Tier Drop-off: Grab a ${p.Pos} now`;
             else if (p.targetShare && p.targetShare >= 25) highlight = `Alpha ${p.targetShare}% Target Share`;
             else if (p.olRunBlk && p.olRunBlk <= 5 && p.Pos === 'RB') highlight = `Elite Run Blocking (OL Rank #${p.olRunBlk})`;
-            else highlight = `Strong Team Need`;
-
+            else if (isStarterNeeded) highlight = `Strong Team Need`;
+            else highlight = `Flex / Bench Depth`;
+            
             return `
             <div class="p-3 bg-indigo-800/80 rounded-xl border border-indigo-700/50 flex justify-between items-center shadow-inner cursor-pointer hover:bg-indigo-700 transition mb-2" onclick="UI.showPlayerCard('${p._cleanName}')">
                 <div>

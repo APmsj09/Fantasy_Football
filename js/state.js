@@ -954,9 +954,9 @@ const State = {
 
             //Kicker and Defense VBD multipliers
             if (p.Pos === 'PK') {
-                rawVBD = rawVBD * 0.05; // from 0.3
+                rawVBD = (rawVBD * 0.05) - 30.0; // Pushes Kickers below skill players until Round 14+
             } else if (p.Pos === 'DST') {
-                rawVBD = rawVBD * 0.20; // from 0.3
+                rawVBD = (rawVBD * 0.10) - 20.0; // Pushes DSTs below skill players until Round 10+
             }
             p.VBD = rawVBD;
 
