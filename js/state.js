@@ -612,9 +612,19 @@ const State = {
         this.advancedMetrics = [...this.advancedMetrics, ...advancedDataArray];
 
         advancedDataArray.forEach(advPlayer => {
-            let p = this.matchPlayerFast(advPlayer.Player, advPlayer.Team, advPlayer.Pos || advPlayer.Position);
-
+            let rowYear = advPlayer['Year'] || advPlayer['YEAR'];
             if (p) {
+                // ===========================================================
+                // SAVE HISTORICAL DATA
+                // ===========================================================
+                let rowYear = advPlayer['Year'] || advPlayer['YEAR'];
+                
+                if (rowYear && rowYear < 2025) {
+                    if (!p.historicalStats) p.historicalStats = {};
+                    p.historicalStats[rowYear] = advPlayer; // Save the old year safely
+                    return; // Stop here so it doesn't overwrite the 2025 main stats below
+                }
+                // ===========================================================
                 if (advPlayer['RZ TGT'] !== undefined) p.rzTgt = advPlayer['RZ TGT'];
                 if (advPlayer['RZ ATT'] !== undefined) p.rzAtt = advPlayer['RZ ATT'];
                 if (advPlayer['% TM'] !== undefined) p.targetShare = advPlayer['% TM'];
