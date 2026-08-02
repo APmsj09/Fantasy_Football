@@ -562,43 +562,56 @@ const State = {
 
         let score = 0;
         let req = this.settings.roster;
+        let b = this.positionalWeeklyBaselines || { QB: 18.0, RB: 10.5, WR: 11.0, TE: 7.5, PK: 7.0, DST: 7.0 };
 
-        // 1. QB SCORING (Fix: Primary QB1 stays starter on non-bye weeks)
-        qb.sort((a, b) => b.val - a.val);
-        if (req.QB.max === 1) {
-            // Pick highest season-projected QB as permanent QB1
-            let primaryQB = qb.reduce((max, curr) => (curr.player.ProjPts > max.player.ProjPts ? curr : max), qb[0]);
-            if (primaryQB) {
+        // 1. QB SCORING (Waiver baseline for empty slot, Bye-week only for QB2)
+        if (req.QB.max === 1 && !State.isPositionFlexEligible('QB')) {
+            if (qb.length === 0) {
+                // Empty QB slot = Waiver replacement level
+                score += b.QB || 18.0;
+            } else {
+                // Pick highest season-projected QB as permanent QB1
+                let primaryQB = qb.reduce((max, curr) => (curr.player.ProjPts > max.player.ProjPts ? curr : max), qb[0]);
                 if (primaryQB.val > 0) {
-                    score += primaryQB.val; // QB1 is active
+                    score += primaryQB.val; // QB1 active
                 } else {
-                    // QB1 is on BYE week -> Backup QB plays
+                    // QB1 on BYE week -> Backup QB or waiver baseline
                     let backupQB = qb.find(q => q !== primaryQB && q.val > 0);
-                    score += backupQB ? backupQB.val : 0;
+                    score += backupQB ? backupQB.val : (b.QB || 18.0);
                 }
             }
         } else {
-            // Multi-QB / Superflex logic
+            // Multi-QB / Superflex
+            qb.sort((a, b) => b.val - a.val);
             for (let i = 0; i < req.QB.max; i++) {
                 if (i < qb.length) score += qb[i].val;
+                else score += b.QB || 18.0;
             }
         }
 
         // 2. PK & DST SCORING
         pk.sort((a, b) => b - a);
         dst.sort((a, b) => b - a);
-        for (let i = 0; i < req.PK.max; i++) if (i < pk.length) score += pk[i];
-        for (let i = 0; i < req.DST.max; i++) if (i < dst.length) score += dst[i];
+        for (let i = 0; i < req.PK.max; i++) {
+            if (i < pk.length) score += pk[i];
+            else score += b.PK || 7.0;
+        }
+        for (let i = 0; i < req.DST.max; i++) {
+            if (i < dst.length) score += dst[i];
+            else score += b.DST || 7.0;
+        }
 
         // 3. FLEX POSITIONS (RB, WR, TE)
         rb.sort((a, b) => b - a);
         wr.sort((a, b) => b - a);
         te.sort((a, b) => b - a);
 
-        let processFlexPos = (arr, maxReq) => {
+        let processFlexPos = (arr, maxReq, posKey) => {
             let s = 0;
+            let bVal = b[posKey] || 10.0;
             for (let i = 0; i < maxReq; i++) {
-                if (i < arr.length) s += arr[i]; // No fake baseline subsidy for empty WR/RB slots!
+                if (i < arr.length) s += arr[i];
+                else s += bVal; // Empty starter slot uses positional replacement baseline
             }
             for (let i = maxReq; i < arr.length; i++) {
                 flex.push(arr[i]);
@@ -606,14 +619,16 @@ const State = {
             return s;
         };
 
-        score += processFlexPos(rb, req.RB.max);
-        score += processFlexPos(wr, req.WR.max);
-        score += processFlexPos(te, req.TE.max);
+        score += processFlexPos(rb, req.RB.max, 'RB');
+        score += processFlexPos(wr, req.WR.max, 'WR');
+        score += processFlexPos(te, req.TE.max, 'TE');
 
         // Fill remaining Flex slots
+        let flexBaseline = ((b.RB || 10.5) + (b.WR || 11.0)) / 2;
         flex.sort((a, b) => b - a);
         for (let i = 0; i < req.Flex.max; i++) {
             if (i < flex.length) score += flex[i];
+            else score += flexBaseline;
         }
 
         return score;
