@@ -503,15 +503,17 @@ const UI = {
         const getSurvivalProb = (adp) => {
             let playerAdp = adp || currentOverallPick;
             let diff = playerAdp - nextUserOverallPick;
-            return 1 / (1 + Math.exp(-0.25 * diff));
+            return 1 / (1 + Math.exp(-0.10 * diff)); // Flattened from 0.25 to 0.10
         };
 
         // Helper: Calculate Opportunity-Adjusted Recommendation Score
         const getOpportunityScore = (p) => {
             let baseVal = ((p._addedPPW || 0) * 15) + (p.AdvVBD || p.VBD);
             let survivalProb = getSurvivalProb(p.adp);
-            let urgency = 1 - survivalProb; // 1.0 = High Urgency (will be taken), 0.0 = Can wait
-            return baseVal * (1 + (0.6 * urgency));
+            let urgency = 1 - survivalProb; 
+            
+            // Softened: Max 20% tie-breaker boost instead of 60%
+            return baseVal * (1 + (0.20 * urgency));
         };
 
         // Calculate Positional Tier Scarcity
@@ -611,7 +613,8 @@ const UI = {
 
         if (bestFit) {
             let survivalProb = getSurvivalProb(bestFit.adp);
-            let urgencyTag = survivalProb < 0.15 ? `🔥 Must Pick Now` : `📈 +${bestFit._addedPPW.toFixed(1)} PPW Lineup Fit`;
+            let ppwText = `+${bestFit._addedPPW.toFixed(1)} PPW Lineup Fit`;
+            let urgencyTag = (survivalProb < 0.15 && bestFit.adp && bestFit.adp < nextUserOverallPick) ? ` • ⚡ High Urgency` : ``;
 
             htmlStr += `
             <div class="p-3 bg-gradient-to-br from-emerald-600 to-teal-800 rounded-xl border border-emerald-500 flex justify-between items-center shadow-md cursor-pointer hover:shadow-lg transition mb-2" onclick="UI.showPlayerCard('${bestFit._cleanName}')">
@@ -620,7 +623,7 @@ const UI = {
                         <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg> Best Lineup Addition
                     </span>
                     <h4 class="font-bold text-sm text-white">${bestFit.Player}</h4>
-                    <p class="text-[10px] text-emerald-100 font-medium">${bestFit.Pos} • ${urgencyTag}</p>
+                    <p class="text-[10px] text-emerald-100 font-medium">${bestFit.Pos} • ${ppwText}${urgencyTag}</p>
                 </div>
             </div>`;
         }
@@ -631,13 +634,14 @@ const UI = {
             let posRoster = State.settings.roster[p.Pos];
             let starterMax = posRoster ? posRoster.max : 1;
             let isStarterNeeded = userTeam.counts[p.Pos] < starterMax;
+            let hasPositiveValue = (p.AdvVBD || p.VBD) > 0;
 
             let highlight = '';
             if (userOwnsStarter) highlight = `🔒 Insurance for ${p.starterName}`;
-            else if (survivalProb < 0.15 && isStarterNeeded) highlight = `🔥 Must Pick Now (Gone by Pick ${nextUserOverallPick})`;
+            else if (survivalProb < 0.15 && (isStarterNeeded || hasPositiveValue)) highlight = `⚡ High Urgency (Gone by Pick ${nextUserOverallPick})`;
+            else if (p.adp && (p.adp < currentOverallPick)) highlight = `ADP Value (Passed ADP ${p.adp.toFixed(0)})`;
             else if (survivalProb > 0.85 && currentRound < 10) highlight = `⏳ Can Wait (${(survivalProb * 100).toFixed(0)}% chance at Pick ${nextUserOverallPick})`;
             else if (p.isNewRole && p.depthChart === 1) highlight = `📋 Inherits ${p.Team} ${p.Pos}1 Role Volume`;
-            else if (p.adp && (p.adp < currentOverallPick)) highlight = `Value Pick (ADP ${p.adp.toFixed(0)})`;
             else if (p._scarcityBoost > 3 && isStarterNeeded) highlight = `Tier Drop-off: Grab a ${p.Pos} now`;
             else if (isStarterNeeded) highlight = `Strong Team Need`;
             else highlight = `Flex / Bench Depth`;

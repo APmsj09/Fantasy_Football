@@ -963,10 +963,10 @@ const State = {
             let adjMultiplier = 1.0;
 
             // 1. ADP Value Validation (Softened)
-            if (p.adp && p.adp > 0) {
-                if (p.adp <= 12) adjMultiplier += 0.03;
-                else if (p.adp <= 36) adjMultiplier += 0.02;
-            }
+            //if (p.adp && p.adp > 0) {
+            //    if (p.adp <= 12) adjMultiplier += 0.03;
+            //    else if (p.adp <= 36) adjMultiplier += 0.02;
+            //}
 
             // 2. Role Security (De-duplicated: Snap Share takes priority over Depth Chart)
             if (p.snapShare) {

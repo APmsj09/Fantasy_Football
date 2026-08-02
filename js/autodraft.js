@@ -102,7 +102,7 @@ window.AutoDraft = {
             let adpPenalty = 0;
             if (p.adp) {
                 let adpDiff = p.adp - currentOverallPick;
-                if (adpDiff > 12) adpPenalty = Math.min(10, adpDiff * 0.3);
+                if (adpDiff > 18) adpPenalty = Math.min(5, (adpDiff - 18) * 0.15); // Softened threshold
             }
 
             return {
