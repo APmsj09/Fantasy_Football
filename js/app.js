@@ -5,6 +5,13 @@ window.appGoToSetup = function (mode) {
 
 document.addEventListener('DOMContentLoaded', () => {
 
+    const resolveClickTarget = (event) => {
+        const target = event?.target;
+        if (target instanceof Element) return target;
+        if (target?.parentElement instanceof Element) return target.parentElement;
+        return null;
+    };
+
     const sidebar = document.getElementById('sidebar');
     const sidebarToggle = document.getElementById('sidebar-toggle');
     const storedSidebarState = localStorage.getItem('draft-pro-sidebar-collapsed');
@@ -20,7 +27,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.querySelectorAll('.nav-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
-            let target = e.target.closest('button').getAttribute('data-target');
+            const triggerEl = resolveClickTarget(e);
+            const buttonEl = triggerEl?.closest('button');
+            const target = buttonEl?.getAttribute('data-target');
+            if (!target) return;
+
             UI.switchTab(target);
             
             if(target === 'insights-screen' && State.teamTargets.length > 0) {
@@ -31,16 +42,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.querySelectorAll('.draft-tab-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
+            const triggerEl = resolveClickTarget(e);
+            const tabButton = triggerEl?.closest('.draft-tab-btn');
+            if (!tabButton) return;
+
             document.querySelectorAll('.draft-tab-btn').forEach(b => {
                 b.classList.remove('text-indigo-600', 'border-b-2', 'border-indigo-600', 'bg-white');
                 b.classList.add('text-gray-500', 'hover:bg-gray-100');
             });
-            let t = e.target;
-            t.classList.remove('text-gray-500', 'hover:bg-gray-100');
-            t.classList.add('text-indigo-600', 'border-b-2', 'border-indigo-600', 'bg-white');
+            tabButton.classList.remove('text-gray-500', 'hover:bg-gray-100');
+            tabButton.classList.add('text-indigo-600', 'border-b-2', 'border-indigo-600', 'bg-white');
 
             document.querySelectorAll('.draft-tab-content').forEach(c => c.classList.add('hidden'));
-            document.getElementById(t.getAttribute('data-target')).classList.remove('hidden');
+            const targetContent = document.getElementById(tabButton.getAttribute('data-target'));
+            if (targetContent) targetContent.classList.remove('hidden');
         });
     });
 
@@ -153,6 +168,10 @@ document.addEventListener('DOMContentLoaded', () => {
             startBtn.disabled = false;
             startBtn.textContent = "Start Draft Engine";
 
+            if (document.getElementById('insights-screen').classList.contains('active') && State.teamTargets.length > 0) {
+                renderTeamInsightsChart();
+            }
+
         } catch (err) {
             console.error(err);
             if (loadBtn) {
@@ -166,9 +185,13 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('load-data-button').addEventListener('click', autoLoadData);
 
     function renderTeamInsightsChart() {
+        if (typeof Chart === 'undefined') return; // Safety check to ensure CDN loaded
+
         let ctx = document.getElementById('team-targets-chart');
         if (!ctx) {
             let container = document.getElementById('insights-screen').querySelector('.bg-white');
+            if (!container) return; // Guard against DOM missing
+
             let chartDiv = document.createElement('div');
             chartDiv.innerHTML = `
                 <h3 class="text-xl font-extrabold text-gray-900 mt-10 mb-4 border-t pt-8">Offensive Positional Target Distribution</h3>
@@ -179,43 +202,49 @@ document.addEventListener('DOMContentLoaded', () => {
             ctx = document.getElementById('team-targets-chart');
         }
 
-        if (window.teamTargetsChartInst) window.teamTargetsChartInst.destroy();
+        // Defer execution by 50ms so the browser can compute the un-hidden tab's layout
+        setTimeout(() => {
+            if (window.teamTargetsChartInst) {
+                window.teamTargetsChartInst.destroy();
+            }
 
-        let labels = [];
-        let wrData = [], rbData = [], teData = [];
+            let labels = [];
+            let wrData = [], rbData = [], teData = [];
 
-        let sorted = [...State.teamTargets].sort((a, b) => (b['WR %'] || 0) - (a['WR %'] || 0));
+            let sorted = [...State.teamTargets].sort((a, b) => (b['WR %'] || 0) - (a['WR %'] || 0));
 
-        sorted.forEach(t => {
-            labels.push(t.Team);
-            wrData.push(t['WR %'] || 0);
-            rbData.push(t['RB %'] || 0);
-            teData.push(t['TE %'] || 0);
-        });
+            sorted.forEach(t => {
+                labels.push(t.Team);
+                wrData.push(t['WR %'] || 0);
+                rbData.push(t['RB %'] || 0);
+                teData.push(t['TE %'] || 0);
+            });
 
-        window.teamTargetsChartInst = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: labels,
-                datasets: [
-                    { label: 'WR %', data: wrData, backgroundColor: 'rgba(79, 70, 229, 0.8)' },
-                    { label: 'TE %', data: teData, backgroundColor: 'rgba(245, 158, 11, 0.8)' },
-                    { label: 'RB %', data: rbData, backgroundColor: 'rgba(16, 185, 129, 0.8)' }
-                ]
-            },
-            options: {
-                responsive: true, maintainAspectRatio: false,
-                scales: {
-                    x: { stacked: true, grid: { display: false } },
-                    y: { stacked: true, max: 100 }
+            window.teamTargetsChartInst = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        { label: 'WR %', data: wrData, backgroundColor: 'rgba(79, 70, 229, 0.8)' },
+                        { label: 'TE %', data: teData, backgroundColor: 'rgba(245, 158, 11, 0.8)' },
+                        { label: 'RB %', data: rbData, backgroundColor: 'rgba(16, 185, 129, 0.8)' }
+                    ]
                 },
-                plugins: {
-                    tooltip: {
-                        callbacks: { label: function(context) { return context.dataset.label + ': ' + context.raw + '%'; } }
+                options: {
+                    responsive: true, 
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { stacked: true, grid: { display: false } },
+                        y: { stacked: true, max: 100 }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: { label: function(context) { return context.dataset.label + ': ' + context.raw + '%'; } }
+                        }
                     }
                 }
-            }
-        });
+            });
+        }, 50);
     }
 
     function renderTeamTargets(position) {
@@ -256,29 +285,34 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     document.addEventListener('click', (e) => {
-        if (e.target.classList.contains('target-tab-btn')) {
+        const triggerEl = resolveClickTarget(e);
+        if (!triggerEl) return;
+
+        if (triggerEl.classList.contains('target-tab-btn')) {
             document.querySelectorAll('.target-tab-btn').forEach(b => {
                 b.classList.remove('bg-indigo-100', 'text-indigo-700');
                 b.classList.add('bg-gray-100', 'text-gray-600');
             });
-            e.target.classList.remove('bg-gray-100', 'text-gray-600');
-            e.target.classList.add('bg-indigo-100', 'text-indigo-700');
-            renderTeamTargets(e.target.getAttribute('data-pos'));
+            triggerEl.classList.remove('bg-gray-100', 'text-gray-600');
+            triggerEl.classList.add('bg-indigo-100', 'text-indigo-700');
+            renderTeamTargets(triggerEl.getAttribute('data-pos'));
         }
 
-        if (e.target.classList.contains('metric-tab-btn')) {
+        if (triggerEl.classList.contains('metric-tab-btn')) {
             document.querySelectorAll('.metric-tab-btn').forEach(b => {
                 b.classList.remove('bg-emerald-100', 'text-emerald-700');
                 b.classList.add('bg-gray-100', 'text-gray-600');
             });
-            e.target.classList.remove('bg-gray-100', 'text-gray-600');
-            e.target.classList.add('bg-emerald-100', 'text-emerald-700');
-            renderMetricLeaders(e.target.getAttribute('data-metric'));
+            triggerEl.classList.remove('bg-gray-100', 'text-gray-600');
+            triggerEl.classList.add('bg-emerald-100', 'text-emerald-700');
+            renderMetricLeaders(triggerEl.getAttribute('data-metric'));
         }
     });
 
-    document.getElementById('setting-teams').addEventListener('change', () => UI.renderProfileAssignments());
-    document.getElementById('setting-user-pick').addEventListener('change', () => UI.renderProfileAssignments());
+    const settingsTeams = document.getElementById('setting-teams');
+    if (settingsTeams) settingsTeams.addEventListener('change', () => UI.renderProfileAssignments());
+    const settingsUserPick = document.getElementById('setting-user-pick');
+    if (settingsUserPick) settingsUserPick.addEventListener('change', () => UI.renderProfileAssignments());
 
     function renderInsightsTable() {
         const tbody = document.getElementById('insights-table-body');
@@ -345,7 +379,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.addEventListener('click', (e) => {
-        const draftBtn = e.target.closest('.draft-btn');
+        const triggerEl = resolveClickTarget(e);
+        const draftBtn = triggerEl?.closest('.draft-btn');
         if (draftBtn) {
             const cleanName = draftBtn.getAttribute('data-player');
             const player = State.availablePlayers.find(p => p._cleanName === cleanName);
@@ -367,7 +402,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    document.getElementById('undo-pick-button').addEventListener('click', () => {
+    const undoPickButton = document.getElementById('undo-pick-button');
+    if (undoPickButton) undoPickButton.addEventListener('click', () => {
         if (State.draftHistory.length === 0) return UI.showMessage("Error", "No picks to undo.");
 
         let lastPick = State.draftHistory.pop();
@@ -385,19 +421,24 @@ document.addEventListener('DOMContentLoaded', () => {
         UI.updateDraftBoard();
     });
 
-    document.getElementById('message-modal-close').addEventListener('click', () => {
+    const messageModalClose = document.getElementById('message-modal-close');
+    if (messageModalClose) messageModalClose.addEventListener('click', () => {
         const modal = document.getElementById('message-modal');
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
+        if (modal) {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
     });
 
     let dbSearchTimeout;
-    document.getElementById('db-search').addEventListener('input', () => {
+    const dbSearch = document.getElementById('db-search');
+    if (dbSearch) dbSearch.addEventListener('input', () => {
         clearTimeout(dbSearchTimeout);
         dbSearchTimeout = setTimeout(() => UI.renderDatabase(), 250);
     });
     
-    document.getElementById('db-position').addEventListener('change', () => UI.renderDatabase());
+    const dbPosition = document.getElementById('db-position');
+    if (dbPosition) dbPosition.addEventListener('change', () => UI.renderDatabase());
 });
 
 window.AutoDraft = {

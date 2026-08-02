@@ -205,6 +205,11 @@ const UI = {
             const ctx = document.getElementById('player-weekly-chart');
             if (ctx && p.weeklyProjections) {
                 if (window.playerChartInst) window.playerChartInst.destroy();
+
+                if (typeof Chart === 'undefined' || typeof Chart !== 'function') {
+                    ctx.innerHTML = '<div class="flex h-full items-center justify-center text-sm text-gray-500">Chart unavailable in this environment.</div>';
+                    return;
+                }
                 
                 let labels = [], data = [], colors = [];
                 for (let w = 1; w <= 18; w++) {
