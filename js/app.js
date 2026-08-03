@@ -155,6 +155,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 './AdvancedWRData.tsv', 
                 './AdvancedTEData.tsv'
             ];
+
+            // Load Position Stats Data (QB, RB, WR, TE)
+            const actualStatsFiles = [
+                './QB_Stats.tsv',
+                './RB_Stats.tsv',
+                './WR_Stats.tsv',
+                './TE_Stats.tsv'
+            ];
+            for (let file of actualStatsFiles) {
+                try {
+                    let statsRes = await fetch(file, fetchOpts);
+                    if (statsRes.ok) {
+                        State.mergeActualStatsData(State.parseAdvancedData(await statsRes.text()));
+                    }
+                } catch (err) { }
+            }
             
             for (let file of advFiles) {
                 try {
@@ -225,7 +241,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             renderTeamTargets('WR');
-            renderMetricLeaders('RZ TGT');
+            renderMetricLeaders('TGT %');
 
             startBtn.classList.remove('opacity-50', 'cursor-not-allowed');
             startBtn.disabled = false;

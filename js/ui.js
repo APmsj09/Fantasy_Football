@@ -247,24 +247,27 @@ const UI = {
         if (p.pastStats && p.pastPts !== undefined) {
             let ps = p.pastStats;
             let volumeStr = '';
+            let tdCount = ps.totalTd || 0;
 
-            // Safely grab TD count without dropping to 0 unexpectedly
-            let tdCount = ps.totalTd ?? ((ps.passTd || 0) + (ps.rushTd || 0) + (ps.recTd || 0));
+            if (p.Pos === 'QB') {
+                volumeStr = `${ps.passYds || 0} Pass Yds (${ps.passTd || 0} TD / ${ps.int || 0} INT) • ${ps.rushYds || 0} Rush Yds (${ps.rushTd || 0} TD)`;
+            } else if (p.Pos === 'RB') {
+                volumeStr = `${ps.rushYds || 0} Rush Yds (${ps.rushTd || 0} TD) • ${ps.rec || 0}/${ps.targets || 0} Rec (${ps.recYds || 0} Yds, ${ps.recTd || 0} TD)`;
+            } else {
+                volumeStr = `${ps.rec || 0}/${ps.targets || 0} Rec (${ps.recYds || 0} Yds, ${ps.recTd || 0} TD)${ps.targetShare ? ` [${ps.targetShare}% Tgt Share]` : ''}`;
+                if (ps.rushYds && ps.rushYds > 0) volumeStr += ` • ${ps.rushYds} Rush Yds`;
+            }
 
-            if (p.Pos === 'QB') volumeStr = `${ps.passYds || 0} Pass Yds, ${ps.rushYds || 0} Rush Yds, ${tdCount} TD`;
-            else if (p.Pos === 'RB') volumeStr = `${ps.rushAtt || 0} Att, ${ps.rushYds || 0} Rush Yds, ${ps.targets || 0} Tgt, ${tdCount} TD`;
-            else volumeStr = `${ps.targets || 0} Tgt, ${ps.rec || 0} Rec, ${ps.recYds || 0} Rec Yds, ${tdCount} TD`;
+            let ppgStr = p.pastPpg ? `${p.pastPpg.toFixed(1)} PPG` : 'N/A';
+            let bigPlayStr = ps.bigPlays ? `<span class="ml-2 text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full">💥 ${ps.bigPlays} Big Plays (20+)</span>` : '';
 
             pastStatsHTML = `
-                <div class="bg-indigo-50/50 border border-indigo-100 p-3.5 rounded-xl mb-4 flex justify-between items-center shadow-sm">
-                    <div>
-                        <span class="text-[10px] uppercase font-bold text-indigo-400 block mb-0.5">2025 Season (Actuals)</span>
-                        <span class="text-xs font-bold text-indigo-900">${volumeStr}</span>
+                <div class="bg-indigo-50/60 border border-indigo-100 p-3.5 rounded-xl mb-4 shadow-sm">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-[10px] uppercase font-bold text-indigo-500 tracking-wider">2025 Actual Performance (${ps.gp || 17} Games)${bigPlayStr}</span>
+                        <span class="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">${ppgStr}</span>
                     </div>
-                    <div class="text-right">
-                        <span class="text-[10px] uppercase font-bold text-indigo-400 block mb-0.5">2025 Pts Generated</span>
-                        <span class="text-sm font-extrabold text-emerald-600">${p.pastPts.toFixed(1)}</span>
-                    </div>
+                    <div class="text-xs font-bold text-indigo-950">${volumeStr}</div>
                 </div>
             `;
         }

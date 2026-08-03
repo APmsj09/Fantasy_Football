@@ -464,6 +464,68 @@ const State = {
         });
     },
 
+    mergeActualStatsData(statsList) {
+        if (!statsList || !Array.isArray(statsList)) return;
+
+        statsList.forEach(row => {
+            const player = row.Player || row.PLAYER;
+            const team = row.Team || row.TEAM;
+            if (!player) return;
+
+            let p = this.matchPlayerFast(player, team, '');
+            if (!p) return;
+
+            if (!p.pastStats) p.pastStats = {};
+            let ps = p.pastStats;
+
+            // Games Played
+            if (row['G'] !== undefined) ps.gp = Number(row['G']) || 17;
+
+            // Passing
+            if (row['CMP'] !== undefined) ps.passCmp = Number(row['CMP']);
+            if (row['PassATT'] !== undefined) ps.passAtt = Number(row['PassATT']);
+            if (row['PassATTYDS'] !== undefined) ps.passYds = Number(row['PassATTYDS']);
+            if (row['PassATTTD'] !== undefined) ps.passTd = Number(row['PassATTTD']);
+            if (row['PassATTY/A'] !== undefined) ps.passYpa = Number(row['PassATTY/A']);
+            if (row['INT'] !== undefined) ps.int = Number(row['INT']);
+
+            // Rushing
+            if (row['RushATT'] !== undefined) ps.rushAtt = Number(row['RushATT']);
+            if (row['RushYDS'] !== undefined) ps.rushYds = Number(row['RushYDS']);
+            if (row['RushY/A'] !== undefined) ps.rushYpa = Number(row['RushY/A']);
+            
+            if (p.Pos === 'QB' && row['TD'] !== undefined) {
+                ps.rushTd = Number(row['TD']);
+            } else if (row['RushTD'] !== undefined) {
+                ps.rushTd = Number(row['RushTD']);
+            }
+
+            // Receiving
+            if (row['TGT'] !== undefined) ps.targets = Number(row['TGT']);
+            if (row['REC'] !== undefined) ps.rec = Number(row['REC']);
+            if (row['RecYDS'] !== undefined) ps.recYds = Number(row['RecYDS']);
+            if (row['RecTD'] !== undefined) ps.recTd = Number(row['RecTD']);
+            if (row['Y/R'] !== undefined) ps.recYpr = Number(row['Y/R']);
+
+            // Target Share %
+            if (row['TGT %'] !== undefined) {
+                p.targetShare = Number(row['TGT %']);
+                ps.targetShare = p.targetShare;
+            }
+
+            // Big Plays (20+ Yard Plays)
+            if (row['20+Rush'] !== undefined) ps.bigRush = Number(row['20+Rush']);
+            if (row['20+Rec'] !== undefined) ps.bigRec = Number(row['20+Rec']);
+            ps.bigPlays = (ps.bigRush || 0) + (ps.bigRec || 0);
+
+            // Fumbles Lost
+            if (row['FL'] !== undefined) ps.fum = Number(row['FL']);
+
+            // Total TDs
+            ps.totalTd = (ps.passTd || 0) + (ps.rushTd || 0) + (ps.recTd || 0);
+        });
+    },
+
     parseSOSData(text) {
         const rows = text.split(/\r?\n/).filter(row => row.trim() !== '');
         if (rows.length < 2) return [];
@@ -921,15 +983,14 @@ const State = {
                 pastPts += (ps.recYds || 0) * this.scoring.recYds;
                 pastPts += (ps.rec || 0) * this.scoring.ppr;
                 pastPts += (ps.int || 0) * this.scoring.int;
+                pastPts += (ps.fum || 0) * this.scoring.fumLost;
 
-                if (ps.passTd) pastPts += ps.passTd * this.scoring.passTd;
-                if (ps.rushTd) pastPts += ps.rushTd * this.scoring.rushTd;
-                if (ps.recTd) pastPts += ps.recTd * this.scoring.recTd;
-                if (ps.totalTd && !ps.passTd && !ps.rushTd && !ps.recTd) {
-                    if (p.Pos === 'QB') pastPts += ps.totalTd * this.scoring.passTd;
-                    else pastPts += ps.totalTd * this.scoring.rushTd;
-                }
+                if (ps.passTd !== undefined) pastPts += ps.passTd * this.scoring.passTd;
+                if (ps.rushTd !== undefined) pastPts += ps.rushTd * this.scoring.rushTd;
+                if (ps.recTd !== undefined) pastPts += ps.recTd * this.scoring.recTd;
+
                 p.pastPts = pastPts;
+                p.pastPpg = (ps.gp && ps.gp > 0) ? (pastPts / ps.gp) : 0;
             }
             // ===========================================================
 
@@ -1066,6 +1127,31 @@ const State = {
 
                 // Top-tier elite passer projection boost
                 if (rawVBD >= 30) adjMultiplier += 0.06;
+            }
+
+            if (p.pastStats) {
+                let ps = p.pastStats;
+
+                // High Efficiency Boosts
+                if (p.Pos === 'QB' && ps.passYpa && ps.passYpa >= 8.0 && ps.passAtt >= 300) {
+                    adjMultiplier += 0.03; // Elite yards per attempt (Stafford, Maye, Goff)
+                }
+                if (p.Pos === 'RB' && ps.rushYpa && ps.rushYpa >= 5.0 && ps.rushAtt >= 150) {
+                    adjMultiplier += 0.03; // High efficiency rusher (Bijan, Gibbs, Achane)
+                }
+                if (['WR', 'TE'].includes(p.Pos) && ps.recYpr && ps.recYpr >= 13.5 && ps.rec >= 50) {
+                    adjMultiplier += 0.02; // Downfield weapon (JSN, Nacua, Pickens)
+                }
+
+                // Explosive Playmakers (20+ Yard Big Plays)
+                if (ps.bigPlays && ps.bigPlays >= 15) {
+                    adjMultiplier += 0.03; // Game-breaker bonus
+                }
+
+                // Target Dominance
+                if (ps.targetShare && ps.targetShare >= 28.0) {
+                    adjMultiplier += 0.04; // Alpha target share (JSN, Amon-Ra, Chase, McBride)
+                }
             }
 
             // ===========================================================
