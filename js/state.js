@@ -467,6 +467,14 @@ const State = {
     mergeActualStatsData(statsList) {
         if (!statsList || !Array.isArray(statsList)) return;
 
+        // Number sanitation helper (prevents NaN from breaking VBD & CPU draft sorting)
+        const cleanNum = (val) => {
+            if (val === undefined || val === null || val === '') return 0;
+            if (typeof val === 'number') return isNaN(val) ? 0 : val;
+            let num = parseFloat(String(val).replace(/,/g, '').replace('%', '').trim());
+            return isNaN(num) ? 0 : num;
+        };
+
         statsList.forEach(row => {
             const player = row.Player || row.PLAYER;
             const team = row.Team || row.TEAM;
@@ -479,47 +487,47 @@ const State = {
             let ps = p.pastStats;
 
             // Games Played
-            if (row['G'] !== undefined) ps.gp = Number(row['G']) || 17;
+            if (row['G'] !== undefined) ps.gp = cleanNum(row['G']) || 17;
 
             // Passing
-            if (row['CMP'] !== undefined) ps.passCmp = Number(row['CMP']);
-            if (row['PassATT'] !== undefined) ps.passAtt = Number(row['PassATT']);
-            if (row['PassATTYDS'] !== undefined) ps.passYds = Number(row['PassATTYDS']);
-            if (row['PassATTTD'] !== undefined) ps.passTd = Number(row['PassATTTD']);
-            if (row['PassATTY/A'] !== undefined) ps.passYpa = Number(row['PassATTY/A']);
-            if (row['INT'] !== undefined) ps.int = Number(row['INT']);
+            if (row['CMP'] !== undefined) ps.passCmp = cleanNum(row['CMP']);
+            if (row['PassATT'] !== undefined) ps.passAtt = cleanNum(row['PassATT']);
+            if (row['PassATTYDS'] !== undefined) ps.passYds = cleanNum(row['PassATTYDS']);
+            if (row['PassATTTD'] !== undefined) ps.passTd = cleanNum(row['PassATTTD']);
+            if (row['PassATTY/A'] !== undefined) ps.passYpa = cleanNum(row['PassATTY/A']);
+            if (row['INT'] !== undefined) ps.int = cleanNum(row['INT']);
 
             // Rushing
-            if (row['RushATT'] !== undefined) ps.rushAtt = Number(row['RushATT']);
-            if (row['RushYDS'] !== undefined) ps.rushYds = Number(row['RushYDS']);
-            if (row['RushY/A'] !== undefined) ps.rushYpa = Number(row['RushY/A']);
+            if (row['RushATT'] !== undefined) ps.rushAtt = cleanNum(row['RushATT']);
+            if (row['RushYDS'] !== undefined) ps.rushYds = cleanNum(row['RushYDS']);
+            if (row['RushY/A'] !== undefined) ps.rushYpa = cleanNum(row['RushY/A']);
             
             if (p.Pos === 'QB' && row['TD'] !== undefined) {
-                ps.rushTd = Number(row['TD']);
+                ps.rushTd = cleanNum(row['TD']);
             } else if (row['RushTD'] !== undefined) {
-                ps.rushTd = Number(row['RushTD']);
+                ps.rushTd = cleanNum(row['RushTD']);
             }
 
             // Receiving
-            if (row['TGT'] !== undefined) ps.targets = Number(row['TGT']);
-            if (row['REC'] !== undefined) ps.rec = Number(row['REC']);
-            if (row['RecYDS'] !== undefined) ps.recYds = Number(row['RecYDS']);
-            if (row['RecTD'] !== undefined) ps.recTd = Number(row['RecTD']);
-            if (row['Y/R'] !== undefined) ps.recYpr = Number(row['Y/R']);
+            if (row['TGT'] !== undefined) ps.targets = cleanNum(row['TGT']);
+            if (row['REC'] !== undefined) ps.rec = cleanNum(row['REC']);
+            if (row['RecYDS'] !== undefined) ps.recYds = cleanNum(row['RecYDS']);
+            if (row['RecTD'] !== undefined) ps.recTd = cleanNum(row['RecTD']);
+            if (row['Y/R'] !== undefined) ps.recYpr = cleanNum(row['Y/R']);
 
             // Target Share %
             if (row['TGT %'] !== undefined) {
-                p.targetShare = Number(row['TGT %']);
+                p.targetShare = cleanNum(row['TGT %']);
                 ps.targetShare = p.targetShare;
             }
 
             // Big Plays (20+ Yard Plays)
-            if (row['20+Rush'] !== undefined) ps.bigRush = Number(row['20+Rush']);
-            if (row['20+Rec'] !== undefined) ps.bigRec = Number(row['20+Rec']);
+            if (row['20+Rush'] !== undefined) ps.bigRush = cleanNum(row['20+Rush']);
+            if (row['20+Rec'] !== undefined) ps.bigRec = cleanNum(row['20+Rec']);
             ps.bigPlays = (ps.bigRush || 0) + (ps.bigRec || 0);
 
             // Fumbles Lost
-            if (row['FL'] !== undefined) ps.fum = Number(row['FL']);
+            if (row['FL'] !== undefined) ps.fum = cleanNum(row['FL']);
 
             // Total TDs
             ps.totalTd = (ps.passTd || 0) + (ps.rushTd || 0) + (ps.recTd || 0);
@@ -978,19 +986,29 @@ const State = {
                 let ps = p.pastStats;
                 let pastPts = 0;
 
-                pastPts += (ps.passYds || 0) * this.scoring.passYds;
-                pastPts += (ps.rushYds || 0) * this.scoring.rushYds;
-                pastPts += (ps.recYds || 0) * this.scoring.recYds;
-                pastPts += (ps.rec || 0) * this.scoring.ppr;
-                pastPts += (ps.int || 0) * this.scoring.int;
-                pastPts += (ps.fum || 0) * this.scoring.fumLost;
+                let passYds = ps.passYds || 0;
+                let rushYds = ps.rushYds || 0;
+                let recYds = ps.recYds || 0;
+                let rec = ps.rec || 0;
+                let int = ps.int || 0;
+                let fum = ps.fum || 0;
+                let passTd = ps.passTd || 0;
+                let rushTd = ps.rushTd || 0;
+                let recTd = ps.recTd || 0;
 
-                if (ps.passTd !== undefined) pastPts += ps.passTd * this.scoring.passTd;
-                if (ps.rushTd !== undefined) pastPts += ps.rushTd * this.scoring.rushTd;
-                if (ps.recTd !== undefined) pastPts += ps.recTd * this.scoring.recTd;
+                pastPts += passYds * (this.scoring.passYds || 0.04);
+                pastPts += rushYds * (this.scoring.rushYds || 0.1);
+                pastPts += recYds * (this.scoring.recYds || 0.1);
+                pastPts += rec * (this.scoring.ppr || 1);
+                pastPts += int * (this.scoring.int || -2);
+                pastPts += fum * (this.scoring.fumLost || -2);
+                pastPts += passTd * (this.scoring.passTd || 6);
+                pastPts += rushTd * (this.scoring.rushTd || 6);
+                pastPts += recTd * (this.scoring.recTd || 6);
 
-                p.pastPts = pastPts;
-                p.pastPpg = (ps.gp && ps.gp > 0) ? (pastPts / ps.gp) : 0;
+                p.pastPts = isNaN(pastPts) ? 0 : pastPts;
+                p.pastPpg = (ps.gp && ps.gp > 0) ? (p.pastPts / ps.gp) : 0;
+                if (isNaN(p.pastPpg)) p.pastPpg = 0;
             }
             // ===========================================================
 
@@ -1235,9 +1253,14 @@ const State = {
             } else {
                 p.AdvVBD = p.VBD / adjMultiplier;
             }
+
+            // Safety guards to prevent NaN values
+            if (isNaN(p.VBD)) p.VBD = 0;
+            if (isNaN(p.AdvVBD)) p.AdvVBD = p.VBD;
         });
 
-        this.allPlayers.sort((a, b) => b.AdvVBD - a.AdvVBD);
+        // Fail-safe sort
+        this.allPlayers.sort((a, b) => (b.AdvVBD || 0) - (a.AdvVBD || 0));
         this.availablePlayers = [...this.allPlayers];
     },
 
