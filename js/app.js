@@ -119,7 +119,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const loadBtn = document.getElementById('load-data-button');
         if (loadBtn) loadBtn.textContent = "Fetching Projections & Advanced Data...";
 
-        // NATIVE CACHE BYPASS: Forces browser to grab the newest file without breaking local server URLs
         const fetchOpts = { cache: 'no-store' };
 
         try {
@@ -149,14 +148,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 State.mergeHandcuffData(State.parseHandcuffData(await handcuffRes.text()));
             } catch (e) { }
 
-            const advFiles = [
-                './AdvancedQBData.tsv', 
-                './AdvancedRBData.tsv', 
-                './AdvancedWRData.tsv', 
-                './AdvancedTEData.tsv'
-            ];
-
-            // Load Position Stats Data (QB, RB, WR, TE)
             const actualStatsFiles = [
                 './QB_Stats.tsv',
                 './RB_Stats.tsv',
@@ -171,6 +162,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 } catch (err) { }
             }
+
+            const advFiles = [
+                './AdvancedQBData.tsv', 
+                './AdvancedRBData.tsv', 
+                './AdvancedWRData.tsv', 
+                './AdvancedTEData.tsv'
+            ];
             
             for (let file of advFiles) {
                 try {
@@ -226,11 +224,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (typeof UI.renderProfileAssignments === "function") UI.renderProfileAssignments();
             } catch (e) { }
 
-            try {
-                const handcuffRes = await fetch('./RB_Handcuffs_26.tsv', fetchOpts);
-                State.mergeHandcuffData(State.parseHandcuffData(await handcuffRes.text()));
-            } catch (e) { }
-
             State.calculateProjections();
             State.calculateVBD(); 
 
@@ -264,12 +257,12 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('load-data-button').addEventListener('click', autoLoadData);
 
     function renderTeamInsightsChart() {
-        if (typeof Chart === 'undefined') return; // Safety check to ensure CDN loaded
+        if (typeof Chart === 'undefined') return;
 
         let ctx = document.getElementById('team-targets-chart');
         if (!ctx) {
             let container = document.getElementById('insights-screen').querySelector('.bg-white');
-            if (!container) return; // Guard against DOM missing
+            if (!container) return;
 
             let chartDiv = document.createElement('div');
             chartDiv.innerHTML = `
@@ -281,7 +274,6 @@ document.addEventListener('DOMContentLoaded', () => {
             ctx = document.getElementById('team-targets-chart');
         }
 
-        // Defer execution by 50ms so the browser can compute the un-hidden tab's layout
         setTimeout(() => {
             if (window.teamTargetsChartInst) {
                 window.teamTargetsChartInst.destroy();
@@ -352,7 +344,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         tbody.innerHTML = sortedPlayers.map(p => {
             let pos = p['ATT'] ? 'RB' : (p['REC'] ? 'WR/TE' : 'QB');
-            let displayVal = metric === '% TM' ? `${p[metric]}%` : p[metric];
+            let displayVal = metric === '% TM' || metric === 'TGT %' ? `${p[metric]}%` : p[metric];
             return `
             <tr class="hover:bg-slate-50">
                 <td class="px-4 py-3 font-medium text-gray-900">${p.Player}</td>
@@ -414,36 +406,36 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     startBtn.addEventListener('click', () => {
-        State.settings.numTeams = parseInt(document.getElementById('setting-teams').value);
+        State.settings.numTeams = parseInt(document.getElementById('setting-teams').value) || 12;
         State.settings.draftMode = document.getElementById('setting-draft-type').value;
-        State.settings.userTeamIndex = document.getElementById('setting-user-pick').value;
+        State.settings.userTeamIndex = parseInt(document.getElementById('setting-user-pick').value) || 1;
 
         let r = State.settings.roster;
-        r.QB.max = parseInt(document.getElementById('pos-qb').value);
-        r.RB.max = parseInt(document.getElementById('pos-rb').value);
-        r.WR.max = parseInt(document.getElementById('pos-wr').value);
-        r.TE.max = parseInt(document.getElementById('pos-te').value);
-        r.Flex.max = parseInt(document.getElementById('pos-flex').value);
-        r.PK.max = parseInt(document.getElementById('pos-pk').value);
-        r.DST.max = parseInt(document.getElementById('pos-dst').value);
-        r.Bench.max = parseInt(document.getElementById('pos-bn').value);
+        r.QB.max = parseInt(document.getElementById('pos-qb').value) || 1;
+        r.RB.max = parseInt(document.getElementById('pos-rb').value) || 2;
+        r.WR.max = parseInt(document.getElementById('pos-wr').value) || 2;
+        r.TE.max = parseInt(document.getElementById('pos-te').value) || 1;
+        r.Flex.max = parseInt(document.getElementById('pos-flex').value) || 2;
+        r.PK.max = parseInt(document.getElementById('pos-pk').value) || 1;
+        r.DST.max = parseInt(document.getElementById('pos-dst').value) || 1;
+        r.Bench.max = parseInt(document.getElementById('pos-bn').value) || 6;
         r.totalSize = r.QB.max + r.RB.max + r.WR.max + r.TE.max + r.Flex.max + r.PK.max + r.DST.max + r.Bench.max;
 
-        State.scoring.passYds = parseFloat(document.getElementById('score-pass-yds').value);
-        State.scoring.passTd = parseFloat(document.getElementById('score-pass-td').value);
-        State.scoring.int = parseFloat(document.getElementById('score-int').value);
-        State.scoring.ppr = parseFloat(document.getElementById('score-ppr').value);
-        State.scoring.rushYds = parseFloat(document.getElementById('score-rush-yds').value);
-        State.scoring.rushTd = parseFloat(document.getElementById('score-rush-td').value);
-        State.scoring.recYds = parseFloat(document.getElementById('score-rec-yds').value);
-        State.scoring.recTd = parseFloat(document.getElementById('score-rec-td').value);
-        State.scoring.fumLost = parseFloat(document.getElementById('score-fum').value);
-        State.scoring.fg = parseFloat(document.getElementById('score-fg').value);
-        State.scoring.xp = parseFloat(document.getElementById('score-xp').value);
-        State.scoring.sack = parseFloat(document.getElementById('score-sack').value);
-        State.scoring.turnover = parseFloat(document.getElementById('score-turnover').value);
-        State.scoring.defTd = parseFloat(document.getElementById('score-deftd').value);
-        State.scoring.safety = parseFloat(document.getElementById('score-safety').value);
+        State.scoring.passYds = parseFloat(document.getElementById('score-pass-yds').value) || 0.04;
+        State.scoring.passTd = parseFloat(document.getElementById('score-pass-td').value) || 6;
+        State.scoring.int = parseFloat(document.getElementById('score-int').value) || -2;
+        State.scoring.ppr = parseFloat(document.getElementById('score-ppr').value) || 1;
+        State.scoring.rushYds = parseFloat(document.getElementById('score-rush-yds').value) || 0.1;
+        State.scoring.rushTd = parseFloat(document.getElementById('score-rush-td').value) || 6;
+        State.scoring.recYds = parseFloat(document.getElementById('score-rec-yds').value) || 0.1;
+        State.scoring.recTd = parseFloat(document.getElementById('score-rec-td').value) || 6;
+        State.scoring.fumLost = parseFloat(document.getElementById('score-fum').value) || -2;
+        State.scoring.fg = parseFloat(document.getElementById('score-fg').value) || 3;
+        State.scoring.xp = parseFloat(document.getElementById('score-xp').value) || 1;
+        State.scoring.sack = parseFloat(document.getElementById('score-sack').value) || 1;
+        State.scoring.turnover = parseFloat(document.getElementById('score-turnover').value) || 2;
+        State.scoring.defTd = parseFloat(document.getElementById('score-deftd').value) || 6;
+        State.scoring.safety = parseFloat(document.getElementById('score-safety').value) || 2;
 
         State.calculateProjections();
         State.calculateVBD();
