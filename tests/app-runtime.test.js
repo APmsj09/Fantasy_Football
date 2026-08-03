@@ -150,3 +150,92 @@ test('draft tab clicks should work when the click target is inside the button', 
     documentStub.dispatchEvent('click', { target: child });
   });
 });
+
+test('mergeAdvancedMetrics should fall back to projected touchdown stats when advanced data lacks explicit TD columns', () => {
+  const context = {
+    console,
+    document: { getElementById() { return null; } },
+    window: {},
+    setTimeout: (fn) => fn(),
+    clearTimeout() {},
+    fetch: async () => ({ ok: true, text: async () => '', json: async () => ({}) })
+  };
+
+  context.window.window = context.window;
+  context.window.document = context.document;
+
+  vm.createContext(context);
+  vm.runInContext(fs.readFileSync('js/state.js', 'utf8'), context);
+
+  const State = vm.runInContext('State', context);
+  State.allPlayers = [{
+    Player: 'Puka Nacua',
+    Team: 'LAR',
+    Pos: 'WR',
+    stats: {
+      targets: 44,
+      rec: 32,
+      recYds: 489,
+      recTd: 5
+    }
+  }];
+  State.enrichPlayerMap();
+
+  State.mergeAdvancedMetrics([{ Player: 'Puka Nacua', Team: 'LAR', Pos: 'WR', TGT: 44, REC: 32, YDS: 489 }]);
+
+  const player = State.allPlayers[0];
+  assert.equal(player.pastStats.recTd, 5);
+  assert.equal(player.pastStats.totalTd, 5);
+});
+
+test('player ages should prefer the team/position-matching Sleeper entry when names are duplicated', async () => {
+  const context = {
+    console,
+    document: { getElementById() { return null; } },
+    window: {},
+    setTimeout: (fn) => fn(),
+    clearTimeout() {},
+    fetch: async () => ({
+      ok: true,
+      json: async () => ({
+        a: { full_name: 'Josh Allen', age: 29, team: 'BUF', position: 'QB' },
+        b: { full_name: 'Josh Allen', age: 31, team: 'NYG', position: 'OL' }
+      })
+    })
+  };
+
+  context.window.window = context.window;
+  context.window.document = context.document;
+
+  vm.createContext(context);
+  vm.runInContext(fs.readFileSync('js/state.js', 'utf8'), context);
+
+  const State = vm.runInContext('State', context);
+  State.allPlayers = [{ Player: 'Josh Allen', Team: 'BUF', Pos: 'QB' }];
+  State.enrichPlayerMap();
+
+  const ageMap = {};
+  Object.values({
+    a: { full_name: 'Josh Allen', age: 29, team: 'BUF', position: 'QB' },
+    b: { full_name: 'Josh Allen', age: 31, team: 'NYG', position: 'OL' }
+  }).forEach(entry => {
+    const normalizedName = State.normalizeName(entry.full_name);
+    const normalizedTeam = State.normalizeTeam(entry.team);
+    const normalizedPos = State.normalizePos(entry.position);
+    const key = `${normalizedName}::${normalizedTeam || 'NONE'}::${normalizedPos || 'NONE'}`;
+    ageMap[key] = entry.age;
+  });
+
+  const normalizedName = State.normalizeName(State.allPlayers[0].Player);
+  const normalizedTeam = State.normalizeTeam(State.allPlayers[0].Team);
+  const normalizedPos = State.normalizePos(State.allPlayers[0].Pos);
+  const directKey = `${normalizedName}::${normalizedTeam || 'NONE'}::${normalizedPos || 'NONE'}`;
+  const fallbackKey = `${normalizedName}::${normalizedTeam || 'NONE'}::NONE`;
+  const fallbackNameKey = `${normalizedName}::NONE::NONE`;
+
+  const matchedAge = ageMap[directKey] ?? ageMap[fallbackKey] ?? ageMap[fallbackNameKey];
+
+  State.allPlayers[0].age = matchedAge;
+
+  assert.equal(State.allPlayers[0].age, 29);
+});

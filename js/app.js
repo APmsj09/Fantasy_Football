@@ -77,14 +77,32 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await response.json();
             const ageMap = {};
 
-            Object.values(data || {}).forEach(entry => {
-                if (!entry || !entry.full_name) return;
-                ageMap[State.normalizeName(entry.full_name)] = entry.age;
+            const normalizedAgeEntries = Object.values(data || {}).filter(entry => entry && entry.full_name);
+
+            normalizedAgeEntries.forEach(entry => {
+                const normalizedName = State.normalizeName(entry.full_name);
+                const normalizedTeam = State.normalizeTeam(entry.team);
+                const normalizedPos = State.normalizePos(entry.position);
+                const key = `${normalizedName}::${normalizedTeam || 'NONE'}::${normalizedPos || 'NONE'}`;
+                ageMap[key] = entry.age;
             });
 
             State.allPlayers.forEach(player => {
-                if (!player.age && ageMap[State.normalizeName(player.Player)] !== undefined) {
-                    player.age = ageMap[State.normalizeName(player.Player)];
+                if (player.age !== undefined && player.age !== null && player.age !== '') return;
+
+                const normalizedName = State.normalizeName(player.Player);
+                const normalizedTeam = State.normalizeTeam(player.Team);
+                const normalizedPos = State.normalizePos(player.Pos);
+                const directKey = `${normalizedName}::${normalizedTeam || 'NONE'}::${normalizedPos || 'NONE'}`;
+                const fallbackKey = `${normalizedName}::${normalizedTeam || 'NONE'}::NONE`;
+                const fallbackNameKey = `${normalizedName}::NONE::NONE`;
+
+                const matchedAge = ageMap[directKey]
+                    ?? ageMap[fallbackKey]
+                    ?? ageMap[fallbackNameKey];
+
+                if (matchedAge !== undefined) {
+                    player.age = matchedAge;
                 }
             });
 
@@ -94,6 +112,8 @@ document.addEventListener('DOMContentLoaded', () => {
             console.warn('Could not load player ages');
         }
     }
+
+    window.enrichPlayerAges = enrichPlayerAges;
 
     async function autoLoadData() {
         const loadBtn = document.getElementById('load-data-button');

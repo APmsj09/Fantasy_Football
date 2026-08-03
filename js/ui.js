@@ -1,8 +1,68 @@
 const UI = {
+    databaseSortKey: 'advVbd',
+    databaseSortDir: 'desc',
+
     getPlayerAge(p) {
         if (p?.age !== undefined && p?.age !== null && p.age !== '') return p.age;
         if (p?.Age !== undefined && p?.Age !== null && p.Age !== '') return p.Age;
         return null;
+    },
+
+    normalizeSearchText(value) {
+        return String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    },
+
+    sortDatabase(key) {
+        if (this.databaseSortKey === key) {
+            this.databaseSortDir = this.databaseSortDir === 'desc' ? 'asc' : 'desc';
+        } else {
+            this.databaseSortKey = key;
+            this.databaseSortDir = 'desc';
+        }
+        this.renderDatabase();
+    },
+
+    getDatabaseSortValue(player, key) {
+        switch (key) {
+            case 'player':
+                return player.Player || '';
+            case 'pos':
+                return player.Pos || '';
+            case 'team':
+                return player.Team || '';
+            case 'projPts':
+                return Number(player.ProjPts || 0);
+            case 'vbd':
+                return Number(player.VBD || 0);
+            case 'advVbd':
+                return Number(player.AdvVBD || player.VBD || 0);
+            case 'avgStars':
+                return Number(player.avgStars || 0);
+            case 'age': {
+                const age = this.getPlayerAge(player);
+                return age === null || age === undefined || age === '' ? Number.NEGATIVE_INFINITY : Number(age);
+            }
+            case 'adp': {
+                const adp = player.adp;
+                return adp === undefined || adp === null || adp === '' ? Number.POSITIVE_INFINITY : Number(adp);
+            }
+            case 'depth': {
+                const depth = player.depthChart;
+                const numDepth = Number(depth);
+                return depth === undefined || depth === null || depth === '' || Number.isNaN(numDepth) ? Number.POSITIVE_INFINITY : numDepth;
+            }
+            case 'snap': {
+                const snap = player.snapShare;
+                return snap === undefined || snap === null || snap === '' ? Number.NEGATIVE_INFINITY : Number(snap);
+            }
+            case 'bye': {
+                const bye = player.byeWeek;
+                const numBye = Number(bye);
+                return bye === undefined || bye === null || bye === '' || Number.isNaN(numBye) ? Number.POSITIVE_INFINITY : numBye;
+            }
+            default:
+                return Number(player.AdvVBD || player.VBD || 0);
+        }
     },
 
     switchTab(targetId) {
@@ -35,13 +95,44 @@ const UI = {
 
     renderDatabase() {
         const tbody = document.getElementById('db-players-body');
-        let filterPos = document.getElementById('db-position').value;
-        let search = document.getElementById('db-search').value.toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (!tbody) return;
+
+        let filterPos = document.getElementById('db-position')?.value || '';
+        let search = this.normalizeSearchText(document.getElementById('db-search')?.value || '');
+        let searchTerms = search.split(/\s+/).filter(Boolean);
 
         let filtered = State.allPlayers.filter(p => {
             if (filterPos && p.Pos !== filterPos) return false;
-            if (search && !p._cleanName.includes(search) && !p._cleanTeam.toLowerCase().includes(search)) return false;
-            return true;
+
+            const searchableText = [
+                p.Player,
+                p.Team,
+                p.Pos,
+                p._cleanName,
+                p._cleanTeam,
+                p._cleanPos
+            ].filter(Boolean).join(' ').toLowerCase();
+
+            if (!searchTerms.length) return true;
+            return searchTerms.every(term => searchableText.includes(term));
+        });
+
+        filtered = [...filtered].sort((a, b) => {
+            let aVal = this.getDatabaseSortValue(a, this.databaseSortKey);
+            let bVal = this.getDatabaseSortValue(b, this.databaseSortKey);
+
+            if (typeof aVal === 'string' && typeof bVal === 'string') {
+                const comparison = aVal.localeCompare(bVal);
+                return this.databaseSortDir === 'desc' ? -comparison : comparison;
+            }
+
+            if (aVal === bVal) {
+                const fallback = (a.Player || '').localeCompare(b.Player || '');
+                return fallback;
+            }
+
+            const direction = this.databaseSortDir === 'desc' ? -1 : 1;
+            return (aVal > bVal ? 1 : -1) * direction;
         });
 
         let htmlStr = '';
@@ -51,7 +142,7 @@ const UI = {
             let advVbdVal = (p.AdvVBD || p.VBD).toFixed(1);
             let stars = p.avgStars ? `⭐ ${p.avgStars.toFixed(2)}` : '-';
             let bye = p.byeWeek && p.byeWeek !== 'N/A' ? `Wk ${p.byeWeek}` : '-';
-            let age = this.getPlayerAge(p) ? `${this.getPlayerAge(p)} y/o` : '—';
+            let age = this.getPlayerAge(p) !== null ? `${this.getPlayerAge(p)} y/o` : '—';
             let adp = p.adp !== undefined && p.adp !== null ? `${p.adp.toFixed(1)}` : '—';
             let depth = p.depthChart !== undefined && p.depthChart !== null ? `${p.depthChart}` : '—';
             let snap = p.snapShare !== undefined && p.snapShare !== null ? `${p.snapShare.toFixed(0)}%` : '—';

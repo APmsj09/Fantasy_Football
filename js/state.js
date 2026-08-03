@@ -787,11 +787,24 @@ const State = {
                 if (['WR', 'TE'].includes(p.Pos) && advPlayer['YDS']) p.pastStats.recYds = advPlayer['YDS'];
 
                 // TDs & INTs
+                const statsSource = p.stats || {};
+                const passTd = advPlayer['PASS TD'] ?? advPlayer['Pass TD'] ?? statsSource.passTd;
+                const rushTd = advPlayer['RUSH TD'] ?? advPlayer['Rush TD'] ?? statsSource.rushTd;
+                const recTd = advPlayer['REC TD'] ?? advPlayer['Rec TD'] ?? statsSource.recTd;
+                const totalTd = advPlayer['TD'] ?? advPlayer['TDs'] ?? advPlayer['Total TD'];
+
                 if (advPlayer['INT']) p.pastStats.int = advPlayer['INT'];
-                if (advPlayer['TD'] !== undefined) p.pastStats.totalTd = advPlayer['TD'];
-                if (advPlayer['PASS TD']) p.pastStats.passTd = advPlayer['PASS TD'];
-                if (advPlayer['RUSH TD']) p.pastStats.rushTd = advPlayer['RUSH TD'];
-                if (advPlayer['REC TD']) p.pastStats.recTd = advPlayer['REC TD'];
+                if (totalTd !== undefined) {
+                    p.pastStats.totalTd = totalTd;
+                } else if (passTd !== undefined || rushTd !== undefined || recTd !== undefined) {
+                    const fallbackTotal = [passTd, rushTd, recTd]
+                        .filter(val => val !== undefined && val !== null && val !== '')
+                        .reduce((sum, val) => sum + Number(val), 0);
+                    p.pastStats.totalTd = fallbackTotal;
+                }
+                if (passTd !== undefined) p.pastStats.passTd = passTd;
+                if (rushTd !== undefined) p.pastStats.rushTd = rushTd;
+                if (recTd !== undefined) p.pastStats.recTd = recTd;
             }
         });
     },
