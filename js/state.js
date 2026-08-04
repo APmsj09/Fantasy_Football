@@ -88,15 +88,15 @@ const State = {
     isPositionFlexEligible(pos) {
         const r = this.settings.roster;
         if (!r) return false;
-        
+
         // Standard Flex (RB, WR, TE)
         if (['RB', 'WR', 'TE'].includes(pos)) return true;
-        
+
         // Superflex / 2-QB League check
         if (pos === 'QB' && ((r.Superflex && r.Superflex.max > 0) || (r.QB && r.QB.max >= 2))) {
             return true;
         }
-        
+
         return false;
     },
 
@@ -330,9 +330,13 @@ const State = {
             const rank = parseInt(vals[headers.indexOf('Rank')], 10);
             const tier = vals[headers.indexOf('Tier')] || '';
             const teamName = vals[headers.indexOf('Team')] || '';
-            const runBlk = parseInt(vals[headers.indexOf('2025 Run Blk')], 10);
-            const passBlk = parseInt(vals[headers.indexOf('2025 Pass Blk')], 10);
-
+            
+            // Dynamically find columns in case the year changes (e.g., "2026 Run Blk")
+            const runBlkIdx = headers.findIndex(h => h.includes('Run Blk'));
+            const passBlkIdx = headers.findIndex(h => h.includes('Pass Blk'));
+            
+            const runBlk = runBlkIdx !== -1 ? parseInt(vals[runBlkIdx], 10) : null;
+            const passBlk = passBlkIdx !== -1 ? parseInt(vals[passBlkIdx], 10) : null;
             if (!teamName) continue;
 
             parsed.push({
@@ -501,7 +505,7 @@ const State = {
             if (row['RushATT'] !== undefined) ps.rushAtt = cleanNum(row['RushATT']);
             if (row['RushYDS'] !== undefined) ps.rushYds = cleanNum(row['RushYDS']);
             if (row['RushY/A'] !== undefined) ps.rushYpa = cleanNum(row['RushY/A']);
-            
+
             if (p.Pos === 'QB' && row['TD'] !== undefined) {
                 ps.rushTd = cleanNum(row['TD']);
             } else if (row['RushTD'] !== undefined) {
@@ -828,6 +832,24 @@ const State = {
                 if (advPlayer['BRKTKL'] !== undefined) p.brokenTackles = advPlayer['BRKTKL'];
                 if (advPlayer['PKT TIME'] !== undefined) p.pktTime = advPlayer['PKT TIME'];
 
+                // ⚡ SYNTHESIZED PRO METRICS ⚡
+                // 1. Yards Per Target (Efficiency) & Air Yards (Upside)
+                if (advPlayer['YDS'] && advPlayer['TGT']) p.ypt = advPlayer['YDS'] / advPlayer['TGT'];
+                if (advPlayer['AIR'] !== undefined) p.airYards = advPlayer['AIR'];
+
+                // 2. High-Value Opportunities (HVO) for RBs = Receptions + Red Zone Targets
+                if (p.Pos === 'RB' && advPlayer['REC'] !== undefined && advPlayer['RZ TGT'] !== undefined) {
+                    p.hvo = advPlayer['REC'] + advPlayer['RZ TGT'];
+                }
+
+                // 3. True Pressure Rate for QBs = (Sacks + Knockdowns + Hurries) / Attempts
+                if (p.Pos === 'QB' && advPlayer['ATT'] > 0) {
+                    let sacks = advPlayer['SACK'] || 0;
+                    let hits = advPlayer['KNCK'] || 0;
+                    let hurries = advPlayer['HRRY'] || 0;
+                    p.pressureRate = ((sacks + hits + hurries) / advPlayer['ATT']) * 100;
+                }
+
                 if (advPlayer['CATCHABLE'] && advPlayer['CATCHABLE'] > 0) {
                     p.catchable = advPlayer['CATCHABLE'];
                     p.trueCatchRate = ((advPlayer['REC'] || 0) / advPlayer['CATCHABLE']) * 100;
@@ -1089,15 +1111,26 @@ const State = {
             if (p.avgStars) adjMultiplier += (p.avgStars - 3.0) * 0.02;
             if (p.playoffSOS && p.playoffSOS >= 4.0) adjMultiplier += 0.02;
 
-            // 4. Offensive Line Quality
+            // 4. Offensive Line Quality (No Overlap)
+            let olModifier = 0;
+            
+            // A. Evaluate position-specific rank first (most important)
             if (p.Pos === 'RB' && p.olRunBlk) {
-                if (p.olRunBlk <= 5) adjMultiplier += 0.04;
-                else if (p.olRunBlk >= 25) adjMultiplier -= 0.03;
+                if (p.olRunBlk <= 5) olModifier = 0.04;
+                else if (p.olRunBlk >= 25) olModifier = -0.04;
+            } else if (['QB', 'WR', 'TE'].includes(p.Pos) && p.olPassBlk) {
+                if (p.olPassBlk <= 5) olModifier = 0.03;
+                else if (p.olPassBlk >= 25) olModifier = -0.04;
             }
-            if (['QB', 'WR', 'TE'].includes(p.Pos) && p.olPassBlk) {
-                if (p.olPassBlk <= 5) adjMultiplier += 0.03;
-                else if (p.olPassBlk >= 25) adjMultiplier -= 0.03;
+
+            // B. If position-specific didn't trigger an extreme, rely on the general tier
+            if (olModifier === 0 && p.olTier) {
+                if (p.olTier === 'S') olModifier = 0.03;
+                else if (p.olTier === 'A') olModifier = 0.015;
+                else if (p.olTier === 'D' || p.olTier === 'F') olModifier = -0.03;
             }
+
+            adjMultiplier += olModifier;
 
             // 5. Inherited Role Volume (for Rookies / Team Changers)
             let lacksIndividualMetrics = false;
@@ -1134,11 +1167,30 @@ const State = {
             if (p.Pos === 'RB') {
                 if (p.rzAtt && p.rzAtt >= 40) adjMultiplier += 0.03;
                 if (p.brokenTackles && p.brokenTackles >= 20) adjMultiplier += 0.02;
+
+                // HVO: RBs getting targets and red zone looks are PPR gold mines
+                if (p.hvo) {
+                    if (p.hvo >= 110) adjMultiplier += 0.05; // CMC / Kamara tier
+                    else if (p.hvo >= 70) adjMultiplier += 0.03; // Elite dual-threat
+                }
             }
 
-            if (p.trueCatchRate && p.trueCatchRate > 90) adjMultiplier += 0.02;
-            if (p.dropRate && p.dropRate > 10) adjMultiplier -= 0.03;
+            if (['WR', 'TE'].includes(p.Pos)) {
+                // Elite Efficiency (YPT) + Deep Threat (Air Yards)
+                if (p.ypt && p.ypt >= 9.5 && p.targetShare >= 20) adjMultiplier += 0.04;
+                if (p.airYards && p.airYards >= 1400) adjMultiplier += 0.03;
 
+                if (p.trueCatchRate && p.trueCatchRate > 90) adjMultiplier += 0.02;
+                if (p.dropRate && p.dropRate > 10) adjMultiplier -= 0.03;
+            }
+
+            if (p.Pos === 'QB') {
+                // Penalize QBs facing massive pressure / taking too many hits
+                if (p.pressureRate) {
+                    if (p.pressureRate > 22.0) adjMultiplier -= 0.04;
+                    else if (p.pressureRate < 13.0) adjMultiplier += 0.03;
+                }
+            }
             if (p.Pos === 'QB') {
                 // Rushing floor boost for dual-threat QBs (Allen, Hurts, Lamar, Daniels)
                 if (p.stats && p.stats.rushAtt >= 60) adjMultiplier += 0.08;

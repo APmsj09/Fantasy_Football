@@ -10,7 +10,7 @@ window.AutoDraft = {
 
         if (team && team.isCPU) {
             this.isDrafting = true;
-            await new Promise(r => setTimeout(r, 400)); 
+            await new Promise(r => setTimeout(r, 400));
             this.makeCPUPick(team);
             this.isDrafting = false;
 
@@ -46,7 +46,7 @@ window.AutoDraft = {
         [...topWRs, ...topRBs].forEach(p => { avgTopFlexVBD += (p.AdvVBD || p.VBD); flexBenchCount++; });
         avgTopFlexVBD = flexBenchCount > 0 ? (avgTopFlexVBD / flexBenchCount) : 20;
 
-        let evaluatedWrapper = State.availablePlayers.map(p => {
+        let evaluatedWrapper = State.availablePlayers.slice(0, 150).map(p => {
             let multiplier = 1.0;
 
             if (p.avgStars) {
@@ -119,13 +119,13 @@ window.AutoDraft = {
         for (let item of evaluatedWrapper) {
             let p = item.player;
             let pos = p.Pos;
-            
+
             if (team.counts[pos] < State.settings.roster[pos].max) slottedPos = pos;
             else if (['RB', 'WR', 'TE'].includes(pos) && team.counts['Flex'] < State.settings.roster.Flex.max) slottedPos = 'Flex';
             else if (team.counts['Bench'] < State.settings.roster.Bench.max) slottedPos = 'Bench';
 
             if (slottedPos) {
-                selectedPlayer = p; 
+                selectedPlayer = p;
                 break;
             }
         }
@@ -136,7 +136,7 @@ window.AutoDraft = {
     executeDraft(player, team, slot) {
         const idx = State.availablePlayers.findIndex(p => p._cleanName === player._cleanName);
         if (idx !== -1) State.availablePlayers.splice(idx, 1);
-        
+
         team.roster.push({ ...player, slottedPos: slot });
         team.counts[slot]++;
         State.draftHistory.push({ pickIndex: State.currentPick, player: player, teamId: team.id, slot: slot });

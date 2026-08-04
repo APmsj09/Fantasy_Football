@@ -42,8 +42,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!target) return;
 
             UI.switchTab(target);
-            
-            if(target === 'insights-screen' && State.teamTargets.length > 0) {
+
+            if (target === 'insights-screen' && State.teamTargets.length > 0) {
                 renderTeamInsightsChart();
             }
         });
@@ -72,9 +72,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function enrichPlayerAges() {
         try {
-            const response = await fetch('https://api.sleeper.app/v1/players/nfl');
-            if (!response.ok) return;
-            const data = await response.json();
+            const cacheKey = 'sleeper_nfl_players_cache';
+            const cacheTimeKey = 'sleeper_nfl_players_time';
+            const cacheExpiry = 24 * 60 * 60 * 1000; // 24 hours
+            let data;
+
+            if (localStorage.getItem(cacheKey) && (Date.now() - localStorage.getItem(cacheTimeKey) < cacheExpiry)) {
+                data = JSON.parse(localStorage.getItem(cacheKey));
+            } else {
+                const response = await fetch('https://api.sleeper.app/v1/players/nfl');
+                if (!response.ok) return;
+                data = await response.json();
+                try {
+                    localStorage.setItem(cacheKey, JSON.stringify(data));
+                    localStorage.setItem(cacheTimeKey, Date.now().toString());
+                } catch (e) {
+                    console.warn('LocalStorage quota exceeded, skipping cache');
+                }
+            }
             const ageMap = {};
 
             const normalizedAgeEntries = Object.values(data || {}).filter(entry => entry && entry.full_name);
@@ -122,110 +137,53 @@ document.addEventListener('DOMContentLoaded', () => {
         const fetchOpts = { cache: 'no-store' };
 
         try {
-            const offRes = await fetch('./projected_data_26.tsv', fetchOpts);
-            const offPlayers = State.parseProjectedData(await offRes.text());
+            const SEASON = "26";
+            const PREV_SEASON = "25";
 
-            let defPlayers = [], kickerPlayers = [];
-            try {
-                const defRes = await fetch('./def_proj_26.tsv', fetchOpts);
-                defPlayers = State.parseDefData(await defRes.text());
-                const kRes = await fetch('./k_proj_26.tsv', fetchOpts);
-                kickerPlayers = State.parseKickerData(await kRes.text());
-            } catch (e) { }
+            const fetchTSV = async (fileName, parser, merger) => {
+                try {
+                    const res = await fetch(fileName, fetchOpts);
+                    if (res.ok) {
+                        const parsed = parser(await res.text());
+                        if (merger) merger(parsed);
+                        return parsed;
+                    }
+                } catch (e) {
+                    console.warn(`Failed to load ${fileName}`, e);
+                }
+            };
 
-            State.allPlayers = [...offPlayers, ...defPlayers, ...kickerPlayers];
+            // Base projections MUST load sequentially first to build the base array
+            State.allPlayers = [];
+            await fetchTSV(`./projected_data_${SEASON}.tsv`, State.parseProjectedData.bind(State), data => State.allPlayers.push(...data));
+            await fetchTSV(`./def_proj_${SEASON}.tsv`, State.parseDefData.bind(State), data => State.allPlayers.push(...data));
+            await fetchTSV(`./k_proj_${SEASON}.tsv`, State.parseKickerData.bind(State), data => State.allPlayers.push(...data));
 
             State.enrichPlayerMap();
             await enrichPlayerAges();
 
-            try {
-                const sosRes = await fetch('./SOS_26.tsv', fetchOpts);
-                State.mergeSOSData(State.parseSOSData(await sosRes.text()));
-            } catch (e) { }
-
-            try {
-                const handcuffRes = await fetch('./RB_Handcuffs_26.tsv', fetchOpts);
-                State.mergeHandcuffData(State.parseHandcuffData(await handcuffRes.text()));
-            } catch (e) { }
-
-            const actualStatsFiles = [
-                './QB_Stats.tsv',
-                './RB_Stats.tsv',
-                './WR_Stats.tsv',
-                './TE_Stats.tsv'
-            ];
-            for (let file of actualStatsFiles) {
-                try {
-                    let statsRes = await fetch(file, fetchOpts);
-                    if (statsRes.ok) {
-                        State.mergeActualStatsData(State.parseAdvancedData(await statsRes.text()));
-                    }
-                } catch (err) { }
-            }
-
-            const advFiles = [
-                './AdvancedQBData.tsv', 
-                './AdvancedRBData.tsv', 
-                './AdvancedWRData.tsv', 
-                './AdvancedTEData.tsv'
-            ];
-            
-            for (let file of advFiles) {
-                try {
-                    let advRes = await fetch(file, fetchOpts);
-                    State.mergeAdvancedMetrics(State.parseAdvancedData(await advRes.text()));
-                } catch (err) { }
-            }
-
-            try {
-                let tgtRes = await fetch('./Team_Target_Dist_Data.tsv', fetchOpts);
-                State.teamTargets = State.parseAdvancedData(await tgtRes.text());
-            } catch (e) { }
-
-            try {
-                const adpRes = await fetch('./ADP_26.tsv', fetchOpts);
-                State.mergeADPData(State.parseADPData(await adpRes.text()));
-            } catch (e) { }
-
-            try {
-                const depthRes = await fetch('./Depth_Chart_26.tsv', fetchOpts);
-                State.mergeDepthChartData(State.parseDepthChartData(await depthRes.text()));
-            } catch (e) { }
-
-            try {
-                const snapRes = await fetch('./Snap_Count_26.tsv', fetchOpts);
-                State.mergeSnapCountData(State.parseSnapCountData(await snapRes.text()));
-            } catch (e) { }
-
-            try {
-                const olRes = await fetch('./OL_Rank_26.tsv', fetchOpts);
-                State.mergeOLRankData(State.parseOLRankData(await olRes.text()));
-            } catch (e) { }
-
-            try {
-                const passTeamRes = await fetch('./Team_Adv_Pass_25.tsv', fetchOpts);
-                State.parseTeamAdvPassData(await passTeamRes.text());
-            } catch (e) { }
-
-            try {
-                const rushTeamRes = await fetch('./Team_Adv_Rush_25.tsv', fetchOpts);
-                State.parseTeamAdvRushData(await rushTeamRes.text());
-            } catch (e) { }
-
-            try {
-                const recTeamRes = await fetch('./Team_Adv_Rec_25.tsv', fetchOpts);
-                State.parseTeamAdvRecData(await recTeamRes.text());
-            } catch (e) { }
-
-            try {
-                const historyRes = await fetch('./DraftHistory.tsv', fetchOpts);
-                State.parseHistory(await historyRes.text());
-                if (typeof renderInsightsTable === "function") renderInsightsTable();
-                if (typeof UI.renderProfileAssignments === "function") UI.renderProfileAssignments();
-            } catch (e) { }
+            // Load all advanced metrics concurrently
+            await Promise.all([
+                fetchTSV(`./SOS_${SEASON}.tsv`, State.parseSOSData.bind(State), State.mergeSOSData.bind(State)),
+                fetchTSV(`./RB_Handcuffs_${SEASON}.tsv`, State.parseHandcuffData.bind(State), State.mergeHandcuffData.bind(State)),
+                fetchTSV(`./ADP_${SEASON}.tsv`, State.parseADPData.bind(State), State.mergeADPData.bind(State)),
+                fetchTSV(`./Depth_Chart_${SEASON}.tsv`, State.parseDepthChartData.bind(State), State.mergeDepthChartData.bind(State)),
+                fetchTSV(`./Snap_Count_${SEASON}.tsv`, State.parseSnapCountData.bind(State), State.mergeSnapCountData.bind(State)),
+                fetchTSV(`./OL_Rank_${SEASON}.tsv`, State.parseOLRankData.bind(State), State.mergeOLRankData.bind(State)),
+                fetchTSV(`./Team_Adv_Pass_${PREV_SEASON}.tsv`, State.parseTeamAdvPassData.bind(State)),
+                fetchTSV(`./Team_Adv_Rush_${PREV_SEASON}.tsv`, State.parseTeamAdvRushData.bind(State)),
+                fetchTSV(`./Team_Adv_Rec_${PREV_SEASON}.tsv`, State.parseTeamAdvRecData.bind(State)),
+                fetchTSV(`./DraftHistory.tsv`, State.parseHistory.bind(State), () => {
+                    if (typeof renderInsightsTable === "function") renderInsightsTable();
+                    if (typeof UI.renderProfileAssignments === "function") UI.renderProfileAssignments();
+                }),
+                ...['QB', 'RB', 'WR', 'TE'].map(pos => fetchTSV(`./${pos}_Stats.tsv`, State.parseAdvancedData.bind(State), State.mergeActualStatsData.bind(State))),
+                ...['QB', 'RB', 'WR', 'TE'].map(pos => fetchTSV(`./Advanced${pos}Data.tsv`, State.parseAdvancedData.bind(State), State.mergeAdvancedMetrics.bind(State))),
+                fetchTSV(`./Team_Target_Dist_Data.tsv`, State.parseAdvancedData.bind(State), data => State.teamTargets = data)
+            ]);
 
             State.calculateProjections();
-            State.calculateVBD(); 
+            State.calculateVBD();
 
             if (loadBtn) {
                 loadBtn.textContent = `✓ Auto-Loaded ${State.allPlayers.length} Players + Advanced Stats!`;
@@ -302,7 +260,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     ]
                 },
                 options: {
-                    responsive: true, 
+                    responsive: true,
                     maintainAspectRatio: false,
                     scales: {
                         x: { stacked: true, grid: { display: false } },
@@ -310,7 +268,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     },
                     plugins: {
                         tooltip: {
-                            callbacks: { label: function(context) { return context.dataset.label + ': ' + context.raw + '%'; } }
+                            callbacks: { label: function (context) { return context.dataset.label + ': ' + context.raw + '%'; } }
                         }
                     }
                 }
@@ -440,7 +398,7 @@ document.addEventListener('DOMContentLoaded', () => {
         State.calculateProjections();
         State.calculateVBD();
         State.initializeTeams();
-        
+
         UI.switchTab('drafting-screen');
         UI.updateDraftBoard();
 
@@ -477,17 +435,31 @@ document.addEventListener('DOMContentLoaded', () => {
     if (undoPickButton) undoPickButton.addEventListener('click', () => {
         if (State.draftHistory.length === 0) return UI.showMessage("Error", "No picks to undo.");
 
-        let lastPick = State.draftHistory.pop();
-        let team = State.teamsById[lastPick.teamId];
+        let picksToUndo = 1;
 
-        team.roster = team.roster.filter(p => p.Player !== lastPick.player.Player);
-        team.counts[lastPick.slot]--;
+        // If in a mock draft, rewind back through the CPU picks until it undoes the user's last pick
+        if (State.settings.draftMode === 'mock' && State.draftHistory[State.draftHistory.length - 1].teamId !== State.userTeamId) {
+            for (let i = State.draftHistory.length - 1; i >= 0; i--) {
+                if (State.draftHistory[i].teamId === State.userTeamId) break;
+                picksToUndo++;
+            }
+        }
 
-        State.availablePlayers.push(lastPick.player);
-        State.availablePlayers.sort((a, b) => b.VBD - a.VBD); 
+        for (let i = 0; i < picksToUndo; i++) {
+            if (State.draftHistory.length === 0) break;
 
-        State.currentPick--;
-        State.draftStarted = true; 
+            let lastPick = State.draftHistory.pop();
+            let team = State.teamsById[lastPick.teamId];
+
+            team.roster = team.roster.filter(p => p.Player !== lastPick.player.Player);
+            team.counts[lastPick.slot]--;
+
+            State.availablePlayers.push(lastPick.player);
+            State.currentPick--;
+        }
+
+        State.availablePlayers.sort((a, b) => b.AdvVBD - a.AdvVBD);
+        State.draftStarted = true;
 
         UI.updateDraftBoard();
     });
@@ -507,7 +479,7 @@ document.addEventListener('DOMContentLoaded', () => {
         clearTimeout(dbSearchTimeout);
         dbSearchTimeout = setTimeout(() => UI.renderDatabase(), 250);
     });
-    
+
     const dbPosition = document.getElementById('db-position');
     if (dbPosition) dbPosition.addEventListener('change', () => UI.renderDatabase());
 });
