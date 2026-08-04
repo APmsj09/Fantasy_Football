@@ -600,47 +600,57 @@ const UI = {
 
         const currentRound = Math.floor(State.currentPick / State.settings.numTeams) + 1;
         const totalRounds = State.settings.roster.totalSize;
-        const currentOverallPick = State.currentPick + 1; // Declared ONCE here
+        const currentOverallPick = State.currentPick + 1;
 
-        // 1. Calculate the user's EXACT next draft pick overall number
         let nextPickIdx = State.draftOrder.findIndex((teamId, idx) => idx > State.currentPick && teamId === State.userTeamId);
         let nextUserOverallPick = nextPickIdx !== -1 ? (nextPickIdx + 1) : (currentOverallPick + 2);
 
-        // Helper: Calculate probability a player survives until your next pick (0.0 to 1.0)
         const getSurvivalProb = (adp) => {
             let playerAdp = adp || currentOverallPick;
             let diff = playerAdp - nextUserOverallPick;
-            return 1 / (1 + Math.exp(-0.10 * diff)); // Flattened from 0.25 to 0.10
+            return 1 / (1 + Math.exp(-0.10 * diff));
         };
 
-        // Helper: Calculate Opportunity-Adjusted Recommendation Score
         const getOpportunityScore = (p) => {
             let baseVal = ((p._addedPPW || 0) * 15) + (p.AdvVBD || p.VBD);
             let survivalProb = getSurvivalProb(p.adp);
             let urgency = 1 - survivalProb; 
-            
-            // Softened: Max 20% tie-breaker boost instead of 60%
             return baseVal * (1 + (0.20 * urgency));
         };
 
-        // Calculate Positional Tier Scarcity
-        let scarcity = {};
-        ['QB', 'RB', 'WR', 'TE'].forEach(pos => {
-            let avail = State.availablePlayers.filter(p => p.Pos === pos);
-            if (avail.length > 5) {
-                let top = avail[0].AdvVBD || avail[0].VBD;
-                let fifth = avail[4].AdvVBD || avail[4].VBD;
-                scarcity[pos] = Math.max(0, top - fifth) * 0.5;
-            } else {
-                scarcity[pos] = 0;
+        // ===========================================================
+        // POINT 4: ROSTER BUILD STRATEGY ADVISOR
+        // ===========================================================
+        let userRoster = userTeam.roster;
+        let earlyRBs = userRoster.filter(p => p.Pos === 'RB' && (p.draftPickNum || 99) <= 60).length;
+        let earlyWRs = userRoster.filter(p => p.Pos === 'WR' && (p.draftPickNum || 99) <= 60).length;
+        let strategyBanner = "";
+
+        if (currentRound <= 7) {
+            if (earlyRBs === 0 && userRoster.length >= 3) {
+                strategyBanner = `<div class="p-2 mb-2 bg-indigo-950 border border-indigo-700 rounded-lg text-[10px] text-indigo-200">🛡️ <strong>Zero-RB Build:</strong> Target WR/TE depth. Look for high-HVO passing RBs in Rnds 7-10.</div>`;
+            } else if (earlyRBs === 1 && earlyWRs >= 2) {
+                strategyBanner = `<div class="p-2 mb-2 bg-emerald-950 border border-emerald-700 rounded-lg text-[10px] text-emerald-200">🦸 <strong>Hero-RB Build:</strong> Anchor RB locked. Focus on WR/TE value before filling RB2.</div>`;
+            } else if (earlyRBs >= 3) {
+                strategyBanner = `<div class="p-2 mb-2 bg-amber-950 border border-amber-700 rounded-lg text-[10px] text-amber-200">💪 <strong>Robust-RB Build:</strong> RB foundation set. Heavily target WR/TE depth to balance roster.</div>`;
+            }
+        }
+
+        // ===========================================================
+        // POINT 1: DYNAMIC POSITIONAL TIER CLIFF ALERTS
+        // ===========================================================
+        let tierAlertsHTML = "";
+        ['RB', 'WR', 'TE', 'QB'].forEach(pos => {
+            let tiers = State.getPositionalTiers(pos);
+            if (tiers.length > 0 && tiers[0].length === 1) {
+                let lastPlayer = tiers[0][0];
+                let nextTop = tiers[1] ? (tiers[1][0].AdvVBD || tiers[1][0].VBD) : 0;
+                let drop = ((lastPlayer.AdvVBD || lastPlayer.VBD) - nextTop).toFixed(1);
+                if (drop >= 7.0 && userTeam.counts[pos] < State.settings.roster[pos].max) {
+                    tierAlertsHTML += `<div class="p-2 mb-2 bg-rose-950 border border-rose-700 rounded-lg text-[10px] text-rose-200">⚡ <strong>Tier Cliff Alert:</strong> ${lastPlayer.Player} is the LAST ${pos} in Tier 1 (-${drop} VBD drop to Tier 2).</div>`;
+                }
             }
         });
-
-        let topWRs = State.availablePlayers.filter(p => p.Pos === 'WR').slice(0, 3);
-        let topRBs = State.availablePlayers.filter(p => p.Pos === 'RB').slice(0, 3);
-        let avgTopFlexVBD = 0, flexBenchCount = 0;
-        [...topWRs, ...topRBs].forEach(p => { avgTopFlexVBD += (p.AdvVBD || p.VBD); flexBenchCount++; });
-        avgTopFlexVBD = flexBenchCount > 0 ? (avgTopFlexVBD / flexBenchCount) : 20;
 
         let viablePlayers = State.availablePlayers.filter(p => {
             let pos = p.Pos;
@@ -655,8 +665,30 @@ const UI = {
             return false;
         });
 
+        // User drafted QBs for Stacking Logic (Point 2)
+        let userQBs = userRoster.filter(r => r.Pos === 'QB');
+
         viablePlayers.forEach(p => {
             let score = ((p._addedPPW || 0) * 20) + ((p.AdvVBD || p.VBD) * 0.5);
+
+            // ===========================================================
+            // POINT 2: QB-WR/TE STACKING SYNERGY BOOST
+            // ===========================================================
+            let matchingQB = userQBs.find(qb => qb._cleanTeam === p._cleanTeam);
+            if (matchingQB && ['WR', 'TE'].includes(p.Pos)) {
+                score += 10.0; // Recommendation boost
+                p._stackPartner = matchingQB.Player;
+            } else {
+                p._stackPartner = null;
+            }
+
+            // ===========================================================
+            // POINT 3: LATE-ROUND CEILING / UPSIDE BOOST (Rounds 9+)
+            // ===========================================================
+            if (currentRound >= 9 && p.upsideScore) {
+                let ceilingGain = (p.upsideScore - (p.AdvVBD || p.VBD)) * 0.75;
+                score += ceilingGain;
+            }
 
             let posRoster = State.settings.roster[p.Pos];
             let starterMax = posRoster ? posRoster.max : 0;
@@ -668,13 +700,7 @@ const UI = {
             if (isStarterOpen) {
                 score += 25;
             } else if (isFlexOpen) {
-                if (p.Pos === 'TE') {
-                    let teAdvantage = (p.AdvVBD || p.VBD) - avgTopFlexVBD;
-                    if (teAdvantage > 5) score += 18 + teAdvantage;
-                    else score += 5;
-                } else {
-                    score += 18;
-                }
+                score += 18;
             } else {
                 let overage = currentCount - starterMax;
                 if (State.isPositionFlexEligible(p.Pos)) {
@@ -684,22 +710,12 @@ const UI = {
                 }
             }
 
-            let scarcityBonus = 0;
-            let posRank = State.availablePlayers.filter(x => x.Pos === p.Pos).findIndex(x => x._cleanName === p._cleanName);
-            if (posRank < 3 && scarcity[p.Pos]) {
-                if (currentCount < starterMax || p.Pos !== 'TE' || ((p.AdvVBD || p.VBD) - avgTopFlexVBD > 5)) {
-                    scarcityBonus = scarcity[p.Pos];
-                }
-            }
-            score += scarcityBonus;
-
-            let userOwnsStarter = p.starterName && userTeam.roster.some(r => r._cleanName === State.normalizeName(p.starterName));
+            let userOwnsStarter = p.starterName && userRoster.some(r => r._cleanName === State.normalizeName(p.starterName));
             if (userOwnsStarter) score += 5;
 
             p._recScore = score;
         });
 
-        // Select #1 Best Lineup Addition using Opportunity Cost Score
         let bestFit = [...viablePlayers]
             .filter(p => {
                 let posRoster = State.settings.roster[p.Pos];
@@ -716,11 +732,12 @@ const UI = {
         let sortedByRec = [...viablePlayers].sort((a, b) => b._recScore - a._recScore);
         let vbdRecs = sortedByRec.filter(p => p !== bestFit).slice(0, 3);
 
-        let htmlStr = '';
+        let htmlStr = strategyBanner + tierAlertsHTML;
 
         if (bestFit) {
             let survivalProb = getSurvivalProb(bestFit.adp);
             let ppwText = `+${bestFit._addedPPW.toFixed(1)} PPW Lineup Fit`;
+            let stackBadge = bestFit._stackPartner ? ` • ⚡ Stack w/ ${bestFit._stackPartner}` : '';
             let urgencyTag = (survivalProb < 0.15 && bestFit.adp && bestFit.adp < nextUserOverallPick) ? ` • ⚡ High Urgency` : ``;
 
             htmlStr += `
@@ -730,13 +747,13 @@ const UI = {
                         <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg> Best Lineup Addition
                     </span>
                     <h4 class="font-bold text-sm text-white">${bestFit.Player}</h4>
-                    <p class="text-[10px] text-emerald-100 font-medium">${bestFit.Pos} • ${ppwText}${urgencyTag}</p>
+                    <p class="text-[10px] text-emerald-100 font-medium">${bestFit.Pos} • ${ppwText}${stackBadge}${urgencyTag}</p>
                 </div>
             </div>`;
         }
 
         htmlStr += vbdRecs.map((p, i) => {
-            let userOwnsStarter = p.starterName && userTeam.roster.some(r => r._cleanName === State.normalizeName(p.starterName));
+            let stackBadge = p._stackPartner ? ` • ⚡ Stack w/ ${p._stackPartner}` : '';
             let survivalProb = getSurvivalProb(p.adp);
             let posRoster = State.settings.roster[p.Pos];
             let starterMax = posRoster ? posRoster.max : 1;
@@ -744,12 +761,10 @@ const UI = {
             let hasPositiveValue = (p.AdvVBD || p.VBD) > 0;
 
             let highlight = '';
-            if (userOwnsStarter) highlight = `🔒 Insurance for ${p.starterName}`;
+            if (p._stackPartner) highlight = `⚡ Stack with ${p._stackPartner}`;
+            else if (currentRound >= 9 && p.upsideScore > p.AdvVBD * 1.1) highlight = `🚀 High Ceiling Target`;
             else if (survivalProb < 0.15 && (isStarterNeeded || hasPositiveValue)) highlight = `⚡ High Urgency (Gone by Pick ${nextUserOverallPick})`;
             else if (p.adp && (p.adp < currentOverallPick)) highlight = `ADP Value (Passed ADP ${p.adp.toFixed(0)})`;
-            else if (survivalProb > 0.85 && currentRound < 10) highlight = `⏳ Can Wait (${(survivalProb * 100).toFixed(0)}% chance at Pick ${nextUserOverallPick})`;
-            else if (p.isNewRole && p.depthChart === 1) highlight = `📋 Inherits ${p.Team} ${p.Pos}1 Role Volume`;
-            else if (p._scarcityBoost > 3 && isStarterNeeded) highlight = `Tier Drop-off: Grab a ${p.Pos} now`;
             else if (isStarterNeeded) highlight = `Strong Team Need`;
             else highlight = `Flex / Bench Depth`;
 
@@ -757,7 +772,7 @@ const UI = {
             <div class="p-3 bg-indigo-800/80 rounded-xl border border-indigo-700/50 flex justify-between items-center shadow-inner cursor-pointer hover:bg-indigo-700 transition mb-2" onclick="UI.showPlayerCard('${p._cleanName}')">
                 <div>
                     <h4 class="font-bold text-xs text-white">${bestFit ? i + 2 : i + 1}. ${p.Player} <span class="text-[10px] font-normal text-indigo-300">(${p.Team})</span></h4>
-                    <p class="text-[10px] text-indigo-200 font-medium mt-0.5">${p.Pos} • ${highlight}</p>
+                    <p class="text-[10px] text-indigo-200 font-medium mt-0.5">${p.Pos} • ${highlight}${stackBadge}</p>
                 </div>
             </div>`;
         }).join('');
@@ -902,10 +917,13 @@ const UI = {
 
     renderStandings() {
         const list = document.getElementById('standings-list');
+        const startW = State.settings.startWeek || 1;
+        const endW = State.settings.endWeek || 17;
+        const decimals = State.settings.decimalPlaces || 2;
+
         let totals = Object.values(State.teamsById).map(team => {
-            // Calculates true starting lineup points across 17 weeks (handling starters & byes)
             let seasonStartingPts = 0;
-            for (let w = 1; w <= 17; w++) {
+            for (let w = startW; w <= endW; w++) {
                 seasonStartingPts += State.calculateOptimalWeeklyScore(team.roster, w);
             }
             return { name: team.name, pts: seasonStartingPts, isUser: team.id === State.userTeamId };
@@ -918,7 +936,7 @@ const UI = {
             htmlStr += `
                 <div class="flex justify-between items-center p-4 border rounded-xl ${bg} mb-3">
                     <span class="text-lg font-bold ${text}"><span class="text-gray-400 mr-2">#${i + 1}</span> ${t.name}</span>
-                    <span class="text-lg text-emerald-600 font-extrabold">${t.pts.toFixed(1)} pts</span>
+                    <span class="text-lg text-emerald-600 font-extrabold">${t.pts.toFixed(decimals)} pts</span>
                 </div>
             `;
         });

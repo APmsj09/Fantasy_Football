@@ -160,10 +160,11 @@ document.addEventListener('DOMContentLoaded', () => {
             await fetchTSV(`./k_proj_${SEASON}.tsv`, State.parseKickerData.bind(State), data => State.allPlayers.push(...data));
 
             State.enrichPlayerMap();
-            await enrichPlayerAges();
+            //await enrichPlayerAges();
 
             // Load all advanced metrics concurrently
             await Promise.all([
+                enrichPlayerAges(),
                 fetchTSV(`./SOS_${SEASON}.tsv`, State.parseSOSData.bind(State), State.mergeSOSData.bind(State)),
                 fetchTSV(`./RB_Handcuffs_${SEASON}.tsv`, State.parseHandcuffData.bind(State), State.mergeHandcuffData.bind(State)),
                 fetchTSV(`./ADP_${SEASON}.tsv`, State.parseADPData.bind(State), State.mergeADPData.bind(State)),
@@ -437,7 +438,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let picksToUndo = 1;
 
-        // If in a mock draft, rewind back through the CPU picks until it undoes the user's last pick
         if (State.settings.draftMode === 'mock' && State.draftHistory[State.draftHistory.length - 1].teamId !== State.userTeamId) {
             for (let i = State.draftHistory.length - 1; i >= 0; i--) {
                 if (State.draftHistory[i].teamId === State.userTeamId) break;
@@ -458,9 +458,18 @@ document.addEventListener('DOMContentLoaded', () => {
             State.currentPick--;
         }
 
-        State.availablePlayers.sort((a, b) => b.AdvVBD - a.AdvVBD);
-        State.draftStarted = true;
+        // Fix: Force array to re-sort using the exact UI configuration the user has active
+        let currentSort = State.draftSortKey || 'AdvVBD';
+        let currentAsc = State.draftSortAsc;
+        
+        State.availablePlayers.sort((a, b) => {
+            let valA = a[currentSort] ?? (currentSort === 'AdvVBD' ? (a.AdvVBD || a.VBD) : 0);
+            let valB = b[currentSort] ?? (currentSort === 'AdvVBD' ? (b.AdvVBD || b.VBD) : 0);
+            if (typeof valA === 'string') return currentAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+            return currentAsc ? valA - valB : valB - valA;
+        });
 
+        State.draftStarted = true;
         UI.updateDraftBoard();
     });
 

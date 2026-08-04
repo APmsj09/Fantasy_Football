@@ -14,6 +14,12 @@ const State = {
         numTeams: 12,
         draftMode: 'live',
         userTeamIndex: 1,
+
+        // LEAGUE CALENDAR & SCORING RULES
+        startWeek: 1,
+        endWeek: 17,
+        decimalPlaces: 2,
+
         roster: {
             QB: { max: 1 }, RB: { max: 2 }, WR: { max: 2 },
             TE: { max: 1 }, Flex: { max: 2 }, PK: { max: 1 },
@@ -330,11 +336,11 @@ const State = {
             const rank = parseInt(vals[headers.indexOf('Rank')], 10);
             const tier = vals[headers.indexOf('Tier')] || '';
             const teamName = vals[headers.indexOf('Team')] || '';
-            
+
             // Dynamically find columns in case the year changes (e.g., "2026 Run Blk")
             const runBlkIdx = headers.findIndex(h => h.includes('Run Blk'));
             const passBlkIdx = headers.findIndex(h => h.includes('Pass Blk'));
-            
+
             const runBlk = runBlkIdx !== -1 ? parseInt(vals[runBlkIdx], 10) : null;
             const passBlk = passBlkIdx !== -1 ? parseInt(vals[passBlkIdx], 10) : null;
             if (!teamName) continue;
@@ -638,44 +644,48 @@ const State = {
         let req = this.settings.roster;
         let b = this.positionalWeeklyBaselines || { QB: 18.0, RB: 10.5, WR: 11.0, TE: 7.5, PK: 7.0, DST: 7.0 };
 
-        // 1. QB SCORING (Waiver baseline for empty slot, Bye-week only for QB2)
+        // 1. QB SCORING
         if (req.QB.max === 1 && !State.isPositionFlexEligible('QB')) {
             if (qb.length === 0) {
-                // Empty QB slot = Waiver replacement level
                 score += b.QB || 18.0;
             } else {
-                // Pick highest season-projected QB as permanent QB1
                 let primaryQB = qb.reduce((max, curr) => (curr.player.ProjPts > max.player.ProjPts ? curr : max), qb[0]);
+                // FIX: Apply Math.max to prevent bye week zero
                 if (primaryQB.val > 0) {
-                    score += primaryQB.val; // QB1 active
+                    score += Math.max(primaryQB.val, b.QB || 18.0);
                 } else {
-                    // QB1 on BYE week -> Backup QB or waiver baseline
                     let backupQB = qb.find(q => q !== primaryQB && q.val > 0);
-                    score += backupQB ? backupQB.val : (b.QB || 18.0);
+                    score += backupQB ? Math.max(backupQB.val, b.QB || 18.0) : (b.QB || 18.0);
                 }
             }
         } else {
             // Multi-QB / Superflex
             qb.sort((a, b) => b.val - a.val);
             for (let i = 0; i < req.QB.max; i++) {
-                if (i < qb.length) score += qb[i].val;
+                // FIX: Apply Math.max
+                if (i < qb.length) score += Math.max(qb[i].val, b.QB || 18.0);
                 else score += b.QB || 18.0;
+            }
+            if (State.isPositionFlexEligible('QB')) {
+                for (let i = req.QB.max; i < qb.length; i++) {
+                    flex.push(qb[i].val);
+                }
             }
         }
 
-        // 2. PK & DST SCORING
+        // 2. PK & DST SCORING (FIX: Apply Math.max)
         pk.sort((a, b) => b - a);
         dst.sort((a, b) => b - a);
         for (let i = 0; i < req.PK.max; i++) {
-            if (i < pk.length) score += pk[i];
+            if (i < pk.length) score += Math.max(pk[i], b.PK || 7.0);
             else score += b.PK || 7.0;
         }
         for (let i = 0; i < req.DST.max; i++) {
-            if (i < dst.length) score += dst[i];
+            if (i < dst.length) score += Math.max(dst[i], b.DST || 7.0);
             else score += b.DST || 7.0;
         }
 
-        // 3. FLEX POSITIONS (RB, WR, TE)
+        // 3. FLEX POSITIONS
         rb.sort((a, b) => b - a);
         wr.sort((a, b) => b - a);
         te.sort((a, b) => b - a);
@@ -684,8 +694,9 @@ const State = {
             let s = 0;
             let bVal = b[posKey] || 10.0;
             for (let i = 0; i < maxReq; i++) {
-                if (i < arr.length) s += arr[i];
-                else s += bVal; // Empty starter slot uses positional replacement baseline
+                // FIX: Apply Math.max to prevent penalizing players on their bye week
+                if (i < arr.length) s += Math.max(arr[i], bVal);
+                else s += bVal;
             }
             for (let i = maxReq; i < arr.length; i++) {
                 flex.push(arr[i]);
@@ -698,10 +709,15 @@ const State = {
         score += processFlexPos(te, req.TE.max, 'TE');
 
         // Fill remaining Flex slots
-        let flexBaseline = ((b.RB || 10.5) + (b.WR || 11.0)) / 2;
+        // FIX: Pick the absolute best positional baseline instead of averaging
+        let flexBaseline = Math.max((b.RB || 10.5), (b.WR || 11.0), (b.TE || 7.5));
+        if (State.isPositionFlexEligible('QB')) {
+            flexBaseline = Math.max(flexBaseline, (b.QB || 18.0)); // Superflex override
+        }
+
         flex.sort((a, b) => b - a);
         for (let i = 0; i < req.Flex.max; i++) {
-            if (i < flex.length) score += flex[i];
+            if (i < flex.length) score += Math.max(flex[i], flexBaseline);
             else score += flexBaseline;
         }
 
@@ -709,8 +725,12 @@ const State = {
     },
 
     evaluateRosterFits(team, availablePlayers) {
+        const startW = this.settings.startWeek || 1;
+        const endW = this.settings.endWeek || 17;
+        const totalFantasyWeeks = (endW - startW + 1); // Exactly 17 weeks for your league
+
         let baseSeasonScore = 0;
-        for (let w = 1; w <= 17; w++) {
+        for (let w = startW; w <= endW; w++) {
             baseSeasonScore += this.calculateOptimalWeeklyScore(team.roster, w);
         }
 
@@ -722,26 +742,25 @@ const State = {
             return false;
         });
 
-        // Limit the pool to 45 to keep memory footprint hyper-light but accurate
         let topViable = viablePlayers.sort((a, b) => b.AdvVBD - a.AdvVBD).slice(0, 45);
 
         topViable.forEach(p => {
             let simSeasonScore = 0;
 
-            // Push player onto existing array instead of generating a cloned copy
             team.roster.push(p);
-            for (let w = 1; w <= 17; w++) {
+            for (let w = startW; w <= endW; w++) {
                 simSeasonScore += this.calculateOptimalWeeklyScore(team.roster, w);
             }
-            team.roster.pop(); // Remove them cleanly
+            team.roster.pop();
 
             let addedPts = simSeasonScore - baseSeasonScore;
 
             if (p.Pos === 'PK' || p.Pos === 'DST') addedPts *= 0.15;
-            p._addedPPW = addedPts / 17;
+
+            // Divide by total fantasy weeks (17) to get exact PPW for your league
+            p._addedPPW = addedPts / totalFantasyWeeks;
         });
 
-        // Reset non-viable players safely
         availablePlayers.forEach(p => {
             if (!topViable.includes(p)) p._addedPPW = 0;
         });
@@ -1048,17 +1067,18 @@ const State = {
         positions.forEach(pos => {
             let maxPos = this.settings.roster[pos]?.max || 1;
             let starters = numTeams * maxPos;
+
             if (pos === 'QB') {
-                starters = Math.floor(numTeams * 1.25); // Baseline at QB15 instead of QB12
+                starters = Math.floor(numTeams * (maxPos === 1 ? 1.25 : maxPos * 1.1));
             }
 
             if (pos === 'RB' || pos === 'WR') {
                 starters += Math.floor((numTeams * (this.settings.roster.Flex?.max || 2)) / 2);
             }
             if (pos === 'PK') {
-                starters = Math.floor(numTeams * 1.1); // Baseline at 13th Kicker
+                starters = Math.floor(numTeams * 1.1);
             } else if (pos === 'DST') {
-                starters = Math.floor(numTeams * 1.25); // Baseline at 15th DST
+                starters = Math.floor(numTeams * 1.25);
             }
 
             let sortedPos = [...this.allPlayers].filter(p => p.Pos === pos).sort((a, b) => b.ProjPts - a.ProjPts);
@@ -1067,7 +1087,7 @@ const State = {
             baselines[pos] = baselinePlayer ? baselinePlayer.ProjPts : 0;
         });
 
-        // SAVE WEEKLY REPLACEMENT-LEVEL BASELINES FOR SIMULATION
+        // Save weekly replacement-level baselines for 17-week simulation
         this.positionalWeeklyBaselines = {
             QB: (baselines.QB || 300) / 17,
             RB: (baselines.RB || 180) / 17,
@@ -1081,23 +1101,17 @@ const State = {
             let basePts = baselines[p.Pos] || 0;
             let rawVBD = p.ProjPts - basePts;
 
-            //Kicker and Defense VBD multipliers
+            // Kicker and Defense VBD multipliers
             if (p.Pos === 'PK') {
-                rawVBD = (rawVBD * 0.05) - 30.0; // Pushes Kickers below skill players until Round 14+
+                rawVBD = (rawVBD * 0.05) - 30.0;
             } else if (p.Pos === 'DST') {
-                rawVBD = (rawVBD * 0.10) - 20.0; // Pushes DSTs below skill players until Round 10+
+                rawVBD = (rawVBD * 0.10) - 20.0;
             }
             p.VBD = rawVBD;
 
             let adjMultiplier = 1.0;
 
-            // 1. ADP Value Validation (Softened)
-            //if (p.adp && p.adp > 0) {
-            //    if (p.adp <= 12) adjMultiplier += 0.03;
-            //    else if (p.adp <= 36) adjMultiplier += 0.02;
-            //}
-
-            // 2. Role Security (De-duplicated: Snap Share takes priority over Depth Chart)
+            // 1. Role Security (Snap share priority over depth chart)
             if (p.snapShare) {
                 if (p.snapShare >= 80) adjMultiplier += 0.05;
                 else if (p.snapShare >= 65) adjMultiplier += 0.03;
@@ -1107,14 +1121,12 @@ const State = {
                 else if (p.depthChart >= 3) adjMultiplier -= 0.02;
             }
 
-            // 3. Schedule Strength
+            // 2. Schedule Strength
             if (p.avgStars) adjMultiplier += (p.avgStars - 3.0) * 0.02;
             if (p.playoffSOS && p.playoffSOS >= 4.0) adjMultiplier += 0.02;
 
-            // 4. Offensive Line Quality (No Overlap)
+            // 3. Offensive Line Quality
             let olModifier = 0;
-            
-            // A. Evaluate position-specific rank first (most important)
             if (p.Pos === 'RB' && p.olRunBlk) {
                 if (p.olRunBlk <= 5) olModifier = 0.04;
                 else if (p.olRunBlk >= 25) olModifier = -0.04;
@@ -1123,16 +1135,14 @@ const State = {
                 else if (p.olPassBlk >= 25) olModifier = -0.04;
             }
 
-            // B. If position-specific didn't trigger an extreme, rely on the general tier
             if (olModifier === 0 && p.olTier) {
                 if (p.olTier === 'S') olModifier = 0.03;
                 else if (p.olTier === 'A') olModifier = 0.015;
                 else if (p.olTier === 'D' || p.olTier === 'F') olModifier = -0.03;
             }
-
             adjMultiplier += olModifier;
 
-            // 5. Inherited Role Volume (for Rookies / Team Changers)
+            // 4. Inherited Role Volume (Rookies / Team Changers)
             let lacksIndividualMetrics = false;
             if (p.Pos === 'QB') {
                 lacksIndividualMetrics = (p.trueAccuracy === undefined) && (p.pktTime === undefined);
@@ -1156,7 +1166,7 @@ const State = {
                 if (p.Pos === 'RB' && p.olRunBlk && p.olRunBlk <= 10) adjMultiplier += 0.03;
             }
 
-            // 6. Efficiency Metrics (Target Share, Tackle Breaking, Deep Ball)
+            // 5. Efficiency Metrics
             if (p.targetShare) {
                 if (p.targetShare >= 25) adjMultiplier += 0.05;
                 else if (p.targetShare >= 20) adjMultiplier += 0.03;
@@ -1168,15 +1178,13 @@ const State = {
                 if (p.rzAtt && p.rzAtt >= 40) adjMultiplier += 0.03;
                 if (p.brokenTackles && p.brokenTackles >= 20) adjMultiplier += 0.02;
 
-                // HVO: RBs getting targets and red zone looks are PPR gold mines
                 if (p.hvo) {
-                    if (p.hvo >= 110) adjMultiplier += 0.05; // CMC / Kamara tier
-                    else if (p.hvo >= 70) adjMultiplier += 0.03; // Elite dual-threat
+                    if (p.hvo >= 110) adjMultiplier += 0.05;
+                    else if (p.hvo >= 70) adjMultiplier += 0.03;
                 }
             }
 
             if (['WR', 'TE'].includes(p.Pos)) {
-                // Elite Efficiency (YPT) + Deep Threat (Air Yards)
                 if (p.ypt && p.ypt >= 9.5 && p.targetShare >= 20) adjMultiplier += 0.04;
                 if (p.airYards && p.airYards >= 1400) adjMultiplier += 0.03;
 
@@ -1185,61 +1193,43 @@ const State = {
             }
 
             if (p.Pos === 'QB') {
-                // Penalize QBs facing massive pressure / taking too many hits
                 if (p.pressureRate) {
                     if (p.pressureRate > 22.0) adjMultiplier -= 0.04;
                     else if (p.pressureRate < 13.0) adjMultiplier += 0.03;
                 }
-            }
-            if (p.Pos === 'QB') {
-                // Rushing floor boost for dual-threat QBs (Allen, Hurts, Lamar, Daniels)
                 if (p.stats && p.stats.rushAtt >= 60) adjMultiplier += 0.08;
-
-                // Top-tier elite passer projection boost
                 if (rawVBD >= 30) adjMultiplier += 0.06;
             }
 
             if (p.pastStats) {
                 let ps = p.pastStats;
+                if (p.Pos === 'QB' && ps.passYpa && ps.passYpa >= 8.0 && ps.passAtt >= 300) adjMultiplier += 0.03;
+                if (p.Pos === 'RB' && ps.rushYpa && ps.rushYpa >= 5.0 && ps.rushAtt >= 150) adjMultiplier += 0.03;
+                if (['WR', 'TE'].includes(p.Pos) && ps.recYpr && ps.recYpr >= 13.5 && ps.rec >= 50) adjMultiplier += 0.02;
 
-                // High Efficiency Boosts
-                if (p.Pos === 'QB' && ps.passYpa && ps.passYpa >= 8.0 && ps.passAtt >= 300) {
-                    adjMultiplier += 0.03; // Elite yards per attempt (Stafford, Maye, Goff)
-                }
-                if (p.Pos === 'RB' && ps.rushYpa && ps.rushYpa >= 5.0 && ps.rushAtt >= 150) {
-                    adjMultiplier += 0.03; // High efficiency rusher (Bijan, Gibbs, Achane)
-                }
-                if (['WR', 'TE'].includes(p.Pos) && ps.recYpr && ps.recYpr >= 13.5 && ps.rec >= 50) {
-                    adjMultiplier += 0.02; // Downfield weapon (JSN, Nacua, Pickens)
-                }
-
-                // Explosive Playmakers (20+ Yard Big Plays)
-                if (ps.bigPlays && ps.bigPlays >= 15) {
-                    adjMultiplier += 0.03; // Game-breaker bonus
-                }
-
-                // Target Dominance
-                if (ps.targetShare && ps.targetShare >= 28.0) {
-                    adjMultiplier += 0.04; // Alpha target share (JSN, Amon-Ra, Chase, McBride)
-                }
+                if (ps.bigPlays && ps.bigPlays >= 15) adjMultiplier += 0.03;
+                if (ps.targetShare && ps.targetShare >= 28.0) adjMultiplier += 0.04;
             }
 
-            // ===========================================================
-            // ADVANCED TEAM ENVIRONMENT METRICS (ZERO OVERLAP)
-            // ===========================================================
+            // 6. Age-Cliff Modifiers
+            let pAge = p.age || p.Age;
+            if (pAge) {
+                if (p.Pos === 'RB' && pAge >= 27) adjMultiplier -= (pAge - 26) * 0.035;
+                else if (p.Pos === 'WR' && pAge >= 31) adjMultiplier -= (pAge - 30) * 0.04;
+                else if (p.Pos === 'TE' && pAge >= 32) adjMultiplier -= (pAge - 31) * 0.03;
+                else if (p.Pos === 'QB' && pAge >= 37) adjMultiplier -= (pAge - 36) * 0.025;
+            }
+
+            // 7. Advanced Team Environment Metrics
             const tTeam = this.normalizeTeam(p.Team);
             const passEnv = this.teamAdvPass[tTeam];
             const rushEnv = this.teamAdvRush[tTeam];
             const recEnv = this.teamAdvRec[tTeam];
 
-            // 1. VETERAN & TEAM SCHEME METRICS
             if (passEnv) {
                 if (['QB', 'WR', 'TE'].includes(p.Pos)) {
-                    if (passEnv.playActionYds >= 950 || passEnv.rpoYds >= 550) {
-                        adjMultiplier += 0.02;
-                    } else if (passEnv.playActionYds < 500 && passEnv.rpoYds < 200) {
-                        adjMultiplier -= 0.01;
-                    }
+                    if (passEnv.playActionYds >= 950 || passEnv.rpoYds >= 550) adjMultiplier += 0.02;
+                    else if (passEnv.playActionYds < 500 && passEnv.rpoYds < 200) adjMultiplier -= 0.01;
                 }
 
                 if (['QB', 'WR', 'TE'].includes(p.Pos) && (!p.olPassBlk || (p.olPassBlk > 5 && p.olPassBlk < 25))) {
@@ -1248,12 +1238,9 @@ const State = {
                 }
             }
 
-            // TARGET QUALITY: Evaluate Actual Starting QB Accuracy (Fallback to Team OnTgt%)
             if (['WR', 'TE'].includes(p.Pos)) {
                 let teamQB = this.allPlayers.find(q =>
-                    q._cleanTeam === tTeam &&
-                    q._cleanPos === 'QB' &&
-                    q.depthChart === 1
+                    q._cleanTeam === tTeam && q._cleanPos === 'QB' && q.depthChart === 1
                 );
 
                 if (!teamQB) {
@@ -1271,7 +1258,6 @@ const State = {
                 }
             }
 
-            // 2. ROOKIES & TEAM CHANGERS (`p.isNewRole`)
             if (p.isNewRole) {
                 if (p.Pos === 'RB' && rushEnv) {
                     if (rushEnv.ybcAtt >= 2.8) adjMultiplier += 0.03;
@@ -1297,8 +1283,11 @@ const State = {
                 }
             }
 
-            // NARROW CAP RANGE: Keeps Adv VBD realistic without blowing up Round 1 scores
-            adjMultiplier = Math.max(0.85, Math.min(1.25, adjMultiplier));
+            // ===========================================================
+            // FINAL CALCULATIONS (UNIFIED CAP & SEQUENTIAL EVALUATION)
+            // ===========================================================
+            // Cap total adjustment between 0.75 and 1.28
+            adjMultiplier = Math.max(0.75, Math.min(1.28, adjMultiplier));
 
             if (p.VBD >= 0) {
                 p.AdvVBD = p.VBD * adjMultiplier;
@@ -1306,14 +1295,43 @@ const State = {
                 p.AdvVBD = p.VBD / adjMultiplier;
             }
 
-            // Safety guards to prevent NaN values
+            // Safety guards to prevent NaN
             if (isNaN(p.VBD)) p.VBD = 0;
             if (isNaN(p.AdvVBD)) p.AdvVBD = p.VBD;
+
+            // Range of Outcomes / Upside Potential (Calculated AFTER AdvVBD is finalized)
+            let upsideBonus = 0;
+            if (p.aDOT && p.aDOT >= 12.0) upsideBonus += 0.06;
+            if (p.hvo && p.hvo >= 75) upsideBonus += 0.06;
+            if (p.pastStats && p.pastStats.bigPlays && p.pastStats.bigPlays >= 12) upsideBonus += 0.05;
+            p.upsideScore = (p.AdvVBD || p.VBD) * (1 + upsideBonus);
         });
 
         // Fail-safe sort
         this.allPlayers.sort((a, b) => (b.AdvVBD || 0) - (a.AdvVBD || 0));
         this.availablePlayers = [...this.allPlayers];
+    },
+
+    // Helper: Calculates positional tiers for available players based on AdvVBD clusters
+    getPositionalTiers(pos) {
+        let avail = this.availablePlayers.filter(p => p.Pos === pos);
+        if (!avail.length) return [];
+        
+        let tiers = [];
+        let currentTier = [avail[0]];
+        let dropThreshold = (pos === 'QB' || pos === 'TE') ? 7.5 : 9.5;
+
+        for (let i = 1; i < avail.length; i++) {
+            let prevVal = avail[i - 1].AdvVBD || avail[i - 1].VBD;
+            let currVal = avail[i].AdvVBD || avail[i].VBD;
+            if ((prevVal - currVal) >= dropThreshold) {
+                tiers.push(currentTier);
+                currentTier = [];
+            }
+            currentTier.push(avail[i]);
+        }
+        if (currentTier.length) tiers.push(currentTier);
+        return tiers;
     },
 
     parseHistory(text) {

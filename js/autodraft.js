@@ -11,6 +11,10 @@ window.AutoDraft = {
         if (team && team.isCPU) {
             this.isDrafting = true;
             await new Promise(r => setTimeout(r, 400));
+            if (!State.draftStarted || State.currentPick >= State.draftOrder.length || State.draftOrder[State.currentPick] !== teamId) {
+                this.isDrafting = false;
+                return;
+            }
             this.makeCPUPick(team);
             this.isDrafting = false;
 
@@ -134,8 +138,11 @@ window.AutoDraft = {
     },
 
     executeDraft(player, team, slot) {
-        const idx = State.availablePlayers.findIndex(p => p._cleanName === player._cleanName);
+        const idx = State.availablePlayers.findIndex(p => p._cleanName === player._cleanName && p.Pos === player.Pos && p.Team === player.Team);
         if (idx !== -1) State.availablePlayers.splice(idx, 1);
+
+        // Record the overall pick number on the player object for strategy detection
+        player.draftPickNum = State.currentPick + 1;
 
         team.roster.push({ ...player, slottedPos: slot });
         team.counts[slot]++;
