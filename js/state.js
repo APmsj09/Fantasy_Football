@@ -231,6 +231,55 @@ const State = {
         return data;
     },
 
+    parseDSTActualsData(text) {
+        const rows = text.split(/\r?\n/).filter(row => row.trim() !== '');
+        if (rows.length < 2) return [];
+        const headers = rows[0].split('\t').map(h => h.trim().toUpperCase());
+        const parsed = [];
+
+        for (let i = 1; i < rows.length; i++) {
+            const vals = rows[i].split('\t').map(v => v.trim());
+            if (vals.length < 4) continue;
+
+            let obj = {};
+            headers.forEach((h, idx) => {
+                let val = vals[idx] || '';
+                let cleanVal = val.replace(/,/g, '');
+                if (cleanVal !== '' && !isNaN(cleanVal)) {
+                    obj[h] = parseFloat(cleanVal);
+                } else {
+                    obj[h] = val;
+                }
+            });
+            parsed.push(obj);
+        }
+        return parsed;
+    },
+
+    mergeDSTActualsData(dataArray) {
+        dataArray.forEach(row => {
+            const playerStr = row['PLAYER'];
+            const teamStr = row['TEAM'];
+            if (!playerStr || !teamStr) return;
+
+            // Match using exact casing/team string
+            let p = this.matchPlayerFast(playerStr, teamStr, 'DST');
+            if (!p) return;
+
+            if (!p.pastStats) p.pastStats = {};
+            let ps = p.pastStats;
+
+            if (row['G'] !== undefined) ps.gp = row['G'];
+            if (row['SACK'] !== undefined) ps.sack = row['SACK'];
+            if (row['INT'] !== undefined) ps.defInt = row['INT'];
+            if (row['FR'] !== undefined) ps.defFum = row['FR'];
+            if (row['FF'] !== undefined) ps.ff = row['FF'];
+            if (row['DEF TD'] !== undefined) ps.defTd = row['DEF TD'];
+            if (row['SFTY'] !== undefined) ps.safety = row['SFTY'];
+            if (row['SPC TD'] !== undefined) ps.spcTd = row['SPC TD'];
+        });
+    },
+
     parseTeamAdvRushData(text) {
         const rows = text.split(/\r?\n/).filter(row => row.trim() !== '');
         if (rows.length < 2) return {};
@@ -1033,25 +1082,44 @@ const State = {
                 let ps = p.pastStats;
                 let pastPts = 0;
 
-                let passYds = ps.passYds || 0;
-                let rushYds = ps.rushYds || 0;
-                let recYds = ps.recYds || 0;
-                let rec = ps.rec || 0;
-                let int = ps.int || 0;
-                let fum = ps.fum || 0;
-                let passTd = ps.passTd || 0;
-                let rushTd = ps.rushTd || 0;
-                let recTd = ps.recTd || 0;
+                if (p.Pos === 'DST') {
+                    let sack = ps.sack || 0;
+                    let defInt = ps.defInt || 0;
+                    let defFum = ps.defFum || 0;
+                    let defTd = ps.defTd || 0;
+                    let spcTd = ps.spcTd || 0;
+                    let safety = ps.safety || 0;
 
-                pastPts += passYds * (this.scoring.passYds || 0.04);
-                pastPts += rushYds * (this.scoring.rushYds || 0.1);
-                pastPts += recYds * (this.scoring.recYds || 0.1);
-                pastPts += rec * (this.scoring.ppr || 1);
-                pastPts += int * (this.scoring.int || -2);
-                pastPts += fum * (this.scoring.fumLost || -2);
-                pastPts += passTd * (this.scoring.passTd || 6);
-                pastPts += rushTd * (this.scoring.rushTd || 6);
-                pastPts += recTd * (this.scoring.recTd || 6);
+                    pastPts += sack * (this.scoring.sack || 1);
+                    pastPts += (defInt + defFum) * (this.scoring.turnover || 2);
+                    pastPts += (defTd + spcTd) * (this.scoring.defTd || 6);
+                    pastPts += safety * (this.scoring.safety || 2);
+                    
+                    // Add a baseline +4 points per game to account for average Points Allowed/Yards Allowed scoring since it isn't in the TSV
+                    pastPts += (ps.gp || 17) * 4; 
+                } else if (p.Pos === 'PK') {
+                    // Logic for PK if added in future
+                } else {
+                    let passYds = ps.passYds || 0;
+                    let rushYds = ps.rushYds || 0;
+                    let recYds = ps.recYds || 0;
+                    let rec = ps.rec || 0;
+                    let int = ps.int || 0;
+                    let fum = ps.fum || 0;
+                    let passTd = ps.passTd || 0;
+                    let rushTd = ps.rushTd || 0;
+                    let recTd = ps.recTd || 0;
+
+                    pastPts += passYds * (this.scoring.passYds || 0.04);
+                    pastPts += rushYds * (this.scoring.rushYds || 0.1);
+                    pastPts += recYds * (this.scoring.recYds || 0.1);
+                    pastPts += rec * (this.scoring.ppr || 1);
+                    pastPts += int * (this.scoring.int || -2);
+                    pastPts += fum * (this.scoring.fumLost || -2);
+                    pastPts += passTd * (this.scoring.passTd || 6);
+                    pastPts += rushTd * (this.scoring.rushTd || 6);
+                    pastPts += recTd * (this.scoring.recTd || 6);
+                }
 
                 p.pastPts = isNaN(pastPts) ? 0 : pastPts;
                 p.pastPpg = (ps.gp && ps.gp > 0) ? (p.pastPts / ps.gp) : 0;

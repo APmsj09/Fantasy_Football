@@ -168,6 +168,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 fetchTSV(`./SOS_${SEASON}.tsv`, State.parseSOSData.bind(State), State.mergeSOSData.bind(State)),
                 fetchTSV(`./RB_Handcuffs_${SEASON}.tsv`, State.parseHandcuffData.bind(State), State.mergeHandcuffData.bind(State)),
                 fetchTSV(`./ADP_${SEASON}.tsv`, State.parseADPData.bind(State), State.mergeADPData.bind(State)),
+                fetchTSV(`./DST_Data.tsv`, State.parseDSTActualsData.bind(State), State.mergeDSTActualsData.bind(State)),
                 fetchTSV(`./Depth_Chart_${SEASON}.tsv`, State.parseDepthChartData.bind(State), State.mergeDepthChartData.bind(State)),
                 fetchTSV(`./Snap_Count_${SEASON}.tsv`, State.parseSnapCountData.bind(State), State.mergeSnapCountData.bind(State)),
                 fetchTSV(`./OL_Rank_${SEASON}.tsv`, State.parseOLRankData.bind(State), State.mergeOLRankData.bind(State)),
