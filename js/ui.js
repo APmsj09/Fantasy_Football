@@ -172,6 +172,227 @@ const UI = {
         tbody.innerHTML = htmlStr;
     },
 
+    switchPlayerCardTab(tabName) {
+        const overviewTab = document.getElementById('card-tab-overview');
+        const writeupTab = document.getElementById('card-tab-writeup');
+        const btnOverview = document.getElementById('btn-tab-overview');
+        const btnWriteup = document.getElementById('btn-tab-writeup');
+
+        if (!overviewTab || !writeupTab) return;
+
+        if (tabName === 'overview') {
+            overviewTab.classList.remove('hidden');
+            writeupTab.classList.add('hidden');
+            btnOverview.className = "px-4 py-2 font-bold text-xs rounded-xl bg-indigo-600 text-white shadow-sm transition-all";
+            btnWriteup.className = "px-4 py-2 font-bold text-xs rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all";
+        } else {
+            overviewTab.classList.add('hidden');
+            writeupTab.classList.remove('hidden');
+            btnWriteup.className = "px-4 py-2 font-bold text-xs rounded-xl bg-indigo-600 text-white shadow-sm transition-all";
+            btnOverview.className = "px-4 py-2 font-bold text-xs rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all";
+        }
+    },
+
+    generatePlayerWriteup(p) {
+        const age = this.getPlayerAge(p);
+        const pos = p.Pos;
+        const proj = p.ProjPts || 0;
+        const ppg = (proj / 17).toFixed(1);
+        const advVbd = (p.AdvVBD || p.VBD || 0).toFixed(1);
+        const tTeam = State.normalizeTeam(p.Team);
+        
+        // -------------------------------------------------------------
+        // 1. POSITIONAL RANK & TIER CONTEXT
+        // -------------------------------------------------------------
+        const posPlayers = State.allPlayers
+            .filter(x => x.Pos === pos)
+            .sort((a, b) => (b.AdvVBD || b.VBD) - (a.AdvVBD || a.VBD));
+        const posRank = posPlayers.findIndex(x => x._cleanName === p._cleanName) + 1;
+        const posRankStr = posRank > 0 ? `${pos}${posRank}` : `${pos}`;
+        
+        let tierLabel = "Starter";
+        if (posRank <= 12) tierLabel = `High-End ${pos}1`;
+        else if (posRank <= 24) tierLabel = `Solid ${pos}2`;
+        else if (posRank <= 36) tierLabel = `Flex / ${pos}3`;
+        else tierLabel = "Bench Depth";
+
+        // -------------------------------------------------------------
+        // 2. YEAR-OVER-YEAR TRAJECTORY (2025 Actual vs 2026 Projection)
+        // -------------------------------------------------------------
+        let trajectoryHTML = "";
+        if (p.pastPpg && p.pastPpg > 0) {
+            const diff = (Number(ppg) - p.pastPpg).toFixed(1);
+            if (diff >= 1.5) {
+                trajectoryHTML = `<span class="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded text-[10px] font-bold">📈 Projected Surge (+${diff} PPG vs 2025)</span>`;
+            } else if (diff <= -1.5) {
+                trajectoryHTML = `<span class="bg-rose-500/20 text-rose-300 border border-rose-500/30 px-2 py-0.5 rounded text-[10px] font-bold">📉 Regression Alert (${diff} PPG vs 2025)</span>`;
+            } else {
+                trajectoryHTML = `<span class="bg-slate-700 text-slate-300 px-2 py-0.5 rounded text-[10px] font-bold">⚖️ Stable PPG Trend (~${p.pastPpg.toFixed(1)} PPG in 2025)</span>`;
+            }
+        }
+
+        // -------------------------------------------------------------
+        // 3. ADP MARKET VALUE ANALYSIS
+        // -------------------------------------------------------------
+        let marketValueHTML = "";
+        if (p.adp) {
+            const overallRank = State.allPlayers.findIndex(x => x._cleanName === p._cleanName) + 1;
+            const diff = p.adp - overallRank;
+            if (diff >= 12) {
+                marketValueHTML = `<div class="p-2.5 bg-emerald-950/60 border border-emerald-800 rounded-lg text-emerald-200">🔥 <strong>Massive Market Discount:</strong> VBD ranks him #<strong>${overallRank}</strong> overall, but market ADP is <strong>#${p.adp.toFixed(0)}</strong> (+${diff.toFixed(0)} pick value).</div>`;
+            } else if (diff <= -12) {
+                marketValueHTML = `<div class="p-2.5 bg-rose-950/60 border border-rose-800 rounded-lg text-rose-200">⚠️ <strong>Market Premium / Reach:</strong> Drafting at ADP #<strong>${p.adp.toFixed(0)}</strong> requires reaching ahead of his #<strong>${overallRank}</strong> VBD Rank.</div>`;
+            } else {
+                marketValueHTML = `<div class="p-2.5 bg-slate-800/60 border border-slate-700 rounded-lg text-slate-300">🎯 <strong>Fair Market Alignment:</strong> ADP (#${p.adp.toFixed(0)}) closely tracks overall VBD Model Rank (#${overallRank}).</div>`;
+            }
+        }
+
+        // -------------------------------------------------------------
+        // 4. FANTASY PLAYOFF SCHEDULE (Weeks 15-17)
+        // -------------------------------------------------------------
+        let playoffSOS = p.playoffSOS || p.avgStars || 3.0;
+        let playoffHTML = "";
+        if (playoffSOS >= 3.8) {
+            playoffHTML = `<div class="p-2.5 bg-amber-950/60 border border-amber-800 rounded-lg text-amber-200">🏆 <strong>Championship Schedule:</strong> Prime playoff SOS (⭐<strong>${playoffSOS.toFixed(2)}</strong>/5.0) in Weeks 15–17.</div>`;
+        } else if (playoffSOS <= 2.3) {
+            playoffHTML = `<div class="p-2.5 bg-indigo-950/60 border border-indigo-800 rounded-lg text-indigo-200">❄️ <strong>Brutal Playoff Run:</strong> Difficult matchup stretch (⭐<strong>${playoffSOS.toFixed(2)}</strong>/5.0) during fantasy playoffs.</div>`;
+        }
+
+        // -------------------------------------------------------------
+        // 5. DYNAMIC BULL CASE (Pros)
+        // -------------------------------------------------------------
+        let pros = [];
+        if (p.targetShare && p.targetShare >= 22) pros.push(`<strong>Alpha Target Share:</strong> Commands a dominant ${p.targetShare}% target share in the passing game.`);
+        if (p.hvo && p.hvo >= 70) pros.push(`<strong>High-Value Opportunities:</strong> Generates elite goal-line & receiving usage (${p.hvo} HVO).`);
+        if (p.olTier === 'S' || p.olTier === 'A') pros.push(`<strong>Elite Trench Protection:</strong> Operates behind an elite Tier ${p.olTier} Offensive Line.`);
+        if (p.aDOT && p.aDOT >= 12) pros.push(`<strong>Deep Threat Upside:</strong> Boasts a high ${p.aDOT} aDOT for explosive chunk-play potential.`);
+        if (p.avgStars && p.avgStars >= 3.3) pros.push(`<strong>Soft Overall Schedule:</strong> Favorable ${p.avgStars.toFixed(2)}/5.0 Strength of Schedule rating.`);
+        if (p.snapShare && p.snapShare >= 75) pros.push(`<strong>Workhorse Snap Share:</strong> On the field for ${p.snapShare.toFixed(0)}% of offensive snaps.`);
+        if (p._addedPPW && p._addedPPW >= 0.3) pros.push(`<strong>Lineup Difference Maker:</strong> Adds +${p._addedPPW.toFixed(1)} Points Per Week directly to your optimal starters.`);
+        if (p.isRBStarter && p.handcuffName) pros.push(`<strong>Clear Backfield Lead:</strong> Uncontested RB1 status with designated handcuff (${p.handcuffName}).`);
+        
+        // Scheme-Specific Pros
+        const passEnv = State.teamAdvPass ? State.teamAdvPass[tTeam] : null;
+        const rushEnv = State.teamAdvRush ? State.teamAdvRush[tTeam] : null;
+        if (pos === 'RB' && rushEnv && rushEnv.ybcAtt >= 2.8) {
+            pros.push(`<strong>YBC Scheme Boost:</strong> Offensive blocking creates ${rushEnv.ybcAtt} Yards Before Contact per carry.`);
+        }
+        if (['WR', 'TE'].includes(pos) && passEnv && passEnv.playActionYds >= 950) {
+            pros.push(`<strong>Play-Action Heavy:</strong> Team generates ${passEnv.playActionYds} yards off play-action setups.`);
+        }
+
+        if (pros.length === 0) pros.push("Solid baseline candidate with standard positional volume.");
+
+        // -------------------------------------------------------------
+        // 6. DYNAMIC BEAR CASE (Risks / Cons)
+        // -------------------------------------------------------------
+        let cons = [];
+        let riskScore = 0;
+
+        if (age) {
+            if (pos === 'RB' && age >= 27) { cons.push(`<strong>Age Cliff Risk:</strong> At ${age} y/o, running backs face steep decline and injury curves.`); riskScore += 2; }
+            if (pos === 'WR' && age >= 31) { cons.push(`<strong>Veteran Age Risk:</strong> Age ${age} puts him past the peak WR productivity curve.`); riskScore += 2; }
+        }
+        if (p.olTier === 'D' || p.olTier === 'F') { cons.push(`<strong>Poor O-Line Environment:</strong> Struggling Tier ${p.olTier} offensive line could cap overall efficiency.`); riskScore += 1; }
+        if (p.pressureRate && p.pressureRate > 22) { cons.push(`<strong>Pressure Vulnerability:</strong> Faces heavy defensive pressure (${p.pressureRate.toFixed(1)}% rate).`); riskScore += 1; }
+        if (p.dropRate && p.dropRate >= 8) { cons.push(`<strong>Hands / Drop Concerns:</strong> Sufferings from an elevated ${p.dropRate.toFixed(1)}% drop rate.`); riskScore += 1; }
+        if (p.avgStars && p.avgStars <= 2.7) { cons.push(`<strong>Tough Overall Schedule:</strong> Faces a grueling ${p.avgStars.toFixed(2)}/5.0 star schedule.`); riskScore += 1; }
+        if (p.depthChart && p.depthChart > 1) { cons.push(`<strong>Depth Chart Trait:</strong> Currently slotted at Depth #${p.depthChart} on the team.`); riskScore += 1; }
+        
+        if (cons.length === 0) cons.push("Minimal red flags based on historical stats and offensive environment.");
+
+        // Risk Badge
+        let riskBadge = `<span class="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2.5 py-0.5 rounded-full font-bold">🛡️ LOW RISK</span>`;
+        if (riskScore >= 3) riskBadge = `<span class="bg-rose-500/20 text-rose-300 border border-rose-500/30 px-2.5 py-0.5 rounded-full font-bold">⚠️ HIGH RISK</span>`;
+        else if (riskScore === 2) riskBadge = `<span class="bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2.5 py-0.5 rounded-full font-bold">⚡ MODERATE RISK</span>`;
+
+        // -------------------------------------------------------------
+        // 7. RANGE OF OUTCOMES (Floor / Ceiling Calculation)
+        // -------------------------------------------------------------
+        let ceilingPpg = (Number(ppg) * 1.25).toFixed(1);
+        let floorPpg = (Number(ppg) * 0.75).toFixed(1);
+        
+        if (p.upsideScore && p.AdvVBD) {
+            let upsideBoost = Math.min(1.4, Math.max(1.1, p.upsideScore / p.AdvVBD));
+            ceilingPpg = (Number(ppg) * upsideBoost).toFixed(1);
+        }
+
+        // -------------------------------------------------------------
+        // 8. FINAL HTML OUTPUT TEMPLATE
+        // -------------------------------------------------------------
+        return `
+            <div class="space-y-4 text-xs leading-relaxed">
+                <!-- Executive Summary Box -->
+                <div class="bg-indigo-950 text-indigo-100 p-4 rounded-xl border border-indigo-800 shadow-sm">
+                    <div class="flex justify-between items-center mb-2 flex-wrap gap-2">
+                        <div class="flex items-center space-x-2">
+                            <span class="font-extrabold text-white text-sm uppercase tracking-wider">${posRankStr} (${tierLabel})</span>
+                            ${trajectoryHTML}
+                        </div>
+                        <div>${riskBadge}</div>
+                    </div>
+                    <p class="text-indigo-200">
+                        ${p.Player} is projected for <strong>${proj.toFixed(1)} total fantasy pts</strong> (~${ppg} PPG) with an Advanced VBD of <strong>${advVbd}</strong>.
+                        ${p.isNewRole ? `Transitioning into a fresh offensive role on ${p.Team}, where touch distributions favor his athletic profile.` : `Remains a focal point in the ${p.Team} attack.`}
+                    </p>
+                </div>
+
+                <!-- Market Value & Playoff Context Row -->
+                ${(marketValueHTML || playoffHTML) ? `
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                        ${marketValueHTML || '<div></div>'}
+                        ${playoffHTML || '<div></div>'}
+                    </div>
+                ` : ''}
+
+                <!-- Pros & Cons Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Bull Case -->
+                    <div class="bg-emerald-50/70 border border-emerald-200 p-4 rounded-xl">
+                        <h5 class="font-extrabold text-emerald-900 text-xs uppercase tracking-wider mb-2.5 flex items-center">
+                            <span class="mr-1.5">🚀</span> Bull Case (Good Points)
+                        </h5>
+                        <ul class="space-y-2 text-emerald-950">
+                            ${pros.map(pro => `<li class="flex items-start"><span class="text-emerald-600 mr-2 font-bold">•</span><div>${pro}</div></li>`).join('')}
+                        </ul>
+                    </div>
+
+                    <!-- Bear Case -->
+                    <div class="bg-rose-50/70 border border-rose-200 p-4 rounded-xl">
+                        <h5 class="font-extrabold text-rose-900 text-xs uppercase tracking-wider mb-2.5 flex items-center">
+                            <span class="mr-1.5">⚠️</span> Bear Case (Risks & Flaws)
+                        </h5>
+                        <ul class="space-y-2 text-rose-950">
+                            ${cons.map(con => `<li class="flex items-start"><span class="text-rose-600 mr-2 font-bold">•</span><div>${con}</div></li>`).join('')}
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Range of Outcomes -->
+                <div class="bg-slate-900 text-white p-4 rounded-xl border border-slate-800">
+                    <h4 class="font-extrabold text-xs uppercase tracking-wider mb-3 text-amber-400">Range of Outcomes (Weekly Floor / Ceiling)</h4>
+                    <div class="grid grid-cols-3 gap-3 text-center">
+                        <div class="bg-slate-800/80 p-2.5 rounded-lg border border-slate-700">
+                            <span class="text-[10px] text-slate-400 uppercase font-bold block">Floor Scenario</span>
+                            <span class="text-base font-extrabold text-rose-400">${floorPpg} PPG</span>
+                            <span class="text-[9px] text-slate-400 block mt-0.5">Role shrinkage / Injury risk</span>
+                        </div>
+                        <div class="bg-slate-800/80 p-2.5 rounded-lg border border-indigo-500/50">
+                            <span class="text-[10px] text-indigo-300 uppercase font-bold block">Median Projection</span>
+                            <span class="text-base font-extrabold text-white">${ppg} PPG</span>
+                            <span class="text-[9px] text-indigo-200 block mt-0.5">Base expected volume</span>
+                        </div>
+                        <div class="bg-slate-800/80 p-2.5 rounded-lg border border-slate-700">
+                            <span class="text-[10px] text-slate-400 uppercase font-bold block">Ceiling Scenario</span>
+                            <span class="text-base font-extrabold text-emerald-400">${ceilingPpg} PPG</span>
+                            <span class="text-[9px] text-slate-400 block mt-0.5">TD Luck & Max Efficiency</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    },
+
     showPlayerCard(cleanName) {
         let p = State.allPlayers.find(x => x._cleanName === cleanName);
         if (!p) return;
@@ -238,7 +459,6 @@ const UI = {
             if (p.airYards) barHTML += buildBar('Total Air Yards', p.airYards, 2000, ' yds', 'amber');
             if (p.yacAtt) barHTML += buildBar('Yards After Contact', p.yacAtt, 4, ' yds', 'purple');
             if (p.brokenTackles) barHTML += buildBar('Broken Tackles', p.brokenTackles, 30, '', 'red');
-            
             // Render Synthesized Pro Metrics
             if (p.hvo) barHTML += buildBar('High-Value Opps (Rec + RZ)', p.hvo, 130, '', 'emerald');
             if (p.ypt) barHTML += buildBar('Yards Per Target', p.ypt.toFixed(1), 12, ' yds', 'blue');
@@ -350,17 +570,30 @@ const UI = {
             ${p.byeWeek && p.byeWeek !== 'N/A' ? `<span class="text-xs border border-gray-200 text-gray-500 px-2 py-0.5 rounded-full font-semibold">Wk ${p.byeWeek} Bye</span>` : ''}
         </div>`;
 
+        const writeupHTML = this.generatePlayerWriteup(p);
+
         UI.showMessage(modalTitle, `
-            <div class="mb-3">${envBadgesHTML}${ppwBadge}</div>
-            ${statsDashboard}
-            ${pastStatsHTML} 
-            ${advancedMetricsHTML}
-            
-            <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
-                <h4 class="font-bold text-xs text-gray-700 uppercase tracking-wider mb-2">18-Week Weekly Projection Trajectory</h4>
-                <div class="relative h-40 w-full">
-                    <canvas id="player-weekly-chart"></canvas>
+            <div class="flex gap-2 mb-4 border-b border-gray-100 pb-3">
+                <button id="btn-tab-overview" onclick="UI.switchPlayerCardTab('overview')" class="px-4 py-2 font-bold text-xs rounded-xl bg-indigo-600 text-white shadow-sm transition-all">Overview & Analytics</button>
+                <button id="btn-tab-writeup" onclick="UI.switchPlayerCardTab('writeup')" class="px-4 py-2 font-bold text-xs rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all">🤖 AI Scout Write-Up</button>
+            </div>
+
+            <div id="card-tab-overview">
+                <div class="mb-3">${envBadgesHTML}${ppwBadge}</div>
+                ${statsDashboard}
+                ${pastStatsHTML} 
+                ${advancedMetricsHTML}
+                
+                <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+                    <h4 class="font-bold text-xs text-gray-700 uppercase tracking-wider mb-2">18-Week Weekly Projection Trajectory</h4>
+                    <div class="relative h-40 w-full">
+                        <canvas id="player-weekly-chart"></canvas>
+                    </div>
                 </div>
+            </div>
+
+            <div id="card-tab-writeup" class="hidden">
+                ${writeupHTML}
             </div>
         `);
 

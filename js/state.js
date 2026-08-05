@@ -46,14 +46,20 @@ const State = {
             'CLV': 'CLE', 'BLV': 'BAL', 'OAK': 'LV', 'SD': 'LAC',
             'DENVER BRONCOS': 'DEN', 'BRONCOS': 'DEN',
             'PHILADELPHIA EAGLES': 'PHI', 'EAGLES': 'PHI',
-            'LOS ANGELES RAMS': 'LAR', 'RAMS': 'LAR',
+            
+            // FIX: Map Rams consistently to 'LA' to match player data and the 'LAR' key above
+            'LOS ANGELES RAMS': 'LA', 'RAMS': 'LA', 'LA RAMS': 'LA',
+            
             'CHICAGO BEARS': 'CHI', 'BEARS': 'CHI',
             'TAMPA BAY BUCCANEERS': 'TB', 'BUCCANEERS': 'TB',
             'BUFFALO BILLS': 'BUF', 'BILLS': 'BUF',
             'CAROLINA PANTHERS': 'CAR', 'PANTHERS': 'CAR',
             'SAN FRANCISCO 49ERS': 'SF', '49ERS': 'SF',
             'INDIANAPOLIS COLTS': 'IND', 'COLTS': 'IND',
-            'LOS ANGELES CHARGERS': 'LAC', 'CHARGERS': 'LAC',
+            
+            // FIX: Added 'LA CHARGERS' just to be safe
+            'LOS ANGELES CHARGERS': 'LAC', 'CHARGERS': 'LAC', 'LA CHARGERS': 'LAC',
+            
             'ATLANTA FALCONS': 'ATL', 'FALCONS': 'ATL',
             'DETROIT LIONS': 'DET', 'LIONS': 'DET',
             'MINNESOTA VIKINGS': 'MIN', 'VIKINGS': 'MIN',
