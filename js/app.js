@@ -367,6 +367,7 @@ document.addEventListener('DOMContentLoaded', () => {
         tbody.innerHTML = htmlStr;
     }
 
+    // 1. Settings Submit Listener
     startBtn.addEventListener('click', () => {
         State.settings.numTeams = parseInt(document.getElementById('setting-teams').value) || 12;
         State.settings.draftMode = document.getElementById('setting-draft-type').value;
@@ -386,6 +387,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         r.totalSize = r.QB.max + r.RB.max + r.WR.max + r.TE.max + r.FlexRBWR.max + r.Flex.max + r.Superflex.max + r.PK.max + r.DST.max + r.Bench.max;
 
+        State.scoring.tePremium = parseFloat(document.getElementById('score-te-prem').value) || 0;
         State.scoring.passYds = parseFloat(document.getElementById('score-pass-yds').value) || 0.04;
         State.scoring.passTd = parseFloat(document.getElementById('score-pass-td').value) || 6;
         State.scoring.int = parseFloat(document.getElementById('score-int').value) || -2;
@@ -403,6 +405,7 @@ document.addEventListener('DOMContentLoaded', () => {
         State.scoring.safety = parseFloat(document.getElementById('score-safety').value) || 2;
 
         State.calculateProjections();
+        State.applyDynamicDSTSOS();
         State.calculateVBD();
         State.initializeTeams();
 
@@ -414,6 +417,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // 2. Draft Button Click Slotting Handler
     document.addEventListener('click', (e) => {
         const triggerEl = resolveClickTarget(e);
         const draftBtn = triggerEl?.closest('.draft-btn');

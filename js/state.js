@@ -1044,7 +1044,10 @@ const State = {
                 else if (papg <= 35) weeklyPaPts = -1;
                 else weeklyPaPts = -4;
 
-                p.ProjPts = sackPts + turnoverPts + tdPts + safetyPts + blkPts + (weeklyPaPts * gp);
+                let rawDstPts = sackPts + turnoverPts + tdPts + safetyPts + blkPts + (weeklyPaPts * gp);
+                
+                // Calibration factor to align with standard fantasy league scoring (~110-150 pts max)
+                p.ProjPts = rawDstPts * 0.65; 
             }
             else {
                 let basePts =
@@ -1609,6 +1612,10 @@ const State = {
             let city = vals[headers.indexOf('City')] || '';
             let teamName = vals[headers.indexOf('Team')] || '';
 
+            // Auto-fix decimal point error (20 -> 2.0, 14 -> 1.4, 32 -> 3.2)
+            let rawDTD = parseFloat(vals[headers.indexOf('DTD')]) || 0;
+            let realDefTDs = rawDTD > 5 ? (rawDTD / 10) : rawDTD; 
+
             let p = {
                 Player: `${city} ${teamName}`.trim(),
                 Pos: 'DST',
@@ -1619,7 +1626,7 @@ const State = {
                     sack: parseFloat(vals[headers.indexOf('Sacks')]) || 0,
                     tfl: parseFloat(vals[headers.indexOf('TFL')]) || 0,
                     defFum: parseFloat(vals[headers.indexOf('FR')]) || 0,
-                    defTd: parseFloat(vals[headers.indexOf('DTD')]) || 0,
+                    defTd: realDefTDs, // Fixes DTD float issue
                     papg: parseFloat(vals[headers.indexOf('PAPG')]) || 18.0,
                     blk: parseFloat(vals[headers.indexOf('Blk')]) || 0
                 },

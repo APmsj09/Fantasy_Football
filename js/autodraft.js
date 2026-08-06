@@ -31,7 +31,7 @@ window.AutoDraft = {
         const currentOverallPick = State.currentPick + 1;
         const profile = team.profile;
 
-        // CALCULATE POSITIONAL SCARCITY (Tier Drop-offs)
+        // 1. CALCULATE POSITIONAL SCARCITY (Tier Drop-offs)
         let scarcity = {};
         ['QB', 'RB', 'WR', 'TE'].forEach(pos => {
             let avail = State.availablePlayers.filter(p => p.Pos === pos);
@@ -50,6 +50,7 @@ window.AutoDraft = {
         [...topWRs, ...topRBs].forEach(p => { avgTopFlexVBD += (p.AdvVBD || p.VBD); flexBenchCount++; });
         avgTopFlexVBD = flexBenchCount > 0 ? (avgTopFlexVBD / flexBenchCount) : 20;
 
+        // 2. EVALUATE TOP 150 AVAILABLE PLAYERS
         let evaluatedWrapper = State.availablePlayers.slice(0, 150).map(p => {
             let multiplier = 1.0;
 
@@ -57,6 +58,7 @@ window.AutoDraft = {
                 multiplier *= (1 + (p.avgStars - 3.0) * 0.04);
             }
 
+            // Manager Personality Strategy Multipliers
             if (profile) {
                 if (round <= 4) {
                     if (profile.strategy === 'RB-Heavy' && p.Pos === 'RB') multiplier *= 1.4;
@@ -71,23 +73,25 @@ window.AutoDraft = {
             let currentCount = team.counts[p.Pos] || 0;
 
             let isStarterOpen = currentCount < starterMax;
-            let isFlexOpen = State.isPositionFlexEligible(p.Pos) && (team.counts['Flex'] < State.settings.roster.Flex.max);
+            let isFlexRBWROpen = ['RB', 'WR'].includes(p.Pos) && (team.counts['FlexRBWR'] < (State.settings.roster.FlexRBWR?.max || 0));
+            let isFlexOpen = ['RB', 'WR', 'TE'].includes(p.Pos) && (team.counts['Flex'] < (State.settings.roster.Flex?.max || 0));
+            let isSuperflexOpen = ['QB', 'RB', 'WR', 'TE'].includes(p.Pos) && (team.counts['Superflex'] < (State.settings.roster.Superflex?.max || 0));
 
             let starterBonus = 0;
             if (isStarterOpen) {
-                starterBonus = 25; // Direct starter slot open
-            } else if (isFlexOpen) {
-                starterBonus = 15; // Flex slot open
+                starterBonus = 25; 
+            } else if (isFlexRBWROpen || isFlexOpen || isSuperflexOpen) {
+                starterBonus = 15;
             } else {
                 let overage = currentCount - starterMax;
-                if (State.isPositionFlexEligible(p.Pos)) {
-                    multiplier *= Math.pow(0.5, overage + 1); // Soft multiplier for flex depth
+                if (isFlexRBWROpen || isFlexOpen || isSuperflexOpen || State.isPositionFlexEligible(p.Pos)) {
+                    multiplier *= Math.pow(0.5, overage + 1); 
                 } else {
-                    multiplier *= (overage === 0 ? 0.05 : 0.01); // Severe multiplier for non-flex positions
+                    multiplier *= (overage === 0 ? 0.05 : 0.01); 
                 }
             }
 
-            // Scarcity Bonus
+            // Scarcity Bonus (Tier Cliff Urgency)
             let posRank = State.availablePlayers.filter(x => x.Pos === p.Pos).findIndex(x => x._cleanName === p._cleanName);
             let scarcityBonus = 0;
             if (posRank < 3 && scarcity[p.Pos]) {
@@ -96,17 +100,18 @@ window.AutoDraft = {
                 }
             }
 
-            // Kickers strictly in bottom 3 rounds
+            // Kickers strictly restricted in early/mid rounds
             if (p.Pos === 'PK' && round <= totalRounds - 3) multiplier *= 0.001;
 
             let rawVbd = p.AdvVBD || p.VBD;
             let baseValue = rawVbd >= 0 ? (rawVbd * multiplier) : (rawVbd / multiplier);
             let ppwValue = (p._addedPPW || 0) * 15;
 
+            // ADP Penalty (Prevents reaching too far ahead of real-time market value)
             let adpPenalty = 0;
             if (p.adp) {
                 let adpDiff = p.adp - currentOverallPick;
-                if (adpDiff > 18) adpPenalty = Math.min(5, (adpDiff - 18) * 0.15); // Softened threshold
+                if (adpDiff > 18) adpPenalty = Math.min(5, (adpDiff - 18) * 0.15);
             }
 
             return {

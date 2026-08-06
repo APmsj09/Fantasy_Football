@@ -691,21 +691,20 @@ const UI = {
         const passEnv = State.teamAdvPass ? State.teamAdvPass[tTeam] : null;
         const rushEnv = State.teamAdvRush ? State.teamAdvRush[tTeam] : null;
 
-        if (rushEnv && rushEnv.ybcAtt >= 2.8 && p.Pos === 'RB') {
-            envBadges.push(`<span class="bg-emerald-100 text-emerald-800 text-xs font-bold px-2.5 py-1 rounded-full border border-emerald-200">⚡ High YBC Scheme (${rushEnv.ybcAtt} YBC)</span>`);
-        }
-        if (passEnv && passEnv.onTgtPct >= 76.0 && ['WR', 'TE'].includes(p.Pos)) {
-            envBadges.push(`<span class="bg-blue-100 text-blue-800 text-xs font-bold px-2.5 py-1 rounded-full border border-blue-200">🎯 High QB Accuracy Env (${passEnv.onTgtPct}%)</span>`);
-        }
-        if (passEnv && passEnv.playActionYds >= 950 && ['QB', 'WR', 'TE'].includes(p.Pos)) {
-            envBadges.push(`<span class="bg-indigo-100 text-indigo-800 text-xs font-bold px-2.5 py-1 rounded-full border border-indigo-200">🚀 Play-Action Heavy Scheme</span>`);
-        }
-        if (passEnv && passEnv.prssPct >= 25.0) {
-            envBadges.push(`<span class="bg-rose-100 text-rose-800 text-xs font-bold px-2.5 py-1 rounded-full border border-rose-200">⚠️ High Pass Pressure Env (${passEnv.prssPct}%)</span>`);
-        }
-
-        // Fix: ONLY apply O-Line Badges to Offensive Players
+        // Environmental Badges (Offense Only)
         if (isOffense) {
+            if (rushEnv && rushEnv.ybcAtt >= 2.8 && p.Pos === 'RB') {
+                envBadges.push(`<span class="bg-emerald-100 text-emerald-800 text-xs font-bold px-2.5 py-1 rounded-full border border-emerald-200">⚡ High YBC Scheme (${rushEnv.ybcAtt} YBC)</span>`);
+            }
+            if (passEnv && passEnv.onTgtPct >= 76.0 && ['WR', 'TE'].includes(p.Pos)) {
+                envBadges.push(`<span class="bg-blue-100 text-blue-800 text-xs font-bold px-2.5 py-1 rounded-full border border-blue-200">🎯 High QB Accuracy Env (${passEnv.onTgtPct}%)</span>`);
+            }
+            if (passEnv && passEnv.playActionYds >= 950 && ['QB', 'WR', 'TE'].includes(p.Pos)) {
+                envBadges.push(`<span class="bg-indigo-100 text-indigo-800 text-xs font-bold px-2.5 py-1 rounded-full border border-indigo-200">🚀 Play-Action Heavy Scheme</span>`);
+            }
+            if (passEnv && passEnv.prssPct >= 25.0) {
+                envBadges.push(`<span class="bg-rose-100 text-rose-800 text-xs font-bold px-2.5 py-1 rounded-full border border-rose-200">⚠️ High Pass Pressure Env (${passEnv.prssPct}%)</span>`);
+            }
             if (p.olTier === 'S' || p.olTier === 'A') {
                 envBadges.push(`<span class="bg-amber-100 text-amber-800 text-xs font-bold px-2.5 py-1 rounded-full border border-amber-200">🛡️ Elite O-Line (Tier ${p.olTier})</span>`);
             } else if (p.olTier === 'D' || p.olTier === 'F') {
@@ -767,7 +766,6 @@ const UI = {
             let volumeStr = '';
             let tdCount = ps.totalTd || 0;
 
-            // Isolated String formatting so DST & PK don't get Rec stats
             if (p.Pos === 'QB') {
                 volumeStr = `${ps.passYds || 0} Pass Yds (${ps.passTd || 0} TD / ${ps.int || 0} INT) • ${ps.rushYds || 0} Rush Yds (${ps.rushTd || 0} TD)`;
             } else if (p.Pos === 'RB') {
@@ -845,10 +843,7 @@ const UI = {
                     ` : ''}
                 </div>
             `;
-        } 
-        
-        // Fix: Provide Custom Minimal Dashboard for DST
-        else if (p.Pos === 'DST') {
+        } else if (p.Pos === 'DST') {
             statsDashboard = `
                 <div class="bg-indigo-900 text-white p-4 rounded-xl border border-indigo-800 mb-4 shadow-sm text-xs grid grid-cols-3 gap-3">
                     <div class="p-2">
@@ -856,7 +851,6 @@ const UI = {
                         <span class="text-lg font-extrabold text-white">${p.ProjPts.toFixed(1)} Pts</span>
                         <span class="block text-[10px] text-emerald-400 font-bold mt-1">Adv VBD: ${(p.AdvVBD || p.VBD).toFixed(1)}</span>
                     </div>
-                    <!-- Added Schedule Grade Block -->
                     <div class="p-2 border-l border-indigo-700/50">
                         <span class="text-indigo-300 block text-[10px] font-bold uppercase tracking-wider">Schedule Grade</span>
                         <span class="text-lg font-extrabold text-amber-400">⭐ ${p.avgStars ? p.avgStars.toFixed(2) : '3.0'}</span>
@@ -869,10 +863,7 @@ const UI = {
                     </div>
                 </div>
             `;
-        }
-        
-        // Fix: Provide Custom Minimal Dashboard for Kicker
-        else if (p.Pos === 'PK') {
+        } else if (p.Pos === 'PK') {
             statsDashboard = `
                 <div class="bg-indigo-900 text-white p-4 rounded-xl border border-indigo-800 mb-4 shadow-sm text-xs grid grid-cols-2 gap-3">
                     <div class="p-2">
@@ -1270,15 +1261,15 @@ const UI = {
 
             let starterBonus = 0;
             if (isStarterOpen) {
-                starterBonus = 25; 
+                starterBonus = 25;
             } else if (isFlexRBWROpen || isFlexOpen || isSuperflexOpen) {
                 starterBonus = 15;
             } else {
                 let overage = currentCount - starterMax;
                 if (isFlexRBWROpen || isFlexOpen || isSuperflexOpen || State.isPositionFlexEligible(p.Pos)) {
-                    multiplier *= Math.pow(0.5, overage + 1); 
+                    multiplier *= Math.pow(0.5, overage + 1);
                 } else {
-                    multiplier *= (overage === 0 ? 0.05 : 0.01); 
+                    multiplier *= (overage === 0 ? 0.05 : 0.01);
                 }
             }
 
