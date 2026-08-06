@@ -1025,9 +1025,7 @@ const State = {
             let gp = s.gp || 17;
 
             if (p.Pos === 'PK') {
-                rawVBD = Math.max(-10.0, (rawVBD * 0.15) - 8.0);
-            } else if (p.Pos === 'DST') {
-                rawVBD = Math.max(-8.0, (rawVBD * 0.25) - 6.0);
+                p.ProjPts = ((s.fgTotal || 0) * (this.scoring.fg || 3)) + ((s.xp || 0) * (this.scoring.xp || 1));
             }
             else if (p.Pos === 'DST') {
                 let turnoverPts = ((s.defInt || 0) + (s.defFum || 0)) * (this.scoring.turnover || 2);
@@ -1097,10 +1095,9 @@ const State = {
                     pastPts += (defTd + spcTd) * (this.scoring.defTd || 6);
                     pastPts += safety * (this.scoring.safety || 2);
 
-                    // Add a baseline +4 points per game to account for average Points Allowed/Yards Allowed scoring since it isn't in the TSV
                     pastPts += (ps.gp || 17) * 4;
                 } else if (p.Pos === 'PK') {
-                    // Logic for PK if added in future
+                    // PK past points fallback if added
                 } else {
                     let passYds = ps.passYds || 0;
                     let rushYds = ps.rushYds || 0;
@@ -1127,7 +1124,6 @@ const State = {
                 p.pastPpg = (ps.gp && ps.gp > 0) ? (p.pastPts / ps.gp) : 0;
                 if (isNaN(p.pastPpg)) p.pastPpg = 0;
             }
-            // ===========================================================
 
             this.calculateWeeklyProjections(p);
         });
