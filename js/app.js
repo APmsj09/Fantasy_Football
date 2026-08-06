@@ -375,11 +375,14 @@ document.addEventListener('DOMContentLoaded', () => {
         r.RB.max = parseInt(document.getElementById('pos-rb').value) || 2;
         r.WR.max = parseInt(document.getElementById('pos-wr').value) || 2;
         r.TE.max = parseInt(document.getElementById('pos-te').value) || 1;
-        r.Flex.max = parseInt(document.getElementById('pos-flex').value) || 2;
+        r.FlexRBWR = { max: parseInt(document.getElementById('pos-flex-rbwr').value) || 0 };
+        r.Flex = { max: parseInt(document.getElementById('pos-flex').value) || 0 };
+        r.Superflex = { max: parseInt(document.getElementById('pos-superflex').value) || 0 };
         r.PK.max = parseInt(document.getElementById('pos-pk').value) || 1;
         r.DST.max = parseInt(document.getElementById('pos-dst').value) || 1;
         r.Bench.max = parseInt(document.getElementById('pos-bn').value) || 6;
-        r.totalSize = r.QB.max + r.RB.max + r.WR.max + r.TE.max + r.Flex.max + r.PK.max + r.DST.max + r.Bench.max;
+
+        r.totalSize = r.QB.max + r.RB.max + r.WR.max + r.TE.max + r.FlexRBWR.max + r.Flex.max + r.Superflex.max + r.PK.max + r.DST.max + r.Bench.max;
 
         State.scoring.passYds = parseFloat(document.getElementById('score-pass-yds').value) || 0.04;
         State.scoring.passTd = parseFloat(document.getElementById('score-pass-td').value) || 6;
@@ -421,8 +424,15 @@ document.addEventListener('DOMContentLoaded', () => {
             const team = State.teamsById[teamId];
 
             let slot = 'Bench';
-            if (team.counts[player.Pos] < State.settings.roster[player.Pos].max) slot = player.Pos;
-            else if (['RB', 'WR', 'TE'].includes(player.Pos) && team.counts['Flex'] < State.settings.roster.Flex.max) slot = 'Flex';
+            if (team.counts[player.Pos] < State.settings.roster[player.Pos].max) {
+                slot = player.Pos;
+            } else if (['RB', 'WR'].includes(player.Pos) && team.counts['FlexRBWR'] < (State.settings.roster.FlexRBWR?.max || 0)) {
+                slot = 'FlexRBWR';
+            } else if (['RB', 'WR', 'TE'].includes(player.Pos) && team.counts['Flex'] < (State.settings.roster.Flex?.max || 0)) {
+                slot = 'Flex';
+            } else if (['QB', 'RB', 'WR', 'TE'].includes(player.Pos) && team.counts['Superflex'] < (State.settings.roster.Superflex?.max || 0)) {
+                slot = 'Superflex';
+            }
 
             AutoDraft.executeDraft(player, team, slot);
             UI.updateDraftBoard();
@@ -462,7 +472,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Fix: Force array to re-sort using the exact UI configuration the user has active
         let currentSort = State.draftSortKey || 'AdvVBD';
         let currentAsc = State.draftSortAsc;
-        
+
         State.availablePlayers.sort((a, b) => {
             let valA = a[currentSort] ?? (currentSort === 'AdvVBD' ? (a.AdvVBD || a.VBD) : 0);
             let valB = b[currentSort] ?? (currentSort === 'AdvVBD' ? (b.AdvVBD || b.VBD) : 0);

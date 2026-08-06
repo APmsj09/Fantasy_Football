@@ -125,7 +125,9 @@ window.AutoDraft = {
             let pos = p.Pos;
 
             if (team.counts[pos] < State.settings.roster[pos].max) slottedPos = pos;
-            else if (['RB', 'WR', 'TE'].includes(pos) && team.counts['Flex'] < State.settings.roster.Flex.max) slottedPos = 'Flex';
+            else if (['RB', 'WR'].includes(pos) && team.counts['FlexRBWR'] < (State.settings.roster.FlexRBWR?.max || 0)) slottedPos = 'FlexRBWR';
+            else if (['RB', 'WR', 'TE'].includes(pos) && team.counts['Flex'] < (State.settings.roster.Flex?.max || 0)) slottedPos = 'Flex';
+            else if (['QB', 'RB', 'WR', 'TE'].includes(pos) && team.counts['Superflex'] < (State.settings.roster.Superflex?.max || 0)) slottedPos = 'Superflex';
             else if (team.counts['Bench'] < State.settings.roster.Bench.max) slottedPos = 'Bench';
 
             if (slottedPos) {

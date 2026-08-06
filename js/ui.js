@@ -1177,7 +1177,9 @@ const UI = {
             let starterMax = posRoster ? posRoster.max : 1;
 
             if (userTeam.counts[pos] < starterMax) return true;
-            if (State.isPositionFlexEligible(pos) && userTeam.counts['Flex'] < State.settings.roster.Flex.max) return true;
+            if (['RB', 'WR'].includes(pos) && userTeam.counts['FlexRBWR'] < (State.settings.roster.FlexRBWR?.max || 0)) return true;
+            if (['RB', 'WR', 'TE'].includes(pos) && userTeam.counts['Flex'] < (State.settings.roster.Flex?.max || 0)) return true;
+            if (['QB', 'RB', 'WR', 'TE'].includes(pos) && userTeam.counts['Superflex'] < (State.settings.roster.Superflex?.max || 0)) return true;
             if (userTeam.counts['Bench'] < State.settings.roster.Bench.max) return true;
             return false;
         });
@@ -1212,18 +1214,21 @@ const UI = {
             let currentCount = userTeam.counts[p.Pos] || 0;
 
             let isStarterOpen = currentCount < starterMax;
-            let isFlexOpen = State.isPositionFlexEligible(p.Pos) && (userTeam.counts['Flex'] < State.settings.roster.Flex.max);
+            let isFlexRBWROpen = ['RB', 'WR'].includes(p.Pos) && (team.counts['FlexRBWR'] < (State.settings.roster.FlexRBWR?.max || 0));
+            let isFlexOpen = ['RB', 'WR', 'TE'].includes(p.Pos) && (team.counts['Flex'] < (State.settings.roster.Flex?.max || 0));
+            let isSuperflexOpen = ['QB', 'RB', 'WR', 'TE'].includes(p.Pos) && (team.counts['Superflex'] < (State.settings.roster.Superflex?.max || 0));
 
+            let starterBonus = 0;
             if (isStarterOpen) {
-                score += 25;
-            } else if (isFlexOpen) {
-                score += 18;
+                starterBonus = 25; 
+            } else if (isFlexRBWROpen || isFlexOpen || isSuperflexOpen) {
+                starterBonus = 15;
             } else {
                 let overage = currentCount - starterMax;
-                if (State.isPositionFlexEligible(p.Pos)) {
-                    score -= (overage * 10);
+                if (isFlexRBWROpen || isFlexOpen || isSuperflexOpen || State.isPositionFlexEligible(p.Pos)) {
+                    multiplier *= Math.pow(0.5, overage + 1); 
                 } else {
-                    score -= 100;
+                    multiplier *= (overage === 0 ? 0.05 : 0.01); 
                 }
             }
 

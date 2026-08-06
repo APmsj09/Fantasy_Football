@@ -14,16 +14,11 @@ const State = {
         numTeams: 12,
         draftMode: 'live',
         userTeamIndex: 1,
-
-        // LEAGUE CALENDAR & SCORING RULES
-        startWeek: 1,
-        endWeek: 17,
-        decimalPlaces: 2,
-
+        startWeek: 1, endWeek: 17, decimalPlaces: 2,
         roster: {
-            QB: { max: 1 }, RB: { max: 2 }, WR: { max: 2 },
-            TE: { max: 1 }, Flex: { max: 2 }, PK: { max: 1 },
-            DST: { max: 1 }, Bench: { max: 6 }, totalSize: 16
+            QB: { max: 1 }, RB: { max: 2 }, WR: { max: 2 }, TE: { max: 1 },
+            FlexRBWR: { max: 0 }, Flex: { max: 2 }, Superflex: { max: 0 },
+            PK: { max: 1 }, DST: { max: 1 }, Bench: { max: 6 }, totalSize: 16
         }
     },
 
@@ -46,20 +41,20 @@ const State = {
             'CLV': 'CLE', 'BLV': 'BAL', 'OAK': 'LV', 'SD': 'LAC',
             'DENVER BRONCOS': 'DEN', 'BRONCOS': 'DEN',
             'PHILADELPHIA EAGLES': 'PHI', 'EAGLES': 'PHI',
-            
+
             // FIX: Map Rams consistently to 'LA' to match player data and the 'LAR' key above
             'LOS ANGELES RAMS': 'LA', 'RAMS': 'LA', 'LA RAMS': 'LA',
-            
+
             'CHICAGO BEARS': 'CHI', 'BEARS': 'CHI',
             'TAMPA BAY BUCCANEERS': 'TB', 'BUCCANEERS': 'TB',
             'BUFFALO BILLS': 'BUF', 'BILLS': 'BUF',
             'CAROLINA PANTHERS': 'CAR', 'PANTHERS': 'CAR',
             'SAN FRANCISCO 49ERS': 'SF', '49ERS': 'SF',
             'INDIANAPOLIS COLTS': 'IND', 'COLTS': 'IND',
-            
+
             // FIX: Added 'LA CHARGERS' just to be safe
             'LOS ANGELES CHARGERS': 'LAC', 'CHARGERS': 'LAC', 'LA CHARGERS': 'LAC',
-            
+
             'ATLANTA FALCONS': 'ATL', 'FALCONS': 'ATL',
             'DETROIT LIONS': 'DET', 'LIONS': 'DET',
             'MINNESOTA VIKINGS': 'MIN', 'VIKINGS': 'MIN',
@@ -100,15 +95,9 @@ const State = {
     isPositionFlexEligible(pos) {
         const r = this.settings.roster;
         if (!r) return false;
-
-        // Standard Flex (RB, WR, TE)
-        if (['RB', 'WR', 'TE'].includes(pos)) return true;
-
-        // Superflex / 2-QB League check
-        if (pos === 'QB' && ((r.Superflex && r.Superflex.max > 0) || (r.QB && r.QB.max >= 2))) {
-            return true;
-        }
-
+        if (['RB', 'WR'].includes(pos) && (r.FlexRBWR?.max > 0 || r.Flex?.max > 0 || r.Superflex?.max > 0)) return true;
+        if (pos === 'TE' && (r.Flex?.max > 0 || r.Superflex?.max > 0)) return true;
+        if (pos === 'QB' && r.Superflex?.max > 0) return true;
         return false;
     },
 
@@ -681,99 +670,82 @@ const State = {
     },
 
     calculateOptimalWeeklyScore(roster, weekNum) {
-        let qb = []; let rb = []; let wr = []; let te = []; let pk = []; let dst = []; let flex = [];
+        let qb = []; let rb = []; let wr = []; let te = []; let pk = []; let dst = [];
 
         for (let i = 0; i < roster.length; i++) {
             let p = roster[i];
             let val = p.weeklyProjections[`W${weekNum}`] || 0;
-            let pos = p.Pos;
-            if (pos === 'QB') qb.push({ player: p, val: val });
-            else if (pos === 'RB') rb.push(val);
-            else if (pos === 'WR') wr.push(val);
-            else if (pos === 'TE') te.push(val);
-            else if (pos === 'PK') pk.push(val);
-            else if (pos === 'DST') dst.push(val);
+            if (p.Pos === 'QB') qb.push({ player: p, val: val });
+            else if (p.Pos === 'RB') rb.push(val);
+            else if (p.Pos === 'WR') wr.push(val);
+            else if (p.Pos === 'TE') te.push(val);
+            else if (p.Pos === 'PK') pk.push(val);
+            else if (p.Pos === 'DST') dst.push(val);
         }
 
         let score = 0;
         let req = this.settings.roster;
         let b = this.positionalWeeklyBaselines || { QB: 18.0, RB: 10.5, WR: 11.0, TE: 7.5, PK: 7.0, DST: 7.0 };
 
-        // 1. QB SCORING
-        if (req.QB.max === 1 && !State.isPositionFlexEligible('QB')) {
-            if (qb.length === 0) {
-                score += b.QB || 18.0;
-            } else {
-                let primaryQB = qb.reduce((max, curr) => (curr.player.ProjPts > max.player.ProjPts ? curr : max), qb[0]);
-                // FIX: Apply Math.max to prevent bye week zero
-                if (primaryQB.val > 0) {
-                    score += Math.max(primaryQB.val, b.QB || 18.0);
-                } else {
-                    let backupQB = qb.find(q => q !== primaryQB && q.val > 0);
-                    score += backupQB ? Math.max(backupQB.val, b.QB || 18.0) : (b.QB || 18.0);
-                }
-            }
-        } else {
-            // Multi-QB / Superflex
-            qb.sort((a, b) => b.val - a.val);
-            for (let i = 0; i < req.QB.max; i++) {
-                // FIX: Apply Math.max
-                if (i < qb.length) score += Math.max(qb[i].val, b.QB || 18.0);
-                else score += b.QB || 18.0;
-            }
-            if (State.isPositionFlexEligible('QB')) {
-                for (let i = req.QB.max; i < qb.length; i++) {
-                    flex.push(qb[i].val);
-                }
-            }
-        }
+        let superflexPool = [];
 
-        // 2. PK & DST SCORING (FIX: Apply Math.max)
-        pk.sort((a, b) => b - a);
-        dst.sort((a, b) => b - a);
-        for (let i = 0; i < req.PK.max; i++) {
-            if (i < pk.length) score += Math.max(pk[i], b.PK || 7.0);
-            else score += b.PK || 7.0;
-        }
-        for (let i = 0; i < req.DST.max; i++) {
-            if (i < dst.length) score += Math.max(dst[i], b.DST || 7.0);
-            else score += b.DST || 7.0;
-        }
+        // 1. QB SCORING (Overflow goes to Superflex)
+        qb.sort((a, b) => b.val - a.val);
+        for (let i = 0; i < req.QB.max; i++) score += (i < qb.length) ? Math.max(qb[i].val, b.QB || 18.0) : (b.QB || 18.0);
+        for (let i = req.QB.max; i < qb.length; i++) superflexPool.push(qb[i].val);
 
-        // 3. FLEX POSITIONS
-        rb.sort((a, b) => b - a);
-        wr.sort((a, b) => b - a);
-        te.sort((a, b) => b - a);
+        // 2. K/DST SCORING
+        pk.sort((a, b) => b - a); dst.sort((a, b) => b - a);
+        for (let i = 0; i < req.PK.max; i++) score += (i < pk.length) ? Math.max(pk[i], b.PK || 7.0) : (b.PK || 7.0);
+        for (let i = 0; i < req.DST.max; i++) score += (i < dst.length) ? Math.max(dst[i], b.DST || 7.0) : (b.DST || 7.0);
 
-        let processFlexPos = (arr, maxReq, posKey) => {
-            let s = 0;
-            let bVal = b[posKey] || 10.0;
+        // 3. RB/WR/TE SCORING (Process pools separately for overflow cascades)
+        let processPos = (arr, maxReq, posKey, overflowTarget) => {
+            let s = 0; let bVal = b[posKey] || 10.0;
+            arr.sort((a, b) => b - a);
             for (let i = 0; i < maxReq; i++) {
-                // FIX: Apply Math.max to prevent penalizing players on their bye week
                 if (i < arr.length) s += Math.max(arr[i], bVal);
                 else s += bVal;
             }
-            for (let i = maxReq; i < arr.length; i++) {
-                flex.push(arr[i]);
-            }
+            for (let i = maxReq; i < arr.length; i++) overflowTarget.push(arr[i]);
             return s;
         };
 
-        score += processFlexPos(rb, req.RB.max, 'RB');
-        score += processFlexPos(wr, req.WR.max, 'WR');
-        score += processFlexPos(te, req.TE.max, 'TE');
+        let rbwrOverflow = [];
+        score += processPos(rb, req.RB.max, 'RB', rbwrOverflow);
+        score += processPos(wr, req.WR.max, 'WR', rbwrOverflow);
 
-        // Fill remaining Flex slots
-        // FIX: Pick the absolute best positional baseline instead of averaging
-        let flexBaseline = Math.max((b.RB || 10.5), (b.WR || 11.0), (b.TE || 7.5));
-        if (State.isPositionFlexEligible('QB')) {
-            flexBaseline = Math.max(flexBaseline, (b.QB || 18.0)); // Superflex override
+        let teOverflow = [];
+        score += processPos(te, req.TE.max, 'TE', teOverflow);
+
+        // 4. RB/WR FLEX SCORING
+        rbwrOverflow.sort((a, b) => b - a);
+        let rbwrBaseline = Math.max((b.RB || 10.5), (b.WR || 11.0));
+        for (let i = 0; i < (req.FlexRBWR?.max || 0); i++) {
+            if (i < rbwrOverflow.length) score += Math.max(rbwrOverflow[i], rbwrBaseline);
+            else score += rbwrBaseline;
         }
 
-        flex.sort((a, b) => b - a);
-        for (let i = 0; i < req.Flex.max; i++) {
-            if (i < flex.length) score += Math.max(flex[i], flexBaseline);
+        // Combine remaining RB/WR and TE for standard Flex
+        let flexPool = [];
+        for (let i = (req.FlexRBWR?.max || 0); i < rbwrOverflow.length; i++) flexPool.push(rbwrOverflow[i]);
+        flexPool.push(...teOverflow);
+
+        // 5. STANDARD FLEX (W/R/T) SCORING
+        flexPool.sort((a, b) => b - a);
+        let flexBaseline = Math.max((b.RB || 10.5), (b.WR || 11.0), (b.TE || 7.5));
+        for (let i = 0; i < (req.Flex?.max || 0); i++) {
+            if (i < flexPool.length) score += Math.max(flexPool[i], flexBaseline);
             else score += flexBaseline;
+        }
+        for (let i = (req.Flex?.max || 0); i < flexPool.length; i++) superflexPool.push(flexPool[i]);
+
+        // 6. SUPERFLEX SCORING
+        superflexPool.sort((a, b) => b - a);
+        let sfBaseline = Math.max(flexBaseline, (b.QB || 18.0));
+        for (let i = 0; i < (req.Superflex?.max || 0); i++) {
+            if (i < superflexPool.length) score += Math.max(superflexPool[i], sfBaseline);
+            else score += sfBaseline;
         }
 
         return score;
@@ -792,7 +764,9 @@ const State = {
         let viablePlayers = availablePlayers.filter(player => {
             let pos = player.Pos;
             if (team.counts[pos] < this.settings.roster[pos].max) return true;
-            if ((pos === 'RB' || pos === 'WR' || pos === 'TE') && team.counts['Flex'] < this.settings.roster.Flex.max) return true;
+            if (['RB', 'WR'].includes(pos) && team.counts['FlexRBWR'] < (this.settings.roster.FlexRBWR?.max || 0)) return true;
+            if (['RB', 'WR', 'TE'].includes(pos) && team.counts['Flex'] < (this.settings.roster.Flex?.max || 0)) return true;
+            if (['QB', 'RB', 'WR', 'TE'].includes(pos) && team.counts['Superflex'] < (this.settings.roster.Superflex?.max || 0)) return true;
             if (team.counts['Bench'] < this.settings.roster.Bench.max) return true;
             return false;
         });
@@ -1094,9 +1068,9 @@ const State = {
                     pastPts += (defInt + defFum) * (this.scoring.turnover || 2);
                     pastPts += (defTd + spcTd) * (this.scoring.defTd || 6);
                     pastPts += safety * (this.scoring.safety || 2);
-                    
+
                     // Add a baseline +4 points per game to account for average Points Allowed/Yards Allowed scoring since it isn't in the TSV
-                    pastPts += (ps.gp || 17) * 4; 
+                    pastPts += (ps.gp || 17) * 4;
                 } else if (p.Pos === 'PK') {
                     // Logic for PK if added in future
                 } else {
@@ -1147,7 +1121,9 @@ const State = {
             }
 
             if (pos === 'RB' || pos === 'WR') {
-                starters += Math.floor((numTeams * (this.settings.roster.Flex?.max || 2)) / 2);
+                let extraSlots = (this.settings.roster.Flex?.max || 0) + (this.settings.roster.FlexRBWR?.max || 0);
+                if (pos === 'WR' && this.settings.roster.Superflex?.max > 0) extraSlots += (this.settings.roster.Superflex.max * 0.1); 
+                starters += Math.floor((numTeams * extraSlots) / 2);
             }
             if (pos === 'PK') {
                 starters = Math.floor(numTeams * 1.1);
@@ -1390,7 +1366,7 @@ const State = {
     getPositionalTiers(pos) {
         let avail = this.availablePlayers.filter(p => p.Pos === pos);
         if (!avail.length) return [];
-        
+
         let tiers = [];
         let currentTier = [avail[0]];
         let dropThreshold = (pos === 'QB' || pos === 'TE') ? 7.5 : 9.5;
@@ -1571,12 +1547,10 @@ const State = {
             }
 
             this.teamsById[id] = {
-                id: id,
-                name: teamName,
+                id: id, name: teamName,
                 isCPU: this.settings.draftMode === 'mock' ? !isUser : false,
-                profile: profile,
-                roster: [],
-                counts: { QB: 0, RB: 0, WR: 0, TE: 0, Flex: 0, PK: 0, DST: 0, Bench: 0 }
+                profile: profile, roster: [],
+                counts: { QB: 0, RB: 0, WR: 0, TE: 0, FlexRBWR: 0, Flex: 0, Superflex: 0, PK: 0, DST: 0, Bench: 0 }
             };
             teamIds.push(id);
         }

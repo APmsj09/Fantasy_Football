@@ -203,23 +203,34 @@
                 </div>
 
                 <h3 class="font-semibold text-gray-900 mt-6 mb-3">Roster Limits</h3>
-                <div class="grid grid-cols-4 gap-3 text-sm">
-                    <div><label class="text-gray-600 block mb-1">QB</label><input type="number" id="pos-qb" value="1"
-                            class="w-full border rounded-lg p-2 text-center"></div>
-                    <div><label class="text-gray-600 block mb-1">RB</label><input type="number" id="pos-rb" value="2"
-                            class="w-full border rounded-lg p-2 text-center"></div>
-                    <div><label class="text-gray-600 block mb-1">WR</label><input type="number" id="pos-wr" value="2"
-                            class="w-full border rounded-lg p-2 text-center"></div>
-                    <div><label class="text-gray-600 block mb-1">TE</label><input type="number" id="pos-te" value="1"
-                            class="w-full border rounded-lg p-2 text-center"></div>
-                    <div><label class="text-gray-600 block mb-1">FLEX</label><input type="number" id="pos-flex"
-                            value="2" class="w-full border rounded-lg p-2 text-center"></div>
-                    <div><label class="text-gray-600 block mb-1">K</label><input type="number" id="pos-pk" value="1"
-                            class="w-full border rounded-lg p-2 text-center"></div>
-                    <div><label class="text-gray-600 block mb-1">DST</label><input type="number" id="pos-dst" value="1"
-                            class="w-full border rounded-lg p-2 text-center"></div>
-                    <div><label class="text-gray-600 block mb-1">Bench</label><input type="number" id="pos-bn" value="6"
-                            class="w-full border rounded-lg p-2 text-center"></div>
+                <div class="grid grid-cols-3 md:grid-cols-5 gap-3 text-sm">
+                    <div><label class="text-gray-600 block mb-1 truncate font-bold text-[11px]">QB</label><input
+                            type="number" id="pos-qb" value="1" class="w-full border rounded-lg p-2 text-center"></div>
+                    <div><label class="text-gray-600 block mb-1 truncate font-bold text-[11px]">RB</label><input
+                            type="number" id="pos-rb" value="2" class="w-full border rounded-lg p-2 text-center"></div>
+                    <div><label class="text-gray-600 block mb-1 truncate font-bold text-[11px]">WR</label><input
+                            type="number" id="pos-wr" value="2" class="w-full border rounded-lg p-2 text-center"></div>
+                    <div><label class="text-gray-600 block mb-1 truncate font-bold text-[11px]">TE</label><input
+                            type="number" id="pos-te" value="1" class="w-full border rounded-lg p-2 text-center"></div>
+
+                    <div><label class="text-gray-600 block mb-1 truncate font-bold text-[11px]">FLEX
+                            (RB/WR)</label><input type="number" id="pos-flex-rbwr" value="0"
+                            class="w-full border rounded-lg p-2 text-center bg-gray-50"></div>
+                    <div><label class="text-gray-600 block mb-1 truncate font-bold text-[11px]">FLEX
+                            (W/R/T)</label><input type="number" id="pos-flex" value="2"
+                            class="w-full border rounded-lg p-2 text-center bg-gray-50"></div>
+
+                    <div><label
+                            class="text-indigo-600 block mb-1 truncate font-bold text-[11px]">SUPERFLEX</label><input
+                            type="number" id="pos-superflex" value="0"
+                            class="w-full border border-indigo-300 rounded-lg p-2 text-center bg-indigo-50 font-bold text-indigo-700 shadow-sm"
+                            title="Allows QB/RB/WR/TE"></div>
+                    <div><label class="text-gray-600 block mb-1 truncate font-bold text-[11px]">Kicker</label><input
+                            type="number" id="pos-pk" value="1" class="w-full border rounded-lg p-2 text-center"></div>
+                    <div><label class="text-gray-600 block mb-1 truncate font-bold text-[11px]">DST</label><input
+                            type="number" id="pos-dst" value="1" class="w-full border rounded-lg p-2 text-center"></div>
+                    <div><label class="text-gray-600 block mb-1 truncate font-bold text-[11px]">Bench</label><input
+                            type="number" id="pos-bn" value="6" class="w-full border rounded-lg p-2 text-center"></div>
                 </div>
 
                 <h3 class="font-semibold text-gray-900 mt-6 mb-3">Scoring Settings</h3>
@@ -300,41 +311,65 @@
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-slate-50 sticky top-0">
                         <tr>
-                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                                <button type="button" class="flex items-center gap-1 hover:text-indigo-600" onclick="UI.sortDatabase('player')">Player</button>
+                            <th
+                                class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                <button type="button" class="flex items-center gap-1 hover:text-indigo-600"
+                                    onclick="UI.sortDatabase('player')">Player</button>
                             </th>
-                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                                <button type="button" class="flex items-center gap-1 hover:text-indigo-600" onclick="UI.sortDatabase('pos')">Pos</button>
+                            <th
+                                class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                <button type="button" class="flex items-center gap-1 hover:text-indigo-600"
+                                    onclick="UI.sortDatabase('pos')">Pos</button>
                             </th>
-                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                                <button type="button" class="flex items-center gap-1 hover:text-indigo-600" onclick="UI.sortDatabase('team')">Team</button>
+                            <th
+                                class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                <button type="button" class="flex items-center gap-1 hover:text-indigo-600"
+                                    onclick="UI.sortDatabase('team')">Team</button>
                             </th>
-                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                                <button type="button" class="flex items-center gap-1 hover:text-indigo-600" onclick="UI.sortDatabase('projPts')">Proj Pts</button>
+                            <th
+                                class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                <button type="button" class="flex items-center gap-1 hover:text-indigo-600"
+                                    onclick="UI.sortDatabase('projPts')">Proj Pts</button>
                             </th>
-                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                                <button type="button" class="flex items-center gap-1 hover:text-indigo-600" onclick="UI.sortDatabase('vbd')">VBD</button>
+                            <th
+                                class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                <button type="button" class="flex items-center gap-1 hover:text-indigo-600"
+                                    onclick="UI.sortDatabase('vbd')">VBD</button>
                             </th>
-                            <th class="px-6 py-4 text-left text-xs font-semibold text-indigo-600 uppercase tracking-wider">
-                                <button type="button" class="flex items-center gap-1 hover:text-indigo-700" onclick="UI.sortDatabase('advVbd')">Adv VBD</button>
+                            <th
+                                class="px-6 py-4 text-left text-xs font-semibold text-indigo-600 uppercase tracking-wider">
+                                <button type="button" class="flex items-center gap-1 hover:text-indigo-700"
+                                    onclick="UI.sortDatabase('advVbd')">Adv VBD</button>
                             </th>
-                            <th class="px-6 py-4 text-left text-xs font-semibold text-amber-600 uppercase tracking-wider">
-                                <button type="button" class="flex items-center gap-1 hover:text-amber-700" onclick="UI.sortDatabase('avgStars')">SOS Stars</button>
+                            <th
+                                class="px-6 py-4 text-left text-xs font-semibold text-amber-600 uppercase tracking-wider">
+                                <button type="button" class="flex items-center gap-1 hover:text-amber-700"
+                                    onclick="UI.sortDatabase('avgStars')">SOS Stars</button>
                             </th>
-                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                                <button type="button" class="flex items-center gap-1 hover:text-indigo-600" onclick="UI.sortDatabase('age')">Age</button>
+                            <th
+                                class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                <button type="button" class="flex items-center gap-1 hover:text-indigo-600"
+                                    onclick="UI.sortDatabase('age')">Age</button>
                             </th>
-                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                                <button type="button" class="flex items-center gap-1 hover:text-indigo-600" onclick="UI.sortDatabase('adp')">ADP</button>
+                            <th
+                                class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                <button type="button" class="flex items-center gap-1 hover:text-indigo-600"
+                                    onclick="UI.sortDatabase('adp')">ADP</button>
                             </th>
-                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                                <button type="button" class="flex items-center gap-1 hover:text-indigo-600" onclick="UI.sortDatabase('depth')">Depth</button>
+                            <th
+                                class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                <button type="button" class="flex items-center gap-1 hover:text-indigo-600"
+                                    onclick="UI.sortDatabase('depth')">Depth</button>
                             </th>
-                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                                <button type="button" class="flex items-center gap-1 hover:text-indigo-600" onclick="UI.sortDatabase('snap')">Snap %</button>
+                            <th
+                                class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                <button type="button" class="flex items-center gap-1 hover:text-indigo-600"
+                                    onclick="UI.sortDatabase('snap')">Snap %</button>
                             </th>
-                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                                <button type="button" class="flex items-center gap-1 hover:text-indigo-600" onclick="UI.sortDatabase('bye')">Bye</button>
+                            <th
+                                class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                <button type="button" class="flex items-center gap-1 hover:text-indigo-600"
+                                    onclick="UI.sortDatabase('bye')">Bye</button>
                             </th>
                         </tr>
                     </thead>
@@ -374,10 +409,18 @@
 
                 <div class="bg-slate-50 p-5 rounded-2xl border border-slate-200">
                     <div class="flex flex-wrap gap-2 mb-4">
-                        <button class="metric-tab-btn active text-xs font-bold bg-emerald-100 text-emerald-700 px-3 py-2 rounded-lg" data-metric="TGT %">Target Share %</button>
-                        <button class="metric-tab-btn text-xs font-bold bg-gray-100 text-gray-600 px-3 py-2 rounded-lg hover:bg-gray-200" data-metric="20+Rec">20+ Yd Rec</button>
-                        <button class="metric-tab-btn text-xs font-bold bg-gray-100 text-gray-600 px-3 py-2 rounded-lg hover:bg-gray-200" data-metric="20+Rush">20+ Yd Rush</button>
-                        <button class="metric-tab-btn text-xs font-bold bg-gray-100 text-gray-600 px-3 py-2 rounded-lg hover:bg-gray-200" data-metric="RZ TGT">Red Zone Tgts</button>
+                        <button
+                            class="metric-tab-btn active text-xs font-bold bg-emerald-100 text-emerald-700 px-3 py-2 rounded-lg"
+                            data-metric="TGT %">Target Share %</button>
+                        <button
+                            class="metric-tab-btn text-xs font-bold bg-gray-100 text-gray-600 px-3 py-2 rounded-lg hover:bg-gray-200"
+                            data-metric="20+Rec">20+ Yd Rec</button>
+                        <button
+                            class="metric-tab-btn text-xs font-bold bg-gray-100 text-gray-600 px-3 py-2 rounded-lg hover:bg-gray-200"
+                            data-metric="20+Rush">20+ Yd Rush</button>
+                        <button
+                            class="metric-tab-btn text-xs font-bold bg-gray-100 text-gray-600 px-3 py-2 rounded-lg hover:bg-gray-200"
+                            data-metric="RZ TGT">Red Zone Tgts</button>
                     </div>
                     <div class="table-container border rounded-xl max-h-64 overflow-auto">
                         <table class="min-w-full divide-y divide-gray-200">
