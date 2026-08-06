@@ -704,11 +704,13 @@ const UI = {
             envBadges.push(`<span class="bg-rose-100 text-rose-800 text-xs font-bold px-2.5 py-1 rounded-full border border-rose-200">⚠️ High Pass Pressure Env (${passEnv.prssPct}%)</span>`);
         }
 
-        // Add visual O-Line Badges
-        if (p.olTier === 'S' || p.olTier === 'A') {
-            envBadges.push(`<span class="bg-amber-100 text-amber-800 text-xs font-bold px-2.5 py-1 rounded-full border border-amber-200">🛡️ Elite O-Line (Tier ${p.olTier})</span>`);
-        } else if (p.olTier === 'D' || p.olTier === 'F') {
-            envBadges.push(`<span class="bg-red-100 text-red-800 text-xs font-bold px-2.5 py-1 rounded-full border border-red-200">⚠️ Poor O-Line (Tier ${p.olTier})</span>`);
+        // Fix: ONLY apply O-Line Badges to Offensive Players
+        if (isOffense) {
+            if (p.olTier === 'S' || p.olTier === 'A') {
+                envBadges.push(`<span class="bg-amber-100 text-amber-800 text-xs font-bold px-2.5 py-1 rounded-full border border-amber-200">🛡️ Elite O-Line (Tier ${p.olTier})</span>`);
+            } else if (p.olTier === 'D' || p.olTier === 'F') {
+                envBadges.push(`<span class="bg-red-100 text-red-800 text-xs font-bold px-2.5 py-1 rounded-full border border-red-200">⚠️ Poor O-Line (Tier ${p.olTier})</span>`);
+            }
         }
 
         let envBadgesHTML = envBadges.length > 0 ? `<div class="flex flex-wrap gap-2 mb-2">${envBadges.join('')}</div>` : '';
@@ -743,7 +745,6 @@ const UI = {
             if (p.airYards) barHTML += buildBar('Total Air Yards', p.airYards, 2000, ' yds', 'amber');
             if (p.yacAtt) barHTML += buildBar('Yards After Contact', p.yacAtt, 4, ' yds', 'purple');
             if (p.brokenTackles) barHTML += buildBar('Broken Tackles', p.brokenTackles, 30, '', 'red');
-            // Render Synthesized Pro Metrics
             if (p.hvo) barHTML += buildBar('High-Value Opps (Rec + RZ)', p.hvo, 130, '', 'emerald');
             if (p.ypt) barHTML += buildBar('Yards Per Target', p.ypt.toFixed(1), 12, ' yds', 'blue');
             if (p.pressureRate) barHTML += buildBar('Pressure Rate Faced', p.pressureRate.toFixed(1), 30, '%', 'rose');
@@ -766,13 +767,20 @@ const UI = {
             let volumeStr = '';
             let tdCount = ps.totalTd || 0;
 
+            // Isolated String formatting so DST & PK don't get Rec stats
             if (p.Pos === 'QB') {
                 volumeStr = `${ps.passYds || 0} Pass Yds (${ps.passTd || 0} TD / ${ps.int || 0} INT) • ${ps.rushYds || 0} Rush Yds (${ps.rushTd || 0} TD)`;
             } else if (p.Pos === 'RB') {
                 volumeStr = `${ps.rushYds || 0} Rush Yds (${ps.rushTd || 0} TD) • ${ps.rec || 0}/${ps.targets || 0} Rec (${ps.recYds || 0} Yds, ${ps.recTd || 0} TD)`;
-            } else {
+            } else if (['WR', 'TE'].includes(p.Pos)) {
                 volumeStr = `${ps.rec || 0}/${ps.targets || 0} Rec (${ps.recYds || 0} Yds, ${ps.recTd || 0} TD)${ps.targetShare ? ` [${ps.targetShare}% Tgt Share]` : ''}`;
                 if (ps.rushYds && ps.rushYds > 0) volumeStr += ` • ${ps.rushYds} Rush Yds`;
+            } else if (p.Pos === 'DST') {
+                let turnovers = (ps.defInt || 0) + (ps.defFum || 0);
+                let tds = (ps.defTd || 0) + (ps.spcTd || 0);
+                volumeStr = `${ps.sack || 0} Sacks • ${turnovers} Turnovers Forced • ${tds} Def TDs`;
+            } else if (p.Pos === 'PK') {
+                volumeStr = `${ps.fgTotal || 0} FGs Made • ${ps.xp || 0} PATs Made`;
             }
 
             let ppgStr = p.pastPpg ? `${p.pastPpg.toFixed(1)} PPG` : 'N/A';
@@ -835,6 +843,48 @@ const UI = {
                         <div><span class="font-bold text-gray-400 block text-[10px] uppercase">Rec Yds / YPR</span> ${s.recYds} yds <span class="text-indigo-600 font-bold">(${s.recAvg} YPR)</span></div>
                         <div><span class="font-bold text-gray-400 block text-[10px] uppercase">Rec TDs</span> ${s.recTd} TD</div>
                     ` : ''}
+                </div>
+            `;
+        } 
+        
+        // Fix: Provide Custom Minimal Dashboard for DST
+        else if (p.Pos === 'DST') {
+            statsDashboard = `
+                <div class="bg-indigo-900 text-white p-4 rounded-xl border border-indigo-800 mb-4 shadow-sm text-xs grid grid-cols-3 gap-3">
+                    <div class="p-2">
+                        <span class="text-indigo-300 block text-[10px] font-bold uppercase tracking-wider">Projected Output</span>
+                        <span class="text-lg font-extrabold text-white">${p.ProjPts.toFixed(1)} Pts</span>
+                        <span class="block text-[10px] text-emerald-400 font-bold mt-1">Adv VBD: ${(p.AdvVBD || p.VBD).toFixed(1)}</span>
+                    </div>
+                    <!-- Added Schedule Grade Block -->
+                    <div class="p-2 border-l border-indigo-700/50">
+                        <span class="text-indigo-300 block text-[10px] font-bold uppercase tracking-wider">Schedule Grade</span>
+                        <span class="text-lg font-extrabold text-amber-400">⭐ ${p.avgStars ? p.avgStars.toFixed(2) : '3.0'}</span>
+                        <span class="block text-[10px] text-indigo-200 mt-1">Playoffs: ⭐${(p.playoffSOS || p.avgStars || 3.0).toFixed(1)}</span>
+                    </div>
+                    <div class="p-2 border-l border-indigo-700/50">
+                        <span class="text-indigo-300 block text-[10px] font-bold uppercase tracking-wider">Defensive Profile</span>
+                        <span class="text-lg font-extrabold text-white">${s.sack || 0} Sacks</span>
+                        <span class="block text-[10px] text-indigo-200 mt-1">${(s.defInt || 0) + (s.defFum || 0)} Turnovers | ${s.papg || 18.0} PAPG</span>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Fix: Provide Custom Minimal Dashboard for Kicker
+        else if (p.Pos === 'PK') {
+            statsDashboard = `
+                <div class="bg-indigo-900 text-white p-4 rounded-xl border border-indigo-800 mb-4 shadow-sm text-xs grid grid-cols-2 gap-3">
+                    <div class="p-2">
+                        <span class="text-indigo-300 block text-[10px] font-bold uppercase tracking-wider">Projected Output</span>
+                        <span class="text-lg font-extrabold text-white">${p.ProjPts.toFixed(1)} Pts</span>
+                        <span class="block text-[10px] text-emerald-400 font-bold mt-1">Adv VBD: ${(p.AdvVBD || p.VBD).toFixed(1)}</span>
+                    </div>
+                    <div class="p-2 border-l border-indigo-700/50">
+                        <span class="text-indigo-300 block text-[10px] font-bold uppercase tracking-wider">Kicking Profile</span>
+                        <span class="text-lg font-extrabold text-white">${s.fgTotal || 0} FGs</span>
+                        <span class="block text-[10px] text-indigo-200 mt-1">${s.xp || 0} PATs</span>
+                    </div>
                 </div>
             `;
         }

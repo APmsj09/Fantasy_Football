@@ -320,6 +320,31 @@ const State = {
         return data;
     },
 
+    parseScheduleData(text) {
+        const rows = text.split(/\r?\n/).filter(row => row.trim() !== '');
+        // UpperCase headers to standardize
+        const headers = rows[0].split('\t').map(h => h.trim().toUpperCase());
+        const schedule = {};
+
+        for (let i = 1; i < rows.length; i++) {
+            const vals = rows[i].split('\t').map(v => v.trim());
+            const team = this.normalizeTeam(vals[0]); // First column is the Team
+            if (!team) continue;
+
+            schedule[team] = {};
+            for (let w = 1; w <= 18; w++) {
+                // Check if the header is just "1" or "W1"
+                let headerKey = headers.includes(`W${w}`) ? `W${w}` : `${w}`;
+                let idx = headers.indexOf(headerKey);
+                
+                if (idx !== -1) {
+                    schedule[team][w] = vals[idx];
+                }
+            }
+        }
+        this.nflSchedule = schedule;
+    },
+
     parseHandcuffData(text) {
         const rows = text.split(/\r?\n/).filter(row => row.trim() !== '');
         if (rows.length < 2) return [];
@@ -1102,6 +1127,125 @@ const State = {
             // ===========================================================
 
             this.calculateWeeklyProjections(p);
+        });
+    },
+
+    // -------------------------------------------------------------
+    // DYNAMIC DST MATCHUP ENGINE
+    // -------------------------------------------------------------
+    teamOffensiveThreats: {},
+    nflSchedule: {},
+
+    calculateTeamOffensiveThreats() {
+        const teams = [...new Set(this.allPlayers.map(p => this.normalizeTeam(p.Team)).filter(Boolean))];
+        let maxThreat = 0;
+        let minThreat = 999;
+
+        teams.forEach(team => {
+            let threatScore = 0;
+            let teamPlayers = this.allPlayers.filter(p => this.normalizeTeam(p.Team) === team);
+
+            // 1. FIREPOWER (Projected Points of Top Starters)
+            let qbs = teamPlayers.filter(p => p.Pos === 'QB').sort((a, b) => b.ProjPts - a.ProjPts);
+            let rbs = teamPlayers.filter(p => p.Pos === 'RB').sort((a, b) => b.ProjPts - a.ProjPts);
+            let passCatchers = teamPlayers.filter(p => ['WR', 'TE'].includes(p.Pos)).sort((a, b) => b.ProjPts - a.ProjPts);
+
+            let startingQB = qbs[0];
+            
+            // Add top QB, top RB, and top 2 Pass Catchers projected points
+            if (startingQB) threatScore += (startingQB.ProjPts * 0.4); 
+            if (rbs[0]) threatScore += (rbs[0].ProjPts * 0.2);
+            if (passCatchers[0]) threatScore += (passCatchers[0].ProjPts * 0.2);
+            if (passCatchers[1]) threatScore += (passCatchers[1].ProjPts * 0.15);
+
+            // 2. MISTAKE PRONENESS & TRENCHES (Adjusts the threat score)
+            if (startingQB) {
+                // If the QB takes a lot of pressure, REDUCE their threat score (makes them a juicy DST matchup)
+                if (startingQB.pressureRate) {
+                    if (startingQB.pressureRate > 24.0) threatScore -= 15; 
+                    else if (startingQB.pressureRate < 15.0) threatScore += 10;
+                }
+                // Turnover history
+                if (startingQB.pastStats && startingQB.pastStats.int >= 12) threatScore -= 10;
+            }
+
+            // O-Line Tier Impact
+            let firstPlayerWithOL = teamPlayers.find(p => p.olTier);
+            if (firstPlayerWithOL) {
+                let tier = firstPlayerWithOL.olTier;
+                if (tier === 'S' || tier === 'A') threatScore += 15; // Elite line, brutal for DSTs
+                else if (tier === 'D' || tier === 'F') threatScore -= 20; // Terrible line, great for DSTs
+            }
+
+            this.teamOffensiveThreats[team] = {
+                team: team,
+                rawScore: threatScore,
+                qb: startingQB ? startingQB.Player : 'Unknown'
+            };
+
+            if (threatScore > maxThreat) maxThreat = threatScore;
+            if (threatScore < minThreat) minThreat = threatScore;
+        });
+
+        // 3. NORMALIZE TO 1.0 - 5.0 STARS (Inverted for DSTs)
+        teams.forEach(team => {
+            let raw = this.teamOffensiveThreats[team].rawScore;
+            let normalized = (raw - minThreat) / ((maxThreat - minThreat) || 1); // fallback to 1 to prevent division by 0
+            
+            // Invert: High Threat Score = 1.0 Star Matchup for DST (Bad)
+            let starRating = 5.0 - (normalized * 4.0);
+            this.teamOffensiveThreats[team].dstMatchupStars = Math.min(5.0, Math.max(1.0, starRating));
+        });
+    },
+
+    applyDynamicDSTSOS() {
+        if (Object.keys(this.nflSchedule).length === 0) return;
+        this.calculateTeamOffensiveThreats();
+
+        let dsts = this.allPlayers.filter(p => p.Pos === 'DST');
+
+        dsts.forEach(dst => {
+            let t = this.normalizeTeam(dst.Team);
+            let teamSchedule = this.nflSchedule[t];
+            if (!teamSchedule) return;
+
+            let totalStars = 0;
+            let activeWeeks = 0;
+            let playoffStars = 0;
+            let playoffCount = 0;
+
+            dst.sosWeeks = {};
+
+            for (let w = 1; w <= 18; w++) {
+                let opp = teamSchedule[w];
+                if (!opp || opp.toUpperCase() === 'BYE') {
+                    dst.sosWeeks[`W${w}`] = 'BYE';
+                    dst.byeWeek = w;
+                } else {
+                    // Smart cleaner: removes "@", "vs", and trims extra spaces (e.g. "@ LAC" becomes "LAC")
+                    let rawOpp = opp.replace(/@/g, '').replace(/vs/gi, '').trim();
+                    let oppTeam = this.normalizeTeam(rawOpp);
+                    
+                    let matchupThreat = this.teamOffensiveThreats[oppTeam];
+                    let stars = matchupThreat ? matchupThreat.dstMatchupStars : 3.0;
+                    
+                    dst.sosWeeks[`W${w}`] = stars;
+                    
+                    totalStars += stars;
+                    activeWeeks++;
+
+                    if (w >= 15 && w <= 17) {
+                        playoffStars += stars;
+                        playoffCount++;
+                    }
+                }
+            }
+
+            dst.avgStars = activeWeeks > 0 ? (totalStars / activeWeeks) : 3.0;
+            dst.playoffSOS = playoffCount > 0 ? (playoffStars / playoffCount) : dst.avgStars;
+            
+            // Recalculate weekly projections based on this new custom SOS
+            this.calculateWeeklyProjections(dst);
         });
     },
 

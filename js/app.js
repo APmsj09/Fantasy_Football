@@ -165,6 +165,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Load all advanced metrics concurrently
             await Promise.all([
                 enrichPlayerAges(),
+                fetchTSV(`./Schedule_${SEASON}.tsv`, State.parseScheduleData.bind(State)),
                 fetchTSV(`./SOS_${SEASON}.tsv`, State.parseSOSData.bind(State), State.mergeSOSData.bind(State)),
                 fetchTSV(`./RB_Handcuffs_${SEASON}.tsv`, State.parseHandcuffData.bind(State), State.mergeHandcuffData.bind(State)),
                 fetchTSV(`./ADP_${SEASON}.tsv`, State.parseADPData.bind(State), State.mergeADPData.bind(State)),
@@ -185,6 +186,7 @@ document.addEventListener('DOMContentLoaded', () => {
             ]);
 
             State.calculateProjections();
+            State.applyDynamicDSTSOS();
             State.calculateVBD();
 
             if (loadBtn) {
