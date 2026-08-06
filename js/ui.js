@@ -146,7 +146,10 @@ const UI = {
             let adp = p.adp !== undefined && p.adp !== null ? `${p.adp.toFixed(1)}` : '—';
             let depth = p.depthChart !== undefined && p.depthChart !== null ? `${p.depthChart}` : '—';
             let snap = p.snapShare !== undefined && p.snapShare !== null ? `${p.snapShare.toFixed(0)}%` : '—';
-            let olTag = p.olTier ? `<span class="ml-2 text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">OL ${p.olTier}</span>` : '';
+            
+            // Fix: Filter out OL badges for DST & Kickers
+            let isOffense = !['DST', 'PK'].includes(p.Pos);
+            let olTag = (isOffense && p.olTier) ? `<span class="ml-2 text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">OL ${p.olTier}</span>` : '';
 
             let vbdColor = p.VBD >= 0 ? 'text-emerald-600 font-medium' : 'text-red-500 font-medium';
             let advVbdColor = p.AdvVBD >= 0 ? 'text-indigo-600 font-extrabold' : 'text-red-400 font-bold';
@@ -1101,10 +1104,11 @@ const UI = {
                 ? `<span class="font-bold text-emerald-600">+${p._addedPPW.toFixed(1)}</span>`
                 : `<span class="text-gray-300">-</span>`;
 
+            let isOffense = !['DST', 'PK'].includes(p.Pos);
             let ageStr = p.age ? `<span class="text-[9px] font-semibold text-slate-400 ml-1">Age ${p.age}</span>` : '';
-            let olBadge = p.olTier ? `<span class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-100 text-slate-600">OL ${p.olTier}</span>` : '';
+            let olBadge = (isOffense && p.olTier) ? `<span class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-100 text-slate-600">OL ${p.olTier}</span>` : '';
             let sosBadge = p.avgStars ? `<span class="ml-1 inline-flex items-center text-[10px] font-bold text-amber-500">⭐ ${p.avgStars.toFixed(1)}</span>` : '';
-
+            
             htmlStr += `
                 <tr class="hover:bg-slate-50 border-b border-gray-100 transition-colors cursor-pointer" onclick="if (!event.target.closest('.draft-btn')) UI.showPlayerCard('${p._cleanName}')">
                     <td class="px-3 py-2 text-[11px] font-bold text-gray-900 w-1/3">

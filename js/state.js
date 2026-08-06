@@ -1044,10 +1044,8 @@ const State = {
                 else if (papg <= 35) weeklyPaPts = -1;
                 else weeklyPaPts = -4;
 
-                let rawDstPts = sackPts + turnoverPts + tdPts + safetyPts + blkPts + (weeklyPaPts * gp);
-                
-                // Calibration factor to align with standard fantasy league scoring (~110-150 pts max)
-                p.ProjPts = rawDstPts * 0.65; 
+                // Pure formula — matches your league's exact point scale!
+                p.ProjPts = sackPts + turnoverPts + tdPts + safetyPts + blkPts + (weeklyPaPts * gp);
             }
             else {
                 let basePts =
