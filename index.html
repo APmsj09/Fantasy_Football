@@ -160,23 +160,31 @@
             </div>
         </div>
 
-        <div id="setup-screen" class="screen max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8 hidden">
-            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                <h2 class="text-xl font-bold mb-6 flex items-center space-x-2"><span
-                        class="w-6 h-6 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center text-sm">1</span><span>Database
-                        Status</span></h2>
-                <div class="space-y-5">
-                    <button id="load-data-button"
-                        class="w-full bg-slate-900 text-white font-medium py-3 px-4 rounded-lg transition-colors shadow-sm cursor-default">Connecting
-                        to Data...</button>
-                </div>
+        <div id="setup-screen" class="screen max-w-5xl mx-auto flex flex-col gap-6 hidden mt-6">
+
+            <!-- 1. Database Status (Compact Horizontal Banner) -->
+            <div
+                class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <h2 class="text-lg font-bold flex items-center space-x-3">
+                    <span
+                        class="w-7 h-7 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center text-sm">1</span>
+                    <span>Database Status</span>
+                </h2>
+                <button id="load-data-button"
+                    class="w-full md:w-auto min-w-[320px] bg-slate-900 text-white font-medium py-2.5 px-6 rounded-lg transition-colors shadow-sm cursor-default">
+                    Connecting to Data...
+                </button>
             </div>
 
-            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                <h2 class="text-xl font-bold mb-6 flex items-center space-x-2"><span
-                        class="w-6 h-6 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center text-sm">2</span><span>League
-                        Settings</span></h2>
-                <div class="grid grid-cols-2 gap-5 mb-6">
+            <!-- 2. League Settings (Spacious Full-Width Section) -->
+            <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-gray-100">
+                <h2 class="text-xl font-bold mb-6 flex items-center space-x-3">
+                    <span
+                        class="w-7 h-7 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center text-sm">2</span>
+                    <span>League Settings</span>
+                </h2>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Total Teams</label>
                         <input type="number" id="setting-teams" value="12"
@@ -190,104 +198,138 @@
                             <option value="mock">Mock Draft (Vs CPU)</option>
                         </select>
                     </div>
-                    <div id="user-pick-container" class="col-span-2">
+                    <div id="user-pick-container">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Your Draft Position (1-12)</label>
                         <input type="number" id="setting-user-pick" value="1" min="1"
                             class="w-full border-gray-300 border p-2.5 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
                     </div>
-                    <div class="col-span-2 mt-4 pt-4 border-t border-gray-100">
-                        <label class="block text-sm font-bold text-gray-900 mb-2">Assign Profiles to Teams</label>
-                        <div id="profile-assignments-container" class="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+
+                    <div class="col-span-1 md:col-span-3 mt-2 pt-6 border-t border-gray-100">
+                        <label class="block text-sm font-bold text-gray-900 mb-4">Assign Profiles to Teams</label>
+                        <!-- Uses more columns now that it has full width -->
+                        <div id="profile-assignments-container"
+                            class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 text-sm">
                         </div>
                     </div>
                 </div>
 
-                <h3 class="font-semibold text-gray-900 mt-6 mb-3">Roster Limits</h3>
-                <div class="grid grid-cols-3 md:grid-cols-5 gap-3 text-sm">
-                    <div><label class="text-gray-600 block mb-1 truncate font-bold text-[11px]">QB</label><input
-                            type="number" id="pos-qb" value="1" class="w-full border rounded-lg p-2 text-center"></div>
-                    <div><label class="text-gray-600 block mb-1 truncate font-bold text-[11px]">RB</label><input
-                            type="number" id="pos-rb" value="2" class="w-full border rounded-lg p-2 text-center"></div>
-                    <div><label class="text-gray-600 block mb-1 truncate font-bold text-[11px]">WR</label><input
-                            type="number" id="pos-wr" value="2" class="w-full border rounded-lg p-2 text-center"></div>
-                    <div><label class="text-gray-600 block mb-1 truncate font-bold text-[11px]">TE</label><input
-                            type="number" id="pos-te" value="1" class="w-full border rounded-lg p-2 text-center"></div>
+                <div class="border-t border-gray-100 pt-8 mt-2">
+                    <h3 class="font-extrabold text-gray-900 mb-4">Roster Limits</h3>
+                    <div class="grid grid-cols-3 md:grid-cols-5 gap-4 text-sm">
+                        <div><label
+                                class="text-gray-600 block mb-1 truncate font-bold text-[11px] uppercase">QB</label><input
+                                type="number" id="pos-qb" value="1"
+                                class="w-full border border-gray-300 rounded-lg p-2.5 text-center"></div>
+                        <div><label
+                                class="text-gray-600 block mb-1 truncate font-bold text-[11px] uppercase">RB</label><input
+                                type="number" id="pos-rb" value="2"
+                                class="w-full border border-gray-300 rounded-lg p-2.5 text-center"></div>
+                        <div><label
+                                class="text-gray-600 block mb-1 truncate font-bold text-[11px] uppercase">WR</label><input
+                                type="number" id="pos-wr" value="2"
+                                class="w-full border border-gray-300 rounded-lg p-2.5 text-center"></div>
+                        <div><label
+                                class="text-gray-600 block mb-1 truncate font-bold text-[11px] uppercase">TE</label><input
+                                type="number" id="pos-te" value="1"
+                                class="w-full border border-gray-300 rounded-lg p-2.5 text-center"></div>
 
-                    <div><label class="text-gray-600 block mb-1 truncate font-bold text-[11px]">FLEX
-                            (RB/WR)</label><input type="number" id="pos-flex-rbwr" value="0"
-                            class="w-full border rounded-lg p-2 text-center bg-gray-50"></div>
-                    <div><label class="text-gray-600 block mb-1 truncate font-bold text-[11px]">FLEX
-                            (W/R/T)</label><input type="number" id="pos-flex" value="2"
-                            class="w-full border rounded-lg p-2 text-center bg-gray-50"></div>
+                        <div><label class="text-gray-600 block mb-1 truncate font-bold text-[11px] uppercase">FLEX
+                                (RB/WR)</label><input type="number" id="pos-flex-rbwr" value="0"
+                                class="w-full border border-gray-300 rounded-lg p-2.5 text-center bg-gray-50"></div>
+                        <div><label class="text-gray-600 block mb-1 truncate font-bold text-[11px] uppercase">FLEX
+                                (W/R/T)</label><input type="number" id="pos-flex" value="2"
+                                class="w-full border border-gray-300 rounded-lg p-2.5 text-center bg-gray-50"></div>
 
-                    <div><label
-                            class="text-indigo-600 block mb-1 truncate font-bold text-[11px]">SUPERFLEX</label><input
-                            type="number" id="pos-superflex" value="0"
-                            class="w-full border border-indigo-300 rounded-lg p-2 text-center bg-indigo-50 font-bold text-indigo-700 shadow-sm"
-                            title="Allows QB/RB/WR/TE"></div>
-                    <div><label class="text-gray-600 block mb-1 truncate font-bold text-[11px]">Kicker</label><input
-                            type="number" id="pos-pk" value="1" class="w-full border rounded-lg p-2 text-center"></div>
-                    <div><label class="text-gray-600 block mb-1 truncate font-bold text-[11px]">DST</label><input
-                            type="number" id="pos-dst" value="1" class="w-full border rounded-lg p-2 text-center"></div>
-                    <div><label class="text-gray-600 block mb-1 truncate font-bold text-[11px]">Bench</label><input
-                            type="number" id="pos-bn" value="6" class="w-full border rounded-lg p-2 text-center"></div>
+                        <div><label
+                                class="text-indigo-600 block mb-1 truncate font-bold text-[11px] uppercase">SUPERFLEX</label><input
+                                type="number" id="pos-superflex" value="0"
+                                class="w-full border border-indigo-300 rounded-lg p-2.5 text-center bg-indigo-50 font-bold text-indigo-700 shadow-sm"
+                                title="Allows QB/RB/WR/TE"></div>
+                        <div><label
+                                class="text-gray-600 block mb-1 truncate font-bold text-[11px] uppercase">Kicker</label><input
+                                type="number" id="pos-pk" value="1"
+                                class="w-full border border-gray-300 rounded-lg p-2.5 text-center"></div>
+                        <div><label
+                                class="text-gray-600 block mb-1 truncate font-bold text-[11px] uppercase">DST</label><input
+                                type="number" id="pos-dst" value="1"
+                                class="w-full border border-gray-300 rounded-lg p-2.5 text-center"></div>
+                        <div><label
+                                class="text-gray-600 block mb-1 truncate font-bold text-[11px] uppercase">Bench</label><input
+                                type="number" id="pos-bn" value="6"
+                                class="w-full border border-gray-300 rounded-lg p-2.5 text-center"></div>
+                    </div>
                 </div>
 
-                <h3 class="font-semibold text-gray-900 mt-6 mb-3">Scoring Settings</h3>
-                <div class="grid grid-cols-3 md:grid-cols-5 gap-3 text-sm mb-6">
-                    <div><label class="text-gray-600 block mb-1 text-[10px] uppercase font-bold">Pass Yds</label><input
-                            type="number" step="0.01" id="score-pass-yds" value="0.04"
-                            class="w-full border rounded-lg p-2 text-center bg-slate-50"></div>
-                    <div><label class="text-gray-600 block mb-1 text-[10px] uppercase font-bold">Pass TD</label><input
-                            type="number" id="score-pass-td" value="6"
-                            class="w-full border rounded-lg p-2 text-center bg-slate-50"></div>
-                    <div><label class="text-gray-600 block mb-1 text-[10px] uppercase font-bold">INT</label><input
-                            type="number" id="score-int" value="-2"
-                            class="w-full border rounded-lg p-2 text-center bg-slate-50"></div>
-                    <div><label class="text-gray-600 block mb-1 text-[10px] uppercase font-bold">PPR (Rec)</label><input
-                            type="number" step="0.5" id="score-ppr" value="1"
-                            class="w-full border rounded-lg p-2 text-center bg-slate-50"></div>
-                    <div><label class="text-gray-600 block mb-1 text-[10px] uppercase font-bold">Fum Lost</label><input
-                            type="number" id="score-fum" value="-2"
-                            class="w-full border rounded-lg p-2 text-center bg-slate-50"></div>
+                <div class="border-t border-gray-100 pt-8 mt-8">
+                    <h3 class="font-extrabold text-gray-900 mb-4">Scoring Settings</h3>
+                    <div class="grid grid-cols-3 md:grid-cols-5 gap-4 text-sm mb-6">
+                        <div><label class="text-gray-600 block mb-1 text-[10px] uppercase font-bold">Pass
+                                Yds</label><input type="number" step="0.01" id="score-pass-yds" value="0.04"
+                                class="w-full border border-gray-300 rounded-lg p-2.5 text-center bg-slate-50"></div>
+                        <div><label class="text-gray-600 block mb-1 text-[10px] uppercase font-bold">Pass
+                                TD</label><input type="number" id="score-pass-td" value="6"
+                                class="w-full border border-gray-300 rounded-lg p-2.5 text-center bg-slate-50"></div>
+                        <div><label class="text-gray-600 block mb-1 text-[10px] uppercase font-bold">INT</label><input
+                                type="number" id="score-int" value="-2"
+                                class="w-full border border-gray-300 rounded-lg p-2.5 text-center bg-slate-50"></div>
+                        <div><label class="text-gray-600 block mb-1 text-[10px] uppercase font-bold">PPR
+                                (Rec)</label><input type="number" step="0.5" id="score-ppr" value="1"
+                                class="w-full border border-gray-300 rounded-lg p-2.5 text-center bg-slate-50"></div>
 
-                    <div><label class="text-gray-600 block mb-1 text-[10px] uppercase font-bold">Rush Yds</label><input
-                            type="number" step="0.1" id="score-rush-yds" value="0.1"
-                            class="w-full border rounded-lg p-2 text-center bg-slate-50"></div>
-                    <div><label class="text-gray-600 block mb-1 text-[10px] uppercase font-bold">Rush TD</label><input
-                            type="number" id="score-rush-td" value="6"
-                            class="w-full border rounded-lg p-2 text-center bg-slate-50"></div>
-                    <div><label class="text-gray-600 block mb-1 text-[10px] uppercase font-bold">Rec Yds</label><input
-                            type="number" step="0.1" id="score-rec-yds" value="0.1"
-                            class="w-full border rounded-lg p-2 text-center bg-slate-50"></div>
-                    <div><label class="text-gray-600 block mb-1 text-[10px] uppercase font-bold">Rec TD</label><input
-                            type="number" id="score-rec-td" value="6"
-                            class="w-full border rounded-lg p-2 text-center bg-slate-50"></div>
+                        <div><label class="text-indigo-600 block mb-1 text-[10px] uppercase font-bold">TE
+                                Premium</label><input type="number" step="0.5" id="score-te-prem" value="0"
+                                class="w-full border border-indigo-200 rounded-lg p-2.5 text-center bg-indigo-50 font-bold text-indigo-700 shadow-sm"
+                                title="Extra points per reception for TEs"></div>
 
-                    <div><label class="text-gray-600 block mb-1 text-[10px] uppercase font-bold">FG Made</label><input
-                            type="number" id="score-fg" value="3"
-                            class="w-full border rounded-lg p-2 text-center bg-indigo-50 text-indigo-900"></div>
-                    <div><label class="text-gray-600 block mb-1 text-[10px] uppercase font-bold">PAT Made</label><input
-                            type="number" id="score-xp" value="1"
-                            class="w-full border rounded-lg p-2 text-center bg-indigo-50 text-indigo-900"></div>
-                    <div><label class="text-gray-600 block mb-1 text-[10px] uppercase font-bold">DEF Sack</label><input
-                            type="number" id="score-sack" value="1"
-                            class="w-full border rounded-lg p-2 text-center bg-emerald-50 text-emerald-900"></div>
-                    <div><label class="text-gray-600 block mb-1 text-[10px] uppercase font-bold">DEF
-                            Turnover</label><input type="number" id="score-turnover" value="2"
-                            class="w-full border rounded-lg p-2 text-center bg-emerald-50 text-emerald-900"
-                            title="Interceptions & Fumble Recoveries"></div>
-                    <div><label class="text-gray-600 block mb-1 text-[10px] uppercase font-bold">DEF TD</label><input
-                            type="number" id="score-deftd" value="6"
-                            class="w-full border rounded-lg p-2 text-center bg-emerald-50 text-emerald-900"></div>
-                    <div><label class="text-gray-600 block mb-1 text-[10px] uppercase font-bold">Safety</label><input
-                            type="number" id="score-safety" value="2"
-                            class="w-full border rounded-lg p-2 text-center bg-emerald-50 text-emerald-900"></div>
+                        <div><label class="text-gray-600 block mb-1 text-[10px] uppercase font-bold">Rush
+                                Yds</label><input type="number" step="0.1" id="score-rush-yds" value="0.1"
+                                class="w-full border border-gray-300 rounded-lg p-2.5 text-center bg-slate-50"></div>
+                        <div><label class="text-gray-600 block mb-1 text-[10px] uppercase font-bold">Rush
+                                TD</label><input type="number" id="score-rush-td" value="6"
+                                class="w-full border border-gray-300 rounded-lg p-2.5 text-center bg-slate-50"></div>
+                        <div><label class="text-gray-600 block mb-1 text-[10px] uppercase font-bold">Rec
+                                Yds</label><input type="number" step="0.1" id="score-rec-yds" value="0.1"
+                                class="w-full border border-gray-300 rounded-lg p-2.5 text-center bg-slate-50"></div>
+                        <div><label class="text-gray-600 block mb-1 text-[10px] uppercase font-bold">Rec
+                                TD</label><input type="number" id="score-rec-td" value="6"
+                                class="w-full border border-gray-300 rounded-lg p-2.5 text-center bg-slate-50"></div>
+                        <div><label class="text-gray-600 block mb-1 text-[10px] uppercase font-bold">Fum
+                                Lost</label><input type="number" id="score-fum" value="-2"
+                                class="w-full border border-gray-300 rounded-lg p-2.5 text-center bg-slate-50"></div>
+
+                        <div><label class="text-gray-600 block mb-1 text-[10px] uppercase font-bold">FG
+                                Made</label><input type="number" id="score-fg" value="3"
+                                class="w-full border border-gray-300 rounded-lg p-2.5 text-center bg-indigo-50 text-indigo-900">
+                        </div>
+                        <div><label class="text-gray-600 block mb-1 text-[10px] uppercase font-bold">PAT
+                                Made</label><input type="number" id="score-xp" value="1"
+                                class="w-full border border-gray-300 rounded-lg p-2.5 text-center bg-indigo-50 text-indigo-900">
+                        </div>
+                        <div><label class="text-gray-600 block mb-1 text-[10px] uppercase font-bold">DEF
+                                Sack</label><input type="number" id="score-sack" value="1"
+                                class="w-full border border-gray-300 rounded-lg p-2.5 text-center bg-emerald-50 text-emerald-900">
+                        </div>
+                        <div><label class="text-gray-600 block mb-1 text-[10px] uppercase font-bold">DEF
+                                Turnover</label><input type="number" id="score-turnover" value="2"
+                                class="w-full border border-gray-300 rounded-lg p-2.5 text-center bg-emerald-50 text-emerald-900"
+                                title="Interceptions & Fumble Recoveries"></div>
+                        <div><label class="text-gray-600 block mb-1 text-[10px] uppercase font-bold">DEF
+                                TD</label><input type="number" id="score-deftd" value="6"
+                                class="w-full border border-gray-300 rounded-lg p-2.5 text-center bg-emerald-50 text-emerald-900">
+                        </div>
+                        <div><label
+                                class="text-gray-600 block mb-1 text-[10px] uppercase font-bold">Safety</label><input
+                                type="number" id="score-safety" value="2"
+                                class="w-full border border-gray-300 rounded-lg p-2.5 text-center bg-emerald-50 text-emerald-900">
+                        </div>
+                    </div>
+
+                    <button id="start-draft-btn"
+                        class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 px-4 rounded-xl mt-6 transition-colors shadow-md opacity-50 cursor-not-allowed text-lg"
+                        disabled>
+                        Waiting for Player Data...
+                    </button>
                 </div>
-
-                <button id="start-draft-btn"
-                    class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg mt-8 transition-colors shadow-md opacity-50 cursor-not-allowed"
-                    disabled>Waiting for Player Data...</button>
             </div>
         </div>
 
