@@ -73,21 +73,21 @@ window.AutoDraft = {
             let currentCount = team.counts[p.Pos] || 0;
 
             let isStarterOpen = currentCount < starterMax;
-            let isFlexRBWROpen = ['RB', 'WR'].includes(p.Pos) && (team.counts['FlexRBWR'] < (State.settings.roster.FlexRBWR?.max || 0));
-            let isFlexOpen = ['RB', 'WR', 'TE'].includes(p.Pos) && (team.counts['Flex'] < (State.settings.roster.Flex?.max || 0));
-            let isSuperflexOpen = ['QB', 'RB', 'WR', 'TE'].includes(p.Pos) && (team.counts['Superflex'] < (State.settings.roster.Superflex?.max || 0));
+            let isFlexRBWROpen = ['RB', 'WR'].includes(p.Pos) && (userTeam.counts['FlexRBWR'] < (State.settings.roster.FlexRBWR?.max || 0));
+            let isFlexOpen = ['RB', 'WR', 'TE'].includes(p.Pos) && (userTeam.counts['Flex'] < (State.settings.roster.Flex?.max || 0));
+            let isSuperflexOpen = ['QB', 'RB', 'WR', 'TE'].includes(p.Pos) && (userTeam.counts['Superflex'] < (State.settings.roster.Superflex?.max || 0));
 
             let starterBonus = 0;
             if (isStarterOpen) {
-                starterBonus = 25; 
+                starterBonus = 25;
             } else if (isFlexRBWROpen || isFlexOpen || isSuperflexOpen) {
                 starterBonus = 15;
             } else {
                 let overage = currentCount - starterMax;
                 if (isFlexRBWROpen || isFlexOpen || isSuperflexOpen || State.isPositionFlexEligible(p.Pos)) {
-                    multiplier *= Math.pow(0.5, overage + 1); 
+                    score *= Math.pow(0.5, overage + 1);
                 } else {
-                    multiplier *= (overage === 0 ? 0.05 : 0.01); 
+                    score *= (overage === 0 ? 0.05 : 0.01);
                 }
             }
 

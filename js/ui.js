@@ -146,7 +146,7 @@ const UI = {
             let adp = p.adp !== undefined && p.adp !== null ? `${p.adp.toFixed(1)}` : '—';
             let depth = p.depthChart !== undefined && p.depthChart !== null ? `${p.depthChart}` : '—';
             let snap = p.snapShare !== undefined && p.snapShare !== null ? `${p.snapShare.toFixed(0)}%` : '—';
-            
+
             // Fix: Filter out OL badges for DST & Kickers
             let isOffense = !['DST', 'PK'].includes(p.Pos);
             let olTag = (isOffense && p.olTier) ? `<span class="ml-2 text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">OL ${p.olTier}</span>` : '';
@@ -1100,15 +1100,17 @@ const UI = {
 
             let tagHTML = advTags.length > 0 ? `<div class="flex gap-1 mt-1 text-[9px] font-bold">${advTags.join('')}</div>` : '';
 
-            let ppwStr = p._addedPPW && p._addedPPW > 0.1
-                ? `<span class="font-bold text-emerald-600">+${p._addedPPW.toFixed(1)}</span>`
-                : `<span class="text-gray-300">-</span>`;
+
+            let ppwVal = (p._addedPPW !== undefined && p._addedPPW > 0) ? p._addedPPW : 0;
+            let ppwStr = ppwVal > 0.05
+                ? `<span class="font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200/80">+${ppwVal.toFixed(2)}/wk</span>`
+                : `<span class="text-gray-300 text-[10px] font-mono">0.00</span>`;
 
             let isOffense = !['DST', 'PK'].includes(p.Pos);
             let ageStr = p.age ? `<span class="text-[9px] font-semibold text-slate-400 ml-1">Age ${p.age}</span>` : '';
             let olBadge = (isOffense && p.olTier) ? `<span class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-100 text-slate-600">OL ${p.olTier}</span>` : '';
             let sosBadge = p.avgStars ? `<span class="ml-1 inline-flex items-center text-[10px] font-bold text-amber-500">⭐ ${p.avgStars.toFixed(1)}</span>` : '';
-            
+
             htmlStr += `
                 <tr class="hover:bg-slate-50 border-b border-gray-100 transition-colors cursor-pointer" onclick="if (!event.target.closest('.draft-btn')) UI.showPlayerCard('${p._cleanName}')">
                     <td class="px-3 py-2 text-[11px] font-bold text-gray-900 w-1/3">
@@ -1168,9 +1170,11 @@ const UI = {
         let nextUserOverallPick = nextPickIdx !== -1 ? (nextPickIdx + 1) : (currentOverallPick + 2);
 
         const getSurvivalProb = (adp) => {
-            let playerAdp = adp || currentOverallPick;
-            let diff = playerAdp - nextUserOverallPick;
-            return 1 / (1 + Math.exp(-0.10 * diff));
+            if (!adp) return 1.0;
+            let diff = adp - nextUserOverallPick;
+            // Tight slope in early rounds (0.25), wide/forgiving in late rounds (0.05)
+            let slope = Math.max(0.04, 0.30 - (currentRound * 0.015));
+            return 1 / (1 + Math.exp(-slope * diff));
         };
 
         const getOpportunityScore = (p) => {
@@ -1207,9 +1211,9 @@ const UI = {
             if (tiers.length > 0 && tiers[0].length === 1) {
                 let lastPlayer = tiers[0][0];
                 let nextTop = tiers[1] ? (tiers[1][0].AdvVBD || tiers[1][0].VBD) : 0;
-                let drop = ((lastPlayer.AdvVBD || lastPlayer.VBD) - nextTop).toFixed(1);
-                if (drop >= 7.0 && userTeam.counts[pos] < State.settings.roster[pos].max) {
-                    tierAlertsHTML += `<div class="p-2 mb-2 bg-rose-950 border border-rose-700 rounded-lg text-[10px] text-rose-200">⚡ <strong>Tier Cliff Alert:</strong> ${lastPlayer.Player} is the LAST ${pos} in Tier 1 (-${drop} VBD drop to Tier 2).</div>`;
+                let drop = ((lastPlayer.AdvVBD || lastPlayer.VBD) - nextTop);
+                if (drop >= 6.0) {
+                    lastPlayer._tierCliffTag = `⚡ Last Tier 1 ${pos}`;
                 }
             }
         });
@@ -1240,7 +1244,8 @@ const UI = {
             // ===========================================================
             let matchingQB = userQBs.find(qb => qb._cleanTeam === p._cleanTeam);
             if (matchingQB && ['WR', 'TE'].includes(p.Pos)) {
-                score += 10.0; // Recommendation boost
+                // 12% proportional boost to VBD score
+                score += Math.max(3.0, (p.AdvVBD || p.VBD) * 0.12);
                 p._stackPartner = matchingQB.Player;
             } else {
                 p._stackPartner = null;
@@ -1280,6 +1285,13 @@ const UI = {
             let userOwnsStarter = p.starterName && userRoster.some(r => r._cleanName === State.normalizeName(p.starterName));
             if (userOwnsStarter) score += 5;
 
+            if (['QB', 'TE'].includes(p.Pos) && userTeam.counts[p.Pos] >= 1) {
+                const starter = userRoster.find(r => r.Pos === p.Pos);
+                if (starter && starter.byeWeek === p.byeWeek && p.byeWeek !== 'N/A') {
+                    score -= 4.0; // Penalty for same bye week on single-starter backup
+                }
+            }
+
             p._recScore = score;
         });
 
@@ -1299,24 +1311,24 @@ const UI = {
         let sortedByRec = [...viablePlayers].sort((a, b) => b._recScore - a._recScore);
         let vbdRecs = sortedByRec.filter(p => p !== bestFit).slice(0, 3);
 
-        let htmlStr = strategyBanner + tierAlertsHTML;
+        let htmlStr = strategyBanner;
 
         if (bestFit) {
             let survivalProb = getSurvivalProb(bestFit.adp);
-            let ppwText = `+${bestFit._addedPPW.toFixed(1)} PPW Lineup Fit`;
+            let ppwText = bestFit._addedPPW > 0 ? `+${bestFit._addedPPW.toFixed(2)} PPW` : `Flex Depth`;
             let stackBadge = bestFit._stackPartner ? ` • ⚡ Stack w/ ${bestFit._stackPartner}` : '';
-            let urgencyTag = (survivalProb < 0.15 && bestFit.adp && bestFit.adp < nextUserOverallPick) ? ` • ⚡ High Urgency` : ``;
+            let cliffBadge = bestFit._tierCliffTag ? ` • <span class="text-amber-200 font-bold">${bestFit._tierCliffTag}</span>` : '';
 
             htmlStr += `
-            <div class="p-3 bg-gradient-to-br from-emerald-600 to-teal-800 rounded-xl border border-emerald-500 flex justify-between items-center shadow-md cursor-pointer hover:shadow-lg transition mb-2" onclick="UI.showPlayerCard('${bestFit._cleanName}')">
-                <div>
-                    <span class="text-[9px] font-extrabold uppercase tracking-widest text-emerald-200 mb-1 flex items-center">
-                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg> Best Lineup Addition
-                    </span>
-                    <h4 class="font-bold text-sm text-white">${bestFit.Player}</h4>
-                    <p class="text-[10px] text-emerald-100 font-medium">${bestFit.Pos} • ${ppwText}${stackBadge}${urgencyTag}</p>
-                </div>
-            </div>`;
+    <div class="p-3 bg-gradient-to-br from-emerald-700 to-teal-900 rounded-xl border border-emerald-500/50 flex justify-between items-center shadow-md cursor-pointer hover:shadow-lg transition mb-2" onclick="UI.showPlayerCard('${bestFit._cleanName}')">
+        <div>
+            <span class="text-[9px] font-extrabold uppercase tracking-widest text-emerald-200 mb-1 flex items-center">
+                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg> Best Lineup Addition
+            </span>
+            <h4 class="font-bold text-sm text-white">${bestFit.Player}</h4>
+            <p class="text-[10px] text-emerald-100 font-medium">${bestFit.Pos} • ${ppwText}${stackBadge}${cliffBadge}</p>
+        </div>
+    </div>`;
         }
 
         htmlStr += vbdRecs.map((p, i) => {
@@ -1327,21 +1339,32 @@ const UI = {
             let isStarterNeeded = userTeam.counts[p.Pos] < starterMax;
             let hasPositiveValue = (p.AdvVBD || p.VBD) > 0;
 
+            // ⚡ Full Decision Tree (Tier Cliff + Stacks + Urgency + Need)
             let highlight = '';
-            if (p._stackPartner) highlight = `⚡ Stack with ${p._stackPartner}`;
-            else if (currentRound >= 9 && p.upsideScore > p.AdvVBD * 1.1) highlight = `🚀 High Ceiling Target`;
+            if (p._tierCliffTag) highlight = `<span class="text-amber-300 font-bold">${p._tierCliffTag}</span>`;
+            else if (p._stackPartner) highlight = `⚡ Stack with ${p._stackPartner}`;
+            else if (currentRound >= 9 && p.upsideScore > (p.AdvVBD || p.VBD) * 1.1) highlight = `🚀 High Ceiling Target`;
             else if (survivalProb < 0.15 && (isStarterNeeded || hasPositiveValue)) highlight = `⚡ High Urgency (Gone by Pick ${nextUserOverallPick})`;
             else if (p.adp && (p.adp < currentOverallPick)) highlight = `ADP Value (Passed ADP ${p.adp.toFixed(0)})`;
             else if (isStarterNeeded) highlight = `Strong Team Need`;
             else highlight = `Flex / Bench Depth`;
 
+            // ⚡ Raw Points Per Week Added Badge
+            let ppwVal = (p._addedPPW && p._addedPPW > 0) ? `+${p._addedPPW.toFixed(2)}/wk` : `+${(p.AdvVBD || p.VBD).toFixed(1)} VBD`;
+
             return `
-            <div class="p-3 bg-indigo-800/80 rounded-xl border border-indigo-700/50 flex justify-between items-center shadow-inner cursor-pointer hover:bg-indigo-700 transition mb-2" onclick="UI.showPlayerCard('${p._cleanName}')">
-                <div>
-                    <h4 class="font-bold text-xs text-white">${bestFit ? i + 2 : i + 1}. ${p.Player} <span class="text-[10px] font-normal text-indigo-300">(${p.Team})</span></h4>
-                    <p class="text-[10px] text-indigo-200 font-medium mt-0.5">${p.Pos} • ${highlight}${stackBadge}</p>
-                </div>
-            </div>`;
+    <div class="p-3 bg-indigo-800/80 rounded-xl border border-indigo-700/50 flex justify-between items-center shadow-inner cursor-pointer hover:bg-indigo-700 transition mb-2" onclick="UI.showPlayerCard('${p._cleanName}')">
+        <!-- Left Side: Rank, Player Name, Position, Strategy Tag -->
+        <div>
+            <h4 class="font-bold text-xs text-white">${bestFit ? i + 2 : i + 1}. ${p.Player} <span class="text-[10px] font-normal text-indigo-300">(${p.Team})</span></h4>
+            <p class="text-[10px] text-indigo-200 font-medium mt-0.5">${p.Pos} • ${highlight}${stackBadge}</p>
+        </div>
+        
+        <!-- Right Side: Lineup PPW Impact (Completes justify-between) -->
+        <div class="text-right shrink-0 ml-2">
+            <span class="text-[10px] font-extrabold text-emerald-300 bg-emerald-950/80 border border-emerald-700/80 px-2 py-0.5 rounded shadow-sm">${ppwVal}</span>
+        </div>
+    </div>`;
         }).join('');
 
         container.innerHTML = htmlStr;

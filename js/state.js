@@ -336,7 +336,7 @@ const State = {
                 // Check if the header is just "1" or "W1"
                 let headerKey = headers.includes(`W${w}`) ? `W${w}` : `${w}`;
                 let idx = headers.indexOf(headerKey);
-                
+
                 if (idx !== -1) {
                     schedule[team][w] = vals[idx];
                 }
@@ -1025,7 +1025,9 @@ const State = {
             let gp = s.gp || 17;
 
             if (p.Pos === 'PK') {
-                p.ProjPts = ((s.fgTotal || 0) * (this.scoring.fg || 3)) + ((s.xp || 0) * (this.scoring.xp || 1));
+                rawVBD = Math.max(-10.0, (rawVBD * 0.15) - 8.0);
+            } else if (p.Pos === 'DST') {
+                rawVBD = Math.max(-8.0, (rawVBD * 0.25) - 6.0);
             }
             else if (p.Pos === 'DST') {
                 let turnoverPts = ((s.defInt || 0) + (s.defFum || 0)) * (this.scoring.turnover || 2);
@@ -1152,9 +1154,9 @@ const State = {
             let passCatchers = teamPlayers.filter(p => ['WR', 'TE'].includes(p.Pos)).sort((a, b) => b.ProjPts - a.ProjPts);
 
             let startingQB = qbs[0];
-            
+
             // Add top QB, top RB, and top 2 Pass Catchers projected points
-            if (startingQB) threatScore += (startingQB.ProjPts * 0.4); 
+            if (startingQB) threatScore += (startingQB.ProjPts * 0.4);
             if (rbs[0]) threatScore += (rbs[0].ProjPts * 0.2);
             if (passCatchers[0]) threatScore += (passCatchers[0].ProjPts * 0.2);
             if (passCatchers[1]) threatScore += (passCatchers[1].ProjPts * 0.15);
@@ -1163,7 +1165,7 @@ const State = {
             if (startingQB) {
                 // If the QB takes a lot of pressure, REDUCE their threat score (makes them a juicy DST matchup)
                 if (startingQB.pressureRate) {
-                    if (startingQB.pressureRate > 24.0) threatScore -= 15; 
+                    if (startingQB.pressureRate > 24.0) threatScore -= 15;
                     else if (startingQB.pressureRate < 15.0) threatScore += 10;
                 }
                 // Turnover history
@@ -1192,7 +1194,7 @@ const State = {
         teams.forEach(team => {
             let raw = this.teamOffensiveThreats[team].rawScore;
             let normalized = (raw - minThreat) / ((maxThreat - minThreat) || 1); // fallback to 1 to prevent division by 0
-            
+
             // Invert: High Threat Score = 1.0 Star Matchup for DST (Bad)
             let starRating = 5.0 - (normalized * 4.0);
             this.teamOffensiveThreats[team].dstMatchupStars = Math.min(5.0, Math.max(1.0, starRating));
@@ -1226,12 +1228,12 @@ const State = {
                     // Smart cleaner: removes "@", "vs", and trims extra spaces (e.g. "@ LAC" becomes "LAC")
                     let rawOpp = opp.replace(/@/g, '').replace(/vs/gi, '').trim();
                     let oppTeam = this.normalizeTeam(rawOpp);
-                    
+
                     let matchupThreat = this.teamOffensiveThreats[oppTeam];
                     let stars = matchupThreat ? matchupThreat.dstMatchupStars : 3.0;
-                    
+
                     dst.sosWeeks[`W${w}`] = stars;
-                    
+
                     totalStars += stars;
                     activeWeeks++;
 
@@ -1244,7 +1246,7 @@ const State = {
 
             dst.avgStars = activeWeeks > 0 ? (totalStars / activeWeeks) : 3.0;
             dst.playoffSOS = playoffCount > 0 ? (playoffStars / playoffCount) : dst.avgStars;
-            
+
             // Recalculate weekly projections based on this new custom SOS
             this.calculateWeeklyProjections(dst);
         });
@@ -1262,12 +1264,18 @@ const State = {
             let starters = numTeams * maxPos;
 
             if (pos === 'QB') {
-                starters = Math.floor(numTeams * (maxPos === 1 ? 1.25 : maxPos * 1.1));
+                const isSuperflex = (this.settings.roster.Superflex?.max || 0) > 0;
+                if (isSuperflex) {
+                    // In Superflex, account for 1 QB + ~0.8 Superflex slots per team
+                    starters = Math.floor(numTeams * 1.8);
+                } else {
+                    starters = Math.floor(numTeams * (maxPos === 1 ? 1.25 : maxPos * 1.1));
+                }
             }
 
             if (pos === 'RB' || pos === 'WR') {
                 let extraSlots = (this.settings.roster.Flex?.max || 0) + (this.settings.roster.FlexRBWR?.max || 0);
-                if (pos === 'WR' && this.settings.roster.Superflex?.max > 0) extraSlots += (this.settings.roster.Superflex.max * 0.1); 
+                if (pos === 'WR' && this.settings.roster.Superflex?.max > 0) extraSlots += (this.settings.roster.Superflex.max * 0.1);
                 starters += Math.floor((numTeams * extraSlots) / 2);
             }
             if (pos === 'PK') {
@@ -1409,10 +1417,15 @@ const State = {
             // 6. Age-Cliff Modifiers
             let pAge = p.age || p.Age;
             if (pAge) {
-                if (p.Pos === 'RB' && pAge >= 27) adjMultiplier -= (pAge - 26) * 0.035;
-                else if (p.Pos === 'WR' && pAge >= 31) adjMultiplier -= (pAge - 30) * 0.04;
-                else if (p.Pos === 'TE' && pAge >= 32) adjMultiplier -= (pAge - 31) * 0.03;
-                else if (p.Pos === 'QB' && pAge >= 37) adjMultiplier -= (pAge - 36) * 0.025;
+                if (p.Pos === 'RB' && pAge >= 27) {
+                    adjMultiplier -= Math.pow(pAge - 26, 1.3) * 0.025; // Accelerates after 27
+                } else if (p.Pos === 'WR' && pAge >= 31) {
+                    adjMultiplier -= Math.pow(pAge - 30, 1.2) * 0.03;
+                } else if (p.Pos === 'TE' && pAge >= 32) {
+                    adjMultiplier -= Math.pow(pAge - 31, 1.2) * 0.025;
+                } else if (p.Pos === 'QB' && pAge >= 38) {
+                    adjMultiplier -= Math.pow(pAge - 37, 1.2) * 0.02;
+                }
             }
 
             // 7. Advanced Team Environment Metrics
@@ -1612,7 +1625,7 @@ const State = {
 
             // Auto-fix decimal point error (20 -> 2.0, 14 -> 1.4, 32 -> 3.2)
             let rawDTD = parseFloat(vals[headers.indexOf('DTD')]) || 0;
-            let realDefTDs = rawDTD > 5 ? (rawDTD / 10) : rawDTD; 
+            let realDefTDs = rawDTD > 5 ? (rawDTD / 10) : rawDTD;
 
             let p = {
                 Player: `${city} ${teamName}`.trim(),
