@@ -1416,7 +1416,7 @@ const UI = {
                 let posRoster = State.settings.roster[p.Pos];
                 let starterMax = posRoster ? posRoster.max : 1;
                 // Exclude drafting a 2nd QB/TE/PK/DST as the "Best Addition" until Round 12
-                if (['QB', 'TE', 'PK', 'DST'].includes(p.Pos) && userTeam.counts[p.Pos] >= starterMax && currentRound < 12) {
+                if (['QB','PK', 'DST'].includes(p.Pos) && userTeam.counts[p.Pos] >= starterMax && currentRound < 12) {
                     return false;
                 }
                 return true;
