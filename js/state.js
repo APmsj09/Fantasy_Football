@@ -320,6 +320,19 @@ const State = {
         return data;
     },
 
+    parseTeamTargetDistData(text) {
+        const parsed = this.parseAdvancedData(text);
+        const map = {};
+        parsed.forEach(row => {
+            if (row.Team) {
+                row.Team = this.normalizeTeam(row.Team); // Centralized Normalization
+                map[row.Team] = row;
+            }
+        });
+        this.teamTargetsMap = map;
+        return parsed;
+    },
+
     parseScheduleData(text) {
         const rows = text.split(/\r?\n/).filter(row => row.trim() !== '');
         // UpperCase headers to standardize

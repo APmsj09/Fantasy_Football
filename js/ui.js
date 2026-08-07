@@ -212,37 +212,56 @@ const UI = {
         // INHERITED ROLE & SCHEME CONTEXT (Rookies & Team Changers)
         // -------------------------------------------------------------
         let inheritedContextHTML = "";
-        const teamDist = State.teamTargets ? State.teamTargets.find(t => t.Team === tTeam) : null;
+        
+        // Robust team normalization matcher (Fixes ARI vs ARZ bug)
+        const teamDist = State.teamTargetsMap ? State.teamTargetsMap[tTeam] : null;
         const rushEnv = State.teamAdvRush ? State.teamAdvRush[tTeam] : null;
         const passEnv = State.teamAdvPass ? State.teamAdvPass[tTeam] : null;
 
-        if (p.isNewRole || (p.depthChart && p.depthChart <= 2 && (!p.pastStats || !p.pastStats.gp))) {
-            let roleTitle = p.isNewRole ? "📋 Inherited Role & Opportunity Analysis" : "🔄 Team Scheme & Volume Context";
+        // Fail-safe trigger: Rookie (Age <= 22), isNewRole flag, No 2025 games, or Top 2 Depth Chart
+        const pAge = p.age || p.Age;
+        const isRookieOrYoung = pAge && pAge <= 22;
+        const hasNoPastStats = !p.pastStats || !p.pastStats.gp || p.pastStats.gp === 0;
+        const isTargetRole = p.isNewRole || isRookieOrYoung || hasNoPastStats || (p.depthChart && p.depthChart <= 2);
+
+        if (isTargetRole) {
+            let roleTitle = (p.isNewRole || isRookieOrYoung || hasNoPastStats) 
+                ? `📋 Inherited Role & Opportunity Analysis (${p.Team})` 
+                : `🔄 Team Scheme & Volume Context (${p.Team})`;
+            
             let opportunityBullets = [];
 
-            if (pos === 'RB' && teamDist) {
-                let rbPct = teamDist['RB %'] || 0;
-                let rbTgts = teamDist['RB Targets'] || 0;
-                let totalTgts = teamDist['Total Targets'] || 0;
-                
-                opportunityBullets.push(`<strong>Pass-Game Funnel:</strong> ${p.Team}'s scheme funneled <strong>${rbPct}% of total passes</strong> (${rbTgts} targets out of ${totalTgts}) to running backs last season.`);
-                
+            if (pos === 'RB') {
+                if (teamDist && teamDist['RB %']) {
+                    let rbPct = teamDist['RB %'];
+                    let rbTgts = teamDist['RB Targets'] || 0;
+                    let totalTgts = teamDist['Total Targets'] || 0;
+                    opportunityBullets.push(`<strong>Pass-Game Funnel:</strong> ${p.Team}'s scheme funneled <strong>${rbPct}% of total passes</strong> (${rbTgts} targets out of ${totalTgts}) to running backs last season.`);
+                }
                 if (rushEnv && rushEnv.ybcAtt) {
                     let blockingQuality = rushEnv.ybcAtt >= 2.6 ? "High-Quality" : (rushEnv.ybcAtt <= 2.0 ? "Struggling" : "Average");
                     opportunityBullets.push(`<strong>Blocking Environment:</strong> ${p.Team} generated <strong>${rushEnv.ybcAtt} Yards Before Contact</strong> per carry (${blockingQuality} run-blocking scheme).`);
                 }
-            } else if (['WR', 'TE'].includes(pos) && teamDist) {
-                let posPct = teamDist[`${pos} %`] || 0;
-                let posTgts = teamDist[`${pos} Targets`] || 0;
-                let totalTgts = teamDist['Total Targets'] || 0;
-
-                opportunityBullets.push(`<strong>Positional Target Funnel:</strong> ${p.Team}'s offense funneled <strong>${posPct}% of total team targets</strong> (${posTgts} targets out of ${totalTgts}) to ${pos}s last season.`);
-
+                if (opportunityBullets.length === 0) {
+                    opportunityBullets.push(`<strong>Inherited Workload:</strong> ${p.Player} enters the ${p.Team} backfield as a primary workload candidate.`);
+                }
+            } else if (['WR', 'TE'].includes(pos)) {
+                if (teamDist && teamDist[`${pos} %`]) {
+                    let posPct = teamDist[`${pos} %`];
+                    let posTgts = teamDist[`${pos} Targets`] || 0;
+                    let totalTgts = teamDist['Total Targets'] || 0;
+                    opportunityBullets.push(`<strong>Positional Target Funnel:</strong> ${p.Team}'s offense funneled <strong>${posPct}% of total team targets</strong> (${posTgts} targets out of ${totalTgts}) to ${pos}s last season.`);
+                }
                 if (passEnv && passEnv.playActionYds) {
                     opportunityBullets.push(`<strong>Play-Action Scheme:</strong> ${p.Team} generated <strong>${passEnv.playActionYds} passing yards off Play-Action</strong>.`);
                 }
-            } else if (pos === 'QB' && passEnv) {
-                opportunityBullets.push(`<strong>Pocket Protection:</strong> ${p.Team}'s offensive line allowed <strong>${passEnv.pktTime}s pocket time</strong> with a <strong>${passEnv.prssPct}% pressure rate</strong> last season.`);
+                if (opportunityBullets.length === 0) {
+                    opportunityBullets.push(`<strong>Target Opportunity:</strong> ${p.Player} enters the ${p.Team} passing attack with starting route potential.`);
+                }
+            } else if (pos === 'QB') {
+                if (passEnv && passEnv.pktTime) {
+                    opportunityBullets.push(`<strong>Pocket Protection:</strong> ${p.Team}'s offensive line allowed <strong>${passEnv.pktTime}s pocket time</strong> with a <strong>${passEnv.prssPct}% pressure rate</strong> last season.`);
+                }
             }
 
             if (opportunityBullets.length > 0) {

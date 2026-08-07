@@ -182,7 +182,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }),
                 ...['QB', 'RB', 'WR', 'TE'].map(pos => fetchTSV(`./${pos}_Stats.tsv`, State.parseAdvancedData.bind(State), State.mergeActualStatsData.bind(State))),
                 ...['QB', 'RB', 'WR', 'TE'].map(pos => fetchTSV(`./Advanced${pos}Data.tsv`, State.parseAdvancedData.bind(State), State.mergeAdvancedMetrics.bind(State))),
-                fetchTSV(`./Team_Target_Dist_Data.tsv`, State.parseAdvancedData.bind(State), data => State.teamTargets = data)
+                fetchTSV(`./Team_Target_Dist_Data.tsv`, State.parseTeamTargetDistData.bind(State), data => State.teamTargets = data)
             ]);
 
             State.calculateProjections();
