@@ -105,18 +105,17 @@ window.AutoDraft = {
 
             let rawVbd = p.AdvVBD || p.VBD;
             let baseValue = rawVbd >= 0 ? (rawVbd * multiplier) : (rawVbd / multiplier);
-            let ppwValue = (p._addedPPW || 0) * 15;
 
             // ADP Penalty (Prevents reaching too far ahead of real-time market value)
             let adpPenalty = 0;
             if (p.adp) {
                 let adpDiff = p.adp - currentOverallPick;
-                if (adpDiff > 18) adpPenalty = Math.min(5, (adpDiff - 18) * 0.15);
+                if (adpDiff > 18) adpPenalty = Math.min(15, (adpDiff - 18) * 0.25);
             }
 
             return {
                 player: p,
-                adjustedVBD: (baseValue + ppwValue + starterBonus + scarcityBonus) - adpPenalty
+                adjustedVBD: baseValue + starterBonus + scarcityBonus - adpPenalty
             };
         });
 

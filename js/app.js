@@ -508,4 +508,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const dbPosition = document.getElementById('db-position');
     if (dbPosition) dbPosition.addEventListener('change', () => UI.renderDatabase());
+
+    // Draft Screen Search & Filter Handlers
+    let draftSearchTimeout;
+    const draftSearch = document.getElementById('draft-search');
+    if (draftSearch) draftSearch.addEventListener('input', () => {
+        clearTimeout(draftSearchTimeout);
+        draftSearchTimeout = setTimeout(() => UI.renderDraftAvailablePlayers(), 150);
+    });
+
+    const draftPosition = document.getElementById('draft-position-filter');
+    if (draftPosition) draftPosition.addEventListener('change', () => UI.renderDraftAvailablePlayers());
 });

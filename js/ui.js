@@ -517,7 +517,7 @@ const UI = {
             if (p.avgStars && p.avgStars >= 3.3) pros.push(`<strong>Soft Overall Schedule:</strong> Favorable ${p.avgStars.toFixed(2)}/5.0 Strength of Schedule rating.`);
             if (p._addedPPW && p._addedPPW >= 0.3 && !p._byeFillWeek) pros.push(`<strong>Lineup Difference Maker:</strong> Adds +${p._addedPPW.toFixed(1)} Points Per Week directly to your optimal starters.`);
         }
-        
+
         if (p._byeFillWeek) {
             pros.push(`<strong>Bye Week Insurance:</strong> Provides a critical +${p._byeFillPts.toFixed(1)} point boost during Week ${p._byeFillWeek}.`);
         }
@@ -1069,12 +1069,37 @@ const UI = {
         const tbody = document.getElementById('draft-players-body');
         let htmlStr = '';
 
-        let displayList = State.availablePlayers.slice(0, 100);
+        let filterPos = document.getElementById('draft-position-filter')?.value || '';
+        let search = this.normalizeSearchText(document.getElementById('draft-search')?.value || '');
+        let searchTerms = search.split(/\s+/).filter(Boolean);
+
+        let filteredList = State.availablePlayers.filter(p => {
+            if (filterPos && p.Pos !== filterPos) return false;
+
+            const searchableText = [
+                p.Player, p.Team, p.Pos, p._cleanName, p._cleanTeam
+            ].filter(Boolean).join(' ').toLowerCase();
+
+            if (!searchTerms.length) return true;
+            return searchTerms.every(term => searchableText.includes(term));
+        });
+
+        let displayList = filteredList.slice(0, 100);
         let isMock = State.settings.draftMode === 'mock';
         let onClockId = State.draftOrder[State.currentPick];
         let isUserTurn = isMock && (onClockId === State.userTeamId);
 
+        let previousVBD = null;
+
         displayList.forEach(p => {
+            // Tier Drop-off Logic (Only show when sorting by VBD and no search filters applied)
+            let currentVBD = p.AdvVBD || p.VBD;
+            let isTierDrop = previousVBD !== null && (previousVBD - currentVBD >= 5.5);
+            previousVBD = currentVBD;
+
+            if (isTierDrop && (State.draftSortKey === 'AdvVBD' || !State.draftSortKey) && !search && !filterPos) {
+                htmlStr += `<tr><td colspan="11" class="px-3 py-1 bg-rose-50 text-rose-700 text-[10px] font-bold text-center border-y border-rose-200 tracking-widest uppercase">⬇️ Significant Value Drop-Off ⬇️</td></tr>`;
+            }
             let btnHtml = "";
             let safeName = p._cleanName;
 
@@ -1125,6 +1150,10 @@ const UI = {
 
             htmlStr += `
                 <tr class="hover:bg-slate-50 border-b border-gray-100 transition-colors cursor-pointer" onclick="if (!event.target.closest('.draft-btn')) UI.showPlayerCard('${p._cleanName}')">
+                    <td class="px-3 py-2 text-[10px] leading-tight">
+                        <span class="font-extrabold text-gray-900">#${p.ovrRank}</span><br>
+                        <span class="font-bold text-gray-400">${p.posRank}</span>
+                    </td>
                     <td class="px-3 py-2 text-[11px] font-bold text-gray-900 w-1/3">
                         <div class="flex items-center">
                             <span>${p.Player}</span>
@@ -1189,15 +1218,6 @@ const UI = {
             return 1 / (1 + Math.exp(-slope * diff));
         };
 
-        const getOpportunityScore = (p) => {
-            let recPPW = p._addedPPW || 0;
-            if (p.Pos === 'PK' || p.Pos === 'DST') recPPW *= 0.15; // Prevent DST/K reaching
-            let baseVal = (recPPW * 15) + (p.AdvVBD || p.VBD);
-            let survivalProb = getSurvivalProb(p.adp);
-            let urgency = 1 - survivalProb;
-            return baseVal * (1 + (0.20 * urgency));
-        };
-
         // ===========================================================
         // POINT 4: ROSTER BUILD STRATEGY ADVISOR
         // ===========================================================
@@ -1251,16 +1271,19 @@ const UI = {
         let userQBs = userRoster.filter(r => r.Pos === 'QB');
 
         viablePlayers.forEach(p => {
-            let recPPW = p._addedPPW || 0;
-            if (p.Pos === 'PK' || p.Pos === 'DST') recPPW *= 0.15; // Prevent DST/K reaching
-            let score = (recPPW * 20) + ((p.AdvVBD || p.VBD) * 0.5);
+            // Base score relies strictly on true VBD Value
+            let score = Math.max(0, p.AdvVBD || p.VBD);
+
+            // Add Urgency Factor (Draft Market Value)
+            let survivalProb = getSurvivalProb(p.adp);
+            let urgency = 1 - survivalProb;
+            score += (score * 0.25 * urgency); 
 
             // ===========================================================
             // POINT 2: QB-WR/TE STACKING SYNERGY BOOST
             // ===========================================================
             let matchingQB = userQBs.find(qb => qb._cleanTeam === p._cleanTeam);
             if (matchingQB && ['WR', 'TE'].includes(p.Pos)) {
-                // 12% proportional boost to VBD score
                 score += Math.max(3.0, (p.AdvVBD || p.VBD) * 0.12);
                 p._stackPartner = matchingQB.Player;
             } else {
@@ -1272,7 +1295,7 @@ const UI = {
             // ===========================================================
             if (currentRound >= 9 && p.upsideScore) {
                 let ceilingGain = (p.upsideScore - (p.AdvVBD || p.VBD)) * 0.75;
-                score += ceilingGain;
+                score += Math.max(0, ceilingGain);
             }
 
             let posRoster = State.settings.roster[p.Pos];
@@ -1284,17 +1307,13 @@ const UI = {
             let isFlexOpen = ['RB', 'WR', 'TE'].includes(p.Pos) && (userTeam.counts['Flex'] < (State.settings.roster.Flex?.max || 0));
             let isSuperflexOpen = ['QB', 'RB', 'WR', 'TE'].includes(p.Pos) && (userTeam.counts['Superflex'] < (State.settings.roster.Superflex?.max || 0));
 
-            let starterBonus = 0;
-            if (isStarterOpen) {
-                starterBonus = 25;
-            } else if (isFlexRBWROpen || isFlexOpen || isSuperflexOpen) {
-                starterBonus = 15;
-            } else {
+            // Restrict Bench Value
+            if (!isStarterOpen && !(isFlexRBWROpen || isFlexOpen || isSuperflexOpen)) {
                 let overage = currentCount - starterMax;
-                if (isFlexRBWROpen || isFlexOpen || isSuperflexOpen || State.isPositionFlexEligible(p.Pos)) {
-                    score *= Math.pow(0.5, overage + 1);
+                if (State.isPositionFlexEligible(p.Pos)) {
+                    score *= Math.pow(0.5, overage + 1); // RBs/WRs decay slowly on bench
                 } else {
-                    score *= (overage === 0 ? 0.05 : 0.01);
+                    score *= (overage === 0 ? 0.05 : 0.01); // 2nd QBs/TEs drop heavily
                 }
             }
 
@@ -1304,7 +1323,7 @@ const UI = {
             if (['QB', 'TE'].includes(p.Pos) && userTeam.counts[p.Pos] >= 1) {
                 const starter = userRoster.find(r => r.Pos === p.Pos);
                 if (starter && starter.byeWeek === p.byeWeek && p.byeWeek !== 'N/A') {
-                    score -= 4.0; // Penalty for same bye week on single-starter backup
+                    score *= 0.5; // Penalty for same bye week on single-starter backup
                 }
             }
 
@@ -1320,7 +1339,7 @@ const UI = {
                 }
                 return true;
             })
-            .sort((a, b) => getOpportunityScore(b) - getOpportunityScore(a))[0];
+            .sort((a, b) => b._recScore - a._recScore)[0];
 
         if (bestFit && (bestFit._addedPPW || 0) <= 0.1) bestFit = null;
 

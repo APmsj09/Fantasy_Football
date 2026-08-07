@@ -1348,7 +1348,6 @@ const State = {
             if (pos === 'QB') {
                 const isSuperflex = (this.settings.roster.Superflex?.max || 0) > 0;
                 if (isSuperflex) {
-                    // In Superflex, account for 1 QB + ~0.8 Superflex slots per team
                     starters = Math.floor(numTeams * 1.8);
                 } else {
                     starters = Math.floor(numTeams * (maxPos === 1 ? 1.25 : maxPos * 1.1));
@@ -1372,7 +1371,6 @@ const State = {
             baselines[pos] = baselinePlayer ? baselinePlayer.ProjPts : 0;
         });
 
-        // Save weekly replacement-level baselines for 17-week simulation
         this.positionalWeeklyBaselines = {
             QB: (baselines.QB || 300) / 17,
             RB: (baselines.RB || 180) / 17,
@@ -1386,7 +1384,7 @@ const State = {
             let basePts = baselines[p.Pos] || 0;
             let rawVBD = p.ProjPts - basePts;
 
-            // Kicker and Defense VBD multipliers
+            // Kicker and Defense VBD suppression
             if (p.Pos === 'PK') {
                 rawVBD = (rawVBD * 0.05) - 30.0;
             } else if (p.Pos === 'DST') {
@@ -1396,21 +1394,21 @@ const State = {
 
             let adjMultiplier = 1.0;
 
-            // 1. Role Security (Snap share priority over depth chart)
+            // 1. Role Security (Reduced double-counting of volume)
             if (p.snapShare) {
-                if (p.snapShare >= 80) adjMultiplier += 0.05;
-                else if (p.snapShare >= 65) adjMultiplier += 0.03;
-                else if (p.snapShare < 35) adjMultiplier -= 0.03;
+                // Lowered bonuses. Projection already accounts for snap volume. This just rewards stability.
+                if (p.snapShare >= 80) adjMultiplier += 0.03;
+                else if (p.snapShare < 40) adjMultiplier -= 0.03;
             } else if (p.depthChart !== undefined && p.depthChart !== null) {
-                if (p.depthChart === 1) adjMultiplier += 0.04;
-                else if (p.depthChart >= 3) adjMultiplier -= 0.02;
+                if (p.depthChart === 1) adjMultiplier += 0.02;
+                else if (p.depthChart >= 3) adjMultiplier -= 0.03;
             }
 
             // 2. Schedule Strength
             if (p.avgStars) adjMultiplier += (p.avgStars - 3.0) * 0.02;
             if (p.playoffSOS && p.playoffSOS >= 4.0) adjMultiplier += 0.02;
 
-            // 3. Offensive Line Quality
+            // 3. Offensive Line Quality (Streamlined to prevent overlapping logic blocks)
             let olModifier = 0;
             if (p.Pos === 'RB' && p.olRunBlk) {
                 if (p.olRunBlk <= 5) olModifier = 0.04;
@@ -1419,7 +1417,7 @@ const State = {
                 if (p.olPassBlk <= 5) olModifier = 0.03;
                 else if (p.olPassBlk >= 25) olModifier = -0.04;
             }
-
+            // Fallback to broad tier only if rank data didn't trigger a change
             if (olModifier === 0 && p.olTier) {
                 if (p.olTier === 'S') olModifier = 0.03;
                 else if (p.olTier === 'A') olModifier = 0.015;
@@ -1434,45 +1432,41 @@ const State = {
             } else if (['RB', 'WR', 'TE'].includes(p.Pos)) {
                 lacksIndividualMetrics = (p.targetShare === undefined) && (p.brokenTackles === undefined) && (p.yacAtt === undefined);
             }
+
             if (lacksIndividualMetrics) {
                 p.isNewRole = true;
                 let teamDist = this.teamTargets.find(t => t.Team === p.Team);
 
-                if (teamDist && p.depthChart) {
+                if (teamDist && p.depthChart === 1) {
                     let posPctKey = `${p.Pos} %`;
                     let teamPosPct = teamDist[posPctKey] || 0;
-
-                    if (p.depthChart === 1) {
-                        if (p.Pos === 'RB' && teamPosPct >= 20.0) adjMultiplier += 0.04;
-                        else if (p.Pos === 'WR' && teamPosPct >= 60.0) adjMultiplier += 0.04;
-                        else if (p.Pos === 'TE' && teamPosPct >= 25.0) adjMultiplier += 0.04;
-                    }
+                    if (p.Pos === 'RB' && teamPosPct >= 20.0) adjMultiplier += 0.03;
+                    else if (p.Pos === 'WR' && teamPosPct >= 60.0) adjMultiplier += 0.03;
+                    else if (p.Pos === 'TE' && teamPosPct >= 25.0) adjMultiplier += 0.03;
                 }
-                if (p.Pos === 'RB' && p.olRunBlk && p.olRunBlk <= 10) adjMultiplier += 0.03;
             }
 
-            // 5. Efficiency Metrics
+            // 5. Efficiency & "TD-Dependency" Penalties (Fixing the Volume Double-Count)
             if (p.targetShare) {
-                if (p.targetShare >= 25) adjMultiplier += 0.05;
-                else if (p.targetShare >= 20) adjMultiplier += 0.03;
-            }
+                // Focus on efficiency/dominance rather than pure volume
+                if (p.targetShare >= 26) adjMultiplier += 0.03;
+                if (p.targetShare >= 22 && p.aDOT >= 10.0) adjMultiplier += 0.03;
 
-            if (p.targetShare >= 22 && p.aDOT >= 10.0) adjMultiplier += 0.03;
+                // NEW: Fraud Penalty - High projected points but low target share means highly TD dependent
+                if (['WR', 'TE'].includes(p.Pos) && p.ProjPts > 120 && p.targetShare < 14.0) {
+                    adjMultiplier -= 0.05;
+                }
+            }
 
             if (p.Pos === 'RB') {
-                if (p.rzAtt && p.rzAtt >= 40) adjMultiplier += 0.03;
-                if (p.brokenTackles && p.brokenTackles >= 20) adjMultiplier += 0.02;
+                if (p.brokenTackles && p.brokenTackles >= 20) adjMultiplier += 0.03;
 
-                if (p.hvo) {
-                    if (p.hvo >= 110) adjMultiplier += 0.05;
-                    else if (p.hvo >= 70) adjMultiplier += 0.03;
-                }
+                // HVO logic reduced. We don't want to double count the points they get from these touches.
+                if (p.hvo && p.hvo >= 110) adjMultiplier += 0.03;
             }
 
             if (['WR', 'TE'].includes(p.Pos)) {
-                if (p.ypt && p.ypt >= 9.5 && p.targetShare >= 20) adjMultiplier += 0.04;
-                if (p.airYards && p.airYards >= 1400) adjMultiplier += 0.03;
-
+                if (p.ypt && p.ypt >= 9.5 && (p.targetShare || 0) >= 18) adjMultiplier += 0.03;
                 if (p.trueCatchRate && p.trueCatchRate > 90) adjMultiplier += 0.02;
                 if (p.dropRate && p.dropRate > 10) adjMultiplier -= 0.03;
             }
@@ -1482,25 +1476,14 @@ const State = {
                     if (p.pressureRate > 22.0) adjMultiplier -= 0.04;
                     else if (p.pressureRate < 13.0) adjMultiplier += 0.03;
                 }
-                if (p.stats && p.stats.rushAtt >= 60) adjMultiplier += 0.08;
-                if (rawVBD >= 30) adjMultiplier += 0.06;
+                // REMOVED: Redundant rushAtt and rawVBD > 30 boosts that broke the 1.01 logic
             }
 
-            if (p.pastStats) {
-                let ps = p.pastStats;
-                if (p.Pos === 'QB' && ps.passYpa && ps.passYpa >= 8.0 && ps.passAtt >= 300) adjMultiplier += 0.03;
-                if (p.Pos === 'RB' && ps.rushYpa && ps.rushYpa >= 5.0 && ps.rushAtt >= 150) adjMultiplier += 0.03;
-                if (['WR', 'TE'].includes(p.Pos) && ps.recYpr && ps.recYpr >= 13.5 && ps.rec >= 50) adjMultiplier += 0.02;
-
-                if (ps.bigPlays && ps.bigPlays >= 15) adjMultiplier += 0.03;
-                if (ps.targetShare && ps.targetShare >= 28.0) adjMultiplier += 0.04;
-            }
-
-            // 6. Age-Cliff Modifiers
+            // 6. Age-Cliff Modifiers (Unchanged - excellent logic)
             let pAge = p.age || p.Age;
             if (pAge) {
                 if (p.Pos === 'RB' && pAge >= 27) {
-                    adjMultiplier -= Math.pow(pAge - 26, 1.3) * 0.025; // Accelerates after 27
+                    adjMultiplier -= Math.pow(pAge - 26, 1.3) * 0.025;
                 } else if (p.Pos === 'WR' && pAge >= 31) {
                     adjMultiplier -= Math.pow(pAge - 30, 1.2) * 0.03;
                 } else if (p.Pos === 'TE' && pAge >= 32) {
@@ -1519,86 +1502,84 @@ const State = {
             if (passEnv) {
                 if (['QB', 'WR', 'TE'].includes(p.Pos)) {
                     if (passEnv.playActionYds >= 950 || passEnv.rpoYds >= 550) adjMultiplier += 0.02;
-                    else if (passEnv.playActionYds < 500 && passEnv.rpoYds < 200) adjMultiplier -= 0.01;
+                    else if (passEnv.playActionYds < 500 && passEnv.rpoYds < 200) adjMultiplier -= 0.02;
                 }
-
                 if (['QB', 'WR', 'TE'].includes(p.Pos) && (!p.olPassBlk || (p.olPassBlk > 5 && p.olPassBlk < 25))) {
                     if (passEnv.prssPct >= 25.0) adjMultiplier -= 0.02;
-                    else if (passEnv.prssPct <= 18.0) adjMultiplier += 0.01;
                 }
             }
 
             if (['WR', 'TE'].includes(p.Pos)) {
-                let teamQB = this.allPlayers.find(q =>
-                    q._cleanTeam === tTeam && q._cleanPos === 'QB' && q.depthChart === 1
-                );
-
+                let teamQB = this.allPlayers.find(q => q._cleanTeam === tTeam && q._cleanPos === 'QB' && q.depthChart === 1);
                 if (!teamQB) {
-                    teamQB = this.allPlayers
-                        .filter(q => q._cleanTeam === tTeam && q._cleanPos === 'QB')
-                        .sort((a, b) => b.ProjPts - a.ProjPts)[0];
+                    teamQB = this.allPlayers.filter(q => q._cleanTeam === tTeam && q._cleanPos === 'QB').sort((a, b) => b.ProjPts - a.ProjPts)[0];
                 }
-
                 if (teamQB && teamQB.trueAccuracy !== undefined) {
                     if (teamQB.trueAccuracy >= 74.0) adjMultiplier += 0.025;
-                    else if (teamQB.trueAccuracy <= 63.0) adjMultiplier -= 0.025;
-                } else if (passEnv) {
-                    if (passEnv.onTgtPct >= 76.0) adjMultiplier += 0.02;
-                    else if (passEnv.badPct >= 19.0) adjMultiplier -= 0.02;
-                }
-            }
+                    else if (teamQB.trueAccuracy <= 63.0) adjMultiplier -= 0.025;// 8. New Role / Inherited Environment (Rookies & Free Agents)
+                    if (p.isNewRole) {
 
-            if (p.isNewRole) {
-                if (p.Pos === 'RB' && rushEnv) {
-                    if (rushEnv.ybcAtt >= 2.8) adjMultiplier += 0.03;
-                    else if (rushEnv.ybcAtt <= 2.0) adjMultiplier -= 0.03;
+                        // RBs inherit the O-Line's run-blocking scheme (Yards Before Contact),
+                        // but we strip out Yards After Contact (which is a player-specific skill).
+                        if (p.Pos === 'RB' && rushEnv) {
+                            if (rushEnv.ybcAtt >= 2.8) adjMultiplier += 0.03;
+                            else if (rushEnv.ybcAtt <= 2.1) adjMultiplier -= 0.03;
+                        }
 
-                    if (rushEnv.yacAtt >= 2.0) adjMultiplier += 0.02;
-                    if (rushEnv.firstDownRate >= 28.0) adjMultiplier += 0.01;
-                }
+                        // WRs/TEs inherit scheme-designed YAC (e.g., McVay/Shanahan systems)
+                        if (['WR', 'TE'].includes(p.Pos) && recEnv) {
+                            if (recEnv.yacPerRec >= 5.8) adjMultiplier += 0.02;
+                            else if (recEnv.yacPerRec <= 4.6) adjMultiplier -= 0.02;
+                        }
 
-                if (['WR', 'TE'].includes(p.Pos) && recEnv) {
-                    if (recEnv.yacPerRec >= 5.8) adjMultiplier += 0.03;
-                    else if (recEnv.yacPerRec <= 4.6) adjMultiplier -= 0.02;
+                        // QBs inherit the pocket time (O-Line) and their receivers' hands (Drops)
+                        // Note: prssPct was already evaluated in Step 7, so it is safely omitted here.
+                        if (p.Pos === 'QB' && passEnv) {
+                            if (passEnv.pktTime >= 2.5) adjMultiplier += 0.02;
+                            else if (passEnv.pktTime <= 2.2) adjMultiplier -= 0.02;
 
-                    if (recEnv.adot >= 8.0) adjMultiplier += 0.01;
-                    if (recEnv.dropPct >= 6.0) adjMultiplier -= 0.02;
-                }
+                            if (passEnv.dropPct >= 6.0) adjMultiplier -= 0.02;
+                        }
+                    }
 
-                if (p.Pos === 'QB' && passEnv) {
-                    if (passEnv.pktTime >= 2.4 && passEnv.prssPct < 22.0) adjMultiplier += 0.03;
-                    else if (passEnv.prssPct >= 25.0) adjMultiplier -= 0.03;
+                    // ===========================================================
+                    // FINAL CALCULATIONS (FIXING THE "RICH GET RICHER" SCALING BUG)
+                    // ===========================================================
 
-                    if (passEnv.dropPct >= 6.0) adjMultiplier -= 0.02;
-                }
-            }
+                    // 1. Cap raw multiplier
+                    adjMultiplier = Math.max(0.75, Math.min(1.25, adjMultiplier));
 
-            // ===========================================================
-            // FINAL CALCULATIONS (UNIFIED CAP & SEQUENTIAL EVALUATION)
-            // ===========================================================
-            // Cap total adjustment between 0.75 and 1.28
-            adjMultiplier = Math.max(0.75, Math.min(1.28, adjMultiplier));
+                    if (p.VBD >= 0) {
+                        // 2. Dampen the multiplier for elite players so they don't break the top of the draft board
+                        // e.g. A 10% boost on 150 VBD is +15 pts. The dampener smoothly compresses the multiplier as VBD scales up.
+                        let dampenedMultiplier = p.VBD > 50 ? 1 + ((adjMultiplier - 1) * (50 / p.VBD)) : adjMultiplier;
+                        p.AdvVBD = p.VBD * dampenedMultiplier;
+                    } else {
+                        p.AdvVBD = p.VBD / adjMultiplier;
+                    }
 
-            if (p.VBD >= 0) {
-                p.AdvVBD = p.VBD * adjMultiplier;
-            } else {
-                p.AdvVBD = p.VBD / adjMultiplier;
-            }
+                    if (isNaN(p.VBD)) p.VBD = 0;
+                    if (isNaN(p.AdvVBD)) p.AdvVBD = p.VBD;
 
-            // Safety guards to prevent NaN
-            if (isNaN(p.VBD)) p.VBD = 0;
-            if (isNaN(p.AdvVBD)) p.AdvVBD = p.VBD;
-
-            // Range of Outcomes / Upside Potential (Calculated AFTER AdvVBD is finalized)
-            let upsideBonus = 0;
-            if (p.aDOT && p.aDOT >= 12.0) upsideBonus += 0.06;
-            if (p.hvo && p.hvo >= 75) upsideBonus += 0.06;
-            if (p.pastStats && p.pastStats.bigPlays && p.pastStats.bigPlays >= 12) upsideBonus += 0.05;
-            p.upsideScore = (p.AdvVBD || p.VBD) * (1 + upsideBonus);
-        });
+                    // Range of Outcomes / Upside Potential 
+                    let upsideBonus = 0;
+                    if (p.aDOT && p.aDOT >= 12.0) upsideBonus += 0.05;
+                    if (p.hvo && p.hvo >= 75) upsideBonus += 0.05;
+                    if (p.pastStats && p.pastStats.bigPlays && p.pastStats.bigPlays >= 12) upsideBonus += 0.04;
+                    p.upsideScore = (p.AdvVBD || p.VBD) * (1 + upsideBonus);
+                });
 
         // Fail-safe sort
         this.allPlayers.sort((a, b) => (b.AdvVBD || 0) - (a.AdvVBD || 0));
+
+        // Assign static ranks for the Draft UI
+        let posTracker = {};
+        this.allPlayers.forEach((p, index) => {
+            p.ovrRank = index + 1;
+            posTracker[p.Pos] = (posTracker[p.Pos] || 0) + 1;
+            p.posRank = `${p.Pos}${posTracker[p.Pos]}`;
+        });
+
         this.availablePlayers = [...this.allPlayers];
     },
 
