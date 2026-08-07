@@ -1094,12 +1094,13 @@ const UI = {
         displayList.forEach(p => {
             // Tier Drop-off Logic (Only show when sorting by VBD and no search filters applied)
             let currentVBD = p.AdvVBD || p.VBD;
-            let isTierDrop = previousVBD !== null && (previousVBD - currentVBD >= 5.5);
+            let isTierDrop = previousVBD !== null && (previousVBD - currentVBD >= 18.0);
             previousVBD = currentVBD;
 
             if (isTierDrop && (State.draftSortKey === 'AdvVBD' || !State.draftSortKey) && !search && !filterPos) {
                 htmlStr += `<tr><td colspan="11" class="px-3 py-1 bg-rose-50 text-rose-700 text-[10px] font-bold text-center border-y border-rose-200 tracking-widest uppercase">⬇️ Significant Value Drop-Off ⬇️</td></tr>`;
             }
+            
             let btnHtml = "";
             let safeName = p._cleanName;
 
