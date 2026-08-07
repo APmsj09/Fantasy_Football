@@ -169,10 +169,10 @@ const State = {
                 const samePos = (p._cleanPos === nPos) || !nPos || !p.Pos;
                 if (!sameTeam || !samePos) return false;
 
-                const sameLastName = p._lastName === lastName;
+                // Require at least first initial + last name match to prevent name collisions
                 const sameInitialLastName = p._firstInitial === firstInitial && p._lastName === lastName;
                 const nameContains = p._cleanName.includes(cleanName) || cleanName.includes(p._cleanName);
-                return sameLastName || sameInitialLastName || nameContains;
+                return sameInitialLastName || nameContains;
             });
 
             if (sameTeamPosMatch) return sameTeamPosMatch;
