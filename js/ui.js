@@ -209,6 +209,57 @@ const UI = {
         const isPK = pos === 'PK';
 
         // -------------------------------------------------------------
+        // INHERITED ROLE & SCHEME CONTEXT (Rookies & Team Changers)
+        // -------------------------------------------------------------
+        let inheritedContextHTML = "";
+        const teamDist = State.teamTargets ? State.teamTargets.find(t => t.Team === tTeam) : null;
+        const rushEnv = State.teamAdvRush ? State.teamAdvRush[tTeam] : null;
+        const passEnv = State.teamAdvPass ? State.teamAdvPass[tTeam] : null;
+
+        if (p.isNewRole || (p.depthChart && p.depthChart <= 2 && (!p.pastStats || !p.pastStats.gp))) {
+            let roleTitle = p.isNewRole ? "📋 Inherited Role & Opportunity Analysis" : "🔄 Team Scheme & Volume Context";
+            let opportunityBullets = [];
+
+            if (pos === 'RB' && teamDist) {
+                let rbPct = teamDist['RB %'] || 0;
+                let rbTgts = teamDist['RB Targets'] || 0;
+                let totalTgts = teamDist['Total Targets'] || 0;
+                
+                opportunityBullets.push(`<strong>Pass-Game Funnel:</strong> ${p.Team}'s scheme funneled <strong>${rbPct}% of total passes</strong> (${rbTgts} targets out of ${totalTgts}) to running backs last season.`);
+                
+                if (rushEnv && rushEnv.ybcAtt) {
+                    let blockingQuality = rushEnv.ybcAtt >= 2.6 ? "High-Quality" : (rushEnv.ybcAtt <= 2.0 ? "Struggling" : "Average");
+                    opportunityBullets.push(`<strong>Blocking Environment:</strong> ${p.Team} generated <strong>${rushEnv.ybcAtt} Yards Before Contact</strong> per carry (${blockingQuality} run-blocking scheme).`);
+                }
+            } else if (['WR', 'TE'].includes(pos) && teamDist) {
+                let posPct = teamDist[`${pos} %`] || 0;
+                let posTgts = teamDist[`${pos} Targets`] || 0;
+                let totalTgts = teamDist['Total Targets'] || 0;
+
+                opportunityBullets.push(`<strong>Positional Target Funnel:</strong> ${p.Team}'s offense funneled <strong>${posPct}% of total team targets</strong> (${posTgts} targets out of ${totalTgts}) to ${pos}s last season.`);
+
+                if (passEnv && passEnv.playActionYds) {
+                    opportunityBullets.push(`<strong>Play-Action Scheme:</strong> ${p.Team} generated <strong>${passEnv.playActionYds} passing yards off Play-Action</strong>.`);
+                }
+            } else if (pos === 'QB' && passEnv) {
+                opportunityBullets.push(`<strong>Pocket Protection:</strong> ${p.Team}'s offensive line allowed <strong>${passEnv.pktTime}s pocket time</strong> with a <strong>${passEnv.prssPct}% pressure rate</strong> last season.`);
+            }
+
+            if (opportunityBullets.length > 0) {
+                inheritedContextHTML = `
+                    <div class="bg-amber-50/80 border border-amber-200/80 p-3.5 rounded-xl mb-3 text-amber-950">
+                        <h5 class="font-extrabold text-amber-900 text-xs uppercase tracking-wider mb-1.5 flex items-center">
+                            <span class="mr-1.5">🎯</span> ${roleTitle}
+                        </h5>
+                        <ul class="space-y-1.5 text-xs">
+                            ${opportunityBullets.map(b => `<li class="flex items-start"><span class="text-amber-600 mr-1.5 font-bold">•</span><div>${b}</div></li>`).join('')}
+                        </ul>
+                    </div>
+                `;
+            }
+        }
+
+        // -------------------------------------------------------------
         // 0. DETERMINISTIC SEED HASH (Varied phrasing per player)
         // -------------------------------------------------------------
         const getSeed = (str) => {
@@ -632,6 +683,9 @@ const UI = {
                         ${narrativeBlurb}
                     </p>
                 </div>
+
+                <!-- Inherited Role & Scheme Analysis for Rookies/Team-Changers -->
+                ${inheritedContextHTML}
 
                 <!-- Metric Educational Guide for Casuals -->
                 ${metricGuideHTML}
