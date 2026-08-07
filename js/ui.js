@@ -487,7 +487,7 @@ const UI = {
             if (p.snapShare && p.snapShare >= 75) {
                 pros.push(`<strong>Workhorse Snap Share:</strong> On the field for ${p.snapShare.toFixed(0)}% of offensive snaps.`);
             }
-            if (p._addedPPW && p._addedPPW >= 0.3) {
+            if (p._addedPPW && p._addedPPW >= 0.3 && !p._byeFillWeek) {
                 pros.push(`<strong>Lineup Difference Maker:</strong> Adds +${p._addedPPW.toFixed(1)} Points Per Week directly to your optimal starters.`);
             }
             if (p.isRBStarter && p.handcuffName) {
@@ -513,8 +513,14 @@ const UI = {
             if (p.stats.fgTotal && p.stats.fgTotal >= 30) pros.push(`<strong>High Volume Kicker:</strong> Made <strong>${p.stats.fgTotal} Field Goals</strong> last season.`);
         }
 
-        if (p.avgStars && p.avgStars >= 3.3) pros.push(`<strong>Soft Overall Schedule:</strong> Favorable ${p.avgStars.toFixed(2)}/5.0 Strength of Schedule rating.`);
-        if (p._addedPPW && p._addedPPW >= 0.3) pros.push(`<strong>Lineup Difference Maker:</strong> Adds +${p._addedPPW.toFixed(1)} Points Per Week directly to your optimal starters.`);
+        if (!isOffense) {
+            if (p.avgStars && p.avgStars >= 3.3) pros.push(`<strong>Soft Overall Schedule:</strong> Favorable ${p.avgStars.toFixed(2)}/5.0 Strength of Schedule rating.`);
+            if (p._addedPPW && p._addedPPW >= 0.3 && !p._byeFillWeek) pros.push(`<strong>Lineup Difference Maker:</strong> Adds +${p._addedPPW.toFixed(1)} Points Per Week directly to your optimal starters.`);
+        }
+        
+        if (p._byeFillWeek) {
+            pros.push(`<strong>Bye Week Insurance:</strong> Provides a critical +${p._byeFillPts.toFixed(1)} point boost during Week ${p._byeFillWeek}.`);
+        }
 
         if (pros.length === 0) pros.push("Solid baseline candidate with standard positional volume.");
 
@@ -717,10 +723,12 @@ const UI = {
 
         let envBadgesHTML = envBadges.length > 0 ? `<div class="flex flex-wrap gap-2 mb-2">${envBadges.join('')}</div>` : '';
 
-        let ppwBadge = p._addedPPW && p._addedPPW > 0.1
-            ? `<span class="bg-emerald-100 text-emerald-800 text-xs font-bold px-2.5 py-1 rounded-full border border-emerald-200">📈 +${p._addedPPW.toFixed(1)} PPW Lineup Fit</span>`
-            : '';
-
+        let ppwBadge = '';
+        if (p._addedPPW >= 1.0 || (p._addedPPW > 0.1 && !p._byeFillWeek)) {
+            ppwBadge = `<span class="bg-emerald-100 text-emerald-800 text-xs font-bold px-2.5 py-1 rounded-full border border-emerald-200">📈 +${p._addedPPW.toFixed(1)} PPW Lineup Fit</span>`;
+        } else if (p._byeFillWeek) {
+            ppwBadge = `<span class="bg-amber-100 text-amber-800 text-xs font-bold px-2.5 py-1 rounded-full border border-amber-200">🔄 Wk ${p._byeFillWeek} Bye Fill (+${p._byeFillPts.toFixed(1)} pts)</span>`;
+        }
         let advancedMetricsHTML = '';
 
         if (isOffense) {
@@ -1102,10 +1110,14 @@ const UI = {
 
 
             let ppwVal = (p._addedPPW !== undefined && p._addedPPW > 0) ? p._addedPPW : 0;
-            let ppwStr = ppwVal > 0.05
-                ? `<span class="font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200/80">+${ppwVal.toFixed(2)}/wk</span>`
-                : `<span class="text-gray-300 text-[10px] font-mono">0.00</span>`;
-
+            let ppwStr = '';
+            if (ppwVal >= 1.0 || (ppwVal > 0 && !p._byeFillWeek)) {
+                ppwStr = `<span class="font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200/80">+${ppwVal.toFixed(2)}/wk</span>`;
+            } else if (p._byeFillWeek) {
+                ppwStr = `<span class="font-extrabold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200/80">Wk ${p._byeFillWeek} Fill</span>`;
+            } else {
+                ppwStr = `<span class="text-gray-300 text-[10px] font-mono">0.00</span>`;
+            }
             let isOffense = !['DST', 'PK'].includes(p.Pos);
             let ageStr = p.age ? `<span class="text-[9px] font-semibold text-slate-400 ml-1">Age ${p.age}</span>` : '';
             let olBadge = (isOffense && p.olTier) ? `<span class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-100 text-slate-600">OL ${p.olTier}</span>` : '';
@@ -1178,7 +1190,9 @@ const UI = {
         };
 
         const getOpportunityScore = (p) => {
-            let baseVal = ((p._addedPPW || 0) * 15) + (p.AdvVBD || p.VBD);
+            let recPPW = p._addedPPW || 0;
+            if (p.Pos === 'PK' || p.Pos === 'DST') recPPW *= 0.15; // Prevent DST/K reaching
+            let baseVal = (recPPW * 15) + (p.AdvVBD || p.VBD);
             let survivalProb = getSurvivalProb(p.adp);
             let urgency = 1 - survivalProb;
             return baseVal * (1 + (0.20 * urgency));
@@ -1237,7 +1251,9 @@ const UI = {
         let userQBs = userRoster.filter(r => r.Pos === 'QB');
 
         viablePlayers.forEach(p => {
-            let score = ((p._addedPPW || 0) * 20) + ((p.AdvVBD || p.VBD) * 0.5);
+            let recPPW = p._addedPPW || 0;
+            if (p.Pos === 'PK' || p.Pos === 'DST') recPPW *= 0.15; // Prevent DST/K reaching
+            let score = (recPPW * 20) + ((p.AdvVBD || p.VBD) * 0.5);
 
             // ===========================================================
             // POINT 2: QB-WR/TE STACKING SYNERGY BOOST
@@ -1264,9 +1280,9 @@ const UI = {
             let currentCount = userTeam.counts[p.Pos] || 0;
 
             let isStarterOpen = currentCount < starterMax;
-            let isFlexRBWROpen = ['RB', 'WR'].includes(p.Pos) && (team.counts['FlexRBWR'] < (State.settings.roster.FlexRBWR?.max || 0));
-            let isFlexOpen = ['RB', 'WR', 'TE'].includes(p.Pos) && (team.counts['Flex'] < (State.settings.roster.Flex?.max || 0));
-            let isSuperflexOpen = ['QB', 'RB', 'WR', 'TE'].includes(p.Pos) && (team.counts['Superflex'] < (State.settings.roster.Superflex?.max || 0));
+            let isFlexRBWROpen = ['RB', 'WR'].includes(p.Pos) && (userTeam.counts['FlexRBWR'] < (State.settings.roster.FlexRBWR?.max || 0));
+            let isFlexOpen = ['RB', 'WR', 'TE'].includes(p.Pos) && (userTeam.counts['Flex'] < (State.settings.roster.Flex?.max || 0));
+            let isSuperflexOpen = ['QB', 'RB', 'WR', 'TE'].includes(p.Pos) && (userTeam.counts['Superflex'] < (State.settings.roster.Superflex?.max || 0));
 
             let starterBonus = 0;
             if (isStarterOpen) {
@@ -1276,9 +1292,9 @@ const UI = {
             } else {
                 let overage = currentCount - starterMax;
                 if (isFlexRBWROpen || isFlexOpen || isSuperflexOpen || State.isPositionFlexEligible(p.Pos)) {
-                    multiplier *= Math.pow(0.5, overage + 1);
+                    score *= Math.pow(0.5, overage + 1);
                 } else {
-                    multiplier *= (overage === 0 ? 0.05 : 0.01);
+                    score *= (overage === 0 ? 0.05 : 0.01);
                 }
             }
 
@@ -1315,7 +1331,14 @@ const UI = {
 
         if (bestFit) {
             let survivalProb = getSurvivalProb(bestFit.adp);
-            let ppwText = bestFit._addedPPW > 0 ? `+${bestFit._addedPPW.toFixed(2)} PPW` : `Flex Depth`;
+            let ppwText = '';
+            if (bestFit._addedPPW >= 1.0 || (bestFit._addedPPW > 0 && !bestFit._byeFillWeek)) {
+                ppwText = `+${bestFit._addedPPW.toFixed(2)} PPW`;
+            } else if (bestFit._byeFillWeek) {
+                ppwText = `Wk ${bestFit._byeFillWeek} Bye Fill`;
+            } else {
+                ppwText = `Flex Depth`;
+            }
             let stackBadge = bestFit._stackPartner ? ` • ⚡ Stack w/ ${bestFit._stackPartner}` : '';
             let cliffBadge = bestFit._tierCliffTag ? ` • <span class="text-amber-200 font-bold">${bestFit._tierCliffTag}</span>` : '';
 
@@ -1350,7 +1373,14 @@ const UI = {
             else highlight = `Flex / Bench Depth`;
 
             // ⚡ Raw Points Per Week Added Badge
-            let ppwVal = (p._addedPPW && p._addedPPW > 0) ? `+${p._addedPPW.toFixed(2)}/wk` : `+${(p.AdvVBD || p.VBD).toFixed(1)} VBD`;
+            let ppwVal = '';
+            if (p._addedPPW >= 1.0 || (p._addedPPW > 0 && !p._byeFillWeek)) {
+                ppwVal = `+${p._addedPPW.toFixed(2)}/wk`;
+            } else if (p._byeFillWeek) {
+                ppwVal = `Wk ${p._byeFillWeek} Fill`;
+            } else {
+                ppwVal = `+${(p.AdvVBD || p.VBD).toFixed(1)} VBD`;
+            }
 
             return `
     <div class="p-3 bg-indigo-800/80 rounded-xl border border-indigo-700/50 flex justify-between items-center shadow-inner cursor-pointer hover:bg-indigo-700 transition mb-2" onclick="UI.showPlayerCard('${p._cleanName}')">

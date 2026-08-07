@@ -776,14 +776,83 @@ const State = {
         return score;
     },
 
+    calculateActualWeeklyScore(roster, weekNum) {
+        let qb = []; let rb = []; let wr = []; let te = []; let pk = []; let dst = [];
+
+        for (let i = 0; i < roster.length; i++) {
+            let p = roster[i];
+            let val = p.weeklyProjections[`W${weekNum}`] || 0;
+            if (p.Pos === 'QB') qb.push(val);
+            else if (p.Pos === 'RB') rb.push(val);
+            else if (p.Pos === 'WR') wr.push(val);
+            else if (p.Pos === 'TE') te.push(val);
+            else if (p.Pos === 'PK') pk.push(val);
+            else if (p.Pos === 'DST') dst.push(val);
+        }
+
+        let score = 0;
+        let req = this.settings.roster;
+        let superflexPool = [];
+
+        qb.sort((a, b) => b - a);
+        for (let i = 0; i < req.QB.max; i++) if (i < qb.length) score += qb[i];
+        for (let i = req.QB.max; i < qb.length; i++) superflexPool.push(qb[i]);
+
+        pk.sort((a, b) => b - a); dst.sort((a, b) => b - a);
+        for (let i = 0; i < req.PK.max; i++) if (i < pk.length) score += pk[i];
+        for (let i = 0; i < req.DST.max; i++) if (i < dst.length) score += dst[i];
+
+        let processPos = (arr, maxReq, overflowTarget) => {
+            let s = 0;
+            arr.sort((a, b) => b - a);
+            for (let i = 0; i < maxReq; i++) {
+                if (i < arr.length) s += arr[i];
+            }
+            for (let i = maxReq; i < arr.length; i++) overflowTarget.push(arr[i]);
+            return s;
+        };
+
+        let rbwrOverflow = [];
+        score += processPos(rb, req.RB.max, rbwrOverflow);
+        score += processPos(wr, req.WR.max, rbwrOverflow);
+
+        let teOverflow = [];
+        score += processPos(te, req.TE.max, teOverflow);
+
+        rbwrOverflow.sort((a, b) => b - a);
+        for (let i = 0; i < (req.FlexRBWR?.max || 0); i++) {
+            if (i < rbwrOverflow.length) score += rbwrOverflow[i];
+        }
+
+        let flexPool = [];
+        for (let i = (req.FlexRBWR?.max || 0); i < rbwrOverflow.length; i++) flexPool.push(rbwrOverflow[i]);
+        flexPool.push(...teOverflow);
+
+        flexPool.sort((a, b) => b - a);
+        for (let i = 0; i < (req.Flex?.max || 0); i++) {
+            if (i < flexPool.length) score += flexPool[i];
+        }
+        for (let i = (req.Flex?.max || 0); i < flexPool.length; i++) superflexPool.push(flexPool[i]);
+
+        superflexPool.sort((a, b) => b - a);
+        for (let i = 0; i < (req.Superflex?.max || 0); i++) {
+            if (i < superflexPool.length) score += superflexPool[i];
+        }
+
+        return score;
+    },
+
     evaluateRosterFits(team, availablePlayers) {
         const startW = this.settings.startWeek || 1;
         const endW = this.settings.endWeek || 17;
-        const totalFantasyWeeks = (endW - startW + 1); // Exactly 17 weeks for your league
+        const totalFantasyWeeks = (endW - startW + 1);
 
+        let baseWeeklyScores = {};
         let baseSeasonScore = 0;
         for (let w = startW; w <= endW; w++) {
-            baseSeasonScore += this.calculateOptimalWeeklyScore(team.roster, w);
+            let pts = this.calculateActualWeeklyScore(team.roster, w);
+            baseWeeklyScores[w] = pts;
+            baseSeasonScore += pts;
         }
 
         let viablePlayers = availablePlayers.filter(player => {
@@ -800,23 +869,40 @@ const State = {
 
         topViable.forEach(p => {
             let simSeasonScore = 0;
+            let maxWeekAdded = 0;
+            let bestByeFillWeek = null;
 
             team.roster.push(p);
             for (let w = startW; w <= endW; w++) {
-                simSeasonScore += this.calculateOptimalWeeklyScore(team.roster, w);
+                let newScore = this.calculateActualWeeklyScore(team.roster, w);
+                simSeasonScore += newScore;
+
+                let weekDiff = newScore - baseWeeklyScores[w];
+                if (weekDiff > maxWeekAdded) {
+                    maxWeekAdded = weekDiff;
+                    bestByeFillWeek = w;
+                }
             }
             team.roster.pop();
 
             let addedPts = simSeasonScore - baseSeasonScore;
-
-            if (p.Pos === 'PK' || p.Pos === 'DST') addedPts *= 0.15;
-
-            // Divide by total fantasy weeks (17) to get exact PPW for your league
             p._addedPPW = addedPts / totalFantasyWeeks;
+            p._byeFillWeek = null;
+            p._byeFillPts = 0;
+
+            // Flag as a bye fill if they add little overall, but add significant points in a specific week
+            if (p._addedPPW < 1.5 && maxWeekAdded >= 3.0 && bestByeFillWeek) {
+                p._byeFillWeek = bestByeFillWeek;
+                p._byeFillPts = maxWeekAdded;
+            }
         });
 
         availablePlayers.forEach(p => {
-            if (!topViable.includes(p)) p._addedPPW = 0;
+            if (!topViable.includes(p)) {
+                p._addedPPW = 0;
+                p._byeFillWeek = null;
+                p._byeFillPts = 0;
+            }
         });
     },
 
