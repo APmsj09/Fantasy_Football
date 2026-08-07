@@ -212,7 +212,7 @@ const UI = {
         // INHERITED ROLE & SCHEME CONTEXT (Rookies & Team Changers)
         // -------------------------------------------------------------
         let inheritedContextHTML = "";
-        
+
         // Robust team normalization matcher (Fixes ARI vs ARZ bug)
         const teamDist = State.teamTargetsMap ? State.teamTargetsMap[tTeam] : null;
         const rushEnv = State.teamAdvRush ? State.teamAdvRush[tTeam] : null;
@@ -225,10 +225,10 @@ const UI = {
         const isTargetRole = p.isNewRole || isRookieOrYoung || hasNoPastStats || (p.depthChart && p.depthChart <= 2);
 
         if (isTargetRole) {
-            let roleTitle = (p.isNewRole || isRookieOrYoung || hasNoPastStats) 
-                ? `📋 Inherited Role & Opportunity Analysis (${p.Team})` 
+            let roleTitle = (p.isNewRole || isRookieOrYoung || hasNoPastStats)
+                ? `📋 Inherited Role & Opportunity Analysis (${p.Team})`
                 : `🔄 Team Scheme & Volume Context (${p.Team})`;
-            
+
             let opportunityBullets = [];
 
             if (pos === 'RB') {
@@ -1345,19 +1345,21 @@ const UI = {
         let userQBs = userRoster.filter(r => r.Pos === 'QB');
 
         viablePlayers.forEach(p => {
-            // Base score relies strictly on true VBD Value
-            let score = Math.max(0, p.AdvVBD || p.VBD);
+            // Base score relies strictly on true VBD Value (Keep negative scores negative!)
+            let score = p.AdvVBD || p.VBD;
 
-            // Add Urgency Factor (Draft Market Value)
-            let survivalProb = getSurvivalProb(p.adp);
-            let urgency = 1 - survivalProb;
-            score += (score * 0.25 * urgency); 
+            // Add Urgency Factor (Draft Market Value) - Only for positive VBD
+            if (score > 0) {
+                let survivalProb = getSurvivalProb(p.adp);
+                let urgency = 1 - survivalProb;
+                score += (score * 0.25 * urgency);
+            }
 
             // ===========================================================
             // POINT 2: QB-WR/TE STACKING SYNERGY BOOST
             // ===========================================================
             let matchingQB = userQBs.find(qb => qb._cleanTeam === p._cleanTeam);
-            if (matchingQB && ['WR', 'TE'].includes(p.Pos)) {
+            if (matchingQB && ['WR', 'TE'].includes(p.Pos) && score > 0) {
                 score += Math.max(3.0, (p.AdvVBD || p.VBD) * 0.12);
                 p._stackPartner = matchingQB.Player;
             } else {
@@ -1367,7 +1369,7 @@ const UI = {
             // ===========================================================
             // POINT 3: LATE-ROUND CEILING / UPSIDE BOOST (Rounds 9+)
             // ===========================================================
-            if (currentRound >= 9 && p.upsideScore) {
+            if (currentRound >= 9 && p.upsideScore && (p.AdvVBD || p.VBD) > 0) {
                 let ceilingGain = (p.upsideScore - (p.AdvVBD || p.VBD)) * 0.75;
                 score += Math.max(0, ceilingGain);
             }
@@ -1472,7 +1474,8 @@ const UI = {
             } else if (p._byeFillWeek) {
                 ppwVal = `Wk ${p._byeFillWeek} Fill`;
             } else {
-                ppwVal = `+${(p.AdvVBD || p.VBD).toFixed(1)} VBD`;
+                let vbdVal = (p.AdvVBD || p.VBD).toFixed(1);
+                ppwVal = `${vbdVal >= 0 ? '+' : ''}${vbdVal} VBD`;
             }
 
             return `

@@ -1583,7 +1583,9 @@ const State = {
             if (p.aDOT && p.aDOT >= 12.0) upsideBonus += 0.05;
             if (p.hvo && p.hvo >= 75) upsideBonus += 0.05;
             if (p.pastStats && p.pastStats.bigPlays && p.pastStats.bigPlays >= 12) upsideBonus += 0.04;
-            p.upsideScore = (p.AdvVBD || p.VBD) * (1 + upsideBonus);
+            
+            let baseVbd = p.AdvVBD || p.VBD;
+            p.upsideScore = baseVbd > 0 ? baseVbd * (1 + upsideBonus) : 0;
         });
 
         // Fail-safe sort
