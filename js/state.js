@@ -1398,7 +1398,7 @@ const State = {
             if (p.snapShare) {
                 // Lowered bonuses. Projection already accounts for snap volume. This just rewards stability.
                 if (p.snapShare >= 80) adjMultiplier += 0.03;
-                else if (p.snapShare < 40) adjMultiplier -= 0.03;
+                else if (p.snapShare < 40) adjMultiplier -= 0.03; 
             } else if (p.depthChart !== undefined && p.depthChart !== null) {
                 if (p.depthChart === 1) adjMultiplier += 0.02;
                 else if (p.depthChart >= 3) adjMultiplier -= 0.03;
@@ -1432,7 +1432,7 @@ const State = {
             } else if (['RB', 'WR', 'TE'].includes(p.Pos)) {
                 lacksIndividualMetrics = (p.targetShare === undefined) && (p.brokenTackles === undefined) && (p.yacAtt === undefined);
             }
-
+            
             if (lacksIndividualMetrics) {
                 p.isNewRole = true;
                 let teamDist = this.teamTargets.find(t => t.Team === p.Team);
@@ -1451,16 +1451,16 @@ const State = {
                 // Focus on efficiency/dominance rather than pure volume
                 if (p.targetShare >= 26) adjMultiplier += 0.03;
                 if (p.targetShare >= 22 && p.aDOT >= 10.0) adjMultiplier += 0.03;
-
+                
                 // NEW: Fraud Penalty - High projected points but low target share means highly TD dependent
                 if (['WR', 'TE'].includes(p.Pos) && p.ProjPts > 120 && p.targetShare < 14.0) {
-                    adjMultiplier -= 0.05;
+                    adjMultiplier -= 0.05; 
                 }
             }
 
             if (p.Pos === 'RB') {
                 if (p.brokenTackles && p.brokenTackles >= 20) adjMultiplier += 0.03;
-
+                
                 // HVO logic reduced. We don't want to double count the points they get from these touches.
                 if (p.hvo && p.hvo >= 110) adjMultiplier += 0.03;
             }
@@ -1483,7 +1483,7 @@ const State = {
             let pAge = p.age || p.Age;
             if (pAge) {
                 if (p.Pos === 'RB' && pAge >= 27) {
-                    adjMultiplier -= Math.pow(pAge - 26, 1.3) * 0.025;
+                    adjMultiplier -= Math.pow(pAge - 26, 1.3) * 0.025; 
                 } else if (p.Pos === 'WR' && pAge >= 31) {
                     adjMultiplier -= Math.pow(pAge - 30, 1.2) * 0.03;
                 } else if (p.Pos === 'TE' && pAge >= 32) {
@@ -1516,62 +1516,66 @@ const State = {
                 }
                 if (teamQB && teamQB.trueAccuracy !== undefined) {
                     if (teamQB.trueAccuracy >= 74.0) adjMultiplier += 0.025;
-                    else if (teamQB.trueAccuracy <= 63.0) adjMultiplier -= 0.025;// 8. New Role / Inherited Environment (Rookies & Free Agents)
-                    if (p.isNewRole) {
+                    else if (teamQB.trueAccuracy <= 63.0) adjMultiplier -= 0.025;
+                }
+            }
 
-                        // RBs inherit the O-Line's run-blocking scheme (Yards Before Contact),
-                        // but we strip out Yards After Contact (which is a player-specific skill).
-                        if (p.Pos === 'RB' && rushEnv) {
-                            if (rushEnv.ybcAtt >= 2.8) adjMultiplier += 0.03;
-                            else if (rushEnv.ybcAtt <= 2.1) adjMultiplier -= 0.03;
-                        }
+            // 8. New Role / Inherited Environment (Rookies & Free Agents)
+            if (p.isNewRole) {
+                
+                // RBs inherit the O-Line's run-blocking scheme (Yards Before Contact),
+                // but we strip out Yards After Contact (which is a player-specific skill).
+                if (p.Pos === 'RB' && rushEnv) {
+                    if (rushEnv.ybcAtt >= 2.8) adjMultiplier += 0.03;
+                    else if (rushEnv.ybcAtt <= 2.1) adjMultiplier -= 0.03;
+                }
 
-                        // WRs/TEs inherit scheme-designed YAC (e.g., McVay/Shanahan systems)
-                        if (['WR', 'TE'].includes(p.Pos) && recEnv) {
-                            if (recEnv.yacPerRec >= 5.8) adjMultiplier += 0.02;
-                            else if (recEnv.yacPerRec <= 4.6) adjMultiplier -= 0.02;
-                        }
+                // WRs/TEs inherit scheme-designed YAC (e.g., McVay/Shanahan systems)
+                if (['WR', 'TE'].includes(p.Pos) && recEnv) {
+                    if (recEnv.yacPerRec >= 5.8) adjMultiplier += 0.02;
+                    else if (recEnv.yacPerRec <= 4.6) adjMultiplier -= 0.02;
+                }
 
-                        // QBs inherit the pocket time (O-Line) and their receivers' hands (Drops)
-                        // Note: prssPct was already evaluated in Step 7, so it is safely omitted here.
-                        if (p.Pos === 'QB' && passEnv) {
-                            if (passEnv.pktTime >= 2.5) adjMultiplier += 0.02;
-                            else if (passEnv.pktTime <= 2.2) adjMultiplier -= 0.02;
+                // QBs inherit the pocket time (O-Line) and their receivers' hands (Drops)
+                // Note: prssPct was already evaluated in Step 7, so it is safely omitted here.
+                if (p.Pos === 'QB' && passEnv) {
+                    if (passEnv.pktTime >= 2.5) adjMultiplier += 0.02;
+                    else if (passEnv.pktTime <= 2.2) adjMultiplier -= 0.02;
 
-                            if (passEnv.dropPct >= 6.0) adjMultiplier -= 0.02;
-                        }
-                    }
+                    if (passEnv.dropPct >= 6.0) adjMultiplier -= 0.02;
+                }
+            }
 
-                    // ===========================================================
-                    // FINAL CALCULATIONS (FIXING THE "RICH GET RICHER" SCALING BUG)
-                    // ===========================================================
+            // ===========================================================
+            // FINAL CALCULATIONS (FIXING THE "RICH GET RICHER" SCALING BUG)
+            // ===========================================================
+            
+            // 1. Cap raw multiplier
+            adjMultiplier = Math.max(0.75, Math.min(1.25, adjMultiplier));
 
-                    // 1. Cap raw multiplier
-                    adjMultiplier = Math.max(0.75, Math.min(1.25, adjMultiplier));
+            if (p.VBD >= 0) {
+                // 2. Dampen the multiplier for elite players so they don't break the top of the draft board
+                // e.g. A 10% boost on 150 VBD is +15 pts. The dampener smoothly compresses the multiplier as VBD scales up.
+                let dampenedMultiplier = p.VBD > 50 ? 1 + ((adjMultiplier - 1) * (50 / p.VBD)) : adjMultiplier;
+                p.AdvVBD = p.VBD * dampenedMultiplier;
+            } else {
+                p.AdvVBD = p.VBD / adjMultiplier;
+            }
 
-                    if (p.VBD >= 0) {
-                        // 2. Dampen the multiplier for elite players so they don't break the top of the draft board
-                        // e.g. A 10% boost on 150 VBD is +15 pts. The dampener smoothly compresses the multiplier as VBD scales up.
-                        let dampenedMultiplier = p.VBD > 50 ? 1 + ((adjMultiplier - 1) * (50 / p.VBD)) : adjMultiplier;
-                        p.AdvVBD = p.VBD * dampenedMultiplier;
-                    } else {
-                        p.AdvVBD = p.VBD / adjMultiplier;
-                    }
+            if (isNaN(p.VBD)) p.VBD = 0;
+            if (isNaN(p.AdvVBD)) p.AdvVBD = p.VBD;
 
-                    if (isNaN(p.VBD)) p.VBD = 0;
-                    if (isNaN(p.AdvVBD)) p.AdvVBD = p.VBD;
-
-                    // Range of Outcomes / Upside Potential 
-                    let upsideBonus = 0;
-                    if (p.aDOT && p.aDOT >= 12.0) upsideBonus += 0.05;
-                    if (p.hvo && p.hvo >= 75) upsideBonus += 0.05;
-                    if (p.pastStats && p.pastStats.bigPlays && p.pastStats.bigPlays >= 12) upsideBonus += 0.04;
-                    p.upsideScore = (p.AdvVBD || p.VBD) * (1 + upsideBonus);
-                });
+            // Range of Outcomes / Upside Potential 
+            let upsideBonus = 0;
+            if (p.aDOT && p.aDOT >= 12.0) upsideBonus += 0.05;
+            if (p.hvo && p.hvo >= 75) upsideBonus += 0.05;
+            if (p.pastStats && p.pastStats.bigPlays && p.pastStats.bigPlays >= 12) upsideBonus += 0.04;
+            p.upsideScore = (p.AdvVBD || p.VBD) * (1 + upsideBonus);
+        });
 
         // Fail-safe sort
         this.allPlayers.sort((a, b) => (b.AdvVBD || 0) - (a.AdvVBD || 0));
-
+        
         // Assign static ranks for the Draft UI
         let posTracker = {};
         this.allPlayers.forEach((p, index) => {
