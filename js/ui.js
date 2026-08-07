@@ -1386,10 +1386,14 @@ const UI = {
             // Restrict Bench Value
             if (!isStarterOpen && !(isFlexRBWROpen || isFlexOpen || isSuperflexOpen)) {
                 let overage = currentCount - starterMax;
-                if (State.isPositionFlexEligible(p.Pos)) {
-                    score *= Math.pow(0.5, overage + 1); // RBs/WRs decay slowly on bench
+                let penalty = State.isPositionFlexEligible(p.Pos)
+                    ? Math.pow(0.5, overage + 1)  // RBs/WRs decay slowly on bench
+                    : (overage === 0 ? 0.05 : 0.01); // 2nd QBs/TEs drop heavily
+
+                if (score > 0) {
+                    score *= penalty;
                 } else {
-                    score *= (overage === 0 ? 0.05 : 0.01); // 2nd QBs/TEs drop heavily
+                    score /= penalty; // If score is -10, dividing by 0.05 pushes it to -200 (sending them to the bottom!)
                 }
             }
 
@@ -1399,7 +1403,8 @@ const UI = {
             if (['QB', 'TE'].includes(p.Pos) && userTeam.counts[p.Pos] >= 1) {
                 const starter = userRoster.find(r => r.Pos === p.Pos);
                 if (starter && starter.byeWeek === p.byeWeek && p.byeWeek !== 'N/A') {
-                    score *= 0.5; // Penalty for same bye week on single-starter backup
+                    if (score > 0) score *= 0.5;
+                    else score *= 2.0; // Pushes negative scores further down
                 }
             }
 
@@ -1410,6 +1415,7 @@ const UI = {
             .filter(p => {
                 let posRoster = State.settings.roster[p.Pos];
                 let starterMax = posRoster ? posRoster.max : 1;
+                // Exclude drafting a 2nd QB/TE/PK/DST as the "Best Addition" until Round 12
                 if (['QB', 'TE', 'PK', 'DST'].includes(p.Pos) && userTeam.counts[p.Pos] >= starterMax && currentRound < 12) {
                     return false;
                 }
@@ -1417,7 +1423,10 @@ const UI = {
             })
             .sort((a, b) => b._recScore - a._recScore)[0];
 
-        if (bestFit && (bestFit._addedPPW || 0) <= 0.1) bestFit = null;
+        // Lower threshold so Best Fit still recommends late-round flex stashes and handcuffs
+        if (bestFit && (bestFit._addedPPW || 0) <= 0.0 && !bestFit._byeFillWeek && !bestFit.starterName) {
+            bestFit = null;
+        }
 
         let sortedByRec = [...viablePlayers].sort((a, b) => b._recScore - a._recScore);
         let vbdRecs = sortedByRec.filter(p => p !== bestFit).slice(0, 3);
