@@ -1098,9 +1098,9 @@ const UI = {
             previousVBD = currentVBD;
 
             if (isTierDrop && (State.draftSortKey === 'AdvVBD' || !State.draftSortKey) && !search && !filterPos) {
-                htmlStr += `<tr><td colspan="11" class="px-3 py-1 bg-rose-50 text-rose-700 text-[10px] font-bold text-center border-y border-rose-200 tracking-widest uppercase">⬇️ Significant Value Drop-Off ⬇️</td></tr>`;
+                htmlStr += `<tr><td colspan="10" class="px-3 py-1 bg-rose-50 text-rose-700 text-[10px] font-bold text-center border-y border-rose-200 tracking-widest uppercase">⬇️ Significant Value Drop-Off ⬇️</td></tr>`;
             }
-            
+
             let btnHtml = "";
             let safeName = p._cleanName;
 
@@ -1151,11 +1151,11 @@ const UI = {
 
             htmlStr += `
                 <tr class="hover:bg-slate-50 border-b border-gray-100 transition-colors cursor-pointer" onclick="if (!event.target.closest('.draft-btn')) UI.showPlayerCard('${p._cleanName}')">
-                    <td class="px-3 py-2 text-[10px] leading-tight">
+                    <td class="px-2 py-2 text-center text-[10px] leading-tight">
                         <span class="font-extrabold text-gray-900">#${p.ovrRank}</span><br>
                         <span class="font-bold text-gray-400">${p.posRank}</span>
                     </td>
-                    <td class="px-3 py-2 text-[11px] font-bold text-gray-900 w-1/3">
+                    <td class="px-3 py-2 text-[11px] font-bold text-gray-900 min-w-[200px]">
                         <div class="flex items-center">
                             <span>${p.Player}</span>
                             <span class="font-normal text-gray-400 ml-1.5">${p.Team}</span>
@@ -1163,13 +1163,13 @@ const UI = {
                         </div>
                         ${tagHTML}
                     </td>
-                    <td class="px-2 py-2 text-[11px] text-gray-600 font-medium">${p.Pos}</td>
-                    <td class="px-2 py-2 text-[11px] font-bold text-indigo-600">${p.ProjPts.toFixed(1)}</td>
-                    <td class="px-2 py-2 text-[11px] font-extrabold text-indigo-900">${(p.AdvVBD || p.VBD).toFixed(1)}</td>
-                    <td class="px-2 py-2 text-[11px]">${ppwStr}</td>
-                    <td class="px-2 py-2 text-[11px] text-gray-600">${adpStr}</td>
-                    <td class="px-2 py-2 text-[11px] text-gray-600">${byeStr}</td>
-                    <td class="px-2 py-2 text-[11px] text-gray-600">${depthStr}</td>
+                    <td class="px-2 py-2 text-center text-[11px] text-gray-600 font-medium">${p.Pos}</td>
+                    <td class="px-2 py-2 text-right text-[11px] font-bold text-indigo-600">${p.ProjPts.toFixed(1)}</td>
+                    <td class="px-2 py-2 text-right text-[11px] font-extrabold text-indigo-900">${(p.AdvVBD || p.VBD).toFixed(1)}</td>
+                    <td class="px-2 py-2 text-center text-[11px]">${ppwStr}</td>
+                    <td class="px-2 py-2 text-center text-[11px] text-gray-600">${adpStr}</td>
+                    <td class="px-2 py-2 text-center text-[11px] text-gray-600">${byeStr}</td>
+                    <td class="px-2 py-2 text-center text-[11px] text-gray-600">${depthStr}</td>
                     <td class="px-3 py-2 text-right">${btnHtml}</td>
                 </tr>
             `;
