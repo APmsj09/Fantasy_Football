@@ -599,9 +599,11 @@ const UI = {
             if (pos === 'QB' && offensePace === 'pass-heavy') {
                 pros.push(`<strong>High-Volume Scheme:</strong> Directing a pass-heavy attack naturally pads his fantasy floor with raw volume and increased touchdown opportunities.`);
             }
+            if (pos === 'RB' && offensePace === 'run-heavy') {
+                pros.push(`<strong>Run-Heavy Offense:</strong> Operating in a run-first system ensures a massive baseline of rushing attempts and positive game scripts to churn out the clock.`);
+            }
 
             if (pos === 'RB' && rushEnv && rushEnv.ybcAtt >= 2.8) pros.push(`<strong>YBC Scheme Boost:</strong> Elite run-blocking scheme generates ${rushEnv.ybcAtt} Yards Before Contact (YBC) per carry, giving him massive open space before taking a hit.`);
-            if (['WR', 'TE'].includes(pos) && passEnv && passEnv.playActionYds >= 950) pros.push(`<strong>Play-Action Heavy:</strong> Scheme generates ${passEnv.playActionYds} yards off play-action concepts (which heavily favors explosive passing plays).`);
         }
 
         if (isDST && p.stats) {
@@ -658,6 +660,17 @@ const UI = {
             }
 
             // --- SYSTEM & SCHEME RISKS ---
+            let teamTopTargetShare = Math.max(...State.allPlayers.filter(x => x._cleanTeam === tTeam).map(x => x.targetShare || 0));
+
+            if (['WR', 'TE'].includes(pos) && teamTopTargetShare > 0 && teamTopTargetShare < 20.0) {
+                cons.push(`<strong>Spread Passing Distribution:</strong> The offensive system spreads the ball evenly across multiple receivers (no player on the team commands a 20%+ target share). This lack of a concentrated alpha role creates volatile weekly floors.`);
+                riskScore += 1;
+            }
+            if (pos === 'RB' && p.snapShare && p.snapShare >= 40 && p.snapShare <= 65) {
+                cons.push(`<strong>Running Back by Committee (RBBC):</strong> Trapped in a shared backfield playing only <strong>${p.snapShare.toFixed(0)}% of snaps</strong>. Splitting touches inherently limits his standalone fantasy ceiling.`);
+                riskScore += 1;
+            }
+
             if (['WR', 'TE'].includes(pos) && offensePace === 'run-heavy') {
                 cons.push(`<strong>Low-Volume Passing Attack:</strong> Playing in a <strong>run-heavy offense</strong> severely limits the overall passing pie, mathematically capping his week-to-week target ceiling.`);
                 riskScore += 1;
