@@ -1584,12 +1584,7 @@ const State = {
 
             p._isFlyer = false;
             p._isSafeFloor = false;
-
-            let pAge = p.age || p.Age;
-            const tTeam = this.normalizeTeam(p.Team);
-            const rushEnv = this.teamAdvRush ? this.teamAdvRush[tTeam] : null;
-            const passEnv = this.teamAdvPass ? this.teamAdvPass[tTeam] : null;
-            const teamDist = this.teamTargets.find(t => t.Team === p.Team);
+            const teamDist = (this.teamTargets || []).find(t => t.Team === p.Team);
 
             // 🌟 INHERITED ROLE FLAG (For Rookies & Free Agents)
             let isInheritedStarter = p.isNewRole && p.depthChart === 1;
