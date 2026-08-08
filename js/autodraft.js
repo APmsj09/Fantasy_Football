@@ -50,8 +50,26 @@ window.AutoDraft = {
         [...topWRs, ...topRBs].forEach(p => { avgTopFlexVBD += (p.AdvVBD || p.VBD); flexBenchCount++; });
         avgTopFlexVBD = flexBenchCount > 0 ? (avgTopFlexVBD / flexBenchCount) : 20;
 
-        // 2. EVALUATE TOP 150 AVAILABLE PLAYERS
-        let evaluatedWrapper = State.availablePlayers.slice(0, 150).map(p => {
+        // 2. FILTER OUT PLAYERS THAT DO NOT FIT ON THE ROSTER (Prevents infinite loops)
+        let validPlayers = State.availablePlayers.filter(p => {
+            let pos = p.Pos;
+            let posRoster = State.settings.roster[pos];
+            let maxForPos = posRoster ? posRoster.max : 0;
+            
+            if ((team.counts[pos] || 0) < maxForPos) return true;
+            if (['RB', 'WR'].includes(pos) && team.counts['FlexRBWR'] < (State.settings.roster.FlexRBWR?.max || 0)) return true;
+            if (['RB', 'WR', 'TE'].includes(pos) && team.counts['Flex'] < (State.settings.roster.Flex?.max || 0)) return true;
+            if (['QB', 'RB', 'WR', 'TE'].includes(pos) && team.counts['Superflex'] < (State.settings.roster.Superflex?.max || 0)) return true;
+            if (team.counts['Bench'] < State.settings.roster.Bench.max) return true;
+            
+            return false;
+        });
+
+        // Ensure the CPU evaluates the best players, even if the user manually sorted the UI table
+        validPlayers.sort((a, b) => (b.AdvVBD || b.VBD || 0) - (a.AdvVBD || a.VBD || 0));
+
+        // 3. EVALUATE TOP 150 VALID PLAYERS
+        let evaluatedWrapper = validPlayers.slice(0, 150).map(p => {
             let multiplier = 1.0;
 
             if (p.avgStars) {
@@ -68,9 +86,7 @@ window.AutoDraft = {
                 if (p.Pos === 'QB' && profile.draftsEarlyQB && round >= (profile.qbAvgRound - 1) && round <= (profile.qbAvgRound + 1)) multiplier *= 1.8;
                 if (p.Pos === 'TE' && profile.draftsEarlyTE && round >= (profile.teAvgRound - 1) && round <= (profile.teAvgRound + 1)) multiplier *= 1.8;
 
-                // NEW: Team Bias Boost
                 if (profile.teamBias !== 'None' && p._cleanTeam === profile.teamBias) {
-                    // Apply a 15% valuation bump to players on their favorite team
                     multiplier *= 1.15;
                 }
             }
@@ -98,7 +114,6 @@ window.AutoDraft = {
                 }
             }
 
-            // Scarcity Bonus (Tier Cliff Urgency)
             let posRank = State.availablePlayers.filter(x => x.Pos === p.Pos).findIndex(x => x._cleanName === p._cleanName);
             let scarcityBonus = 0;
             if (posRank < 3 && scarcity[p.Pos]) {
@@ -107,13 +122,11 @@ window.AutoDraft = {
                 }
             }
 
-            // Kickers strictly restricted in early/mid rounds
             if (p.Pos === 'PK' && round <= totalRounds - 3) multiplier *= 0.001;
 
             let rawVbd = p.AdvVBD || p.VBD;
             let baseValue = rawVbd >= 0 ? (rawVbd * multiplier) : (rawVbd / multiplier);
 
-            // ADP Penalty (Prevents reaching too far ahead of real-time market value)
             let adpPenalty = 0;
             if (p.adp) {
                 let adpDiff = p.adp - currentOverallPick;
@@ -134,8 +147,12 @@ window.AutoDraft = {
         for (let item of evaluatedWrapper) {
             let p = item.player;
             let pos = p.Pos;
+            
+            // Safely read the max positional limit
+            let posRoster = State.settings.roster[pos];
+            let maxForPos = posRoster ? posRoster.max : 0;
 
-            if (team.counts[pos] < State.settings.roster[pos].max) slottedPos = pos;
+            if ((team.counts[pos] || 0) < maxForPos) slottedPos = pos;
             else if (['RB', 'WR'].includes(pos) && team.counts['FlexRBWR'] < (State.settings.roster.FlexRBWR?.max || 0)) slottedPos = 'FlexRBWR';
             else if (['RB', 'WR', 'TE'].includes(pos) && team.counts['Flex'] < (State.settings.roster.Flex?.max || 0)) slottedPos = 'Flex';
             else if (['QB', 'RB', 'WR', 'TE'].includes(pos) && team.counts['Superflex'] < (State.settings.roster.Superflex?.max || 0)) slottedPos = 'Superflex';
@@ -147,7 +164,17 @@ window.AutoDraft = {
             }
         }
 
-        if (selectedPlayer) this.executeDraft(selectedPlayer, team, slottedPos);
+        // Failsafe execution: If a player is found, draft them. If not, pick a fallback so the app never freezes.
+        if (selectedPlayer) {
+            this.executeDraft(selectedPlayer, team, slottedPos);
+        } else {
+            let fallback = State.availablePlayers[0];
+            if (fallback) {
+                this.executeDraft(fallback, team, 'Bench');
+            } else {
+                State.currentPick++; // Give up and move onto the next pick
+            }
+        }
     },
 
     executeDraft(player, team, slot) {
