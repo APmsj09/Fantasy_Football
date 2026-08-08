@@ -347,9 +347,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const settingsUserPick = document.getElementById('setting-user-pick');
     if (settingsUserPick) settingsUserPick.addEventListener('change', () => UI.renderProfileAssignments());
 
-    document.getElementById('current-round').textContent = round;
-    document.getElementById('current-pick-number').textContent = (State.currentPick % State.settings.numTeams) + 1;
-    // NEW: Update Overall Pick
+    // FIX: Safely fallback `State.settings.numTeams` if it hasn't been instantiated yet to prevent crashing before UI start.
+    const initialRound = Math.floor(State.currentPick / (State.settings.numTeams || 12)) + 1;
+    const currentRoundEl = document.getElementById('current-round');
+    if (currentRoundEl) currentRoundEl.textContent = initialRound;
+    
+    const currentPickEl = document.getElementById('current-pick-number');
+    if (currentPickEl) currentPickEl.textContent = (State.currentPick % (State.settings.numTeams || 12)) + 1;
+    
     const overallPickEl = document.getElementById('overall-pick-number');
     if (overallPickEl) overallPickEl.textContent = State.currentPick + 1;
 
