@@ -1303,19 +1303,19 @@ const UI = {
         const getSurvivalProb = (adp) => {
             if (!adp) return 1.0;
             let diff = adp - nextUserOverallPick;
-            // Tight slope in early rounds (0.25), wide/forgiving in late rounds (0.05)
             let slope = Math.max(0.04, 0.30 - (currentRound * 0.015));
             return 1 / (1 + Math.exp(-slope * diff));
         };
 
         // ===========================================================
-        // POINT 4: ROSTER BUILD STRATEGY ADVISOR
+        // PRE-LOOP: EVALUATE TEAM NEEDS & STRATEGY
         // ===========================================================
         let userRoster = userTeam.roster;
         let earlyRBs = userRoster.filter(p => p.Pos === 'RB' && (p.draftPickNum || 99) <= 60).length;
         let earlyWRs = userRoster.filter(p => p.Pos === 'WR' && (p.draftPickNum || 99) <= 60).length;
         let strategyBanner = "";
 
+        // Determine Roster Strategy Build
         if (currentRound <= 7) {
             if (earlyRBs === 0 && userRoster.length >= 3) {
                 strategyBanner = `<div class="p-2 mb-2 bg-indigo-950 border border-indigo-700 rounded-lg text-[10px] text-indigo-200">🛡️ <strong>Zero-RB Build:</strong> Target WR/TE depth. Look for high-HVO passing RBs in Rnds 7-10.</div>`;
@@ -1326,10 +1326,22 @@ const UI = {
             }
         }
 
-        // ===========================================================
-        // POINT 1: DYNAMIC POSITIONAL TIER CLIFF ALERTS
-        // ===========================================================
-        let tierAlertsHTML = "";
+        // Evaluate Portfolio Risk (Floor vs Ceiling)
+        let teamSafeCore = 0;
+        let teamFlyers = 0;
+
+        userRoster.forEach(r => {
+            if (r._isSafeFloor) teamSafeCore++;
+            if (r._isFlyer) teamFlyers++;
+        });
+
+        // Determine Contextual Roster Needs
+        let needsSafety = (teamSafeCore < 3) && currentRound >= 5 && currentRound <= 9;
+        let needsUpside = (teamSafeCore >= 3) && currentRound >= 7;
+
+        let userQBs = userRoster.filter(r => r.Pos === 'QB');
+
+        // Calculate Tier Drops
         ['RB', 'WR', 'TE', 'QB'].forEach(pos => {
             let tiers = State.getPositionalTiers(pos);
             if (tiers.length > 0 && tiers[0].length === 1) {
@@ -1342,6 +1354,7 @@ const UI = {
             }
         });
 
+        // Filter valid players
         let viablePlayers = State.availablePlayers.filter(p => {
             let pos = p.Pos;
             if (pos === 'PK' && currentRound <= totalRounds - 3) return false;
@@ -1357,23 +1370,20 @@ const UI = {
             return false;
         });
 
-        // User drafted QBs for Stacking Logic (Point 2)
-        let userQBs = userRoster.filter(r => r.Pos === 'QB');
-
+        // ===========================================================
+        // LOOP: EVALUATE INDIVIDUAL PLAYERS
+        // ===========================================================
         viablePlayers.forEach(p => {
-            // Base score relies strictly on true VBD Value (Keep negative scores negative!)
             let score = p.AdvVBD || p.VBD;
 
-            // Add Urgency Factor (Draft Market Value) - Only for positive VBD
+            // 1. Urgency / ADP Check
             if (score > 0) {
                 let survivalProb = getSurvivalProb(p.adp);
                 let urgency = 1 - survivalProb;
                 score += (score * 0.25 * urgency);
             }
 
-            // ===========================================================
-            // POINT 2: QB-WR/TE STACKING SYNERGY BOOST
-            // ===========================================================
+            // 2. QB/Pass-Catcher Stacking
             let matchingQB = userQBs.find(qb => qb._cleanTeam === p._cleanTeam);
             if (matchingQB && ['WR', 'TE'].includes(p.Pos) && score > 0) {
                 score += Math.max(3.0, (p.AdvVBD || p.VBD) * 0.12);
@@ -1382,14 +1392,35 @@ const UI = {
                 p._stackPartner = null;
             }
 
-            // ===========================================================
-            // POINT 3: LATE-ROUND CEILING / UPSIDE BOOST (Rounds 9+)
-            // ===========================================================
-            if (currentRound >= 9 && p.upsideScore && (p.AdvVBD || p.VBD) > 0) {
-                let ceilingGain = (p.upsideScore - (p.AdvVBD || p.VBD)) * 0.75;
+            // 3. Late-Round Upside Shift
+            if (currentRound >= 9) {
+                let upsideWeight = Math.min(1.0, (currentRound - 8) * 0.15);
+                let floorWeight = 1.0 - upsideWeight;
+
+                let floorScore = score;
+                let ceilingScore = p.upsideScore || score;
+                score = (floorScore * floorWeight) + (ceilingScore * upsideWeight);
+
+                if (p.isRBHandcuff || (p.age && p.age <= 22)) {
+                    score += (currentRound * 0.8);
+                }
+            } else if (p.upsideScore && (p.AdvVBD || p.VBD) > 0) {
+                let ceilingGain = (p.upsideScore - (p.AdvVBD || p.VBD)) * 0.25;
                 score += Math.max(0, ceilingGain);
             }
 
+            // 4. Portfolio Context Adjustments (Safe vs Flyer)
+            p._rosterContextBadge = null;
+            if (needsSafety && p._isSafeFloor && currentRound <= 9) {
+                if (score > 0) score *= 1.30; 
+                p._rosterContextBadge = "🛡️ Safe Floor (Balances Roster Risk)";
+            } 
+            else if (needsUpside && p._isFlyer && currentRound >= 7) {
+                if (score > 0) score *= 1.35;
+                p._rosterContextBadge = "🚀 Upside Flyer (High Ceiling)";
+            }
+
+            // 5. Roster Limit / Overage Penalties
             let posRoster = State.settings.roster[p.Pos];
             let starterMax = posRoster ? posRoster.max : 0;
             let currentCount = userTeam.counts[p.Pos] || 0;
@@ -1399,20 +1430,17 @@ const UI = {
             let isFlexOpen = ['RB', 'WR', 'TE'].includes(p.Pos) && (userTeam.counts['Flex'] < (State.settings.roster.Flex?.max || 0));
             let isSuperflexOpen = ['QB', 'RB', 'WR', 'TE'].includes(p.Pos) && (userTeam.counts['Superflex'] < (State.settings.roster.Superflex?.max || 0));
 
-            // Restrict Bench Value
             if (!isStarterOpen && !(isFlexRBWROpen || isFlexOpen || isSuperflexOpen)) {
                 let overage = currentCount - starterMax;
                 let penalty = State.isPositionFlexEligible(p.Pos)
-                    ? Math.pow(0.5, overage + 1)  // RBs/WRs decay slowly on bench
-                    : (overage === 0 ? 0.05 : 0.01); // 2nd QBs/TEs drop heavily
+                    ? Math.pow(0.5, overage + 1)  
+                    : (overage === 0 ? 0.05 : 0.01); 
 
-                if (score > 0) {
-                    score *= penalty;
-                } else {
-                    score /= penalty; // If score is -10, dividing by 0.05 pushes it to -200 (sending them to the bottom!)
-                }
+                if (score > 0) score *= penalty;
+                else score /= penalty; 
             }
 
+            // 6. Handcuff Starter Bonus & Bye Week Penalty
             let userOwnsStarter = p.starterName && userRoster.some(r => r._cleanName === State.normalizeName(p.starterName));
             if (userOwnsStarter) score += 5;
 
@@ -1420,18 +1448,20 @@ const UI = {
                 const starter = userRoster.find(r => r.Pos === p.Pos);
                 if (starter && starter.byeWeek === p.byeWeek && p.byeWeek !== 'N/A') {
                     if (score > 0) score *= 0.5;
-                    else score *= 2.0; // Pushes negative scores further down
+                    else score *= 2.0; 
                 }
             }
 
             p._recScore = score;
         });
 
+        // ===========================================================
+        // POST-LOOP: SORT AND RENDER
+        // ===========================================================
         let bestFit = [...viablePlayers]
             .filter(p => {
                 let posRoster = State.settings.roster[p.Pos];
                 let starterMax = posRoster ? posRoster.max : 1;
-                // Exclude drafting a 2nd QB/TE/PK/DST as the "Best Addition" until Round 12
                 if (['QB', 'PK', 'DST'].includes(p.Pos) && userTeam.counts[p.Pos] >= starterMax && currentRound < 12) {
                     return false;
                 }
@@ -1439,8 +1469,7 @@ const UI = {
             })
             .sort((a, b) => b._recScore - a._recScore)[0];
 
-        // Lower threshold so Best Fit still recommends late-round flex stashes and handcuffs
-        if (bestFit && (bestFit._addedPPW || 0) <= 0.0 && !bestFit._byeFillWeek && !bestFit.starterName) {
+        if (bestFit && (bestFit._addedPPW || 0) <= 0.0 && !bestFit._byeFillWeek && !bestFit.starterName && !bestFit._rosterContextBadge && !bestFit._ceilingTags?.length) {
             bestFit = null;
         }
 
@@ -1450,7 +1479,6 @@ const UI = {
         let htmlStr = strategyBanner;
 
         if (bestFit) {
-            let survivalProb = getSurvivalProb(bestFit.adp);
             let ppwText = '';
             if (bestFit._addedPPW >= 1.0 || (bestFit._addedPPW > 0 && !bestFit._byeFillWeek)) {
                 ppwText = `+${bestFit._addedPPW.toFixed(2)} PPW`;
@@ -1460,18 +1488,23 @@ const UI = {
                 ppwText = `Flex Depth`;
             }
             let stackBadge = bestFit._stackPartner ? ` • ⚡ Stack w/ ${bestFit._stackPartner}` : '';
-            let cliffBadge = bestFit._tierCliffTag ? ` • <span class="text-amber-200 font-bold">${bestFit._tierCliffTag}</span>` : '';
+            
+            // Dynamic Context / Upside Badges for Best Fit
+            let cliffBadge = '';
+            if (bestFit._rosterContextBadge) cliffBadge = ` • <span class="text-amber-200 font-bold">${bestFit._rosterContextBadge}</span>`;
+            else if (bestFit._tierCliffTag) cliffBadge = ` • <span class="text-amber-200 font-bold">${bestFit._tierCliffTag}</span>`;
+            else if (currentRound >= 9 && bestFit._ceilingTags && bestFit._ceilingTags.length > 0) cliffBadge = ` • <span class="text-amber-200 font-bold">🚀 Upside: ${bestFit._ceilingTags.join(' & ')}</span>`;
 
             htmlStr += `
-    <div class="p-3 bg-gradient-to-br from-emerald-700 to-teal-900 rounded-xl border border-emerald-500/50 flex justify-between items-center shadow-md cursor-pointer hover:shadow-lg transition mb-2" onclick="UI.showPlayerCard('${bestFit._cleanName}')">
-        <div>
-            <span class="text-[9px] font-extrabold uppercase tracking-widest text-emerald-200 mb-1 flex items-center">
-                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg> Best Lineup Addition
-            </span>
-            <h4 class="font-bold text-sm text-white">${bestFit.Player}</h4>
-            <p class="text-[10px] text-emerald-100 font-medium">${bestFit.Pos} • ${ppwText}${stackBadge}${cliffBadge}</p>
-        </div>
-    </div>`;
+            <div class="p-3 bg-gradient-to-br from-emerald-700 to-teal-900 rounded-xl border border-emerald-500/50 flex justify-between items-center shadow-md cursor-pointer hover:shadow-lg transition mb-2" onclick="UI.showPlayerCard('${bestFit._cleanName}')">
+                <div>
+                    <span class="text-[9px] font-extrabold uppercase tracking-widest text-emerald-200 mb-1 flex items-center">
+                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg> Best Lineup Addition
+                    </span>
+                    <h4 class="font-bold text-sm text-white">${bestFit.Player}</h4>
+                    <p class="text-[10px] text-emerald-100 font-medium">${bestFit.Pos} • ${ppwText}${stackBadge}${cliffBadge}</p>
+                </div>
+            </div>`;
         }
 
         htmlStr += vbdRecs.map((p, i) => {
@@ -1482,17 +1515,17 @@ const UI = {
             let isStarterNeeded = userTeam.counts[p.Pos] < starterMax;
             let hasPositiveValue = (p.AdvVBD || p.VBD) > 0;
 
-            // ⚡ Full Decision Tree (Tier Cliff + Stacks + Urgency + Need)
+            // ⚡ Full Decision Tree (Context Badges + Tier Cliffs + Stacks + Urgency + Need)
             let highlight = '';
-            if (p._tierCliffTag) highlight = `<span class="text-amber-300 font-bold">${p._tierCliffTag}</span>`;
+            if (p._rosterContextBadge) highlight = `<span class="text-amber-300 font-bold">${p._rosterContextBadge}</span>`;
+            else if (p._tierCliffTag) highlight = `<span class="text-amber-300 font-bold">${p._tierCliffTag}</span>`;
             else if (p._stackPartner) highlight = `⚡ Stack with ${p._stackPartner}`;
-            else if (currentRound >= 9 && p.upsideScore > (p.AdvVBD || p.VBD) * 1.1) highlight = `🚀 High Ceiling Target`;
+            else if (currentRound >= 9 && p._ceilingTags && p._ceilingTags.length > 0) highlight = `🚀 Upside: ${p._ceilingTags.join(' & ')}`;
             else if (survivalProb < 0.15 && (isStarterNeeded || hasPositiveValue)) highlight = `⚡ High Urgency (Gone by Pick ${nextUserOverallPick})`;
             else if (p.adp && (p.adp < currentOverallPick)) highlight = `ADP Value (Passed ADP ${p.adp.toFixed(0)})`;
             else if (isStarterNeeded) highlight = `Strong Team Need`;
             else highlight = `Flex / Bench Depth`;
 
-            // ⚡ Raw Points Per Week Added Badge
             let ppwVal = '';
             if (p._addedPPW >= 1.0 || (p._addedPPW > 0 && !p._byeFillWeek)) {
                 ppwVal = `+${p._addedPPW.toFixed(2)}/wk`;
@@ -1504,18 +1537,15 @@ const UI = {
             }
 
             return `
-    <div class="p-3 bg-indigo-800/80 rounded-xl border border-indigo-700/50 flex justify-between items-center shadow-inner cursor-pointer hover:bg-indigo-700 transition mb-2" onclick="UI.showPlayerCard('${p._cleanName}')">
-        <!-- Left Side: Rank, Player Name, Position, Strategy Tag -->
-        <div>
-            <h4 class="font-bold text-xs text-white">${bestFit ? i + 2 : i + 1}. ${p.Player} <span class="text-[10px] font-normal text-indigo-300">(${p.Team})</span></h4>
-            <p class="text-[10px] text-indigo-200 font-medium mt-0.5">${p.Pos} • ${highlight}${stackBadge}</p>
-        </div>
-        
-        <!-- Right Side: Lineup PPW Impact (Completes justify-between) -->
-        <div class="text-right shrink-0 ml-2">
-            <span class="text-[10px] font-extrabold text-emerald-300 bg-emerald-950/80 border border-emerald-700/80 px-2 py-0.5 rounded shadow-sm">${ppwVal}</span>
-        </div>
-    </div>`;
+            <div class="p-3 bg-indigo-800/80 rounded-xl border border-indigo-700/50 flex justify-between items-center shadow-inner cursor-pointer hover:bg-indigo-700 transition mb-2" onclick="UI.showPlayerCard('${p._cleanName}')">
+                <div>
+                    <h4 class="font-bold text-xs text-white">${bestFit ? i + 2 : i + 1}. ${p.Player} <span class="text-[10px] font-normal text-indigo-300">(${p.Team})</span></h4>
+                    <p class="text-[10px] text-indigo-200 font-medium mt-0.5">${p.Pos} • ${highlight}${stackBadge}</p>
+                </div>
+                <div class="text-right shrink-0 ml-2">
+                    <span class="text-[10px] font-extrabold text-emerald-300 bg-emerald-950/80 border border-emerald-700/80 px-2 py-0.5 rounded shadow-sm">${ppwVal}</span>
+                </div>
+            </div>`;
         }).join('');
 
         container.innerHTML = htmlStr;

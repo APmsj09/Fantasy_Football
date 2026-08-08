@@ -55,13 +55,13 @@ window.AutoDraft = {
             let pos = p.Pos;
             let posRoster = State.settings.roster[pos];
             let maxForPos = posRoster ? posRoster.max : 0;
-            
+
             if ((team.counts[pos] || 0) < maxForPos) return true;
             if (['RB', 'WR'].includes(pos) && team.counts['FlexRBWR'] < (State.settings.roster.FlexRBWR?.max || 0)) return true;
             if (['RB', 'WR', 'TE'].includes(pos) && team.counts['Flex'] < (State.settings.roster.Flex?.max || 0)) return true;
             if (['QB', 'RB', 'WR', 'TE'].includes(pos) && team.counts['Superflex'] < (State.settings.roster.Superflex?.max || 0)) return true;
             if (team.counts['Bench'] < State.settings.roster.Bench.max) return true;
-            
+
             return false;
         });
 
@@ -78,16 +78,40 @@ window.AutoDraft = {
 
             // Manager Personality Strategy Multipliers
             if (profile) {
-                if (round <= 4) {
-                    if (profile.strategy === 'RB-Heavy' && p.Pos === 'RB') multiplier *= 1.4;
-                    if (profile.strategy === 'Zero-RB' && p.Pos === 'WR') multiplier *= 1.4;
+                // 1. Early-Round Strategy Multipliers (Rounds 1-5)
+                if (round <= 5) {
+                    if (profile.strategy === 'Hero-RB') {
+                        // Boost WRs heavily if they already drafted their 1 Hero RB
+                        if (team.counts['RB'] >= 1 && p.Pos === 'WR') multiplier *= 1.35;
+                        // Prevent taking a 2nd RB early
+                        if (team.counts['RB'] >= 1 && p.Pos === 'RB') multiplier *= 0.60;
+                    }
+                    else if (profile.strategy === 'Zero-RB' && round <= 5) {
+                        if (p.Pos === 'WR') multiplier *= 1.40;
+                        if (p.Pos === 'RB') multiplier *= 0.30; // Strictly avoid early RBs
+                    }
+                    else if (profile.strategy === 'Robust-RB' && round <= 3) {
+                        if (p.Pos === 'RB') multiplier *= 1.35;
+                    }
                 }
 
-                if (p.Pos === 'QB' && profile.draftsEarlyQB && round >= (profile.qbAvgRound - 1) && round <= (profile.qbAvgRound + 1)) multiplier *= 1.8;
-                if (p.Pos === 'TE' && profile.draftsEarlyTE && round >= (profile.teAvgRound - 1) && round <= (profile.teAvgRound + 1)) multiplier *= 1.8;
+                // 2. Mid-Round Handcuff / RB Collector Tendency (Rounds 7-11)
+                if (round >= 7 && round <= 11 && profile.likesHandcuffs) {
+                    if (p.Pos === 'RB') multiplier *= 1.25;
+                }
 
-                if (profile.teamBias !== 'None' && p._cleanTeam === profile.teamBias) {
-                    multiplier *= 1.15;
+                // 3. Early Kicker / DST Reacher (Rounds 10-12)
+                if (round >= 10 && round <= 12) {
+                    if (p.Pos === 'PK' && profile.reachesForKicker) multiplier *= 20.0; // Removes penalty
+                    if (p.Pos === 'DST' && profile.reachesForDST) multiplier *= 20.0;
+                }
+
+                // 4. Stacking Synergy Boost (Rounds 4-10)
+                // If CPU already drafted a QB, boost receivers on the SAME NFL team
+                let draftedQBs = team.roster.filter(r => r.Pos === 'QB');
+                if (draftedQBs.length > 0 && ['WR', 'TE'].includes(p.Pos)) {
+                    let matchesQB = draftedQBs.some(qb => qb._cleanTeam === p._cleanTeam);
+                    if (matchesQB) multiplier *= 1.20; // 20% stack boost
                 }
             }
 
@@ -147,7 +171,7 @@ window.AutoDraft = {
         for (let item of evaluatedWrapper) {
             let p = item.player;
             let pos = p.Pos;
-            
+
             // Safely read the max positional limit
             let posRoster = State.settings.roster[pos];
             let maxForPos = posRoster ? posRoster.max : 0;

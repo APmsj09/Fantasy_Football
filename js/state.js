@@ -1574,6 +1574,139 @@ const State = {
             }
 
             // ===========================================================
+            // 10. DYNAMIC UPSIDE, CEILING & VOLATILITY CLASSIFICATIONS
+            // ===========================================================
+            let upsideMultiplier = 1.0;
+            let ceilingTags = [];
+
+            p._isFlyer = false;
+            p._isSafeFloor = false;
+
+            let pAge = p.age || p.Age;
+            const tTeam = this.normalizeTeam(p.Team);
+            const rushEnv = this.teamAdvRush ? this.teamAdvRush[tTeam] : null;
+            const passEnv = this.teamAdvPass ? this.teamAdvPass[tTeam] : null;
+            const teamDist = this.teamTargets.find(t => t.Team === p.Team);
+
+            // 🌟 INHERITED ROLE FLAG (For Rookies & Free Agents)
+            let isInheritedStarter = p.isNewRole && p.depthChart === 1;
+
+            // -----------------------------------------------------------
+            // RB CLASSIFICATION
+            // -----------------------------------------------------------
+            if (p.Pos === 'RB') {
+                // 🚀 CEILING / FLYER TRAITS
+                if (p.isRBHandcuff || (pAge && pAge <= 22)) {
+                    p._isFlyer = true;
+                    upsideMultiplier += 0.35;
+                    ceilingTags.push(p.isRBHandcuff ? "Lottery Ticket" : "Breakout Age");
+                }
+                if (p.pastStats && p.pastStats.bigPlays >= 8) {
+                    p._isFlyer = true;
+                    upsideMultiplier += 0.15;
+                    if (!ceilingTags.includes("Explosive Playmaker")) ceilingTags.push("Explosive Playmaker");
+                }
+                if (isInheritedStarter && teamDist && teamDist['RB %'] >= 20.0) {
+                    p._isFlyer = true;
+                    upsideMultiplier += 0.15;
+                    if (!ceilingTags.includes("Elite Inherited Volume")) ceilingTags.push("Elite Inherited Volume");
+                }
+
+                // 🛡️ SAFE FLOOR TRAITS
+                let hasVolumeFloor = (p.targetShare && p.targetShare >= 10) || (p.snapShare && p.snapShare >= 60) || (p.hvo && p.hvo >= 50);
+                let hasRedZoneFloor = (p.rzAtt && p.rzAtt >= 35);
+                let hasSchemeFloor = (rushEnv && rushEnv.ybcAtt >= 2.5 && p.snapShare && p.snapShare >= 45) || (p.olTier === 'S' || p.olTier === 'A');
+
+                // 🌟 ROOKIE/NEW STARTER INHERITED FLOOR
+                // If a rookie steps into a starting job behind an elite line or high YBC scheme, their floor is instantly safe.
+                if (isInheritedStarter && ((rushEnv && rushEnv.ybcAtt >= 2.5) || p.olTier === 'S' || p.olTier === 'A')) {
+                    hasSchemeFloor = true;
+                }
+
+                if (hasVolumeFloor || hasRedZoneFloor || hasSchemeFloor) {
+                    p._isSafeFloor = true;
+                }
+
+                if (pAge && pAge >= 28) upsideMultiplier -= 0.15;
+            }
+
+            // -----------------------------------------------------------
+            // WR / TE CLASSIFICATION
+            // -----------------------------------------------------------
+            else if (['WR', 'TE'].includes(p.Pos)) {
+                // 🚀 CEILING / FLYER TRAITS
+                if ((p.aDOT && p.aDOT >= 12.0) || (pAge && pAge <= 22)) {
+                    p._isFlyer = true;
+                    upsideMultiplier += 0.20;
+                    ceilingTags.push(p.aDOT >= 12.0 ? "Deep Threat" : "Breakout Age");
+                }
+                if (p.airYards && p.airYards >= 1200) {
+                    p._isFlyer = true;
+                    upsideMultiplier += 0.15;
+                    if (!ceilingTags.includes("Air Yards Monster")) ceilingTags.push("Air Yards Monster");
+                }
+                if (p.pastStats && p.pastStats.bigPlays >= 12) {
+                    p._isFlyer = true;
+                    upsideMultiplier += 0.15;
+                    if (!ceilingTags.includes("Spike Week Upside")) ceilingTags.push("Spike Week Upside");
+                }
+
+                // 🛡️ SAFE FLOOR TRAITS
+                let hasTargetFloor = (p.targetShare && p.targetShare >= 20);
+                let hasEfficiencyFloor = (p.trueCatchRate && p.trueCatchRate >= 85.0);
+                let hasRedZoneFloor = (p.rzTgt && p.rzTgt >= 15);
+
+                // 🌟 ROOKIE/NEW STARTER INHERITED FLOOR
+                // If a rookie is named WR1/TE1 on a team that funnels targets to that position, they inherit that floor.
+                if (isInheritedStarter && teamDist) {
+                    if (p.Pos === 'WR' && teamDist['WR %'] >= 60.0) hasTargetFloor = true;
+                    if (p.Pos === 'TE' && teamDist['TE %'] >= 22.0) hasTargetFloor = true;
+                }
+
+                if ((hasTargetFloor && (!p.aDOT || p.aDOT < 11.0)) || hasEfficiencyFloor || hasRedZoneFloor) {
+                    p._isSafeFloor = true;
+                }
+
+                if (pAge && pAge >= 31 && p.Pos === 'WR') upsideMultiplier -= 0.15;
+            }
+
+            // -----------------------------------------------------------
+            // QB CLASSIFICATION
+            // -----------------------------------------------------------
+            else if (p.Pos === 'QB') {
+                // 🚀 CEILING / FLYER TRAITS
+                if (p.stats && p.stats.rushAtt >= 65) {
+                    p._isFlyer = true;
+                    upsideMultiplier += 0.25;
+                    ceilingTags.push("Rushing Upside");
+                }
+
+                // 🛡️ SAFE FLOOR TRAITS
+                let hasCleanPocket = (p.pressureRate && p.pressureRate <= 18.0) || (p.olTier === 'S' || p.olTier === 'A');
+                let hasAccuracyFloor = (p.trueCatchRate && p.trueCatchRate >= 70.0) || (p.stats && p.stats.passCmp / p.stats.passAtt >= 0.66);
+
+                // 🌟 ROOKIE/NEW STARTER INHERITED FLOOR
+                if (isInheritedStarter) {
+                    // Inherit the O-Line's pocket protection time and the receiver room's ability to catch the ball.
+                    if ((passEnv && passEnv.pktTime >= 2.5) || p.olTier === 'S' || p.olTier === 'A') hasCleanPocket = true;
+                    if (passEnv && passEnv.onTgtPct >= 75.0) hasAccuracyFloor = true;
+                }
+
+                if (hasCleanPocket && hasAccuracyFloor) {
+                    p._isSafeFloor = true;
+                }
+            }
+
+            p._ceilingTags = [...new Set(ceilingTags)]; // Remove duplicates
+
+            let baseVbd = p.AdvVBD || p.VBD;
+            if (baseVbd > 0) {
+                p.upsideScore = baseVbd * upsideMultiplier;
+            } else {
+                p.upsideScore = baseVbd / Math.max(0.5, upsideMultiplier);
+            }
+
+            // ===========================================================
             // FINAL CALCULATIONS
             // ===========================================================
             // Tightened bounds from 0.75-1.25 down to 0.80-1.20 for enhanced stability
@@ -1647,61 +1780,94 @@ const State = {
 
             const round = parseInt(cols[0]);
             const teamName = cols[2].replace(/,/g, '').trim();
-            const playerName = cols[3]?.replace(/,/g, '').trim(); // Assuming col 3 is player name
+            const playerName = cols[3]?.replace(/,/g, '').trim();
             const pos = this.normalizePos(cols[4]);
 
             if (!profiles[teamName]) {
                 profiles[teamName] = {
-                    name: teamName, totalDrafts: 0,
+                    name: teamName,
+                    totalDrafts: 0,
                     earlyRBs: 0, earlyWRs: 0,
-                    qbAvgRound: 0, qbCount: 0, teAvgRound: 0, teCount: 0,
-                    pkAvgRound: 0, pkCount: 0, dstAvgRound: 0, dstCount: 0,
-                    teamTally: {} // NEW: Track drafted player NFL teams
+                    firstQbRound: 99, firstTeRound: 99,
+                    qbAvgRound: 0, qbCount: 0,
+                    teAvgRound: 0, teCount: 0,
+                    pkAvgRound: 0, pkCount: 0,
+                    dstAvgRound: 0, dstCount: 0,
+                    midRoundRBs: 0, midRoundWRs: 0,
+                    teamTally: {}
                 };
             }
 
-            // Look up the player to find their NFL Team
+            let p = profiles[teamName];
+
+            // Track Early Rounds 1-3
+            if (round <= 3) {
+                if (pos === 'RB') p.earlyRBs++;
+                if (pos === 'WR') p.earlyWRs++;
+            }
+
+            // Track Mid-Rounds 6-10
+            if (round >= 6 && round <= 10) {
+                if (pos === 'RB') p.midRoundRBs++;
+                if (pos === 'WR') p.midRoundWRs++;
+            }
+
+            // Track First QB / TE Selected
+            if (pos === 'QB' && round < p.firstQbRound) p.firstQbRound = round;
+            if (pos === 'TE' && round < p.firstTeRound) p.firstTeRound = round;
+
+            // Position Averages
+            if (pos === 'QB' && round < 12) { p.qbAvgRound += round; p.qbCount++; }
+            if (pos === 'TE' && round < 12) { p.teAvgRound += round; p.teCount++; }
+            if (pos === 'PK') { p.pkAvgRound += round; p.pkCount++; }
+            if (pos === 'DST') { p.dstAvgRound += round; p.dstCount++; }
+
+            // Track NFL Team Bias
             let matchedPlayer = this.matchPlayerFast(playerName, '', pos);
             if (matchedPlayer && matchedPlayer.Team) {
                 let nflTeam = this.normalizeTeam(matchedPlayer.Team);
-                profiles[teamName].teamTally[nflTeam] = (profiles[teamName].teamTally[nflTeam] || 0) + 1;
+                p.teamTally[nflTeam] = (p.teamTally[nflTeam] || 0) + 1;
             }
-
-            if (round <= 3) {
-                if (pos === 'RB') profiles[teamName].earlyRBs++;
-                if (pos === 'WR') profiles[teamName].earlyWRs++;
-            }
-
-            if (pos === 'QB' && round < 12) { profiles[teamName].qbAvgRound += round; profiles[teamName].qbCount++; }
-            if (pos === 'TE' && round < 12) { profiles[teamName].teAvgRound += round; profiles[teamName].teCount++; }
-            if (pos === 'PK') { profiles[teamName].pkAvgRound += round; profiles[teamName].pkCount++; }
-            if (pos === 'DST') { profiles[teamName].dstAvgRound += round; profiles[teamName].dstCount++; }
         }
 
+        // Resolve Manager Personalities & Mid-Round Tendencies
         for (let key in profiles) {
             let p = profiles[key];
+
             p.qbAvgRound = p.qbCount > 0 ? (p.qbAvgRound / p.qbCount) : 10;
             p.teAvgRound = p.teCount > 0 ? (p.teAvgRound / p.teCount) : 10;
             p.pkAvgRound = p.pkCount > 0 ? (p.pkAvgRound / p.pkCount) : 15;
             p.dstAvgRound = p.dstCount > 0 ? (p.dstAvgRound / p.dstCount) : 15;
 
-            if (p.earlyRBs > p.earlyWRs * 1.5) p.strategy = "RB-Heavy";
-            else if (p.earlyWRs > p.earlyRBs * 1.5) p.strategy = "Zero-RB";
-            else p.strategy = "Balanced";
+            p.draftsEarlyQB = p.firstQbRound <= 5;
+            p.draftsEarlyTE = p.firstTeRound <= 5;
 
-            p.draftsEarlyQB = p.qbAvgRound <= 5;
-            p.draftsEarlyTE = p.teAvgRound <= 5;
+            // --- Core Strategy Logic ---
+            if (p.earlyRBs >= 2) {
+                p.strategy = "Robust-RB";
+            } else if (p.earlyRBs === 1 && p.earlyWRs >= 2) {
+                p.strategy = "Hero-RB";
+            } else if (p.earlyRBs === 0 && p.earlyWRs >= 2) {
+                p.strategy = "Zero-RB";
+            } else if (p.draftsEarlyQB && p.draftsEarlyTE) {
+                p.strategy = "Double-Elite";
+            } else {
+                p.strategy = "Balanced";
+            }
 
-            // NEW: Resolve Team Bias
-            let maxTally = 0;
-            let bias = 'None';
+            // --- Mid-Round Tendency Flags ---
+            p.likesHandcuffs = p.midRoundRBs >= 3;
+            p.reachesForKicker = p.pkAvgRound <= 12;
+            p.reachesForDST = p.dstAvgRound <= 12;
+
+            // Team Bias
+            let maxTally = 0, bias = 'None';
             for (let teamKey in p.teamTally) {
                 if (p.teamTally[teamKey] > maxTally) {
                     maxTally = p.teamTally[teamKey];
                     bias = teamKey;
                 }
             }
-            // Require a distinct pattern (3+ players from the same team) to declare a bias
             p.teamBias = maxTally >= 3 ? bias : 'None';
         }
 
