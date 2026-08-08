@@ -282,22 +282,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderTeamTargets(position) {
         const tbody = document.getElementById('team-targets-body');
-        if (!tbody || State.teamTargets.length === 0) return;
+        if (!tbody || !State.teamTargets || State.teamTargets.length === 0) return;
 
         let sortedTeams = [...State.teamTargets].sort((a, b) => (b[`${position} %`] || 0) - (a[`${position} %`] || 0));
 
         tbody.innerHTML = sortedTeams.map(t => `
-            <tr class="hover:bg-slate-50">
-                <td class="px-4 py-3 font-medium text-gray-900">${t.Team}</td>
-                <td class="px-4 py-3 font-bold text-indigo-600">${t[`${position} %`]}%</td>
-                <td class="px-4 py-3 text-sm text-gray-500">${t[`${position} Targets`]} / ${t['Total Targets']}</td>
-            </tr>
-        `).join('');
+        <tr class="hover:bg-slate-50">
+            <td class="px-4 py-3 font-medium text-gray-900">${t.Team}</td>
+            <td class="px-4 py-3 font-bold text-indigo-600">${t[`${position} %`]}%</td>
+            <td class="px-4 py-3 text-sm text-gray-500">${t[`${position} Targets`]} / ${t['Total Targets']}</td>
+        </tr>
+    `).join('');
     }
 
     function renderMetricLeaders(metric) {
         const tbody = document.getElementById('metric-leaders-body');
-        if (!tbody || State.advancedMetrics.length === 0) return;
+        if (!tbody || !State.advancedMetrics || State.advancedMetrics.length === 0) return;
 
         let sortedPlayers = [...State.advancedMetrics]
             .filter(p => p[metric] !== undefined && p[metric] !== null)
@@ -308,12 +308,12 @@ document.addEventListener('DOMContentLoaded', () => {
             let pos = p['ATT'] ? 'RB' : (p['REC'] ? 'WR/TE' : 'QB');
             let displayVal = metric === '% TM' || metric === 'TGT %' ? `${p[metric]}%` : p[metric];
             return `
-            <tr class="hover:bg-slate-50">
-                <td class="px-4 py-3 font-medium text-gray-900">${p.Player}</td>
-                <td class="px-4 py-3 text-sm text-gray-500">${pos}</td>
-                <td class="px-4 py-3 font-bold text-emerald-600">${displayVal}</td>
-            </tr>
-            `;
+        <tr class="hover:bg-slate-50">
+            <td class="px-4 py-3 font-medium text-gray-900">${p.Player}</td>
+            <td class="px-4 py-3 text-sm text-gray-500">${pos}</td>
+            <td class="px-4 py-3 font-bold text-emerald-600">${displayVal}</td>
+        </tr>
+        `;
         }).join('');
     }
 
@@ -351,10 +351,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const initialRound = Math.floor(State.currentPick / (State.settings.numTeams || 12)) + 1;
     const currentRoundEl = document.getElementById('current-round');
     if (currentRoundEl) currentRoundEl.textContent = initialRound;
-    
+
     const currentPickEl = document.getElementById('current-pick-number');
     if (currentPickEl) currentPickEl.textContent = (State.currentPick % (State.settings.numTeams || 12)) + 1;
-    
+
     const overallPickEl = document.getElementById('overall-pick-number');
     if (overallPickEl) overallPickEl.textContent = State.currentPick + 1;
 
@@ -368,7 +368,7 @@ document.addEventListener('DOMContentLoaded', () => {
             let stratColor = p.strategy === 'RB-Heavy' ? 'text-emerald-600' : (p.strategy === 'Zero-RB' ? 'text-indigo-600' : 'text-gray-600');
             // NEW: Add Team Bias badge
             let biasBadge = p.teamBias !== 'None' ? `<span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded text-[10px] font-bold">${p.teamBias} Fan</span>` : '<span class="text-gray-400">None</span>';
-            
+
             htmlStr += `
                 <tr class="hover:bg-slate-50">
                     <td class="px-4 py-3 font-bold text-gray-900">${p.name}</td>

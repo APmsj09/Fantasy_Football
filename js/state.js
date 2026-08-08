@@ -664,6 +664,7 @@ const State = {
     },
 
     mergeSOSData(sosList) {
+        if (!sosList || !Array.isArray(sosList)) return;
         this.sosData = sosList;
         const teamPosMap = {};
 
@@ -870,15 +871,18 @@ const State = {
 
         let viablePlayers = availablePlayers.filter(player => {
             let pos = player.Pos;
-            if (team.counts[pos] < this.settings.roster[pos].max) return true;
+            let posConfig = this.settings.roster[pos];
+
+            // Safe check: Ensure position exists in roster settings
+            if (posConfig && team.counts[pos] < posConfig.max) return true;
             if (['RB', 'WR'].includes(pos) && team.counts['FlexRBWR'] < (this.settings.roster.FlexRBWR?.max || 0)) return true;
             if (['RB', 'WR', 'TE'].includes(pos) && team.counts['Flex'] < (this.settings.roster.Flex?.max || 0)) return true;
             if (['QB', 'RB', 'WR', 'TE'].includes(pos) && team.counts['Superflex'] < (this.settings.roster.Superflex?.max || 0)) return true;
-            if (team.counts['Bench'] < this.settings.roster.Bench.max) return true;
+            if (team.counts['Bench'] < (this.settings.roster.Bench?.max || 6)) return true;
             return false;
         });
 
-        let topViable = viablePlayers.sort((a, b) => b.AdvVBD - a.AdvVBD).slice(0, 45);
+        let topViable = viablePlayers.sort((a, b) => (b.AdvVBD || b.VBD || 0) - (a.AdvVBD || a.VBD || 0)).slice(0, 45);
 
         topViable.forEach(p => {
             let simSeasonScore = 0;
@@ -903,7 +907,6 @@ const State = {
             p._byeFillWeek = null;
             p._byeFillPts = 0;
 
-            // Flag as a bye fill if they add little overall, but add significant points in a specific week
             if (p._addedPPW < 1.5 && maxWeekAdded >= 3.0 && bestByeFillWeek) {
                 p._byeFillWeek = bestByeFillWeek;
                 p._byeFillPts = maxWeekAdded;
@@ -1448,7 +1451,7 @@ const State = {
 
             if (lacksIndividualMetrics) {
                 p.isNewRole = true;
-                let teamDist = this.teamTargets.find(t => t.Team === p.Team);
+                let teamDist = (this.teamTargets || []).find(t => t.Team === p.Team);
 
                 if (teamDist && p.depthChart === 1) {
                     let posPctKey = `${p.Pos} %`;
