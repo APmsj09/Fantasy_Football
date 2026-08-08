@@ -347,12 +347,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const settingsUserPick = document.getElementById('setting-user-pick');
     if (settingsUserPick) settingsUserPick.addEventListener('change', () => UI.renderProfileAssignments());
 
+    document.getElementById('current-round').textContent = round;
+    document.getElementById('current-pick-number').textContent = (State.currentPick % State.settings.numTeams) + 1;
+    // NEW: Update Overall Pick
+    const overallPickEl = document.getElementById('overall-pick-number');
+    if (overallPickEl) overallPickEl.textContent = State.currentPick + 1;
+
+
+    // Inside renderInsightsTable()
     function renderInsightsTable() {
         const tbody = document.getElementById('insights-table-body');
         let htmlStr = '';
 
         Object.values(State.managerProfiles).forEach(p => {
             let stratColor = p.strategy === 'RB-Heavy' ? 'text-emerald-600' : (p.strategy === 'Zero-RB' ? 'text-indigo-600' : 'text-gray-600');
+            // NEW: Add Team Bias badge
+            let biasBadge = p.teamBias !== 'None' ? `<span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded text-[10px] font-bold">${p.teamBias} Fan</span>` : '<span class="text-gray-400">None</span>';
+            
             htmlStr += `
                 <tr class="hover:bg-slate-50">
                     <td class="px-4 py-3 font-bold text-gray-900">${p.name}</td>
@@ -361,6 +372,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td class="px-4 py-3 text-sm">${p.teAvgRound.toFixed(1)} ${p.draftsEarlyTE ? '⚠️ (Early)' : ''}</td>
                     <td class="px-4 py-3 text-sm">${p.pkAvgRound.toFixed(1)}</td>
                     <td class="px-4 py-3 text-sm">${p.dstAvgRound.toFixed(1)}</td>
+                    <td class="px-4 py-3">${biasBadge}</td>
                 </tr>
             `;
         });

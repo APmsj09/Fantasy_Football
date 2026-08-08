@@ -603,6 +603,20 @@ const UI = {
         if (isOffense) {
             if (p.pastStats) {
                 const ps = p.pastStats;
+                let totalTouches = (ps.rushAtt || 0) + (ps.rec || 0);
+
+                // 1. The Curse of 300 Touches
+                if (p.Pos === 'RB' && totalTouches >= 300) {
+                    cons.push(`<strong>The '300-Touch' Curse:</strong> Logged a grueling ${totalTouches} touches last season. Running backs historically suffer sharp efficiency drops or injuries the year following a 300+ touch workload.`);
+                    riskScore += 2;
+                }
+
+                // 2. Durability Concerns
+                if (ps.gp && ps.gp < 12) {
+                    cons.push(`<strong>Durability Risk:</strong> Missed significant time last season, playing only <strong>${ps.gp} games</strong>. Injury variance lowers his floor.`);
+                    riskScore += 2;
+                }
+
                 if (pos === 'QB' && ps.int && ps.int >= 10) { cons.push(`<strong>Turnover Concerns:</strong> Threw <strong>${ps.int} interceptions</strong> last season.`); riskScore += 1; }
                 if (ps.fum && ps.fum >= 3) { cons.push(`<strong>Ball Security Issues:</strong> Coughed up <strong>${ps.fum} fumbles lost</strong> last season.`); riskScore += 1; }
                 if (pos === 'RB' && ps.rushYpa && ps.rushYpa < 3.8 && ps.rushAtt && ps.rushAtt >= 80) { cons.push(`<strong>Low Ground Efficiency:</strong> Averaged just <strong>${ps.rushYpa.toFixed(1)} YPC</strong> last season.`); riskScore += 1; }
@@ -1110,6 +1124,8 @@ const UI = {
         const round = Math.floor(State.currentPick / State.settings.numTeams) + 1;
         document.getElementById('current-round').textContent = round;
         document.getElementById('current-pick-number').textContent = (State.currentPick % State.settings.numTeams) + 1;
+        const overallPickEl = document.getElementById('overall-pick-number');
+        if (overallPickEl) overallPickEl.textContent = State.currentPick + 1;
 
         if (State.currentPick < State.draftOrder.length) {
             const onClockId = State.draftOrder[State.currentPick];
@@ -1416,7 +1432,7 @@ const UI = {
                 let posRoster = State.settings.roster[p.Pos];
                 let starterMax = posRoster ? posRoster.max : 1;
                 // Exclude drafting a 2nd QB/TE/PK/DST as the "Best Addition" until Round 12
-                if (['QB','PK', 'DST'].includes(p.Pos) && userTeam.counts[p.Pos] >= starterMax && currentRound < 12) {
+                if (['QB', 'PK', 'DST'].includes(p.Pos) && userTeam.counts[p.Pos] >= starterMax && currentRound < 12) {
                     return false;
                 }
                 return true;

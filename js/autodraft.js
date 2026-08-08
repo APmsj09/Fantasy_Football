@@ -64,8 +64,15 @@ window.AutoDraft = {
                     if (profile.strategy === 'RB-Heavy' && p.Pos === 'RB') multiplier *= 1.4;
                     if (profile.strategy === 'Zero-RB' && p.Pos === 'WR') multiplier *= 1.4;
                 }
+
                 if (p.Pos === 'QB' && profile.draftsEarlyQB && round >= (profile.qbAvgRound - 1) && round <= (profile.qbAvgRound + 1)) multiplier *= 1.8;
                 if (p.Pos === 'TE' && profile.draftsEarlyTE && round >= (profile.teAvgRound - 1) && round <= (profile.teAvgRound + 1)) multiplier *= 1.8;
+
+                // NEW: Team Bias Boost
+                if (profile.teamBias !== 'None' && p._cleanTeam === profile.teamBias) {
+                    // Apply a 15% valuation bump to players on their favorite team
+                    multiplier *= 1.15;
+                }
             }
 
             let posRoster = State.settings.roster[p.Pos];

@@ -1411,7 +1411,7 @@ const State = {
             if (p.snapShare) {
                 // Lowered bonuses. Projection already accounts for snap volume. This just rewards stability.
                 if (p.snapShare >= 80) adjMultiplier += 0.03;
-                else if (p.snapShare < 40) adjMultiplier -= 0.03; 
+                else if (p.snapShare < 40) adjMultiplier -= 0.03;
             } else if (p.depthChart !== undefined && p.depthChart !== null) {
                 if (p.depthChart === 1) adjMultiplier += 0.02;
                 else if (p.depthChart >= 3) adjMultiplier -= 0.03;
@@ -1445,7 +1445,7 @@ const State = {
             } else if (['RB', 'WR', 'TE'].includes(p.Pos)) {
                 lacksIndividualMetrics = (p.targetShare === undefined) && (p.brokenTackles === undefined) && (p.yacAtt === undefined);
             }
-            
+
             if (lacksIndividualMetrics) {
                 p.isNewRole = true;
                 let teamDist = this.teamTargets.find(t => t.Team === p.Team);
@@ -1464,16 +1464,16 @@ const State = {
                 // Focus on efficiency/dominance rather than pure volume
                 if (p.targetShare >= 26) adjMultiplier += 0.03;
                 if (p.targetShare >= 22 && p.aDOT >= 10.0) adjMultiplier += 0.03;
-                
+
                 // NEW: Fraud Penalty - High projected points but low target share means highly TD dependent
                 if (['WR', 'TE'].includes(p.Pos) && p.ProjPts > 120 && p.targetShare < 14.0) {
-                    adjMultiplier -= 0.05; 
+                    adjMultiplier -= 0.05;
                 }
             }
 
             if (p.Pos === 'RB') {
                 if (p.brokenTackles && p.brokenTackles >= 20) adjMultiplier += 0.03;
-                
+
                 // HVO logic reduced. We don't want to double count the points they get from these touches.
                 if (p.hvo && p.hvo >= 110) adjMultiplier += 0.03;
             }
@@ -1496,7 +1496,7 @@ const State = {
             let pAge = p.age || p.Age;
             if (pAge) {
                 if (p.Pos === 'RB' && pAge >= 27) {
-                    adjMultiplier -= Math.pow(pAge - 26, 1.3) * 0.025; 
+                    adjMultiplier -= Math.pow(pAge - 26, 1.3) * 0.025;
                 } else if (p.Pos === 'WR' && pAge >= 31) {
                     adjMultiplier -= Math.pow(pAge - 30, 1.2) * 0.03;
                 } else if (p.Pos === 'TE' && pAge >= 32) {
@@ -1535,7 +1535,7 @@ const State = {
 
             // 8. New Role / Inherited Environment (Rookies & Free Agents)
             if (p.isNewRole) {
-                
+
                 // RBs inherit the O-Line's run-blocking scheme (Yards Before Contact),
                 // but we strip out Yards After Contact (which is a player-specific skill).
                 if (p.Pos === 'RB' && rushEnv) {
@@ -1559,12 +1559,25 @@ const State = {
                 }
             }
 
+            // 9. NEW: Advanced Realism Penalties (Workload Wear & Injury Risk)
+            if (p.pastStats) {
+                let totalTouches = (p.pastStats.rushAtt || 0) + (p.pastStats.rec || 0);
+                // Curse of 300 touches for RBs
+                if (p.Pos === 'RB' && totalTouches >= 300) {
+                    adjMultiplier -= 0.04;
+                }
+
+                // Chronic Missed Time Penalty (Less than 12 games played)
+                if (p.pastStats.gp && p.pastStats.gp < 12 && p.pastStats.gp > 0) {
+                    adjMultiplier -= 0.03;
+                }
+            }
+
             // ===========================================================
-            // FINAL CALCULATIONS (FIXING THE "RICH GET RICHER" SCALING BUG)
+            // FINAL CALCULATIONS
             // ===========================================================
-            
-            // 1. Cap raw multiplier
-            adjMultiplier = Math.max(0.75, Math.min(1.25, adjMultiplier));
+            // Tightened bounds from 0.75-1.25 down to 0.80-1.20 for enhanced stability
+            adjMultiplier = Math.max(0.80, Math.min(1.20, adjMultiplier));
 
             if (p.VBD >= 0) {
                 // 2. Dampen the multiplier for elite players so they don't break the top of the draft board
@@ -1583,14 +1596,14 @@ const State = {
             if (p.aDOT && p.aDOT >= 12.0) upsideBonus += 0.05;
             if (p.hvo && p.hvo >= 75) upsideBonus += 0.05;
             if (p.pastStats && p.pastStats.bigPlays && p.pastStats.bigPlays >= 12) upsideBonus += 0.04;
-            
+
             let baseVbd = p.AdvVBD || p.VBD;
             p.upsideScore = baseVbd > 0 ? baseVbd * (1 + upsideBonus) : 0;
         });
 
         // Fail-safe sort
         this.allPlayers.sort((a, b) => (b.AdvVBD || 0) - (a.AdvVBD || 0));
-        
+
         // Assign static ranks for the Draft UI
         let posTracker = {};
         this.allPlayers.forEach((p, index) => {
@@ -1634,20 +1647,24 @@ const State = {
 
             const round = parseInt(cols[0]);
             const teamName = cols[2].replace(/,/g, '').trim();
-
-            // FIX: Normalize the position string so "Def" successfully translates to "DST"
+            const playerName = cols[3]?.replace(/,/g, '').trim(); // Assuming col 3 is player name
             const pos = this.normalizePos(cols[4]);
 
             if (!profiles[teamName]) {
                 profiles[teamName] = {
-                    name: teamName,
-                    totalDrafts: 0,
+                    name: teamName, totalDrafts: 0,
                     earlyRBs: 0, earlyWRs: 0,
-                    qbAvgRound: 0, qbCount: 0,
-                    teAvgRound: 0, teCount: 0,
-                    pkAvgRound: 0, pkCount: 0,
-                    dstAvgRound: 0, dstCount: 0
+                    qbAvgRound: 0, qbCount: 0, teAvgRound: 0, teCount: 0,
+                    pkAvgRound: 0, pkCount: 0, dstAvgRound: 0, dstCount: 0,
+                    teamTally: {} // NEW: Track drafted player NFL teams
                 };
+            }
+
+            // Look up the player to find their NFL Team
+            let matchedPlayer = this.matchPlayerFast(playerName, '', pos);
+            if (matchedPlayer && matchedPlayer.Team) {
+                let nflTeam = this.normalizeTeam(matchedPlayer.Team);
+                profiles[teamName].teamTally[nflTeam] = (profiles[teamName].teamTally[nflTeam] || 0) + 1;
             }
 
             if (round <= 3) {
@@ -1655,32 +1672,16 @@ const State = {
                 if (pos === 'WR') profiles[teamName].earlyWRs++;
             }
 
-            // Keep the round filter for QB/TE to ignore late backups, 
-            // but remove it entirely for PK/DST since they naturally go late!
-            if (pos === 'QB' && round < 12) {
-                profiles[teamName].qbAvgRound += round;
-                profiles[teamName].qbCount++;
-            }
-            if (pos === 'TE' && round < 12) {
-                profiles[teamName].teAvgRound += round;
-                profiles[teamName].teCount++;
-            }
-            if (pos === 'PK') {
-                profiles[teamName].pkAvgRound += round;
-                profiles[teamName].pkCount++;
-            }
-            if (pos === 'DST') {
-                profiles[teamName].dstAvgRound += round;
-                profiles[teamName].dstCount++;
-            }
+            if (pos === 'QB' && round < 12) { profiles[teamName].qbAvgRound += round; profiles[teamName].qbCount++; }
+            if (pos === 'TE' && round < 12) { profiles[teamName].teAvgRound += round; profiles[teamName].teCount++; }
+            if (pos === 'PK') { profiles[teamName].pkAvgRound += round; profiles[teamName].pkCount++; }
+            if (pos === 'DST') { profiles[teamName].dstAvgRound += round; profiles[teamName].dstCount++; }
         }
 
         for (let key in profiles) {
             let p = profiles[key];
             p.qbAvgRound = p.qbCount > 0 ? (p.qbAvgRound / p.qbCount) : 10;
             p.teAvgRound = p.teCount > 0 ? (p.teAvgRound / p.teCount) : 10;
-
-            // FIX: Change fallback for K/DST to 15 (instead of 10) for managers lacking history
             p.pkAvgRound = p.pkCount > 0 ? (p.pkAvgRound / p.pkCount) : 15;
             p.dstAvgRound = p.dstCount > 0 ? (p.dstAvgRound / p.dstCount) : 15;
 
@@ -1690,6 +1691,18 @@ const State = {
 
             p.draftsEarlyQB = p.qbAvgRound <= 5;
             p.draftsEarlyTE = p.teAvgRound <= 5;
+
+            // NEW: Resolve Team Bias
+            let maxTally = 0;
+            let bias = 'None';
+            for (let teamKey in p.teamTally) {
+                if (p.teamTally[teamKey] > maxTally) {
+                    maxTally = p.teamTally[teamKey];
+                    bias = teamKey;
+                }
+            }
+            // Require a distinct pattern (3+ players from the same team) to declare a bias
+            p.teamBias = maxTally >= 3 ? bias : 'None';
         }
 
         this.managerProfiles = profiles;
