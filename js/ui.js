@@ -417,11 +417,17 @@ const UI = {
 
         // ---INJECT OFFENSIVE ENVIRONMENT NARRATIVE ---
         if (pos === 'RB') {
-            let rbPassInvolvement = (p.targetShare && p.targetShare >= 10) 
-                ? `is highly involved in the passing game (<strong>${p.targetShare}% target share</strong>, offering a safe PPR floor)` 
-                : ((p.targetShare && p.targetShare >= 5) 
-                    ? `is moderately involved as a receiver (<strong>${p.targetShare}% target share</strong>)` 
-                    : `is minimally targeted in the passing game, relying strictly on ground volume`);
+            let recs = (p.pastStats && p.pastStats.rec) ? p.pastStats.rec : 0;
+            let share = p.targetShare || 0;
+            
+            let rbPassInvolvement = "";
+            if (share >= 10 || recs >= 40) {
+                rbPassInvolvement = `is highly involved in the passing game, offering a safe PPR floor`;
+            } else if (share >= 5 || recs >= 20) {
+                rbPassInvolvement = `is moderately involved as a receiver out of the backfield`;
+            } else {
+                rbPassInvolvement = `is minimally targeted in the passing game, relying primarily on ground volume`;
+            }
             
             archetypeNote += ` Operating alongside <strong>${qbName}</strong> in a <strong>${offensePace}</strong> offense, he ${rbPassInvolvement}.`;
         } else if (['WR', 'TE'].includes(pos)) {
@@ -475,7 +481,7 @@ const UI = {
                 narrativeBlurb = `${pickVar(ultraIntros)}${pastStatsContext} ${archetypeNote} Fantasy managers can construct rosters around his bulletproof baseline.`;
             } else if (posRank <= 12) {
                 const starterIntros = [
-                    `${p.Player} headlines the ${p.Team} skill group as a high-end ${tierLabel} candidate.`,
+                    `${p.Player} headlines the ${p.Team} skill group as a premier ${tierLabel} candidate.`,
                     `Locking in ${p.Player} gives fantasy managers a foundational weekly starter projected for ${ppg} PPG.`,
                     `The ${p.Team} offense relies heavily on ${p.Player}, positioning him firmly in the ${tierLabel} tier.`
                 ];
