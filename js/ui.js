@@ -592,6 +592,14 @@ const UI = {
                 pros.push(`<strong>Clear Backfield Lead:</strong> Uncontested RB1 status with a designated handcuff (${p.handcuffName}).`);
             }
 
+            // --- NEW: SYSTEM & SCHEME PROS ---
+            if (['WR', 'TE'].includes(pos) && offensePace === 'pass-heavy') {
+                pros.push(`<strong>Pass-Heavy Offense:</strong> The team's high passing volume elevates his weekly target ceiling and guarantees a safer baseline for PPR formats.`);
+            }
+            if (pos === 'QB' && offensePace === 'pass-heavy') {
+                pros.push(`<strong>High-Volume Scheme:</strong> Directing a pass-heavy attack naturally pads his fantasy floor with raw volume and increased touchdown opportunities.`);
+            }
+
             if (pos === 'RB' && rushEnv && rushEnv.ybcAtt >= 2.8) pros.push(`<strong>YBC Scheme Boost:</strong> Elite run-blocking scheme generates ${rushEnv.ybcAtt} Yards Before Contact (YBC) per carry, giving him massive open space before taking a hit.`);
             if (['WR', 'TE'].includes(pos) && passEnv && passEnv.playActionYds >= 950) pros.push(`<strong>Play-Action Heavy:</strong> Scheme generates ${passEnv.playActionYds} yards off play-action concepts (which heavily favors explosive passing plays).`);
         }
@@ -1031,14 +1039,6 @@ const UI = {
             handcuffBadge = `<span class="text-xs bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full font-semibold">🛡️ Handcuff: ${p.handcuffName}</span>`;
         } else if (p.isRBHandcuff && p.starterName) {
             handcuffBadge = `<span class="text-xs bg-indigo-50 text-indigo-700 border border-indigo-200 px-2 py-0.5 rounded-full font-semibold">🔒 Handcuff for ${p.starterName}</span>`;
-        }
-
-        // --- NEW: SYSTEM & SCHEME PROS ---
-        if (['WR', 'TE'].includes(pos) && offensePace === 'pass-heavy') {
-            pros.push(`<strong>Pass-Heavy Offense:</strong> The team's high passing volume elevates his weekly target ceiling and guarantees a safer baseline for PPR formats.`);
-        }
-        if (pos === 'QB' && offensePace === 'pass-heavy') {
-            pros.push(`<strong>High-Volume Scheme:</strong> Directing a pass-heavy attack naturally pads his fantasy floor with raw volume and increased touchdown opportunities.`);
         }
 
         let modalTitle = `<div class="flex items-center flex-wrap gap-2">
