@@ -1728,8 +1728,10 @@ const State = {
             if (p.hvo && p.hvo >= 75) upsideBonus += 0.05;
             if (p.pastStats && p.pastStats.bigPlays && p.pastStats.bigPlays >= 12) upsideBonus += 0.04;
 
-            let baseVbd = p.AdvVBD || p.VBD;
-            p.upsideScore = baseVbd > 0 ? baseVbd * (1 + upsideBonus) : 0;
+            // Combine upsideBonus with the dynamic upsideScore from Step 10
+            if (p.upsideScore > 0) {
+                p.upsideScore = p.upsideScore * (1 + upsideBonus);
+            }
         });
 
         // Fail-safe sort
