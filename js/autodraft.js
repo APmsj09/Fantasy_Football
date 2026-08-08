@@ -24,34 +24,42 @@ window.AutoDraft = {
     },
 
     makeCPUPick(team) {
-        State.evaluateRosterFits(team, State.availablePlayers);
+        // Filter out players with invalid positions to prevent evaluateRosterFits 
+        // from throwing a TypeError on unrecognized positions (e.g. Defensive Linemen).
+        let safeAvailablePlayers = State.availablePlayers.filter(p => State.settings.roster[p.Pos]);
+        State.evaluateRosterFits(team, safeAvailablePlayers);
 
         const round = Math.floor(State.currentPick / State.settings.numTeams) + 1;
         const totalRounds = State.settings.roster.totalSize;
         const currentOverallPick = State.currentPick + 1;
         const profile = team.profile;
 
+        // Create a protected, explicitly sorted array for the CPU.
+        // Relying on State.availablePlayers directly is dangerous if the user sorted the table via the UI.
+        let cpuSorted = [...safeAvailablePlayers].sort((a, b) => (b.AdvVBD ?? b.VBD ?? 0) - (a.AdvVBD ?? a.VBD ?? 0));
+
         // 1. CALCULATE POSITIONAL SCARCITY (Tier Drop-offs)
         let scarcity = {};
         ['QB', 'RB', 'WR', 'TE'].forEach(pos => {
-            let avail = State.availablePlayers.filter(p => p.Pos === pos);
+            let avail = cpuSorted.filter(p => p.Pos === pos);
             if (avail.length > 5) {
-                let top = avail[0].AdvVBD || avail[0].VBD;
-                let fifth = avail[4].AdvVBD || avail[4].VBD;
+                // Use Nullish Coalescing (??) so a true VBD of `0` isn't skipped as falsy.
+                let top = avail[0].AdvVBD ?? avail[0].VBD ?? 0;
+                let fifth = avail[4].AdvVBD ?? avail[4].VBD ?? 0;
                 scarcity[pos] = Math.max(0, top - fifth) * 0.5;
             } else {
                 scarcity[pos] = 0;
             }
         });
 
-        let topWRs = State.availablePlayers.filter(p => p.Pos === 'WR').slice(0, 3);
-        let topRBs = State.availablePlayers.filter(p => p.Pos === 'RB').slice(0, 3);
+        let topWRs = cpuSorted.filter(p => p.Pos === 'WR').slice(0, 3);
+        let topRBs = cpuSorted.filter(p => p.Pos === 'RB').slice(0, 3);
         let avgTopFlexVBD = 0, flexBenchCount = 0;
-        [...topWRs, ...topRBs].forEach(p => { avgTopFlexVBD += (p.AdvVBD || p.VBD); flexBenchCount++; });
+        [...topWRs, ...topRBs].forEach(p => { avgTopFlexVBD += (p.AdvVBD ?? p.VBD ?? 0); flexBenchCount++; });
         avgTopFlexVBD = flexBenchCount > 0 ? (avgTopFlexVBD / flexBenchCount) : 20;
 
         // 2. FILTER OUT PLAYERS THAT DO NOT FIT ON THE ROSTER (Prevents infinite loops)
-        let validPlayers = State.availablePlayers.filter(p => {
+        let validPlayers = cpuSorted.filter(p => {
             let pos = p.Pos;
             let posRoster = State.settings.roster[pos];
             let maxForPos = posRoster ? posRoster.max : 0;
@@ -64,9 +72,6 @@ window.AutoDraft = {
 
             return false;
         });
-
-        // Ensure the CPU evaluates the best players, even if the user manually sorted the UI table
-        validPlayers.sort((a, b) => (b.AdvVBD || b.VBD || 0) - (a.AdvVBD || a.VBD || 0));
 
         // 3. EVALUATE TOP 150 VALID PLAYERS
         let evaluatedWrapper = validPlayers.slice(0, 150).map(p => {
@@ -138,17 +143,17 @@ window.AutoDraft = {
                 }
             }
 
-            let posRank = State.availablePlayers.filter(x => x.Pos === p.Pos).findIndex(x => x._cleanName === p._cleanName);
+            let posRank = cpuSorted.filter(x => x.Pos === p.Pos).findIndex(x => x._cleanName === p._cleanName);
             let scarcityBonus = 0;
             if (posRank < 3 && scarcity[p.Pos]) {
-                if (currentCount < starterMax || p.Pos !== 'TE' || ((p.AdvVBD || p.VBD) - avgTopFlexVBD > 5)) {
+                if (currentCount < starterMax || p.Pos !== 'TE' || ((p.AdvVBD ?? p.VBD ?? 0) - avgTopFlexVBD > 5)) {
                     scarcityBonus = scarcity[p.Pos];
                 }
             }
 
             if (p.Pos === 'PK' && round <= totalRounds - 3) multiplier *= 0.001;
 
-            let rawVbd = p.AdvVBD || p.VBD;
+            let rawVbd = p.AdvVBD ?? p.VBD ?? 0;
             let baseValue = rawVbd >= 0 ? (rawVbd * multiplier) : (rawVbd / multiplier);
 
             let adpPenalty = 0;
@@ -192,7 +197,7 @@ window.AutoDraft = {
         if (selectedPlayer) {
             this.executeDraft(selectedPlayer, team, slottedPos);
         } else {
-            let fallback = State.availablePlayers[0];
+            let fallback = cpuSorted[0];
             if (fallback) {
                 this.executeDraft(fallback, team, 'Bench');
             } else {
