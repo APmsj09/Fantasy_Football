@@ -419,7 +419,7 @@ const UI = {
         if (pos === 'RB') {
             let recs = (p.pastStats && p.pastStats.rec) ? p.pastStats.rec : 0;
             let share = p.targetShare || 0;
-            
+
             let rbPassInvolvement = "";
             if (share >= 10 || recs >= 40) {
                 rbPassInvolvement = `is highly involved in the passing game, offering a safe PPR floor`;
@@ -428,7 +428,7 @@ const UI = {
             } else {
                 rbPassInvolvement = `is minimally targeted in the passing game, relying primarily on ground volume`;
             }
-            
+
             archetypeNote += ` Operating alongside <strong>${qbName}</strong> in a <strong>${offensePace}</strong> offense, he ${rbPassInvolvement}.`;
         } else if (['WR', 'TE'].includes(pos)) {
             archetypeNote += ` Catching passes from <strong>${qbName}</strong> in a <strong>${offensePace}</strong> offense heavily shapes his weekly volume expectations.`;
@@ -1480,8 +1480,10 @@ const UI = {
                 let ceilingScore = p.upsideScore || score;
                 score = (floorScore * floorWeight) + (ceilingScore * upsideWeight);
 
-                if (p.isRBHandcuff || (p.age && p.age <= 22)) {
-                    score += (currentRound * 0.8);
+                if (p.Pos !== 'PK' && p.Pos !== 'DST') {
+                    if (p.isRBHandcuff || (p.age && p.age <= 22)) {
+                        score += (currentRound * 0.8);
+                    }
                 }
             } else if (p.upsideScore && (p.AdvVBD || p.VBD) > 0) {
                 let ceilingGain = (p.upsideScore - (p.AdvVBD || p.VBD)) * 0.25;
