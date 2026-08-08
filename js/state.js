@@ -1778,7 +1778,7 @@ const State = {
             const cols = rows[i].split('\t');
             if (cols.length < 5) continue;
 
-            const round = parseInt(cols[0]);
+            const round = parseInt(cols[0], 10);
             const teamName = cols[2].replace(/,/g, '').trim();
             const playerName = cols[3]?.replace(/,/g, '').trim();
             const pos = this.normalizePos(cols[4]);
@@ -1799,6 +1799,11 @@ const State = {
             }
 
             let p = profiles[teamName];
+
+            // Track distinct draft instances (increment whenever Round 1 is processed)
+            if (round === 1) {
+                p.totalDrafts++;
+            }
 
             // Track Early Rounds 1-3
             if (round <= 3) {
@@ -1833,6 +1838,12 @@ const State = {
         // Resolve Manager Personalities & Mid-Round Tendencies
         for (let key in profiles) {
             let p = profiles[key];
+            let draftsCount = Math.max(1, p.totalDrafts || 1);
+
+            // Per-draft averages
+            let avgEarlyRBs = p.earlyRBs / draftsCount;
+            let avgEarlyWRs = p.earlyWRs / draftsCount;
+            let avgMidRBs = p.midRoundRBs / draftsCount;
 
             p.qbAvgRound = p.qbCount > 0 ? (p.qbAvgRound / p.qbCount) : 10;
             p.teAvgRound = p.teCount > 0 ? (p.teAvgRound / p.teCount) : 10;
@@ -1842,12 +1853,12 @@ const State = {
             p.draftsEarlyQB = p.firstQbRound <= 5;
             p.draftsEarlyTE = p.firstTeRound <= 5;
 
-            // --- Core Strategy Logic ---
-            if (p.earlyRBs >= 2) {
+            // --- Core Strategy Logic (Normalized per Draft) ---
+            if (avgEarlyRBs >= 1.5) {
                 p.strategy = "Robust-RB";
-            } else if (p.earlyRBs === 1 && p.earlyWRs >= 2) {
+            } else if (avgEarlyRBs >= 0.8 && avgEarlyWRs >= 1.5) {
                 p.strategy = "Hero-RB";
-            } else if (p.earlyRBs === 0 && p.earlyWRs >= 2) {
+            } else if (avgEarlyRBs < 0.8 && avgEarlyWRs >= 1.5) {
                 p.strategy = "Zero-RB";
             } else if (p.draftsEarlyQB && p.draftsEarlyTE) {
                 p.strategy = "Double-Elite";
@@ -1856,23 +1867,25 @@ const State = {
             }
 
             // --- Mid-Round Tendency Flags ---
-            p.likesHandcuffs = p.midRoundRBs >= 3;
+            p.likesHandcuffs = avgMidRBs >= 2.0;
             p.reachesForKicker = p.pkAvgRound <= 12;
             p.reachesForDST = p.dstAvgRound <= 12;
 
             // Team Bias
             let maxTally = 0, bias = 'None';
             for (let teamKey in p.teamTally) {
-                if (p.teamTally[teamKey] > maxTally) {
-                    maxTally = p.teamTally[teamKey];
+                let avgTally = p.teamTally[teamKey] / draftsCount;
+                if (avgTally > maxTally) {
+                    maxTally = avgTally;
                     bias = teamKey;
                 }
             }
-            p.teamBias = maxTally >= 3 ? bias : 'None';
+            p.teamBias = maxTally >= 2.0 ? bias : 'None';
         }
 
         this.managerProfiles = profiles;
     },
+
 
     parseDefData(text) {
         const rows = text.split(/\r?\n/).filter(row => row.trim() !== '');

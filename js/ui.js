@@ -758,12 +758,16 @@ const UI = {
         // -------------------------------------------------------------
         // 7. RANGE OF OUTCOMES (Floor / Ceiling Calculation)
         // -------------------------------------------------------------
-        let ceilingPpg = (Number(ppg) * 1.25).toFixed(1);
-        let floorPpg = (Number(ppg) * 0.75).toFixed(1);
+        let baselinePpg = Number(ppg) || 0;
+        let ceilingPpg = (baselinePpg * 1.25).toFixed(1);
+        let floorPpg = (baselinePpg * 0.75).toFixed(1);
 
-        if (p.upsideScore && p.AdvVBD) {
-            let upsideBoost = Math.min(1.4, Math.max(1.1, p.upsideScore / p.AdvVBD));
-            ceilingPpg = (Number(ppg) * upsideBoost).toFixed(1);
+        if (p.upsideScore > 0 && p.AdvVBD > 0) {
+            let ratio = p.upsideScore / p.AdvVBD;
+            if (Number.isFinite(ratio) && ratio > 0) {
+                let upsideBoost = Math.min(1.4, Math.max(1.1, ratio));
+                ceilingPpg = (baselinePpg * upsideBoost).toFixed(1);
+            }
         }
 
         let marketValueHTML = "";
@@ -1527,29 +1531,63 @@ const UI = {
                 }
             }
 
+            // 7. NEW: Late-Round Sleeper & Handcuff Badges (Rounds 8+)
+            p._sleeperBadge = null;
+            if (currentRound >= 8 && ['RB', 'WR', 'TE', 'QB'].includes(p.Pos)) {
+                if (userOwnsStarter) {
+                    score += 25.0;
+                    p._sleeperBadge = `🔒 Handcuff for ${p.starterName}`;
+                } else if (p.isRBHandcuff) {
+                    score += 15.0;
+                    p._sleeperBadge = `🎲 Lottery Ticket (${p.starterName}'s Backup)`;
+                } else if (p.age && p.age <= 22) {
+                    score += 12.0;
+                    p._sleeperBadge = `🌱 Rookie Breakout (Age ${p.age})`;
+                } else if (p.targetShare && p.targetShare >= 15.0) {
+                    score += 10.0;
+                    p._sleeperBadge = `🎯 ${p.targetShare}% Target Share Sleeper`;
+                } else if (p.aDOT && p.aDOT >= 12.0) {
+                    score += 8.0;
+                    p._sleeperBadge = `🚀 Deep Threat (${p.aDOT} aDOT)`;
+                }
+            }
+
             p._recScore = score;
         });
 
         // ===========================================================
-        // POST-LOOP: SORT AND RENDER
+        // POST-LOOP: SORT AND DEDICATE SLOTS (Caps Kicker/DST to 1 Slot Max)
         // ===========================================================
-        let bestFit = [...viablePlayers]
-            .filter(p => {
-                let posRoster = State.settings.roster[p.Pos];
-                let starterMax = posRoster ? posRoster.max : 1;
-                if (['QB', 'PK', 'DST'].includes(p.Pos) && userTeam.counts[p.Pos] >= starterMax && currentRound < 12) {
-                    return false;
-                }
-                return true;
-            })
-            .sort((a, b) => b._recScore - a._recScore)[0];
+        let needsPK = userTeam.counts['PK'] < (State.settings.roster.PK?.max || 1);
+        let needsDST = userTeam.counts['DST'] < (State.settings.roster.DST?.max || 1);
 
-        if (bestFit && (bestFit._addedPPW || 0) <= 0.0 && !bestFit._byeFillWeek && !bestFit.starterName && !bestFit._rosterContextBadge && !bestFit._ceilingTags?.length) {
-            bestFit = null;
+        let skillPlayers = viablePlayers.filter(p => ['QB', 'RB', 'WR', 'TE'].includes(p.Pos))
+            .sort((a, b) => b._recScore - a._recScore);
+
+        let kDstPlayers = viablePlayers.filter(p => ['PK', 'DST'].includes(p.Pos))
+            .sort((a, b) => b._recScore - a._recScore);
+
+        let finalRecs = [];
+
+        // 1. If K/DST needed in late rounds, assign EXACTLY 1 slot to top K/DST
+        if ((needsPK || needsDST) && kDstPlayers.length > 0 && currentRound >= totalRounds - 3) {
+            finalRecs.push(kDstPlayers[0]);
         }
 
-        let sortedByRec = [...viablePlayers].sort((a, b) => b._recScore - a._recScore);
-        let vbdRecs = sortedByRec.filter(p => p !== bestFit).slice(0, 3);
+        // 2. Fill remaining slots (at least 3) with top Skill Position Sleepers/Fits
+        for (let p of skillPlayers) {
+            if (finalRecs.length >= 4) break;
+            if (!finalRecs.includes(p)) finalRecs.push(p);
+        }
+
+        // 3. Failsafe fill if under 4
+        for (let p of [...viablePlayers].sort((a, b) => b._recScore - a._recScore)) {
+            if (finalRecs.length >= 4) break;
+            if (!finalRecs.includes(p)) finalRecs.push(p);
+        }
+
+        let bestFit = finalRecs[0];
+        let vbdRecs = finalRecs.slice(1, 4);
 
         let htmlStr = strategyBanner;
 

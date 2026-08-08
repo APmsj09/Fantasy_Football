@@ -107,8 +107,8 @@ window.AutoDraft = {
 
                 // 3. Early Kicker / DST Reacher (Rounds 10-12)
                 if (round >= 10 && round <= 12) {
-                    if (p.Pos === 'PK' && profile.reachesForKicker) multiplier *= 20.0; // Removes penalty
-                    if (p.Pos === 'DST' && profile.reachesForDST) multiplier *= 20.0;
+                    if (p.Pos === 'PK' && profile.reachesForKicker) multiplier *= 1000.0; // Fully cancels the round <= 13 penalty (0.001)
+                    if (p.Pos === 'DST' && profile.reachesForDST) multiplier *= 1000.0;
                 }
 
                 // 4. Stacking Synergy Boost (Rounds 4-10)
