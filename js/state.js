@@ -1468,7 +1468,23 @@ const State = {
                 if (p.targetShare >= 26) adjMultiplier += 0.03;
                 if (p.targetShare >= 22 && p.aDOT >= 10.0) adjMultiplier += 0.03;
 
-                // NEW: Fraud Penalty - High projected points but low target share means highly TD dependent
+                // --- NEW: WOPR (Weighted Opportunity Rating) ENGINE ---
+                if (['WR', 'TE'].includes(p.Pos)) {
+                    const teamAirYards = 3500; // Baseline team air yards
+                    const airYardsShare = p.airYards ? (p.airYards / teamAirYards) * 100 : p.targetShare;
+                    p.wopr = (1.5 * (p.targetShare / 100)) + (0.7 * (airYardsShare / 100));
+
+                    if (p.wopr >= 0.60) {
+                        adjMultiplier += 0.04;
+                        if (!p._ceilingTags.includes("Alpha WOPR Profile")) {
+                            p._ceilingTags.push("Alpha WOPR Profile");
+                        }
+                    } else if (p.wopr <= 0.32 && p.ProjPts > 110) {
+                        adjMultiplier -= 0.03;
+                    }
+                }
+
+                // Fraud Penalty - High projected points but low target share means highly TD dependent
                 if (['WR', 'TE'].includes(p.Pos) && p.ProjPts > 120 && p.targetShare < 14.0) {
                     adjMultiplier -= 0.05;
                 }

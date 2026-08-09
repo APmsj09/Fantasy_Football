@@ -493,6 +493,13 @@ const UI = {
                     `Navigating the middle rounds with ${p.Player} secures a functional ${tierLabel} with manageable variance.`
                 ];
                 narrativeBlurb = `${pickVar(solidIntros)}${pastStatsContext} ${archetypeNote}`;
+            } else if (posRank <= 36) { // NEW BLOCK: Fixes the WR3/Flex gap
+                const flexIntros = [
+                    `${p.Player} enters the conversation as a viable ${tierLabel} with situational starting appeal.`,
+                    `Drafting ${p.Player} secures a functional ${tierLabel} who projects for ${ppg} PPG in the ${p.Team} offense.`,
+                    `While he may lack elite every-week certainty, ${p.Player} provides strong ${tierLabel} value projected for ${ppg} PPG.`
+                ];
+                narrativeBlurb = `${pickVar(flexIntros)}${pastStatsContext} ${archetypeNote}`;
             } else {
                 if (age && age >= 30) {
                     const veteranIntros = [
@@ -560,6 +567,22 @@ const UI = {
                 }
                 if (pos === 'RB' && ps.rushYpa && ps.rushYpa >= 4.8 && ps.rushAtt >= 100) {
                     pros.push(`<strong>High Ground Efficiency:</strong> Averaged a stellar <strong>${ps.rushYpa.toFixed(1)} YPC</strong> on ${ps.rushAtt} carries last season.`);
+                }
+
+                // --- POSITIVE TD REGRESSION PROS ---
+                const touches = (ps.rushAtt || 0) + (ps.rec || 0);
+                if (pos === 'RB' && touches >= 80 && ps.totalTd > 0) {
+                    const tdRate = ps.totalTd / touches;
+                    if (tdRate <= 0.015) {
+                        pros.push(`<strong>Positive TD Regression Candidate:</strong> Scored only ${ps.totalTd} TDs on ${touches} touches last year. Expect scoring output to bounce back toward league averages.`);
+                    }
+                }
+            }
+
+            if (['WR', 'TE'].includes(pos) && p.catchable && p.pastStats && p.pastStats.targets) {
+                const catchableRate = (p.catchable / p.pastStats.targets) * 100;
+                if (catchableRate >= 82.0) {
+                    pros.push(`<strong>High Target Quality:</strong> Received catchable passes on <strong>${catchableRate.toFixed(1)}%</strong> of his targets last season.`);
                 }
             }
 
@@ -645,24 +668,86 @@ const UI = {
         if (isOffense) {
             if (p.pastStats) {
                 const ps = p.pastStats;
-                let totalTouches = (ps.rushAtt || 0) + (ps.rec || 0);
+                const totalTouches = (Number(ps.rushAtt) || 0) + (Number(ps.rec) || 0);
+                const games = Number(ps.gp) || 17;
 
                 // 1. The Curse of 300 Touches
-                if (p.Pos === 'RB' && totalTouches >= 300) {
+                if (pos === 'RB' && totalTouches >= 300) {
                     cons.push(`<strong>The '300-Touch' Curse:</strong> Logged a grueling ${totalTouches} touches last season. Running backs historically suffer sharp efficiency drops or injuries the year following a 300+ touch workload.`);
                     riskScore += 2;
                 }
 
                 // 2. Durability Concerns
-                if (ps.gp && ps.gp < 12) {
-                    cons.push(`<strong>Durability Risk:</strong> Missed significant time last season, playing only <strong>${ps.gp} games</strong>. Injury variance lowers his floor.`);
+                if (games < 12 && games > 0) {
+                    cons.push(`<strong>Durability Risk:</strong> Missed significant time last season, playing only <strong>${games} games</strong>. Injury variance lowers his floor.`);
                     riskScore += 2;
                 }
 
-                if (pos === 'QB' && ps.int && ps.int >= 10) { cons.push(`<strong>Turnover Concerns:</strong> Threw <strong>${ps.int} interceptions</strong> last season.`); riskScore += 1; }
-                if (ps.fum && ps.fum >= 3) { cons.push(`<strong>Ball Security Issues:</strong> Coughed up <strong>${ps.fum} fumbles lost</strong> last season.`); riskScore += 1; }
-                if (pos === 'RB' && ps.rushYpa && ps.rushYpa < 3.8 && ps.rushAtt && ps.rushAtt >= 80) { cons.push(`<strong>Low Ground Efficiency:</strong> Averaged just <strong>${ps.rushYpa.toFixed(1)} YPC</strong> last season.`); riskScore += 1; }
-                if (p.pastPpg && (p.pastPpg - Number(ppg)) >= 3.0) { cons.push(`<strong>Expected Production Regression:</strong> 2026 projection (${ppg} PPG) marks a notable step back from last year's output (${p.pastPpg.toFixed(1)} PPG).`); riskScore += 1; }
+                // 3. Turnover Concerns (Raised INT threshold to 13 for 17-game seasons)
+                const interceptions = Number(ps.int) || 0;
+                if (pos === 'QB' && interceptions >= 13) {
+                    cons.push(`<strong>Turnover Concerns:</strong> Threw <strong>${interceptions} interceptions</strong> last season.`);
+                    riskScore += 1;
+                }
+
+                // 4. Ball Security (Raised Fumble threshold to 4)
+                const fumbles = Number(ps.fum) || 0;
+                if (fumbles >= 4) {
+                    cons.push(`<strong>Ball Security Issues:</strong> Coughed up <strong>${fumbles} fumbles lost</strong> last season.`);
+                    riskScore += 1;
+                }
+
+                // 5. Low Ground Efficiency (Requires 100+ carries and safe YPC fallback)
+                const rushAtt = Number(ps.rushAtt) || 0;
+                const rushYds = Number(ps.rushYds) || 0;
+                const rushYpc = Number(ps.rushYpa) || (rushAtt > 0 ? rushYds / rushAtt : 0);
+                if (pos === 'RB' && rushAtt >= 100 && rushYpc < 3.8 && rushYpc > 0) {
+                    cons.push(`<strong>Low Ground Efficiency:</strong> Averaged just <strong>${rushYpc.toFixed(1)} YPC</strong> on ${rushAtt} carries last season.`);
+                    riskScore += 1;
+                }
+
+                // 6. Expected Production Regression (Requires 10+ games to prevent small-sample double penalties)
+                const pastPpg = Number(p.pastPpg) || 0;
+                const projPpg = Number(ppg) || 0;
+                if (pastPpg > 0 && games >= 10 && (pastPpg - projPpg) >= 3.5) {
+                    cons.push(`<strong>Expected Production Regression:</strong> 2026 projection (${projPpg.toFixed(1)} PPG) marks a notable step back from last year's output (${pastPpg.toFixed(1)} PPG).`);
+                    riskScore += 1;
+                }
+
+                // 7. TD Regression Warning (Excludes RBs with heavy Red Zone usage)
+                if (pos === 'RB' && totalTouches >= 100) {
+                    const totalTd = Number(ps.totalTd) || 0;
+                    const tdRate = totalTd / totalTouches;
+                    const isGoalLineWorkhorse = (p.rzAtt && p.rzAtt >= 25);
+
+                    if (tdRate >= 0.085 && !isGoalLineWorkhorse) {
+                        cons.push(`<strong>TD Regression Warning:</strong> Scored ${totalTd} TDs on ${totalTouches} touches (${(tdRate * 100).toFixed(1)}% TD rate). Sustaining this TD efficiency without a massive red-zone role may be difficult.`);
+                        riskScore += 1;
+                    }
+                }
+
+                // 8. WR/TE TD Efficiency Check
+                if (['WR', 'TE'].includes(pos) && (Number(ps.targets) || 0) >= 60) {
+                    const recTd = Number(ps.recTd) || 0;
+                    const targets = Number(ps.targets) || 1;
+                    const tdRate = recTd / targets;
+
+                    if (tdRate >= 0.11) {
+                        cons.push(`<strong>Unsustainable TD Efficiency:</strong> Caught ${recTd} TDs on ${targets} targets (${(tdRate * 100).toFixed(1)}% TD/target rate). Expect TD output to regress toward league averages.`);
+                        riskScore += 1;
+                    }
+                }
+            }
+
+            // 9. Target Quality Check (Guarded against NaN and Division-by-Zero)
+            if (['WR', 'TE'].includes(pos) && p.catchable && p.pastStats && (Number(p.pastStats.targets) || 0) > 0) {
+                const targets = Number(p.pastStats.targets);
+                const catchableRate = (Number(p.catchable) / targets) * 100;
+
+                if (catchableRate <= 65.0) {
+                    cons.push(`<strong>Suppressed Target Quality:</strong> Only <strong>${catchableRate.toFixed(1)}%</strong> of targets were catchable last season due to off-target throws.`);
+                    riskScore += 1;
+                }
             }
 
             // --- SYSTEM & SCHEME RISKS ---
@@ -681,7 +766,7 @@ const UI = {
                 cons.push(`<strong>Low-Volume Passing Attack:</strong> Playing in a <strong>run-heavy offense</strong> severely limits the overall passing pie, mathematically capping his week-to-week target ceiling.`);
                 riskScore += 1;
             }
-            if (pos === 'RB' && offensePace === 'pass-heavy' && (!p.targetShare || p.targetShare < 8)) {
+            if (pos === 'RB' && offensePace === 'pass-heavy' && (!p.targetShare || p.targetShare < 5)) {
                 cons.push(`<strong>Negative Scheme Fit:</strong> Operates in a <strong>pass-heavy offense</strong> but lacks receiving involvement, leaving him vulnerable to being scripted out of games if the team falls behind.`);
                 riskScore += 1;
             }
@@ -717,20 +802,15 @@ const UI = {
                         `<strong>Game-Script Dependency:</strong> Lacks pass-game work; vulnerable if ${p.Team} falls behind.`,
                         `<strong>Script Sensitivity:</strong> Production drops if negative game scripts force ${p.Team} to pass.`
                     ]));
-                } else if (pos === 'WR' && (!p.targetShare || p.targetShare < 20)) {
+                } else if (['WR', 'TE'].includes(pos) && (!p.targetShare || p.targetShare < 20)) { // Consolidated TE & WR logic
                     cons.push(pickVarShift([
                         `<strong>Target Volatility:</strong> Target share isn't bulletproof; weekly floor relies on TD efficiency.`,
                         `<strong>Volume Variance:</strong> Secondary target role leaves him susceptible to low-target games.`
                     ], 1));
-                } else if (pos === 'QB') {
+                } else if (pos === 'QB' && (!p.stats || (p.stats.rushAtt || 0) < 40)) { // FIXED: Excludes mobile QBs
                     cons.push(pickVar([
                         `<strong>Limited Rushing Floor:</strong> Lack of rushing mobility places heavy burden on pass volume and TDs.`,
                         `<strong>Passing-Only Floor:</strong> Lacks rushing yards to salvage bad passing performances.`
-                    ]));
-                } else if (pos === 'TE') {
-                    cons.push(pickVar([
-                        `<strong>Touchdown Dependency:</strong> Lower weekly target floor makes him prone to bust weeks without a TD.`,
-                        `<strong>Volatile TE Floor:</strong> Susceptible to low target output in games where he blocks heavily.`
                     ]));
                 } else if (cons.length === 0) {
                     cons.push(`<strong>Offensive Environment Variance:</strong> Floor is tied to ${p.Team}'s overall offensive pacing.`);
@@ -756,11 +836,25 @@ const UI = {
         else if (riskScore === 2) riskBadge = `<span class="bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2.5 py-0.5 rounded-full font-bold">⚡ MODERATE RISK</span>`;
 
         // -------------------------------------------------------------
-        // 7. RANGE OF OUTCOMES (Floor / Ceiling Calculation)
+        // 7. RANGE OF OUTCOMES (Dynamic Archetype Variance)
         // -------------------------------------------------------------
+        let varianceSpread = 0.25; // Default 25% baseline
+
+        // Volatility archetype expansions
+        if (p._isFlyer || p.isRBHandcuff || (age && age <= 22)) varianceSpread += 0.12; 
+        if (p.aDOT && p.aDOT >= 12.5) varianceSpread += 0.10;
+        if (pos === 'QB' && p.stats && p.stats.rushAtt >= 60) varianceSpread += 0.08;
+
+        // Stability archetype contractions
+        if (p._isSafeFloor && (!p.aDOT || p.aDOT <= 8.5)) varianceSpread -= 0.08;
+        if (p.targetShare && p.targetShare >= 24.0 && (!p.aDOT || p.aDOT < 10.0)) varianceSpread -= 0.05;
+
+        // Clamp spread between 12% and 45%
+        varianceSpread = Math.max(0.12, Math.min(0.45, varianceSpread));
+
         let baselinePpg = Number(ppg) || 0;
-        let ceilingPpg = (baselinePpg * 1.25).toFixed(1);
-        let floorPpg = (baselinePpg * 0.75).toFixed(1);
+        let floorPpg = (baselinePpg * (1 - varianceSpread)).toFixed(1);
+        let ceilingPpg = (baselinePpg * (1 + varianceSpread)).toFixed(1);
 
         if (p.upsideScore > 0 && p.AdvVBD > 0) {
             let ratio = p.upsideScore / p.AdvVBD;
@@ -1552,6 +1646,16 @@ const UI = {
                     score += 8.0;
                     p._sleeperBadge = `🚀 Deep Threat (${p.aDOT} aDOT)`;
                 }
+            }
+
+            // --- NEW: PLAYOFF MATCHUP TIEBREAKER (WEEKS 15-17) ---
+            if (p.playoffSOS && p.playoffSOS >= 4.0) {
+                score += 4.5;
+                if (!p._sleeperBadge && currentRound >= 8) {
+                    p._sleeperBadge = `🏆 Soft Playoff Schedule (⭐${p.playoffSOS.toFixed(1)})`;
+                }
+            } else if (p.playoffSOS && p.playoffSOS <= 2.0) {
+                score -= 3.0;
             }
 
             p._recScore = score;
