@@ -1468,18 +1468,17 @@ const State = {
                 if (p.targetShare >= 26) adjMultiplier += 0.03;
                 if (p.targetShare >= 22 && p.aDOT >= 10.0) adjMultiplier += 0.03;
 
-                // --- NEW: WOPR (Weighted Opportunity Rating) ENGINE ---
+                // --- WOPR (Weighted Opportunity Rating) ENGINE ---
                 if (['WR', 'TE'].includes(p.Pos)) {
                     const teamAirYards = 3500; // Baseline team air yards
-                    const airYardsShare = p.airYards ? (p.airYards / teamAirYards) * 100 : p.targetShare;
-                    p.wopr = (1.5 * (p.targetShare / 100)) + (0.7 * (airYardsShare / 100));
+                    const tgtShare = Number(p.targetShare) || 0;
+                    const airYardsShare = p.airYards ? ((Number(p.airYards) / teamAirYards) * 100) : tgtShare;
+                    
+                    p.wopr = (1.5 * (tgtShare / 100)) + (0.7 * (airYardsShare / 100));
 
                     if (p.wopr >= 0.60) {
                         adjMultiplier += 0.04;
-                        if (!p._ceilingTags.includes("Alpha WOPR Profile")) {
-                            p._ceilingTags.push("Alpha WOPR Profile");
-                        }
-                    } else if (p.wopr <= 0.32 && p.ProjPts > 110) {
+                    } else if (p.wopr <= 0.32 && (p.ProjPts || 0) > 110) {
                         adjMultiplier -= 0.03;
                     }
                 }
@@ -1653,6 +1652,11 @@ const State = {
                     p._isFlyer = true;
                     upsideMultiplier += 0.20;
                     ceilingTags.push(p.aDOT >= 12.0 ? "Deep Threat" : "Breakout Age");
+                }
+                if (p.wopr && p.wopr >= 0.60) {
+                    p._isFlyer = true;
+                    upsideMultiplier += 0.15;
+                    if (!ceilingTags.includes("Alpha WOPR Profile")) ceilingTags.push("Alpha WOPR Profile");
                 }
                 if (p.airYards && p.airYards >= 1200) {
                     p._isFlyer = true;
