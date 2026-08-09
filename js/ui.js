@@ -346,18 +346,33 @@ const UI = {
                 "Like most at the position, weekly scoring variance is high and heavily dependent on the overall team offensive environment."
             ]);
         } else if (pos === 'QB') {
-            if (p.stats && p.stats.rushAtt >= 60) {
-                archetypeNote = pickVar([
-                    "His Konami-code rushing floor provides week-winning stability regardless of passing script.",
-                    "Dual-threat mobility gives him a massive fantasy foundation that pure pocket passers can't match.",
-                    "Designed rushing opportunities elevate his weekly floor into elite territory."
-                ]);
-            } else {
-                archetypeNote = pickVar([
-                    "As a pocket passer, his upside relies heavily on passing volume, TD efficiency, and line protection.",
-                    "Lacking high-volume rushing stats, his fantasy floor is tied directly to passing volume and red-zone conversions.",
-                    "He relies on sharp pocket execution and high completion rates to fuel his fantasy production."
-                ]);
+            const rawAtt = (p.stats && p.stats.rushAtt) || (p.pastStats && p.pastStats.rushAtt) || 0;
+            const rawYds = (p.stats && p.stats.rushYds) || (p.pastStats && p.pastStats.rushYds) || 0;
+            const rawTd = (p.stats && p.stats.rushTd) || (p.pastStats && p.pastStats.rushTd) || 0;
+
+            // Calculate Per-Game Averages
+            const rushAttPerGame = rawAtt / activeGames;
+            const rushYdsPerGame = rawYds / activeGames;
+            const rushTdPerGame = rawTd / activeGames;
+
+            // Tier 1: True Konami-Code Dual Threat (Lamar, Hurts, Richardson, Jayden)
+            // ≥ 5.5 Att/gm OR ≥ 25.0 Yds/gm OR ≥ 0.4 TD/gm (~95+ Att / ~425+ Yds 17-game pace)
+            if (rushAttPerGame >= 5.5 || rushYdsPerGame >= 25.0 || rushTdPerGame >= 0.4) {
+                archetypeNote = "His elite Konami-code rushing workload provides a week-winning floor and ceiling that pure pocket passers cannot match.";
+            }
+            // Tier 2: Mobile Dual-Threat Scrambler (Allen, Kyler, Bo Nix)
+            // ≥ 3.8 Att/gm OR ≥ 16.0 Yds/gm OR ≥ 0.25 TD/gm (~65+ Att / ~270+ Yds 17-game pace)
+            else if (rushAttPerGame >= 3.8 || rushYdsPerGame >= 16.0 || rushTdPerGame >= 0.25) {
+                archetypeNote = "His dual-threat mobility and scrambling ability add a valuable rushing foundation to supplement his passing production.";
+            }
+            // Tier 3: Pocket Passer with Scramble Ability (Mahomes, Purdy, Dak)
+            // ≥ 2.0 Att/gm OR ≥ 9.0 Yds/gm (~35+ Att / ~150+ Yds 17-game pace)
+            else if (rushAttPerGame >= 2.0 || rushYdsPerGame >= 9.0) {
+                archetypeNote = "Primarily a pocket passer, he possesses enough scramble mobility to extend plays and occasionally add rushing yards.";
+            }
+            // Tier 4: Pure Pocket Passer (Goff, Cousins, Rodgers)
+            else {
+                archetypeNote = "Lacking high-volume rushing stats, his fantasy floor is tied directly to passing volume, TD efficiency, and red-zone conversions.";
             }
         } else if (pos === 'RB') {
             if (p.hvo && p.hvo >= 70) {
@@ -520,8 +535,10 @@ const UI = {
         if (isOffense) {
             if (p.pastStats) {
                 const ps = p.pastStats;
-                if (ps.bigPlays && ps.bigPlays >= 12) {
-                    pros.push(`<strong>Proven Explosive Playmaker:</strong> Logged <strong>${ps.bigPlays} big plays</strong> (20+ yards) last season.`);
+                const pastGP = (ps && ps.gp > 0) ? ps.gp : 17;
+                const bigPlaysPerGame = ps.bigPlays ? (ps.bigPlays / pastGP) : 0;
+                if (bigPlaysPerGame >= 0.7) {
+                    pros.push(`<strong>Proven Explosive Playmaker:</strong> Logged <strong>${bigPlaysPerGame.toFixed(1)} big plays per game</strong> (20+ yards) last season.`);
                 }
                 if (p.pastPpg && p.pastPpg >= 15.0) {
                     pros.push(`<strong>Proven High-End Output:</strong> Delivered an elite <strong>${p.pastPpg.toFixed(1)} PPG</strong> in 2025.`);
@@ -552,10 +569,11 @@ const UI = {
                     `<strong>Target Magnet:</strong> Vacuuming up ${p.targetShare}% of team pass attempts (Volume at this level makes him script-proof).`
                 ]));
             }
-            if (p.hvo && p.hvo >= 70) {
+            const hvoPerGame = p.hvo ? (p.hvo / activeGames) : 0;
+            if (hvoPerGame >= 4.1) {
                 pros.push(pickVarShift([
-                    `<strong>High-Value Opportunities:</strong> Generates elite usage with ${p.hvo} HVO (Receptions + Red Zone carries yield 2-3x more fantasy points than normal rushes).`,
-                    `<strong>Money-Touch Monopoly:</strong> Dominates high-leverage touches with ${p.hvo} combined receptions & RZ carries (the most valuable touches in fantasy).`
+                    `<strong>High-Value Opportunities:</strong> Generates elite usage with <strong>${hvoPerGame.toFixed(1)} HVO per game</strong> (Receptions + RZ carries yield 2-3x more fantasy points than normal rushes).`,
+                    `<strong>Money-Touch Monopoly:</strong> Dominates high-leverage touches with <strong>${hvoPerGame.toFixed(1)} combined receptions & RZ carries per game</strong>.`
                 ], 1));
             }
 
