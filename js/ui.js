@@ -201,7 +201,6 @@ const UI = {
         const pos = p.Pos;
         const proj = p.ProjPts || 0;
         const ppg = (proj / 17).toFixed(1);
-        const advVbd = (p.AdvVBD || p.VBD || 0).toFixed(1);
         const tTeam = State.normalizeTeam(p.Team);
 
         const isOffense = ['QB', 'RB', 'WR', 'TE'].includes(pos);
@@ -209,33 +208,32 @@ const UI = {
         const isPK = pos === 'PK';
 
         // -------------------------------------------------------------
-        // INHERITED ROLE & SCHEME CONTEXT (Rookies & Team Changers)
+        // INHERITED ROLE & SCHEME CONTEXT
         // -------------------------------------------------------------
         let inheritedContextHTML = "";
-
-        // Robust team normalization matcher (Fixes ARI vs ARZ bug)
         const teamDist = State.teamTargetsMap ? State.teamTargetsMap[tTeam] : null;
         const rushEnv = State.teamAdvRush ? State.teamAdvRush[tTeam] : null;
         const passEnv = State.teamAdvPass ? State.teamAdvPass[tTeam] : null;
 
-        // --- NEW: OFFENSIVE CONTEXT VARIABLES ---
         let passVolume = teamDist ? (teamDist['Total Targets'] || 550) : 550;
         let offensePace = "balanced";
         if (passVolume > 580) offensePace = "pass-heavy";
         else if (passVolume < 520) offensePace = "run-heavy";
 
-        // Find the team's starting QB
-        let teamQB = State.allPlayers.find(q => q._cleanTeam === tTeam && q.Pos === 'QB' && q.depthChart === 1);
-        if (!teamQB) teamQB = State.allPlayers.filter(q => q._cleanTeam === tTeam && q.Pos === 'QB').sort((a, b) => (b.ProjPts || 0) - (a.ProjPts || 0))[0];
-        let qbName = teamQB ? teamQB.Player : "their starting QB";
+        // Find starting QB (safely exclude the player if the player IS the QB)
+        let qbName = "their starting QB";
+        if (pos !== 'QB') {
+            let teamQB = State.allPlayers.find(q => q._cleanTeam === tTeam && q._cleanPos === 'QB' && q.depthChart === 1);
+            if (!teamQB) teamQB = State.allPlayers.filter(q => q._cleanTeam === tTeam && q._cleanPos === 'QB').sort((a, b) => (b.ProjPts || 0) - (a.ProjPts || 0))[0];
+            if (teamQB) qbName = teamQB.Player;
+        }
 
-        // Fail-safe trigger: Rookie (Age <= 22), isNewRole flag, No 2025 games, or Top 2 Depth Chart
         const pAge = p.age || p.Age;
         const isRookieOrYoung = pAge && pAge <= 22;
         const hasNoPastStats = !p.pastStats || !p.pastStats.gp || p.pastStats.gp === 0;
         const isTargetRole = p.isNewRole || isRookieOrYoung || hasNoPastStats || (p.depthChart && p.depthChart <= 2);
 
-        if (isTargetRole) {
+        if (isTargetRole && isOffense) {
             let roleTitle = "";
             if (isRookieOrYoung) roleTitle = `🌱 Rookie / Youth Profile (${p.Team})`;
             else if (p.isNewRole || hasNoPastStats) roleTitle = `📋 Inherited Role & Opportunity (${p.Team})`;
@@ -291,7 +289,7 @@ const UI = {
         }
 
         // -------------------------------------------------------------
-        // 0. DETERMINISTIC SEED HASH (Varied phrasing per player)
+        // SEED HASH (Deterministic Variety)
         // -------------------------------------------------------------
         const getSeed = (str) => {
             let hash = 0;
@@ -303,7 +301,7 @@ const UI = {
         const pickVarShift = (arr, shift) => arr[(seed + shift) % arr.length];
 
         // -------------------------------------------------------------
-        // 1. POSITIONAL RANK & ULTRA-ELITE CHECK
+        // POSITIONAL RANK & TIERS
         // -------------------------------------------------------------
         const posPlayers = State.allPlayers
             .filter(x => x.Pos === pos)
@@ -330,7 +328,7 @@ const UI = {
         }
 
         // -------------------------------------------------------------
-        // 2. PLAYER ARCHETYPE DETECTION
+        // PLAYER ARCHETYPE DETECTION
         // -------------------------------------------------------------
         let archetypeNote = "";
         if (isDST) {
@@ -415,19 +413,15 @@ const UI = {
             }
         }
 
-        // ---INJECT OFFENSIVE ENVIRONMENT NARRATIVE ---
+        // Environment Narrative Append
         if (pos === 'RB') {
             let recs = (p.pastStats && p.pastStats.rec) ? p.pastStats.rec : 0;
             let share = p.targetShare || 0;
 
             let rbPassInvolvement = "";
-            if (share >= 10 || recs >= 40) {
-                rbPassInvolvement = `is highly involved in the passing game, offering a safe PPR floor`;
-            } else if (share >= 5 || recs >= 20) {
-                rbPassInvolvement = `is moderately involved as a receiver out of the backfield`;
-            } else {
-                rbPassInvolvement = `is minimally targeted in the passing game, relying primarily on ground volume`;
-            }
+            if (share >= 10 || recs >= 40) rbPassInvolvement = `is highly involved in the passing game, offering a safe PPR floor`;
+            else if (share >= 5 || recs >= 20) rbPassInvolvement = `is moderately involved as a receiver out of the backfield`;
+            else rbPassInvolvement = `is minimally targeted in the passing game, relying primarily on ground volume`;
 
             archetypeNote += ` Operating alongside <strong>${qbName}</strong> in a <strong>${offensePace}</strong> offense, he ${rbPassInvolvement}.`;
         } else if (['WR', 'TE'].includes(pos)) {
@@ -437,9 +431,7 @@ const UI = {
             archetypeNote += ` Directing a <strong>${offensePace}</strong> offense${lineContext}, his overall fantasy ceiling is strongly influenced by passing volume and the playmaking ability of his receiving corps.`;
         }
 
-        // -------------------------------------------------------------
-        // 3. DYNAMIC SCOUTING NARRATIVE WITH 2025 ACTUALS
-        // -------------------------------------------------------------
+        // Past Stats Context Sentence
         let pastStatsContext = "";
         if (p.pastStats && p.pastPpg > 0 && (isOffense || isDST)) {
             const ps = p.pastStats;
@@ -450,7 +442,7 @@ const UI = {
         }
 
         let narrativeBlurb = "";
-
+        
         if (isDST || isPK) {
             if (posRank <= 5) {
                 narrativeBlurb = pickVar([
@@ -493,7 +485,7 @@ const UI = {
                     `Navigating the middle rounds with ${p.Player} secures a functional ${tierLabel} with manageable variance.`
                 ];
                 narrativeBlurb = `${pickVar(solidIntros)}${pastStatsContext} ${archetypeNote}`;
-            } else if (posRank <= 36) { // NEW BLOCK: Fixes the WR3/Flex gap
+            } else if (posRank <= 36) {
                 const flexIntros = [
                     `${p.Player} enters the conversation as a viable ${tierLabel} with situational starting appeal.`,
                     `Drafting ${p.Player} secures a functional ${tierLabel} who projects for ${ppg} PPG in the ${p.Team} offense.`,
@@ -519,9 +511,7 @@ const UI = {
             }
         }
 
-        // -------------------------------------------------------------
-        // 4. CASUAL METRIC PRIMER
-        // -------------------------------------------------------------
+        // Casual Metric Primer Block
         let metricGuideHTML = "";
         if (pos === 'RB') {
             metricGuideHTML = `
@@ -569,7 +559,7 @@ const UI = {
                     pros.push(`<strong>High Ground Efficiency:</strong> Averaged a stellar <strong>${ps.rushYpa.toFixed(1)} YPC</strong> on ${ps.rushAtt} carries last season.`);
                 }
 
-                // --- POSITIVE TD REGRESSION PROS ---
+                // Positive TD Regression Check
                 const touches = (ps.rushAtt || 0) + (ps.rec || 0);
                 if (pos === 'RB' && touches >= 80 && ps.totalTd > 0) {
                     const tdRate = ps.totalTd / touches;
@@ -621,7 +611,7 @@ const UI = {
                 pros.push(`<strong>Clear Backfield Lead:</strong> Uncontested RB1 status with a designated handcuff (${p.handcuffName}).`);
             }
 
-            // --- NEW: SYSTEM & SCHEME PROS ---
+            // System & Scheme Pros
             if (['WR', 'TE'].includes(pos) && offensePace === 'pass-heavy') {
                 pros.push(`<strong>Pass-Heavy Offense:</strong> The team's high passing volume elevates his weekly target ceiling and guarantees a safer baseline for PPR formats.`);
             }
@@ -631,8 +621,9 @@ const UI = {
             if (pos === 'RB' && offensePace === 'run-heavy') {
                 pros.push(`<strong>Run-Heavy Offense:</strong> Operating in a run-first system ensures a massive baseline of rushing attempts and positive game scripts to churn out the clock.`);
             }
-
-            if (pos === 'RB' && rushEnv && rushEnv.ybcAtt >= 2.8) pros.push(`<strong>YBC Scheme Boost:</strong> Elite run-blocking scheme generates ${rushEnv.ybcAtt} Yards Before Contact (YBC) per carry, giving him massive open space before taking a hit.`);
+            if (pos === 'RB' && rushEnv && rushEnv.ybcAtt >= 2.8) {
+                pros.push(`<strong>YBC Scheme Boost:</strong> Elite run-blocking scheme generates ${rushEnv.ybcAtt} Yards Before Contact (YBC) per carry, giving him massive open space before taking a hit.`);
+            }
         }
 
         if (isDST && p.stats) {
@@ -657,10 +648,12 @@ const UI = {
             pros.push(`<strong>Bye Week Insurance:</strong> Provides a critical +${p._byeFillPts.toFixed(1)} point boost during Week ${p._byeFillWeek}.`);
         }
 
-        if (pros.length === 0) pros.push("Solid baseline candidate with standard positional volume.");
+        if (pros.length === 0) {
+            pros.push(`<strong>Dependable Volume Role:</strong> Projected for a reliable ${proj.toFixed(1)} season points as the ${posRankStr} in fantasy.`);
+        }
 
         // -------------------------------------------------------------
-        // 6. DYNAMIC BEAR CASE (CONS - NEGATIVE STATS & RISKS)
+        // DYNAMIC BEAR CASE (CONS - ALL 30 CHECKS RESTORED)
         // -------------------------------------------------------------
         let cons = [];
         let riskScore = 0;
@@ -671,7 +664,7 @@ const UI = {
                 const totalTouches = (Number(ps.rushAtt) || 0) + (Number(ps.rec) || 0);
                 const games = Number(ps.gp) || 17;
 
-                // 1. The Curse of 300 Touches
+                // 1. Curse of 300 Touches
                 if (pos === 'RB' && totalTouches >= 300) {
                     cons.push(`<strong>The '300-Touch' Curse:</strong> Logged a grueling ${totalTouches} touches last season. Running backs historically suffer sharp efficiency drops or injuries the year following a 300+ touch workload.`);
                     riskScore += 2;
@@ -683,21 +676,21 @@ const UI = {
                     riskScore += 2;
                 }
 
-                // 3. Turnover Concerns (Raised INT threshold to 13 for 17-game seasons)
+                // 3. Turnover Concerns
                 const interceptions = Number(ps.int) || 0;
                 if (pos === 'QB' && interceptions >= 13) {
                     cons.push(`<strong>Turnover Concerns:</strong> Threw <strong>${interceptions} interceptions</strong> last season.`);
                     riskScore += 1;
                 }
 
-                // 4. Ball Security (Raised Fumble threshold to 4)
+                // 4. Ball Security
                 const fumbles = Number(ps.fum) || 0;
                 if (fumbles >= 4) {
                     cons.push(`<strong>Ball Security Issues:</strong> Coughed up <strong>${fumbles} fumbles lost</strong> last season.`);
                     riskScore += 1;
                 }
 
-                // 5. Low Ground Efficiency (Requires 100+ carries and safe YPC fallback)
+                // 5. Low Ground Efficiency
                 const rushAtt = Number(ps.rushAtt) || 0;
                 const rushYds = Number(ps.rushYds) || 0;
                 const rushYpc = Number(ps.rushYpa) || (rushAtt > 0 ? rushYds / rushAtt : 0);
@@ -706,7 +699,7 @@ const UI = {
                     riskScore += 1;
                 }
 
-                // 6. Expected Production Regression (Requires 10+ games to prevent small-sample double penalties)
+                // 6. Expected Production Regression
                 const pastPpg = Number(p.pastPpg) || 0;
                 const projPpg = Number(ppg) || 0;
                 if (pastPpg > 0 && games >= 10 && (pastPpg - projPpg) >= 3.5) {
@@ -714,7 +707,7 @@ const UI = {
                     riskScore += 1;
                 }
 
-                // 7. TD Regression Warning (Excludes RBs with heavy Red Zone usage)
+                // 7. TD Regression Warning
                 if (pos === 'RB' && totalTouches >= 100) {
                     const totalTd = Number(ps.totalTd) || 0;
                     const tdRate = totalTd / totalTouches;
@@ -739,7 +732,7 @@ const UI = {
                 }
             }
 
-            // 9. Target Quality Check (Guarded against NaN and Division-by-Zero)
+            // 9. Target Quality Check
             if (['WR', 'TE'].includes(pos) && p.catchable && p.pastStats && (Number(p.pastStats.targets) || 0) > 0) {
                 const targets = Number(p.pastStats.targets);
                 const catchableRate = (Number(p.catchable) / targets) * 100;
@@ -750,7 +743,7 @@ const UI = {
                 }
             }
 
-            // --- SYSTEM & SCHEME RISKS ---
+            // System & Scheme Risks
             let teamTopTargetShare = Math.max(...State.allPlayers.filter(x => x._cleanTeam === tTeam).map(x => x.targetShare || 0));
 
             if (['WR', 'TE'].includes(pos) && teamTopTargetShare > 0 && teamTopTargetShare < 20.0) {
@@ -794,26 +787,26 @@ const UI = {
             if (p.olTier === 'D' || p.olTier === 'F') { cons.push(`<strong>Poor O-Line Environment:</strong> Struggling Tier ${p.olTier} offensive line could cap overall efficiency.`); riskScore += 1; }
             if (p.depthChart && p.depthChart > 1) { cons.push(`<strong>Depth Chart Trait:</strong> Currently slotted at Depth #${p.depthChart} on the team.`); riskScore += 1; }
 
-            // Structural offensive risks for non-elites
+            // Structural Flaws for Non-Elites
             if (!isUltraElite) {
-                riskScore += 1;
-                if (pos === 'RB' && !p.hvo) {
+                if (pos === 'RB' && (!p.hvo || p.hvo < 40)) {
                     cons.push(pickVar([
                         `<strong>Game-Script Dependency:</strong> Lacks pass-game work; vulnerable if ${p.Team} falls behind.`,
                         `<strong>Script Sensitivity:</strong> Production drops if negative game scripts force ${p.Team} to pass.`
                     ]));
-                } else if (['WR', 'TE'].includes(pos) && (!p.targetShare || p.targetShare < 20)) { // Consolidated TE & WR logic
+                    riskScore += 1;
+                } else if (['WR', 'TE'].includes(pos) && (!p.targetShare || p.targetShare < 18)) {
                     cons.push(pickVarShift([
                         `<strong>Target Volatility:</strong> Target share isn't bulletproof; weekly floor relies on TD efficiency.`,
                         `<strong>Volume Variance:</strong> Secondary target role leaves him susceptible to low-target games.`
                     ], 1));
-                } else if (pos === 'QB' && (!p.stats || (p.stats.rushAtt || 0) < 40)) { // FIXED: Excludes mobile QBs
+                    riskScore += 1;
+                } else if (pos === 'QB' && (!p.stats || (p.stats.rushAtt || 0) < 40)) {
                     cons.push(pickVar([
                         `<strong>Limited Rushing Floor:</strong> Lack of rushing mobility places heavy burden on pass volume and TDs.`,
                         `<strong>Passing-Only Floor:</strong> Lacks rushing yards to salvage bad passing performances.`
                     ]));
-                } else if (cons.length === 0) {
-                    cons.push(`<strong>Offensive Environment Variance:</strong> Floor is tied to ${p.Team}'s overall offensive pacing.`);
+                    riskScore += 1;
                 }
             } else {
                 if (cons.length === 0) {
@@ -831,25 +824,24 @@ const UI = {
 
         if (p.avgStars && p.avgStars <= 2.7) { cons.push(`<strong>Tough Overall Schedule:</strong> Faces a grueling ${p.avgStars.toFixed(2)}/5.0 star schedule.`); riskScore += 1; }
 
+        if (cons.length === 0) {
+            cons.push(`<strong>Standard Game-Flow Variance:</strong> Subject to standard week-to-week game script fluctuations.`);
+        }
+
         let riskBadge = `<span class="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2.5 py-0.5 rounded-full font-bold">🛡️ LOW RISK</span>`;
         if (riskScore >= 3) riskBadge = `<span class="bg-rose-500/20 text-rose-300 border border-rose-500/30 px-2.5 py-0.5 rounded-full font-bold">⚠️ ELEVATED RISK</span>`;
         else if (riskScore === 2) riskBadge = `<span class="bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2.5 py-0.5 rounded-full font-bold">⚡ MODERATE RISK</span>`;
 
         // -------------------------------------------------------------
-        // 7. RANGE OF OUTCOMES (Dynamic Archetype Variance)
+        // RANGE OF OUTCOMES
         // -------------------------------------------------------------
-        let varianceSpread = 0.25; // Default 25% baseline
-
-        // Volatility archetype expansions
+        let varianceSpread = 0.25;
         if (p._isFlyer || p.isRBHandcuff || (age && age <= 22)) varianceSpread += 0.12; 
         if (p.aDOT && p.aDOT >= 12.5) varianceSpread += 0.10;
         if (pos === 'QB' && p.stats && p.stats.rushAtt >= 60) varianceSpread += 0.08;
-
-        // Stability archetype contractions
         if (p._isSafeFloor && (!p.aDOT || p.aDOT <= 8.5)) varianceSpread -= 0.08;
         if (p.targetShare && p.targetShare >= 24.0 && (!p.aDOT || p.aDOT < 10.0)) varianceSpread -= 0.05;
 
-        // Clamp spread between 12% and 45%
         varianceSpread = Math.max(0.12, Math.min(0.45, varianceSpread));
 
         let baselinePpg = Number(ppg) || 0;
@@ -864,6 +856,7 @@ const UI = {
             }
         }
 
+        // Market Value Check
         let marketValueHTML = "";
         if (p.adp) {
             const diff = p.adp - overallRank;
@@ -890,10 +883,10 @@ const UI = {
                     </p>
                 </div>
 
-                <!-- Inherited Role & Scheme Analysis for Rookies/Team-Changers -->
+                <!-- Inherited Role & Scheme Analysis -->
                 ${inheritedContextHTML}
 
-                <!-- Metric Educational Guide for Casuals -->
+                <!-- Metric Educational Guide -->
                 ${metricGuideHTML}
 
                 <!-- Market Value Check -->
@@ -901,7 +894,7 @@ const UI = {
 
                 <!-- Pros & Cons Grid -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <!-- Bull Case -->
+                    <!-- Bull Case -->
                     <div class="bg-emerald-50/70 border border-emerald-200 p-4 rounded-xl">
                         <h5 class="font-extrabold text-emerald-900 text-xs uppercase tracking-wider mb-2.5 flex items-center">
                             <span class="mr-1.5">🚀</span> Bull Case (Good Points)

@@ -558,8 +558,9 @@ const State = {
 
     mergeActualStatsData(statsList) {
         if (!statsList || !Array.isArray(statsList)) return;
+        this.advancedMetrics = [...this.advancedMetrics, ...statsList];
 
-        // Number sanitation helper (prevents NaN from breaking VBD & CPU draft sorting)
+        // Number sanitation helper
         const cleanNum = (val) => {
             if (val === undefined || val === null || val === '') return 0;
             if (typeof val === 'number') return isNaN(val) ? 0 : val;
@@ -1013,8 +1014,9 @@ const State = {
                 if (advPlayer['AIR'] !== undefined) p.airYards = advPlayer['AIR'];
 
                 // 2. High-Value Opportunities (HVO) for RBs = Receptions + Red Zone Targets
-                if (p.Pos === 'RB' && advPlayer['REC'] !== undefined && advPlayer['RZ TGT'] !== undefined) {
-                    p.hvo = advPlayer['REC'] + advPlayer['RZ TGT'];
+                if (p.Pos === 'RB' && advPlayer['REC'] !== undefined) {
+                    const rzCarries = advPlayer['RZ ATT'] ?? advPlayer['RZ Att'] ?? 0;
+                    p.hvo = advPlayer['REC'] + rzCarries;
                 }
 
                 // 3. True Pressure Rate for QBs = (Sacks + Knockdowns + Hurries) / Attempts

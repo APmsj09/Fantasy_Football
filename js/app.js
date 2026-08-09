@@ -297,16 +297,39 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderMetricLeaders(metric) {
         const tbody = document.getElementById('metric-leaders-body');
-        if (!tbody || !State.advancedMetrics || State.advancedMetrics.length === 0) return;
+        const sourcePool = (State.allPlayers && State.allPlayers.length > 0) ? State.allPlayers : State.advancedMetrics;
+        if (!tbody || !sourcePool || sourcePool.length === 0) return;
 
-        let sortedPlayers = [...State.advancedMetrics]
-            .filter(p => p[metric] !== undefined && p[metric] !== null)
-            .sort((a, b) => b[metric] - a[metric])
+        const getMetricValue = (p, m) => {
+            if (m === 'TGT %' || m === '% TM') {
+                return p.targetShare ?? p['TGT %'] ?? p['% TM'] ?? p.pastStats?.targetShare;
+            }
+            if (m === '20+Rec') {
+                return p.pastStats?.bigRec ?? p['20+Rec'];
+            }
+            if (m === '20+Rush') {
+                return p.pastStats?.bigRush ?? p['20+Rush'];
+            }
+            if (m === 'RZ TGT') {
+                return p.rzTgt ?? p['RZ TGT'];
+            }
+            return p[m] ?? p.pastStats?.[m];
+        };
+
+        let sortedPlayers = [...sourcePool]
+            .map(p => ({
+                player: p,
+                val: getMetricValue(p, metric)
+            }))
+            .filter(item => item.val !== undefined && item.val !== null && !isNaN(item.val) && item.val > 0)
+            .sort((a, b) => b.val - a.val)
             .slice(0, 15);
 
-        tbody.innerHTML = sortedPlayers.map(p => {
-            let pos = p['ATT'] ? 'RB' : (p['REC'] ? 'WR/TE' : 'QB');
-            let displayVal = metric === '% TM' || metric === 'TGT %' ? `${p[metric]}%` : p[metric];
+        tbody.innerHTML = sortedPlayers.map(item => {
+            let p = item.player;
+            let val = item.val;
+            let pos = p.Pos || (p['ATT'] ? 'RB' : (p['REC'] ? 'WR/TE' : 'QB'));
+            let displayVal = (metric === '% TM' || metric === 'TGT %') ? `${val}%` : val;
             return `
         <tr class="hover:bg-slate-50">
             <td class="px-4 py-3 font-medium text-gray-900">${p.Player}</td>
