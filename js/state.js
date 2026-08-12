@@ -1412,34 +1412,47 @@ const State = {
 
             let adjMultiplier = 1.0;
 
-            // 1. Role Security (Reduced double-counting of volume)
+            // 1. Tiered Role Security (Reduced double-counting of volume)
             if (p.snapShare) {
-                // Lowered bonuses. Projection already accounts for snap volume. This just rewards stability.
-                if (p.snapShare >= 80) adjMultiplier += 0.03;
-                else if (p.snapShare < 40) adjMultiplier -= 0.03;
+                if (p.snapShare >= 85) adjMultiplier += 0.04;
+                else if (p.snapShare >= 75) adjMultiplier += 0.02;
+                else if (p.snapShare < 40) adjMultiplier -= 0.04;
+                else if (p.snapShare < 55) adjMultiplier -= 0.02;
             } else if (p.depthChart !== undefined && p.depthChart !== null) {
-                if (p.depthChart === 1) adjMultiplier += 0.02;
-                else if (p.depthChart >= 3) adjMultiplier -= 0.03;
+                if (p.depthChart === 1) adjMultiplier += 0.025;
+                else if (p.depthChart === 2) adjMultiplier -= 0.01;
+                else if (p.depthChart >= 3) adjMultiplier -= 0.04;
             }
 
-            // 2. Schedule Strength
-            if (p.avgStars) adjMultiplier += (p.avgStars - 3.0) * 0.02;
-            if (p.playoffSOS && p.playoffSOS >= 4.0) adjMultiplier += 0.02;
+            // 2. Smooth & Tiered Schedule Strength
+            if (p.avgStars) adjMultiplier += (p.avgStars - 3.0) * 0.025; // Scales smoothly dynamically
+            if (p.playoffSOS) {
+                if (p.playoffSOS >= 4.2) adjMultiplier += 0.03;
+                else if (p.playoffSOS >= 3.6) adjMultiplier += 0.015;
+                else if (p.playoffSOS <= 1.8) adjMultiplier -= 0.03;
+                else if (p.playoffSOS <= 2.4) adjMultiplier -= 0.015;
+            }
 
-            // 3. Offensive Line Quality (Streamlined to prevent overlapping logic blocks)
+            // 3. Tiered Offensive Line Quality
             let olModifier = 0;
             if (p.Pos === 'RB' && p.olRunBlk) {
-                if (p.olRunBlk <= 5) olModifier = 0.04;
-                else if (p.olRunBlk >= 25) olModifier = -0.04;
+                if (p.olRunBlk <= 3) olModifier = 0.05;
+                else if (p.olRunBlk <= 8) olModifier = 0.025;
+                else if (p.olRunBlk >= 29) olModifier = -0.05;
+                else if (p.olRunBlk >= 24) olModifier = -0.025;
             } else if (['QB', 'WR', 'TE'].includes(p.Pos) && p.olPassBlk) {
-                if (p.olPassBlk <= 5) olModifier = 0.03;
-                else if (p.olPassBlk >= 25) olModifier = -0.04;
+                if (p.olPassBlk <= 3) olModifier = 0.04;
+                else if (p.olPassBlk <= 8) olModifier = 0.02;
+                else if (p.olPassBlk >= 29) olModifier = -0.04;
+                else if (p.olPassBlk >= 24) olModifier = -0.02;
             }
+            
             // Fallback to broad tier only if rank data didn't trigger a change
             if (olModifier === 0 && p.olTier) {
-                if (p.olTier === 'S') olModifier = 0.03;
-                else if (p.olTier === 'A') olModifier = 0.015;
-                else if (p.olTier === 'D' || p.olTier === 'F') olModifier = -0.03;
+                if (p.olTier === 'S') olModifier = 0.04;
+                else if (p.olTier === 'A') olModifier = 0.02;
+                else if (p.olTier === 'D') olModifier = -0.02;
+                else if (p.olTier === 'F') olModifier = -0.04;
             }
             adjMultiplier += olModifier;
 
@@ -1458,61 +1471,83 @@ const State = {
                 if (teamDist && p.depthChart === 1) {
                     let posPctKey = `${p.Pos} %`;
                     let teamPosPct = teamDist[posPctKey] || 0;
-                    if (p.Pos === 'RB' && teamPosPct >= 20.0) adjMultiplier += 0.03;
-                    else if (p.Pos === 'WR' && teamPosPct >= 60.0) adjMultiplier += 0.03;
-                    else if (p.Pos === 'TE' && teamPosPct >= 25.0) adjMultiplier += 0.03;
+                    
+                    if (p.Pos === 'RB') {
+                        if (teamPosPct >= 24.0) adjMultiplier += 0.04;
+                        else if (teamPosPct >= 19.0) adjMultiplier += 0.02;
+                    } else if (p.Pos === 'WR') {
+                        if (teamPosPct >= 65.0) adjMultiplier += 0.04;
+                        else if (teamPosPct >= 58.0) adjMultiplier += 0.02;
+                    } else if (p.Pos === 'TE') {
+                        if (teamPosPct >= 26.0) adjMultiplier += 0.04;
+                        else if (teamPosPct >= 20.0) adjMultiplier += 0.02;
+                    }
                 }
             }
 
-            // 5. Efficiency & "TD-Dependency" Penalties (Fixing the Volume Double-Count)
+            // 5. Tiered Efficiency & "TD-Dependency" Penalties
             if (p.targetShare) {
-                // Focus on efficiency/dominance rather than pure volume
-                if (p.targetShare >= 26) adjMultiplier += 0.03;
-                if (p.targetShare >= 22 && p.aDOT >= 10.0) adjMultiplier += 0.03;
+                if (p.targetShare >= 28) adjMultiplier += 0.05;
+                else if (p.targetShare >= 23) adjMultiplier += 0.025;
+                
+                if (p.targetShare >= 22 && p.aDOT >= 12.0) adjMultiplier += 0.03;
 
                 // --- WOPR (Weighted Opportunity Rating) ENGINE ---
                 if (['WR', 'TE'].includes(p.Pos)) {
-                    const teamAirYards = 3500; // Baseline team air yards
+                    const teamAirYards = 3500; 
                     const tgtShare = Number(p.targetShare) || 0;
                     const airYardsShare = p.airYards ? ((Number(p.airYards) / teamAirYards) * 100) : tgtShare;
                     
                     p.wopr = (1.5 * (tgtShare / 100)) + (0.7 * (airYardsShare / 100));
 
-                    if (p.wopr >= 0.60) {
-                        adjMultiplier += 0.04;
-                    } else if (p.wopr <= 0.32 && (p.ProjPts || 0) > 110) {
-                        adjMultiplier -= 0.03;
-                    }
+                    if (p.wopr >= 0.65) adjMultiplier += 0.05;
+                    else if (p.wopr >= 0.55) adjMultiplier += 0.025;
+                    else if (p.wopr <= 0.32 && (p.ProjPts || 0) > 110) adjMultiplier -= 0.04;
                 }
 
                 // Fraud Penalty - High projected points but low target share means highly TD dependent
-                if (['WR', 'TE'].includes(p.Pos) && p.ProjPts > 120 && p.targetShare < 14.0) {
-                    adjMultiplier -= 0.05;
+                if (['WR', 'TE'].includes(p.Pos) && p.ProjPts > 120) {
+                    if (p.targetShare < 12.0) adjMultiplier -= 0.06;
+                    else if (p.targetShare < 15.0) adjMultiplier -= 0.03;
                 }
             }
 
             if (p.Pos === 'RB') {
-                if (p.brokenTackles && p.brokenTackles >= 20) adjMultiplier += 0.03;
-
-                // HVO logic reduced. We don't want to double count the points they get from these touches.
-                if (p.hvo && p.hvo >= 110) adjMultiplier += 0.03;
+                if (p.brokenTackles) {
+                    if (p.brokenTackles >= 30) adjMultiplier += 0.04;
+                    else if (p.brokenTackles >= 20) adjMultiplier += 0.02;
+                }
+                if (p.hvo) {
+                    if (p.hvo >= 80) adjMultiplier += 0.04;
+                    else if (p.hvo >= 60) adjMultiplier += 0.02;
+                }
             }
 
             if (['WR', 'TE'].includes(p.Pos)) {
-                if (p.ypt && p.ypt >= 9.5 && (p.targetShare || 0) >= 18) adjMultiplier += 0.03;
-                if (p.trueCatchRate && p.trueCatchRate > 90) adjMultiplier += 0.02;
-                if (p.dropRate && p.dropRate > 10) adjMultiplier -= 0.03;
+                if (p.ypt && p.targetShare && p.targetShare >= 15) {
+                    if (p.ypt >= 10.5) adjMultiplier += 0.04;
+                    else if (p.ypt >= 9.0) adjMultiplier += 0.02;
+                    else if (p.ypt < 6.5) adjMultiplier -= 0.04;
+                }
+                if (p.trueCatchRate) {
+                    if (p.trueCatchRate >= 92) adjMultiplier += 0.03;
+                    else if (p.trueCatchRate >= 86) adjMultiplier += 0.015;
+                }
+                if (p.dropRate) {
+                    if (p.dropRate > 10) adjMultiplier -= 0.04;
+                    else if (p.dropRate > 7) adjMultiplier -= 0.02;
+                }
             }
 
             if (p.Pos === 'QB') {
                 if (p.pressureRate) {
-                    if (p.pressureRate > 22.0) adjMultiplier -= 0.04;
-                    else if (p.pressureRate < 13.0) adjMultiplier += 0.03;
+                    if (p.pressureRate > 26.0) adjMultiplier -= 0.05;
+                    else if (p.pressureRate > 22.0) adjMultiplier -= 0.025;
+                    else if (p.pressureRate < 14.0) adjMultiplier += 0.03;
                 }
-                // REMOVED: Redundant rushAtt and rawVBD > 30 boosts that broke the 1.01 logic
             }
 
-            // 6. Age-Cliff Modifiers (Unchanged - excellent logic)
+            // 6. Age-Cliff Modifiers (Non-Linear Polynomial Scaling)
             let pAge = p.age || p.Age;
             if (pAge) {
                 if (p.Pos === 'RB' && pAge >= 27) {
@@ -1524,6 +1559,11 @@ const State = {
                 } else if (p.Pos === 'QB' && pAge >= 38) {
                     adjMultiplier -= Math.pow(pAge - 37, 1.2) * 0.02;
                 }
+                
+                // NEW: Breakout Window Bonus
+                if (!p.isNewRole && pAge >= 21 && pAge <= 23 && ['WR', 'RB', 'TE'].includes(p.Pos)) {
+                    adjMultiplier += 0.02; 
+                }
             }
 
             // 7. Advanced Team Environment Metrics
@@ -1534,11 +1574,13 @@ const State = {
 
             if (passEnv) {
                 if (['QB', 'WR', 'TE'].includes(p.Pos)) {
-                    if (passEnv.playActionYds >= 950 || passEnv.rpoYds >= 550) adjMultiplier += 0.02;
+                    if (passEnv.playActionYds >= 1100 || passEnv.rpoYds >= 700) adjMultiplier += 0.035;
+                    else if (passEnv.playActionYds >= 900 || passEnv.rpoYds >= 500) adjMultiplier += 0.015;
                     else if (passEnv.playActionYds < 500 && passEnv.rpoYds < 200) adjMultiplier -= 0.02;
                 }
                 if (['QB', 'WR', 'TE'].includes(p.Pos) && (!p.olPassBlk || (p.olPassBlk > 5 && p.olPassBlk < 25))) {
-                    if (passEnv.prssPct >= 25.0) adjMultiplier -= 0.02;
+                    if (passEnv.prssPct >= 28.0) adjMultiplier -= 0.04;
+                    else if (passEnv.prssPct >= 25.0) adjMultiplier -= 0.02;
                 }
             }
 
@@ -1548,48 +1590,48 @@ const State = {
                     teamQB = this.allPlayers.filter(q => q._cleanTeam === tTeam && q._cleanPos === 'QB').sort((a, b) => b.ProjPts - a.ProjPts)[0];
                 }
                 if (teamQB && teamQB.trueAccuracy !== undefined) {
-                    if (teamQB.trueAccuracy >= 74.0) adjMultiplier += 0.025;
-                    else if (teamQB.trueAccuracy <= 63.0) adjMultiplier -= 0.025;
+                    if (teamQB.trueAccuracy >= 76.0) adjMultiplier += 0.04;
+                    else if (teamQB.trueAccuracy >= 73.0) adjMultiplier += 0.02;
+                    else if (teamQB.trueAccuracy <= 60.0) adjMultiplier -= 0.04;
+                    else if (teamQB.trueAccuracy <= 64.0) adjMultiplier -= 0.02;
                 }
             }
 
             // 8. New Role / Inherited Environment (Rookies & Free Agents)
             if (p.isNewRole) {
-
-                // RBs inherit the O-Line's run-blocking scheme (Yards Before Contact),
-                // but we strip out Yards After Contact (which is a player-specific skill).
                 if (p.Pos === 'RB' && rushEnv) {
-                    if (rushEnv.ybcAtt >= 2.8) adjMultiplier += 0.03;
-                    else if (rushEnv.ybcAtt <= 2.1) adjMultiplier -= 0.03;
+                    if (rushEnv.ybcAtt >= 2.9) adjMultiplier += 0.04;
+                    else if (rushEnv.ybcAtt >= 2.6) adjMultiplier += 0.02;
+                    else if (rushEnv.ybcAtt <= 1.8) adjMultiplier -= 0.04;
+                    else if (rushEnv.ybcAtt <= 2.2) adjMultiplier -= 0.02;
                 }
-
-                // WRs/TEs inherit scheme-designed YAC (e.g., McVay/Shanahan systems)
                 if (['WR', 'TE'].includes(p.Pos) && recEnv) {
-                    if (recEnv.yacPerRec >= 5.8) adjMultiplier += 0.02;
-                    else if (recEnv.yacPerRec <= 4.6) adjMultiplier -= 0.02;
+                    if (recEnv.yacPerRec >= 6.0) adjMultiplier += 0.03;
+                    else if (recEnv.yacPerRec >= 5.5) adjMultiplier += 0.015;
+                    else if (recEnv.yacPerRec <= 4.2) adjMultiplier -= 0.03;
                 }
-
-                // QBs inherit the pocket time (O-Line) and their receivers' hands (Drops)
-                // Note: prssPct was already evaluated in Step 7, so it is safely omitted here.
                 if (p.Pos === 'QB' && passEnv) {
-                    if (passEnv.pktTime >= 2.5) adjMultiplier += 0.02;
-                    else if (passEnv.pktTime <= 2.2) adjMultiplier -= 0.02;
+                    if (passEnv.pktTime >= 2.6) adjMultiplier += 0.03;
+                    else if (passEnv.pktTime >= 2.4) adjMultiplier += 0.015;
+                    else if (passEnv.pktTime <= 2.2) adjMultiplier -= 0.025;
 
-                    if (passEnv.dropPct >= 6.0) adjMultiplier -= 0.02;
+                    if (passEnv.dropPct >= 8.5) adjMultiplier -= 0.04;
+                    else if (passEnv.dropPct >= 6.5) adjMultiplier -= 0.02;
                 }
             }
 
-            // 9. NEW: Advanced Realism Penalties (Workload Wear & Injury Risk)
+            // 9. Tiered Advanced Realism Penalties (Workload Wear & Injury Risk)
             if (p.pastStats) {
                 let totalTouches = (p.pastStats.rushAtt || 0) + (p.pastStats.rec || 0);
-                // Curse of 300 touches for RBs
-                if (p.Pos === 'RB' && totalTouches >= 300) {
-                    adjMultiplier -= 0.04;
+                
+                if (p.Pos === 'RB') {
+                    if (totalTouches >= 360) adjMultiplier -= 0.06;
+                    else if (totalTouches >= 300) adjMultiplier -= 0.03;
                 }
 
-                // Chronic Missed Time Penalty (Less than 12 games played)
-                if (p.pastStats.gp && p.pastStats.gp < 12 && p.pastStats.gp > 0) {
-                    adjMultiplier -= 0.03;
+                if (p.pastStats.gp && p.pastStats.gp > 0) {
+                    if (p.pastStats.gp <= 8) adjMultiplier -= 0.05;
+                    else if (p.pastStats.gp <= 12) adjMultiplier -= 0.025;
                 }
             }
 

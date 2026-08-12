@@ -234,27 +234,47 @@ const UI = {
         const isRookieOrYoung = pAge && pAge <= 22;
         const hasNoPastStats = !p.pastStats || !p.pastStats.gp || p.pastStats.gp === 0;
         const isTargetRole = p.isNewRole || isRookieOrYoung || hasNoPastStats || (p.depthChart && p.depthChart <= 2);
+        
+        // Prevents spamming past stats in both the general narrative blurb AND the context box
+        const showPastStatsInBox = p.pastStats && p.pastStats.gp > 0 && (p.isNewRole || isRookieOrYoung || hasNoPastStats);
 
         if (isTargetRole && isOffense) {
             let roleTitle = "";
-            if (isRookieOrYoung) roleTitle = `🌱 Rookie / Youth Profile (${p.Team})`;
-            else if (p.isNewRole || hasNoPastStats) roleTitle = `📋 Inherited Role & Opportunity (${p.Team})`;
+            if (isRookieOrYoung && hasNoPastStats) roleTitle = `🌱 Rookie Profile & Team Context (${p.Team})`;
+            else if (isRookieOrYoung) roleTitle = `🌱 Youth Profile & Team Context (${p.Team})`;
+            else if (p.isNewRole || hasNoPastStats) roleTitle = `📋 New Role / Environment Context (${p.Team})`;
             else roleTitle = `🔄 Team Scheme & Volume Context (${p.Team})`;
 
             let opportunityBullets = [];
 
+            // 1. Reference Player's Previous Stats (if applicable for moved players/rookies)
+            if (showPastStatsInBox) {
+                let ps = p.pastStats;
+                let contextNote = isRookieOrYoung ? "Prior Production:" : "Previous Season Production:";
+                if (pos === 'RB') {
+                    let touches = (ps.rushAtt || 0) + (ps.rec || 0);
+                    let yds = (ps.rushYds || 0) + (ps.recYds || 0);
+                    opportunityBullets.push(`<strong>${contextNote}</strong> Handled ${touches} touches for ${yds} total yards and ${ps.totalTd || 0} TDs.`);
+                } else if (['WR', 'TE'].includes(pos)) {
+                    opportunityBullets.push(`<strong>${contextNote}</strong> Earned ${ps.targets || 0} targets, securing ${ps.rec || 0} receptions for ${ps.recYds || 0} yards and ${ps.recTd || 0} TDs.`);
+                } else if (pos === 'QB') {
+                    opportunityBullets.push(`<strong>${contextNote}</strong> Threw for ${ps.passYds || 0} yards and ${ps.passTd || 0} TDs, while adding ${ps.rushYds || 0} yards and ${ps.rushTd || 0} TDs on the ground.`);
+                }
+            }
+
+            // 2. Reference Team's Positional Stats & Incoming Environment Context
             if (pos === 'RB') {
                 if (teamDist && teamDist['RB %']) {
                     let rbPct = teamDist['RB %'];
                     let rbTgts = teamDist['RB Targets'] || 0;
                     let totalTgts = teamDist['Total Targets'] || 0;
-                    opportunityBullets.push(`<strong>Pass-Game Funnel:</strong> ${p.Team}'s scheme funneled <strong>${rbPct}% of total passes</strong> (${rbTgts} targets out of ${totalTgts}) to running backs last season.`);
+                    opportunityBullets.push(`<strong>Team Positional Usage:</strong> ${p.Team}'s scheme funneled <strong>${rbPct}% of total passes</strong> (${rbTgts} targets out of ${totalTgts}) to running backs last season.`);
                 }
                 if (rushEnv && rushEnv.ybcAtt) {
                     let blockingQuality = rushEnv.ybcAtt >= 2.6 ? "High-Quality" : (rushEnv.ybcAtt <= 2.0 ? "Struggling" : "Average");
                     opportunityBullets.push(`<strong>Blocking Environment:</strong> ${p.Team} generated <strong>${rushEnv.ybcAtt} Yards Before Contact</strong> per carry (${blockingQuality} run-blocking scheme).`);
                 }
-                if (opportunityBullets.length === 0) {
+                if (opportunityBullets.length === 0 || (opportunityBullets.length === 1 && showPastStatsInBox)) {
                     opportunityBullets.push(`<strong>Inherited Workload:</strong> ${p.Player} enters the ${p.Team} backfield as a primary workload candidate.`);
                 }
             } else if (['WR', 'TE'].includes(pos)) {
@@ -262,17 +282,24 @@ const UI = {
                     let posPct = teamDist[`${pos} %`];
                     let posTgts = teamDist[`${pos} Targets`] || 0;
                     let totalTgts = teamDist['Total Targets'] || 0;
-                    opportunityBullets.push(`<strong>Positional Target Funnel:</strong> ${p.Team}'s offense funneled <strong>${posPct}% of total team targets</strong> (${posTgts} targets out of ${totalTgts}) to ${pos}s last season.`);
+                    opportunityBullets.push(`<strong>Team Positional Usage:</strong> ${p.Team}'s offense funneled <strong>${posPct}% of total team targets</strong> (${posTgts} targets out of ${totalTgts}) to ${pos}s last season.`);
                 }
                 if (passEnv && passEnv.playActionYds) {
                     opportunityBullets.push(`<strong>Play-Action Scheme:</strong> ${p.Team} generated <strong>${passEnv.playActionYds} passing yards off Play-Action</strong>.`);
                 }
-                if (opportunityBullets.length === 0) {
+                if (passEnv && passEnv.onTgtPct) {
+                    opportunityBullets.push(`<strong>QB Accuracy Context:</strong> ${p.Team} QBs delivered on-target passes <strong>${passEnv.onTgtPct}%</strong> of the time last season.`);
+                }
+                if (opportunityBullets.length === 0 || (opportunityBullets.length === 1 && showPastStatsInBox)) {
                     opportunityBullets.push(`<strong>Target Opportunity:</strong> ${p.Player} enters the ${p.Team} passing attack with starting route potential.`);
                 }
             } else if (pos === 'QB') {
                 if (passEnv && passEnv.pktTime) {
                     opportunityBullets.push(`<strong>Pocket Protection:</strong> ${p.Team}'s offensive line allowed <strong>${passEnv.pktTime}s pocket time</strong> with a <strong>${passEnv.prssPct}% pressure rate</strong> last season.`);
+                }
+                if (teamDist && teamDist['Total Targets']) {
+                    let passPace = teamDist['Total Targets'] > 580 ? 'High-Volume' : (teamDist['Total Targets'] < 520 ? 'Low-Volume' : 'Balanced');
+                    opportunityBullets.push(`<strong>Passing Volume:</strong> Inherits a <strong>${passPace}</strong> passing attack that attempted ${teamDist['Total Targets']} targets last season.`);
                 }
             }
 
@@ -350,27 +377,19 @@ const UI = {
             const rawYds = (p.stats && p.stats.rushYds) || (p.pastStats && p.pastStats.rushYds) || 0;
             const rawTd = (p.stats && p.stats.rushTd) || (p.pastStats && p.pastStats.rushTd) || 0;
 
-            // Calculate Per-Game Averages
             const rushAttPerGame = rawAtt / activeGames;
             const rushYdsPerGame = rawYds / activeGames;
             const rushTdPerGame = rawTd / activeGames;
 
-            // Tier 1: True Konami-Code Dual Threat (Lamar, Hurts, Richardson, Jayden)
-            // ≥ 5.5 Att/gm OR ≥ 25.0 Yds/gm OR ≥ 0.4 TD/gm (~95+ Att / ~425+ Yds 17-game pace)
             if (rushAttPerGame >= 5.5 || rushYdsPerGame >= 25.0 || rushTdPerGame >= 0.4) {
-                archetypeNote = "His elite Konami-code rushing workload provides a week-winning floor and ceiling that pure pocket passers cannot match.";
+                archetypeNote = "His elite rushing workload provides a week-winning floor and ceiling that pure pocket passers cannot match.";
             }
-            // Tier 2: Mobile Dual-Threat Scrambler (Allen, Kyler, Bo Nix)
-            // ≥ 3.8 Att/gm OR ≥ 16.0 Yds/gm OR ≥ 0.25 TD/gm (~65+ Att / ~270+ Yds 17-game pace)
             else if (rushAttPerGame >= 3.8 || rushYdsPerGame >= 16.0 || rushTdPerGame >= 0.25) {
                 archetypeNote = "His dual-threat mobility and scrambling ability add a valuable rushing foundation to supplement his passing production.";
             }
-            // Tier 3: Pocket Passer with Scramble Ability (Mahomes, Purdy, Dak)
-            // ≥ 2.0 Att/gm OR ≥ 9.0 Yds/gm (~35+ Att / ~150+ Yds 17-game pace)
             else if (rushAttPerGame >= 2.0 || rushYdsPerGame >= 9.0) {
                 archetypeNote = "Primarily a pocket passer, he possesses enough scramble mobility to extend plays and occasionally add rushing yards.";
             }
-            // Tier 4: Pure Pocket Passer (Goff, Cousins, Rodgers)
             else {
                 archetypeNote = "Lacking high-volume rushing stats, his fantasy floor is tied directly to passing volume, TD efficiency, and red-zone conversions.";
             }
@@ -430,7 +449,6 @@ const UI = {
             }
         }
 
-        // Environment Narrative Append
         if (pos === 'RB') {
             let recs = (p.pastStats && p.pastStats.rec) ? p.pastStats.rec : 0;
             let share = p.targetShare || 0;
@@ -450,7 +468,7 @@ const UI = {
 
         // Past Stats Context Sentence
         let pastStatsContext = "";
-        if (p.pastStats && p.pastPpg > 0 && (isOffense || isDST)) {
+        if (p.pastStats && p.pastPpg > 0 && (isOffense || isDST) && !showPastStatsInBox) {
             const ps = p.pastStats;
             const totalTds = isDST ? ((ps.defTd || 0) + (ps.spcTd || 0)) : (ps.totalTd || 0);
             const tdText = isDST ? `${totalTds} DEF/ST TDs` : `${totalTds} total TDs`;
@@ -531,95 +549,184 @@ const UI = {
         // DYNAMIC BULL CASE (PROS)
         // -------------------------------------------------------------
         let pros = [];
+        let hasDepthChartPro = false;
+
+        let isReceivingSpecialist = (p.targetShare && p.targetShare >= 10) || (p.pastStats && p.pastStats.rec >= 35);
+        let isGoalLineVulture = (p.rzAtt && p.rzAtt >= 25) || (p.pastStats && p.pastStats.rushTd >= 8);
 
         if (isOffense) {
             if (p.pastStats) {
                 const ps = p.pastStats;
                 const pastGP = (ps && ps.gp > 0) ? ps.gp : 17;
                 const bigPlaysPerGame = ps.bigPlays ? (ps.bigPlays / pastGP) : 0;
-                if (bigPlaysPerGame >= 0.7) {
+                
+                // Tiered Big Plays
+                if (bigPlaysPerGame >= 1.0) {
+                    pros.push(`<strong>Elite Explosive Playmaker:</strong> Logged a massive <strong>${bigPlaysPerGame.toFixed(1)} big plays per game</strong> (20+ yards) last season, demonstrating weekly slate-breaking upside.`);
+                } else if (bigPlaysPerGame >= 0.6) {
                     pros.push(`<strong>Proven Explosive Playmaker:</strong> Logged <strong>${bigPlaysPerGame.toFixed(1)} big plays per game</strong> (20+ yards) last season.`);
                 }
-                if (p.pastPpg && p.pastPpg >= 15.0) {
-                    pros.push(`<strong>Proven High-End Output:</strong> Delivered an elite <strong>${p.pastPpg.toFixed(1)} PPG</strong> in 2025.`);
+                
+                // Tiered PPG
+                if (p.pastPpg && p.pastPpg >= 18.0) {
+                    pros.push(`<strong>Superstar Production:</strong> Delivered an elite <strong>${p.pastPpg.toFixed(1)} PPG</strong> in 2025, anchoring fantasy lineups.`);
+                } else if (p.pastPpg && p.pastPpg >= 14.5) {
+                    pros.push(`<strong>Proven High-End Output:</strong> Delivered a strong <strong>${p.pastPpg.toFixed(1)} PPG</strong> in 2025.`);
                 }
-                if (pos === 'RB' && ps.rushYpa && ps.rushYpa >= 4.8 && ps.rushAtt >= 100) {
+                
+                // Tiered Ground Efficiency
+                if (pos === 'RB' && ps.rushYpa && ps.rushYpa >= 5.2 && ps.rushAtt >= 100) {
+                    pros.push(`<strong>Hyper-Efficient Rusher:</strong> Averaged a staggering <strong>${ps.rushYpa.toFixed(1)} YPC</strong> on ${ps.rushAtt} carries last season.`);
+                } else if (pos === 'RB' && ps.rushYpa && ps.rushYpa >= 4.7 && ps.rushAtt >= 100) {
                     pros.push(`<strong>High Ground Efficiency:</strong> Averaged a stellar <strong>${ps.rushYpa.toFixed(1)} YPC</strong> on ${ps.rushAtt} carries last season.`);
                 }
 
+                // Positive TD Regression (RB)
                 const touches = (ps.rushAtt || 0) + (ps.rec || 0);
-                if (pos === 'RB' && touches >= 80 && ps.totalTd > 0) {
+                if (pos === 'RB' && touches >= 100 && ps.totalTd !== undefined) {
                     const tdRate = ps.totalTd / touches;
-                    if (tdRate <= 0.015) {
-                        pros.push(`<strong>Positive TD Regression Candidate:</strong> Scored only ${ps.totalTd} TDs on ${touches} touches last year. Expect scoring output to bounce back toward league averages.`);
+                    if (tdRate <= 0.01) {
+                        pros.push(`<strong>Massive TD Regression Candidate:</strong> Scored only ${ps.totalTd} TDs on an absurd ${touches} touches last year. Scoring output is mathematically guaranteed to bounce back.`);
+                    } else if (tdRate <= 0.02) {
+                        pros.push(`<strong>Positive TD Regression Candidate:</strong> Scored just ${ps.totalTd} TDs on ${touches} touches last year. Expect better end-zone luck this season.`);
+                    }
+                }
+
+                // Positive TD Regression (WR/TE)
+                if (['WR', 'TE'].includes(pos) && (Number(ps.targets) || 0) >= 60) {
+                    const recTd = Number(ps.recTd) || 0;
+                    const targets = Number(ps.targets) || 1;
+                    const tdRate = recTd / targets;
+                    if (tdRate <= 0.01) {
+                        pros.push(`<strong>Massive TD Regression Candidate:</strong> Caught only ${recTd} TDs on ${targets} targets last year. Scoring output is mathematically guaranteed to positively regress.`);
+                    } else if (tdRate <= 0.03) {
+                        pros.push(`<strong>Positive TD Regression Candidate:</strong> Caught only ${recTd} TDs on ${targets} targets last year. Expect scoring output to bounce back toward league averages.`);
+                    }
+                }
+
+                // Projected Leap
+                const projPpg = Number(ppg) || 0;
+                if (p.pastPpg > 0 && pastGP >= 10) {
+                    const leap = projPpg - p.pastPpg;
+                    if (leap >= 5.5) {
+                        pros.push(`<strong>Massive Production Leap:</strong> 2026 projection (${projPpg.toFixed(1)} PPG) anticipates a colossal breakout compared to last year (${p.pastPpg.toFixed(1)} PPG).`);
+                    } else if (leap >= 3.0) {
+                        pros.push(`<strong>Expected Production Leap:</strong> 2026 projection (${projPpg.toFixed(1)} PPG) marks a significant improvement over last year's output (${p.pastPpg.toFixed(1)} PPG), reflecting a much better role or environment.`);
                     }
                 }
             }
 
+            // Tiered Target Quality
             if (['WR', 'TE'].includes(pos) && p.catchable && p.pastStats && p.pastStats.targets) {
                 const catchableRate = (p.catchable / p.pastStats.targets) * 100;
-                if (catchableRate >= 82.0) {
+                if (catchableRate >= 88.0) {
+                    pros.push(`<strong>Elite Target Quality:</strong> Benefited from highly accurate QB play, with <strong>${catchableRate.toFixed(1)}%</strong> of his targets deemed catchable.`);
+                } else if (catchableRate >= 80.0) {
                     pros.push(`<strong>High Target Quality:</strong> Received catchable passes on <strong>${catchableRate.toFixed(1)}%</strong> of his targets last season.`);
                 }
             }
 
-            if (p.targetShare && p.targetShare >= 22) {
-                pros.push(pickVar([
-                    `<strong>Alpha Target Command:</strong> Soaks up a dominant ${p.targetShare}% target share (Commanding >22% of team passes typically guarantees a bulletproof weekly floor).`,
-                    `<strong>Target Magnet:</strong> Vacuuming up ${p.targetShare}% of team pass attempts (Volume at this level makes him script-proof).`
-                ]));
+            // Tiered Target Share
+            if (p.targetShare >= 27) {
+                pros.push(`<strong>Dominant Alpha Target:</strong> Soaks up a massive ${p.targetShare}% target share, guaranteeing a bulletproof weekly floor and absolute scheme priority.`);
+            } else if (p.targetShare >= 22) {
+                pros.push(`<strong>Strong Target Magnet:</strong> Vacuuming up ${p.targetShare}% of team pass attempts, ensuring consistent script-proof volume.`);
             }
+            
+            // Tiered HVO
             const hvoPerGame = p.hvo ? (p.hvo / activeGames) : 0;
-            if (hvoPerGame >= 4.1) {
-                pros.push(pickVarShift([
-                    `<strong>High-Value Opportunities:</strong> Generates elite usage with <strong>${hvoPerGame.toFixed(1)} HVO per game</strong> (Receptions + RZ carries yield 2-3x more fantasy points than normal rushes).`,
-                    `<strong>Money-Touch Monopoly:</strong> Dominates high-leverage touches with <strong>${hvoPerGame.toFixed(1)} combined receptions & RZ carries per game</strong>.`
-                ], 1));
+            if (hvoPerGame >= 5.2) {
+                pros.push(`<strong>Elite High-Value Opportunities:</strong> Generates massive usage with <strong>${hvoPerGame.toFixed(1)} HVO per game</strong> (Receptions + RZ carries). This is the exact role that prints top-5 RB seasons.`);
+            } else if (hvoPerGame >= 3.8) {
+                pros.push(`<strong>High-Value Opportunities:</strong> Secures highly profitable touches with <strong>${hvoPerGame.toFixed(1)} combined receptions & RZ carries per game</strong>.`);
             }
 
-            // 1. RB Yards After Contact Independence
-            if (pos === 'RB' && p.yacAtt && p.yacAtt >= 3.0) {
-                pros.push(`<strong>YAC Yard Creator:</strong> Generates an elite <strong>${p.yacAtt.toFixed(1)} Yards After Contact</strong> per carry, producing yards independent of offensive line blocking.`);
+            // Committee RB Strengths
+            if (pos === 'RB' && p.snapShare && p.snapShare >= 40 && p.snapShare <= 65) {
+                if (isReceivingSpecialist) {
+                    pros.push(`<strong>PPR Pass Specialist:</strong> Captures high-value receiving work (<strong>${p.targetShare || 10}% target share</strong>), maintaining a solid PPR floor despite a shared backfield.`);
+                } else if (isGoalLineVulture) {
+                    pros.push(`<strong>Goal-Line Vulture:</strong> Monopolizes high-leverage inside-the-10 carries, providing touchdown-driven upside in a split backfield.`);
+                }
             }
 
-            // 2. WR/TE WOPR Alpha Profile
-            if (['WR', 'TE'].includes(pos) && p.wopr && p.wopr >= 0.58) {
-                pros.push(`<strong>Alpha WOPR Command:</strong> Boasts a dominant <strong>${p.wopr.toFixed(2)} WOPR</strong>, combining target command and deep air yards share.`);
+            // Tiered YAC
+            if (pos === 'RB' && p.yacAtt >= 3.4) {
+                pros.push(`<strong>Elite YAC Creator:</strong> Generates a dominant <strong>${p.yacAtt.toFixed(1)} Yards After Contact</strong> per carry, routinely breaking tackles and creating independent yardage.`);
+            } else if (pos === 'RB' && p.yacAtt >= 2.9) {
+                pros.push(`<strong>Strong YAC Creator:</strong> Generates <strong>${p.yacAtt.toFixed(1)} Yards After Contact</strong> per carry, producing yards independent of offensive line blocking.`);
             }
 
-            // 3. True Catch Rate (Elite Hands)
-            if (['WR', 'TE'].includes(pos) && p.trueCatchRate && p.trueCatchRate >= 88.0) {
-                pros.push(`<strong>Elite Hands & Efficiency:</strong> Secured <strong>${p.trueCatchRate.toFixed(1)}% of catchable targets</strong> last season.`);
+            // Tiered WOPR
+            if (['WR', 'TE'].includes(pos) && p.wopr >= 0.65) {
+                pros.push(`<strong>Elite WOPR Command:</strong> Boasts a dominant <strong>${p.wopr.toFixed(2)} WOPR</strong>, combining elite target command with massive deep air yards share.`);
+            } else if (['WR', 'TE'].includes(pos) && p.wopr >= 0.55) {
+                pros.push(`<strong>Alpha WOPR Profile:</strong> Posts a strong <strong>${p.wopr.toFixed(2)} WOPR</strong>, showing excellent underlying volume metrics.`);
             }
 
-            // 4. QB Pocket Protection Time
-            if (pos === 'QB' && passEnv && passEnv.pktTime >= 2.5) {
+            // Tiered Catch Rate
+            if (['WR', 'TE'].includes(pos) && p.trueCatchRate >= 92.0) {
+                pros.push(`<strong>Vacuum Hands:</strong> Secured an elite <strong>${p.trueCatchRate.toFixed(1)}% of catchable targets</strong> last season.`);
+            } else if (['WR', 'TE'].includes(pos) && p.trueCatchRate >= 86.0) {
+                pros.push(`<strong>Reliable Hands:</strong> Secured <strong>${p.trueCatchRate.toFixed(1)}% of catchable targets</strong> last season.`);
+            }
+
+            // Tiered YPT
+            if (['WR', 'TE'].includes(pos) && p.ypt >= 10.5 && p.targetShare >= 15) {
+                pros.push(`<strong>Hyper-Efficient Target:</strong> Generated a staggering <strong>${p.ypt.toFixed(1)} Yards Per Target</strong> last season.`);
+            } else if (['WR', 'TE'].includes(pos) && p.ypt >= 9.0 && p.targetShare >= 15) {
+                pros.push(`<strong>Elite Target Efficiency:</strong> Generated a strong <strong>${p.ypt.toFixed(1)} Yards Per Target</strong> last season.`);
+            }
+
+            // Pocket Time & O-Line
+            if (pos === 'QB' && passEnv && passEnv.pktTime >= 2.65) {
+                pros.push(`<strong>Elite Pocket Time:</strong> Operates behind an O-Line allowing a massive <strong>${passEnv.pktTime}s pocket time</strong>, giving deep routes ample time to develop.`);
+            } else if (pos === 'QB' && passEnv && passEnv.pktTime >= 2.45) {
                 pros.push(`<strong>Clean Pocket Time:</strong> Operates behind an O-Line allowing <strong>${passEnv.pktTime}s pocket time</strong>, giving routes time to develop.`);
             }
-            if (p.olTier === 'S' || p.olTier === 'A') {
-                pros.push(pickVarShift([
-                    `<strong>Elite Trench Protection:</strong> Operates behind a Tier ${p.olTier} Offensive Line (Elite blocking provides QBs clean pockets and gives RBs massive running lanes).`
-                ], 2));
+            if (p.olTier === 'S') {
+                pros.push(`<strong>Elite Trench Protection:</strong> Operates behind a Tier S Offensive Line. Elite blocking provides QBs impregnable pockets and gives RBs massive running lanes.`);
+            } else if (p.olTier === 'A') {
+                pros.push(`<strong>Strong Trench Protection:</strong> Operates behind a Tier A Offensive Line, boosting offensive efficiency.`);
             }
-            if (p.aDOT && p.aDOT >= 12) {
-                pros.push(pickVarShift([
-                    `<strong>Deep Threat Upside:</strong> Boasts a massive ${p.aDOT} aDOT (Average Depth of Target). Targets further downfield carry immense touchdown and chunk-play upside.`
-                ], 3));
+
+            // Tiered aDOT
+            if (p.aDOT >= 14.5) {
+                pros.push(`<strong>Elite Deep Threat:</strong> Boasts a massive ${p.aDOT} aDOT (Average Depth of Target), routinely stretching the field for splash plays.`);
+            } else if (p.aDOT >= 11.5) {
+                pros.push(`<strong>Downfield Target:</strong> Leverages an ${p.aDOT} aDOT, giving his targets immense touchdown and chunk-play upside.`);
             }
-            if (p.avgStars && p.avgStars >= 3.3) {
+
+            // Schedule & Snaps
+            if (p.avgStars && p.avgStars >= 3.6) {
+                pros.push(`<strong>Cake Overall Schedule:</strong> Extremely favorable ${p.avgStars.toFixed(2)}/5.0 star schedule rating.`);
+            } else if (p.avgStars && p.avgStars >= 3.3) {
                 pros.push(`<strong>Soft Overall Schedule:</strong> Favorable ${p.avgStars.toFixed(2)}/5.0 Strength of Schedule rating (Meaning easier matchups for fantasy production).`);
             }
 
-            // Restrict Snap Share Pro to non-QBs so it doesn't sound weird
-            if (['RB', 'WR', 'TE'].includes(pos) && p.snapShare && p.snapShare >= 75) {
-                pros.push(`<strong>Workhorse Snap Share:</strong> On the field for ${p.snapShare.toFixed(0)}% of offensive snaps (Elite snap volume minimizes the risk of losing touches to backups).`);
+            if (['RB', 'WR', 'TE'].includes(pos) && p.snapShare >= 85) {
+                pros.push(`<strong>Every-Down Workhorse:</strong> Never leaves the field (<strong>${p.snapShare.toFixed(0)}% snap share</strong>). True bellcow deployment completely immunizes him from substitution risk.`);
+            } else if (['RB', 'WR', 'TE'].includes(pos) && p.snapShare >= 72) {
+                pros.push(`<strong>High Snap Share:</strong> On the field for ${p.snapShare.toFixed(0)}% of offensive snaps (High snap volume minimizes the risk of losing touches to backups).`);
             }
 
-            if (p._addedPPW && p._addedPPW >= 0.3 && !p._byeFillWeek) {
+            if (p._addedPPW && p._addedPPW >= 1.0) {
+                pros.push(`<strong>Elite Lineup Difference Maker:</strong> Adds a massive +${p._addedPPW.toFixed(1)} Points Per Week directly to your optimal starters.`);
+            } else if (p._addedPPW && p._addedPPW >= 0.3 && !p._byeFillWeek) {
                 pros.push(`<strong>Lineup Difference Maker:</strong> Adds +${p._addedPPW.toFixed(1)} Points Per Week directly to your optimal starters.`);
             }
+            
             if (p.isRBStarter && p.handcuffName) {
                 pros.push(`<strong>Clear Backfield Lead:</strong> Uncontested RB1 status with a designated handcuff (${p.handcuffName}).`);
+            }
+
+            // Depth Chart Pros
+            if (['WR', 'TE'].includes(pos) && p.depthChart === 2 && p.targetShare >= 18) {
+                pros.push(`<strong>Co-Primary Target:</strong> Slotted at Depth #2, but commands a heavy <strong>${p.targetShare}% target share</strong> alongside his team's WR1.`);
+                hasDepthChartPro = true;
+            } else if (pos === 'WR' && p.depthChart === 2 && teamDist && teamDist['WR %'] >= 58.0) {
+                pros.push(`<strong>High-Volume WR Room:</strong> ${p.Team} funnels <strong>${teamDist['WR %']}% of targets to WRs</strong>, ensuring strong volume even as the WR2.`);
+                hasDepthChartPro = true;
             }
 
             // System & Scheme Pros
@@ -632,27 +739,35 @@ const UI = {
             if (pos === 'RB' && offensePace === 'run-heavy') {
                 pros.push(`<strong>Run-Heavy Offense:</strong> Operating in a run-first system ensures a massive baseline of rushing attempts and positive game scripts to churn out the clock.`);
             }
-            if (pos === 'RB' && rushEnv && rushEnv.ybcAtt >= 2.8) {
-                pros.push(`<strong>YBC Scheme Boost:</strong> Elite run-blocking scheme generates ${rushEnv.ybcAtt} Yards Before Contact (YBC) per carry, giving him massive open space before taking a hit.`);
+            if (pos === 'RB' && rushEnv && rushEnv.ybcAtt >= 2.9) {
+                pros.push(`<strong>Elite YBC Scheme Boost:</strong> Elite run-blocking scheme generates ${rushEnv.ybcAtt} Yards Before Contact (YBC) per carry, giving him massive open space before taking a hit.`);
+            } else if (pos === 'RB' && rushEnv && rushEnv.ybcAtt >= 2.6) {
+                pros.push(`<strong>YBC Scheme Boost:</strong> Run-blocking scheme generates ${rushEnv.ybcAtt} Yards Before Contact (YBC) per carry.`);
             }
 
-            // Add Rookie/Youth Upside if lacking other stats
-            if (isRookieOrYoung && posRank <= 24) {
+            if (isRookieOrYoung && posRank <= 24 && !p.isNewRole) {
                 pros.push(`<strong>Youth Upside:</strong> At just ${pAge} years old, possesses high-end athletic ceiling and fresh legs heading into the season.`);
             }
         }
 
         if (isDST && p.stats) {
             const ds = p.stats;
-            if (ds.sack && ds.sack >= 45) pros.push(`<strong>Elite Pass Rush:</strong> Generated a massive <strong>${ds.sack} sacks</strong> last season.`);
+            if (ds.sack && ds.sack >= 50) pros.push(`<strong>Fearsome Pass Rush:</strong> Generated a league-wrecking <strong>${ds.sack} sacks</strong> last season.`);
+            else if (ds.sack && ds.sack >= 40) pros.push(`<strong>Elite Pass Rush:</strong> Generated a massive <strong>${ds.sack} sacks</strong> last season.`);
+            
             const to = (ds.defInt || 0) + (ds.defFum || 0);
-            if (to >= 25) pros.push(`<strong>Turnover Magnet:</strong> Forced <strong>${to} total turnovers</strong> (INTs & Fumbles) last season.`);
+            if (to >= 30) pros.push(`<strong>Elite Turnover Magnet:</strong> Forced a staggering <strong>${to} total turnovers</strong> (INTs & Fumbles) last season.`);
+            else if (to >= 24) pros.push(`<strong>Turnover Magnet:</strong> Forced <strong>${to} total turnovers</strong> (INTs & Fumbles) last season.`);
+            
             if (ds.defTd && ds.defTd >= 3) pros.push(`<strong>Scoring Threat:</strong> Scored <strong>${ds.defTd} defensive touchdowns</strong> last season.`);
-            if (ds.papg && ds.papg <= 19) pros.push(`<strong>Stingy Scoring Defense:</strong> Allowed just <strong>${ds.papg.toFixed(1)} Points Per Game</strong>.`);
+            
+            if (ds.papg && ds.papg <= 17.5) pros.push(`<strong>Impenetrable Defense:</strong> Allowed an incredibly low <strong>${ds.papg.toFixed(1)} Points Per Game</strong>.`);
+            else if (ds.papg && ds.papg <= 19.5) pros.push(`<strong>Stingy Scoring Defense:</strong> Allowed just <strong>${ds.papg.toFixed(1)} Points Per Game</strong>.`);
         }
 
         if (isPK && p.stats) {
-            if (p.stats.fgTotal && p.stats.fgTotal >= 30) pros.push(`<strong>High Volume Kicker:</strong> Made <strong>${p.stats.fgTotal} Field Goals</strong> last season.`);
+            if (p.stats.fgTotal && p.stats.fgTotal >= 35) pros.push(`<strong>Elite Volume Kicker:</strong> Made a massive <strong>${p.stats.fgTotal} Field Goals</strong> last season.`);
+            else if (p.stats.fgTotal && p.stats.fgTotal >= 30) pros.push(`<strong>High Volume Kicker:</strong> Made <strong>${p.stats.fgTotal} Field Goals</strong> last season.`);
         }
 
         if (!isOffense) {
@@ -673,6 +788,8 @@ const UI = {
         // -------------------------------------------------------------
         let cons = [];
         let riskScore = 0;
+        let hasScriptDependencyCon = false;
+        let hasLowVolumeCon = false;
 
         if (isOffense) {
             if (p.pastStats) {
@@ -680,80 +797,110 @@ const UI = {
                 const totalTouches = (Number(ps.rushAtt) || 0) + (Number(ps.rec) || 0);
                 const games = Number(ps.gp) || 17;
 
-                // 1. Curse of 300 Touches
-                if (pos === 'RB' && totalTouches >= 300) {
+                // 1. Tiered Curse of 300 Touches
+                if (pos === 'RB' && totalTouches >= 360) {
+                    cons.push(`<strong>Extreme Workload Hangover:</strong> Logged an exhausting ${totalTouches} touches last season. The risk of a major physical drop-off or injury is highly elevated.`);
+                    riskScore += 3;
+                } else if (pos === 'RB' && totalTouches >= 300) {
                     cons.push(`<strong>The '300-Touch' Curse:</strong> Logged a grueling ${totalTouches} touches last season. Running backs historically suffer sharp efficiency drops or injuries the year following a 300+ touch workload.`);
                     riskScore += 2;
                 }
 
-                // 2. Durability Concerns
-                if (games < 12 && games > 0) {
+                // 2. Tiered Durability Concerns
+                if (games <= 8 && games > 0) {
+                    cons.push(`<strong>Severe Durability Risk:</strong> Missed over half the season, playing only <strong>${games} games</strong>. Staying on the field is a major question mark.`);
+                    riskScore += 3;
+                } else if (games <= 12 && games > 0) {
                     cons.push(`<strong>Durability Risk:</strong> Missed significant time last season, playing only <strong>${games} games</strong>. Injury variance lowers his floor.`);
                     riskScore += 2;
                 }
 
-                // 3. Turnover Concerns
+                // 3. Tiered Turnover Concerns
                 const interceptions = Number(ps.int) || 0;
-                if (pos === 'QB' && interceptions >= 13) {
+                if (pos === 'QB' && interceptions >= 17) {
+                    cons.push(`<strong>Turnover Prone:</strong> Threw an alarming <strong>${interceptions} interceptions</strong> last season, risking defensive scoring penalties and benchings.`);
+                    riskScore += 2;
+                } else if (pos === 'QB' && interceptions >= 13) {
                     cons.push(`<strong>Turnover Concerns:</strong> Threw <strong>${interceptions} interceptions</strong> last season.`);
                     riskScore += 1;
                 }
 
                 // 4. Ball Security
                 const fumbles = Number(ps.fum) || 0;
-                if (fumbles >= 4) {
+                if (fumbles >= 6) {
+                    cons.push(`<strong>Severe Ball Security Issues:</strong> Coughed up <strong>${fumbles} fumbles lost</strong> last season, a critical flaw that endangers playing time.`);
+                    riskScore += 2;
+                } else if (fumbles >= 4) {
                     cons.push(`<strong>Ball Security Issues:</strong> Coughed up <strong>${fumbles} fumbles lost</strong> last season.`);
                     riskScore += 1;
                 }
 
-                // 5. Low Ground Efficiency
+                // 5. Tiered Low Ground Efficiency
                 const rushAtt = Number(ps.rushAtt) || 0;
                 const rushYds = Number(ps.rushYds) || 0;
                 const rushYpc = Number(ps.rushYpa) || (rushAtt > 0 ? rushYds / rushAtt : 0);
-                if (pos === 'RB' && rushAtt >= 100 && rushYpc < 3.8 && rushYpc > 0) {
-                    cons.push(`<strong>Low Ground Efficiency:</strong> Averaged just <strong>${rushYpc.toFixed(1)} YPC</strong> on ${rushAtt} carries last season.`);
+                if (pos === 'RB' && rushAtt >= 100 && rushYpc <= 3.4 && rushYpc > 0) {
+                    cons.push(`<strong>Dismal Ground Efficiency:</strong> Plodded for just <strong>${rushYpc.toFixed(1)} YPC</strong> on ${rushAtt} carries last season, putting his starting role severely at risk.`);
+                    riskScore += 2;
+                } else if (pos === 'RB' && rushAtt >= 100 && rushYpc <= 3.8 && rushYpc > 0) {
+                    cons.push(`<strong>Sub-Par Ground Efficiency:</strong> Averaged just <strong>${rushYpc.toFixed(1)} YPC</strong> on ${rushAtt} carries last season.`);
                     riskScore += 1;
                 }
 
                 // 6. Expected Production Regression
                 const pastPpg = Number(p.pastPpg) || 0;
                 const projPpg = Number(ppg) || 0;
-                if (pastPpg > 0 && games >= 10 && (pastPpg - projPpg) >= 3.5) {
-                    cons.push(`<strong>Expected Production Regression:</strong> 2026 projection (${projPpg.toFixed(1)} PPG) marks a notable step back from last year's output (${pastPpg.toFixed(1)} PPG).`);
-                    riskScore += 1;
+                if (pastPpg > 0 && games >= 10) {
+                    const drop = pastPpg - projPpg;
+                    if (drop >= 6.0) {
+                        cons.push(`<strong>Steep Production Regression:</strong> 2026 projection (${projPpg.toFixed(1)} PPG) signals a massive drop-off from last year (${pastPpg.toFixed(1)} PPG) due to structural or role changes.`);
+                        riskScore += 2;
+                    } else if (drop >= 3.5) {
+                        cons.push(`<strong>Expected Production Regression:</strong> 2026 projection (${projPpg.toFixed(1)} PPG) marks a notable step back from last year's output (${pastPpg.toFixed(1)} PPG).`);
+                        riskScore += 1;
+                    }
                 }
 
-                // 7. TD Regression Warning
+                // 7. Tiered TD Regression Warning (RB)
                 if (pos === 'RB' && totalTouches >= 100) {
                     const totalTd = Number(ps.totalTd) || 0;
                     const tdRate = totalTd / totalTouches;
-                    const isGoalLineWorkhorse = (p.rzAtt && p.rzAtt >= 25);
+                    const isTrueGoalLineWorkhorse = (p.rzAtt && p.rzAtt >= 25);
 
-                    if (tdRate >= 0.085 && !isGoalLineWorkhorse) {
+                    if (tdRate >= 0.12 && !isTrueGoalLineWorkhorse) {
+                        cons.push(`<strong>Extreme TD Regression Warning:</strong> Scored ${totalTd} TDs on ${totalTouches} touches (${(tdRate * 100).toFixed(1)}% TD rate). This is mathematically unsustainable.`);
+                        riskScore += 2;
+                    } else if (tdRate >= 0.085 && !isTrueGoalLineWorkhorse) {
                         cons.push(`<strong>TD Regression Warning:</strong> Scored ${totalTd} TDs on ${totalTouches} touches (${(tdRate * 100).toFixed(1)}% TD rate). Sustaining this TD efficiency without a massive red-zone role may be difficult.`);
                         riskScore += 1;
                     }
                 }
 
-                // 8. WR/TE TD Efficiency Check
+                // 8. Tiered TD Regression Warning (WR/TE)
                 if (['WR', 'TE'].includes(pos) && (Number(ps.targets) || 0) >= 60) {
                     const recTd = Number(ps.recTd) || 0;
                     const targets = Number(ps.targets) || 1;
                     const tdRate = recTd / targets;
 
-                    if (tdRate >= 0.11) {
+                    if (tdRate >= 0.15) {
+                        cons.push(`<strong>Extreme TD Regression:</strong> Caught ${recTd} TDs on just ${targets} targets (${(tdRate * 100).toFixed(1)}% rate). This scoring pace is practically impossible to sustain.`);
+                        riskScore += 2;
+                    } else if (tdRate >= 0.10) {
                         cons.push(`<strong>Unsustainable TD Efficiency:</strong> Caught ${recTd} TDs on ${targets} targets (${(tdRate * 100).toFixed(1)}% TD/target rate). Expect TD output to regress toward league averages.`);
                         riskScore += 1;
                     }
                 }
             }
 
-            // 9. Target Quality Check
+            // 9. Tiered Target Quality Check
             if (['WR', 'TE'].includes(pos) && p.catchable && p.pastStats && (Number(p.pastStats.targets) || 0) > 0) {
                 const targets = Number(p.pastStats.targets);
                 const catchableRate = (Number(p.catchable) / targets) * 100;
 
-                if (catchableRate <= 65.0) {
+                if (catchableRate <= 55.0) {
+                    cons.push(`<strong>Dismal Target Quality:</strong> Only an abysmal <strong>${catchableRate.toFixed(1)}%</strong> of his targets were catchable last season, rendering volume highly inefficient.`);
+                    riskScore += 2;
+                } else if (catchableRate <= 68.0) {
                     cons.push(`<strong>Suppressed Target Quality:</strong> Only <strong>${catchableRate.toFixed(1)}%</strong> of targets were catchable last season due to off-target throws.`);
                     riskScore += 1;
                 }
@@ -761,65 +908,120 @@ const UI = {
 
             let teamTopTargetShare = Math.max(...State.allPlayers.filter(x => x._cleanTeam === tTeam).map(x => x.targetShare || 0));
 
-            if (['WR', 'TE'].includes(pos) && teamTopTargetShare > 0 && teamTopTargetShare < 20.0) {
-                cons.push(`<strong>Spread Passing Distribution:</strong> The offensive system spreads the ball evenly across multiple receivers (no player on the team commands a 20%+ target share). This lack of a concentrated alpha role creates volatile weekly floors.`);
+            if (['WR', 'TE'].includes(pos) && teamTopTargetShare > 0 && teamTopTargetShare < 20.0 && (!p.targetShare || p.targetShare < 20.0)) {
+                cons.push(`<strong>Lack of Alpha Target Share:</strong> The offensive system spreads the ball evenly across multiple receivers (no player on the team commands a 20%+ target share). This lack of a concentrated alpha role creates volatile weekly floors.`);
                 riskScore += 1;
             }
-            if (pos === 'RB' && p.snapShare && p.snapShare >= 40 && p.snapShare <= 65) {
-                const isReceivingSpecialist = (p.targetShare && p.targetShare >= 10) || (p.pastStats && p.pastStats.rec >= 35);
-                const isGoalLineVulture = (p.rzAtt && p.rzAtt >= 25) || (p.pastStats && p.pastStats.rushTd >= 8);
-
-                if (isReceivingSpecialist) {
-                    pros.push(`<strong>PPR Pass Specialist:</strong> Captures high-value receiving work (<strong>${p.targetShare || 10}% target share</strong>), maintaining a solid PPR floor despite a shared backfield.`);
-                } else if (isGoalLineVulture) {
-                    pros.push(`<strong>Goal-Line Vulture:</strong> Monopolizes high-leverage inside-the-10 carries, providing touchdown-driven upside in a split backfield.`);
-                } else {
-                    cons.push(`<strong>Committee Grinder:</strong> Trapped in a shared backfield (<strong>${p.snapShare.toFixed(0)}% snap share</strong>) without receiving or goal-line monopoly.`);
-                    riskScore += 1;
+            
+            // Tiered Committee Risk
+            if (pos === 'RB' && p.snapShare && p.snapShare <= 65) {
+                if (!isReceivingSpecialist && !isGoalLineVulture && !p.isRBStarter) {
+                    if (p.snapShare <= 40) {
+                        cons.push(`<strong>Buried in Committee:</strong> Sees the field on only <strong>${p.snapShare.toFixed(0)}% of snaps</strong>. Barely playable without an injury to the starter.`);
+                        riskScore += 2;
+                    } else {
+                        cons.push(`<strong>Committee Grinder:</strong> Trapped in a shared backfield (<strong>${p.snapShare.toFixed(0)}% snap share</strong>) without receiving or goal-line monopoly.`);
+                        riskScore += 1;
+                    }
                 }
             }
 
             if (['WR', 'TE'].includes(pos) && offensePace === 'run-heavy') {
                 cons.push(`<strong>Low-Volume Passing Attack:</strong> Playing in a <strong>run-heavy offense</strong> severely limits the overall passing pie, mathematically capping his week-to-week target ceiling.`);
                 riskScore += 1;
+                hasLowVolumeCon = true;
             }
             if (pos === 'RB' && offensePace === 'pass-heavy' && (!p.targetShare || p.targetShare < 5)) {
                 cons.push(`<strong>Negative Scheme Fit:</strong> Operates in a <strong>pass-heavy offense</strong> but lacks receiving involvement, leaving him vulnerable to being scripted out of games if the team falls behind.`);
                 riskScore += 1;
+                hasScriptDependencyCon = true;
             }
             if (pos === 'QB' && offensePace === 'run-heavy' && (!p.stats || p.stats.rushAtt < 40)) {
                 cons.push(`<strong>Capped Passing Ceiling:</strong> Directing a <strong>run-heavy offense</strong> restricts his passing attempts. Without elite rushing ability to compensate, his fantasy upside is strictly limited by scheme.`);
                 riskScore += 1;
             }
-            if (pos === 'RB' && rushEnv && rushEnv.ybcAtt <= 2.1) {
+            
+            // Tiered Bad YBC Scheme
+            if (pos === 'RB' && rushEnv && rushEnv.ybcAtt <= 1.8) {
+                cons.push(`<strong>Catastrophic Blocking Scheme:</strong> The offensive line generates an abysmal <strong>${rushEnv.ybcAtt} Yards Before Contact (YBC)</strong>, meaning he is hit in the backfield almost instantly.`);
+                riskScore += 2;
+            } else if (pos === 'RB' && rushEnv && rushEnv.ybcAtt <= 2.2) {
                 cons.push(`<strong>Poor Blocking Scheme:</strong> The offensive line generates a dismal <strong>${rushEnv.ybcAtt} Yards Before Contact (YBC)</strong>. He frequently faces defenders in the backfield and must work incredibly hard for every yard.`);
                 riskScore += 1;
             }
-            if (pos === 'QB' && passEnv && passEnv.dropPct >= 7.0) {
+
+            // QB Receiver Drops
+            if (pos === 'QB' && passEnv && passEnv.dropPct >= 9.0) {
+                cons.push(`<strong>Plagued by Drops:</strong> His pass-catchers posted an atrocious <strong>${passEnv.dropPct}% drop rate</strong>, destroying his completion percentage and killing drives.`);
+                riskScore += 2;
+            } else if (pos === 'QB' && passEnv && passEnv.dropPct >= 6.5) {
                 cons.push(`<strong>Unreliable Receivers:</strong> His pass-catchers posted a frustrating <strong>${passEnv.dropPct}% drop rate</strong>, actively hurting his completion percentage and leaving valuable passing yards on the field.`);
                 riskScore += 1;
             }
-            if (pos === 'QB' && p.trueAccuracy && p.trueAccuracy < 64.0) { cons.push(`<strong>Sub-Par Pass Accuracy:</strong> True Accuracy rating sits at a low <strong>${p.trueAccuracy.toFixed(1)}%</strong> (accounting for drops and throwaways, this highlights underlying passing inefficiency).`); riskScore += 1; }
-            if (['WR', 'TE'].includes(pos) && p.ypt && p.ypt < 7.0) { cons.push(`<strong>Low Target Efficiency:</strong> Generated only <strong>${p.ypt.toFixed(1)} Yards Per Target</strong> last season (meaning his targets aren't translating efficiently into fantasy points).`); riskScore += 1; }
-            if (p.dropRate && p.dropRate >= 7.5) { cons.push(`<strong>Elevated Drop Rate:</strong> Posted a high <strong>${p.dropRate.toFixed(1)}% drop rate</strong> on catchable targets.`); riskScore += 1; }
-            if (p.pressureRate && p.pressureRate > 22.0) { cons.push(`<strong>Pressure Vulnerability:</strong> Faced a high <strong>${p.pressureRate.toFixed(1)}% pressure rate</strong> in the pocket (high pressure leads to rushed throws, sacks, and turnovers).`); riskScore += 1; }
 
-            if (age) {
-                if (pos === 'RB' && age >= 27) { cons.push(`<strong>Age Curve Warning:</strong> At ${age} y/o, faces steep historical efficiency decline at RB.`); riskScore += 2; }
-                if (pos === 'WR' && age >= 31) { cons.push(`<strong>Veteran Age Risk:</strong> Age ${age} puts him past the peak WR productivity curve.`); riskScore += 2; }
+            if (pos === 'QB' && p.trueAccuracy && p.trueAccuracy < 60.0) { 
+                cons.push(`<strong>Inaccurate Passer:</strong> True Accuracy rating sits at an alarming <strong>${p.trueAccuracy.toFixed(1)}%</strong>. Severe passing inefficiency limits his offense.`); 
+                riskScore += 2; 
+            } else if (pos === 'QB' && p.trueAccuracy && p.trueAccuracy < 65.0) { 
+                cons.push(`<strong>Sub-Par Pass Accuracy:</strong> True Accuracy rating sits at a low <strong>${p.trueAccuracy.toFixed(1)}%</strong> (accounting for drops and throwaways, this highlights underlying passing inefficiency).`); 
+                riskScore += 1; 
             }
-            if (p.olTier === 'D' || p.olTier === 'F') { cons.push(`<strong>Poor O-Line Environment:</strong> Struggling Tier ${p.olTier} offensive line could cap overall efficiency.`); riskScore += 1; }
+
+            if (['WR', 'TE'].includes(pos) && p.ypt && p.ypt < 6.0) { 
+                cons.push(`<strong>Dismal Target Efficiency:</strong> Generated only <strong>${p.ypt.toFixed(1)} Yards Per Target</strong> last season (meaning his targets are painfully inefficient).`); 
+                riskScore += 2; 
+            } else if (['WR', 'TE'].includes(pos) && p.ypt && p.ypt < 7.2) { 
+                cons.push(`<strong>Low Target Efficiency:</strong> Generated only <strong>${p.ypt.toFixed(1)} Yards Per Target</strong> last season.`); 
+                riskScore += 1; 
+            }
+
+            if (p.dropRate && p.dropRate >= 10.0) { 
+                cons.push(`<strong>Stone Hands:</strong> Plagued by an awful <strong>${p.dropRate.toFixed(1)}% drop rate</strong>, which threatens his standing on the depth chart.`); 
+                riskScore += 2; 
+            } else if (p.dropRate && p.dropRate >= 7.0) { 
+                cons.push(`<strong>Elevated Drop Rate:</strong> Posted a high <strong>${p.dropRate.toFixed(1)}% drop rate</strong> on catchable targets.`); 
+                riskScore += 1; 
+            }
+
+            if (p.pressureRate && p.pressureRate > 27.0) { 
+                cons.push(`<strong>Under Constant Siege:</strong> Faced a catastrophic <strong>${p.pressureRate.toFixed(1)}% pressure rate</strong>. Offensive line play completely derails his timing.`); 
+                riskScore += 2; 
+            } else if (p.pressureRate && p.pressureRate > 22.0) { 
+                cons.push(`<strong>Pressure Vulnerability:</strong> Faced a high <strong>${p.pressureRate.toFixed(1)}% pressure rate</strong> in the pocket (high pressure leads to rushed throws, sacks, and turnovers).`); 
+                riskScore += 1; 
+            }
+
+            if (pAge) {
+                if (pos === 'RB' && pAge >= 29) { 
+                    cons.push(`<strong>Dangerous Age Cliff:</strong> At ${pAge} y/o, he is well past the historical RB expiration date. The risk of total physical collapse is extremely high.`); 
+                    riskScore += 3; 
+                } else if (pos === 'RB' && pAge >= 27) { 
+                    cons.push(`<strong>Age Curve Warning:</strong> At ${pAge} y/o, faces steep historical efficiency decline at RB.`); 
+                    riskScore += 2; 
+                }
+                
+                if (pos === 'WR' && pAge >= 33) { 
+                    cons.push(`<strong>Dangerous Age Cliff:</strong> At ${pAge} y/o, the risk of sudden athletic drop-off and persistent soft tissue injuries is severe.`); 
+                    riskScore += 3; 
+                } else if (pos === 'WR' && pAge >= 31) { 
+                    cons.push(`<strong>Veteran Age Risk:</strong> Age ${pAge} puts him past the peak WR productivity curve.`); 
+                    riskScore += 2; 
+                }
+            }
+            if (p.olTier === 'F') { 
+                cons.push(`<strong>Disastrous O-Line Environment:</strong> Operating behind a bottom-tier (Tier ${p.olTier}) offensive line that routinely sabotages play development.`); 
+                riskScore += 2; 
+            } else if (p.olTier === 'D') { 
+                cons.push(`<strong>Poor O-Line Environment:</strong> Struggling Tier ${p.olTier} offensive line could cap overall efficiency.`); 
+                riskScore += 1; 
+            }
 
             // Depth Chart + Team Target Funnel Context
-            if (['WR', 'TE'].includes(pos) && p.depthChart === 2 && p.targetShare >= 18) {
-                pros.push(`<strong>Co-Primary Target:</strong> Slotted at Depth #2, but commands a heavy <strong>${p.targetShare}% target share</strong> alongside his team's WR1.`);
-            } else if (pos === 'WR' && p.depthChart === 2 && teamDist && teamDist['WR %'] >= 58.0) {
-                pros.push(`<strong>High-Volume WR Room:</strong> ${p.Team} funnels <strong>${teamDist['WR %']}% of targets to WRs</strong>, ensuring strong volume even as the WR2.`);
-            } else if (['WR', 'TE'].includes(pos) && p.depthChart && p.depthChart >= 2) {
-                if (teamDist && teamDist[`${pos} %`] < 48.0 && (!p.targetShare || p.targetShare < 18)) {
+            if (['WR', 'TE'].includes(pos) && p.depthChart && p.depthChart >= 2) {
+                if (teamDist && teamDist[`${pos} %`] < 48.0 && (!p.targetShare || p.targetShare < 18) && !hasDepthChartPro && !hasLowVolumeCon) {
                     cons.push(`<strong>Low-Volume Receiver Room:</strong> Slotted as the #${p.depthChart} option in an offense that funnels only <strong>${teamDist[`${pos} %`]}% of passes to ${pos}s</strong>.`);
                     riskScore += 1;
-                } else if (p.depthChart >= 3) {
+                } else if (p.depthChart >= 3 && (!p.targetShare || p.targetShare < 15)) {
                     cons.push(`<strong>Buried on Depth Chart:</strong> Listed as Depth #${p.depthChart}, requiring an injury ahead of him to see consistent target volume.`);
                     riskScore += 1;
                 }
@@ -827,18 +1029,21 @@ const UI = {
 
             // Structural Flaws for Non-Elites
             if (!isUltraElite) {
-                if (pos === 'RB' && (!p.hvo || p.hvo < 40)) {
+                if (pos === 'RB' && (!p.hvo || p.hvo < 40) && !hasScriptDependencyCon && !isReceivingSpecialist) {
                     cons.push(pickVar([
                         `<strong>Game-Script Dependency:</strong> Lacks pass-game work; vulnerable if ${p.Team} falls behind.`,
                         `<strong>Script Sensitivity:</strong> Production drops if negative game scripts force ${p.Team} to pass.`
                     ]));
                     riskScore += 1;
                 } else if (['WR', 'TE'].includes(pos) && (!p.targetShare || p.targetShare < 18)) {
-                    cons.push(pickVarShift([
-                        `<strong>Target Volatility:</strong> Target share isn't bulletproof; weekly floor relies on TD efficiency.`,
-                        `<strong>Volume Variance:</strong> Secondary target role leaves him susceptible to low-target games.`
-                    ], 1));
-                    riskScore += 1;
+                    let hasBuriedCon = p.depthChart && p.depthChart >= 3;
+                    if (!hasBuriedCon) {
+                        cons.push(pickVarShift([
+                            `<strong>Target Volatility:</strong> Target share isn't bulletproof; weekly floor relies on TD efficiency.`,
+                            `<strong>Volume Variance:</strong> Secondary target role leaves him susceptible to low-target games.`
+                        ], 1));
+                        riskScore += 1;
+                    }
                 } else if (pos === 'QB' && (!p.stats || (p.stats.rushAtt || 0) < 40)) {
                     cons.push(pickVar([
                         `<strong>Limited Rushing Floor:</strong> Lack of rushing mobility places heavy burden on pass volume and TDs.`,
@@ -855,26 +1060,32 @@ const UI = {
 
         if (isDST && p.stats) {
             const ds = p.stats;
-            if (ds.sack && ds.sack < 30) { cons.push(`<strong>Weak Pass Rush:</strong> Generated only <strong>${ds.sack} sacks</strong> last season.`); riskScore += 1; }
-            if (ds.papg && ds.papg >= 24) { cons.push(`<strong>Vulnerable Defense:</strong> Yielded a high <strong>${ds.papg.toFixed(1)} Points Allowed Per Game</strong>.`); riskScore += 1; }
+            if (ds.sack && ds.sack < 24) { cons.push(`<strong>Anemic Pass Rush:</strong> Generated an abysmal <strong>${ds.sack} sacks</strong> last season. Opposing QBs face no pressure.`); riskScore += 2; }
+            else if (ds.sack && ds.sack < 32) { cons.push(`<strong>Weak Pass Rush:</strong> Generated only <strong>${ds.sack} sacks</strong> last season.`); riskScore += 1; }
+            
+            if (ds.papg && ds.papg >= 27) { cons.push(`<strong>Porous Defense:</strong> Bled points constantly, yielding a high <strong>${ds.papg.toFixed(1)} Points Allowed Per Game</strong>.`); riskScore += 2; }
+            else if (ds.papg && ds.papg >= 24) { cons.push(`<strong>Vulnerable Defense:</strong> Yielded an elevated <strong>${ds.papg.toFixed(1)} Points Allowed Per Game</strong>.`); riskScore += 1; }
+            
             if (!isUltraElite) cons.push(`<strong>Defensive Volatility:</strong> Defensive scoring heavily relies on opponent turnovers, making it difficult to predict week-to-week.`);
         }
 
-        if (p.avgStars && p.avgStars <= 2.7) { cons.push(`<strong>Tough Overall Schedule:</strong> Faces a grueling ${p.avgStars.toFixed(2)}/5.0 star schedule.`); riskScore += 1; }
+        if (p.avgStars && p.avgStars <= 2.2) { cons.push(`<strong>Brutal Overall Schedule:</strong> Faces a grueling ${p.avgStars.toFixed(2)}/5.0 star schedule loaded with elite offenses.`); riskScore += 2; }
+        else if (p.avgStars && p.avgStars <= 2.8) { cons.push(`<strong>Tough Overall Schedule:</strong> Faces a difficult ${p.avgStars.toFixed(2)}/5.0 star schedule.`); riskScore += 1; }
 
         if (cons.length === 0) {
             cons.push(`<strong>Standard Game-Flow Variance:</strong> Subject to standard week-to-week game script fluctuations.`);
         }
 
         let riskBadge = `<span class="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2.5 py-0.5 rounded-full font-bold">🛡️ LOW RISK</span>`;
-        if (riskScore >= 3) riskBadge = `<span class="bg-rose-500/20 text-rose-300 border border-rose-500/30 px-2.5 py-0.5 rounded-full font-bold">⚠️ ELEVATED RISK</span>`;
+        if (riskScore >= 4) riskBadge = `<span class="bg-rose-500/20 text-rose-300 border border-rose-500/30 px-2.5 py-0.5 rounded-full font-bold">🚨 HIGH RISK</span>`;
+        else if (riskScore === 3) riskBadge = `<span class="bg-rose-500/20 text-rose-300 border border-rose-500/30 px-2.5 py-0.5 rounded-full font-bold">⚠️ ELEVATED RISK</span>`;
         else if (riskScore === 2) riskBadge = `<span class="bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2.5 py-0.5 rounded-full font-bold">⚡ MODERATE RISK</span>`;
-
+        
         // -------------------------------------------------------------
         // RANGE OF OUTCOMES
         // -------------------------------------------------------------
         let varianceSpread = 0.25;
-        if (p._isFlyer || p.isRBHandcuff || (age && age <= 22)) varianceSpread += 0.12;
+        if (p._isFlyer || p.isRBHandcuff || (pAge && pAge <= 22)) varianceSpread += 0.12;
         if (p.aDOT && p.aDOT >= 12.5) varianceSpread += 0.10;
         if (pos === 'QB' && p.stats && p.stats.rushAtt >= 60) varianceSpread += 0.08;
         if (p._isSafeFloor && (!p.aDOT || p.aDOT <= 8.5)) varianceSpread -= 0.08;
