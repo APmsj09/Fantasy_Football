@@ -742,6 +742,21 @@ const UI = {
                 pros.push(`<strong>Soft Overall Schedule:</strong> Favorable ${p.avgStars.toFixed(2)}/5.0 Strength of Schedule rating (Meaning easier matchups for fantasy production).`);
             }
 
+            if (p.height && p.weight) {
+                let hMatch = String(p.height).match(/(\d+)['\-]+(\d+)/);
+                let inches = hMatch ? ((parseInt(hMatch[1]) * 12) + parseInt(hMatch[2])) : parseInt(p.height, 10);
+                let formattedH = hMatch ? `${hMatch[1]}'${hMatch[2]}"` : (!isNaN(p.height) ? `${Math.floor(p.height / 12)}'${p.height % 12}"` : p.height);
+                let weightLbs = parseInt(p.weight, 10);
+
+                if (p.bmi && p.bmi >= 31.5 && p.Pos === 'RB') {
+                    pros.push(`<strong>Elite Power Profile:</strong> At ${formattedH} and ${weightLbs} lbs, possesses prototypical workhorse size and short-yardage gravity.`);
+                } else if (p.Pos === 'WR' && (inches >= 74 || weightLbs >= 210)) {
+                    pros.push(`<strong>Big-Bodied Target:</strong> At ${formattedH} and ${weightLbs} lbs, offers imposing boundary size and red-zone leverage.`);
+                } else if (p.Pos === 'TE' && (inches >= 77 || weightLbs >= 250)) {
+                    pros.push(`<strong>Prototypical TE Frame:</strong> At ${formattedH} and ${weightLbs} lbs, provides elite size as an end-zone and seam mismatch.`);
+                }
+            }
+
             if (['RB', 'WR', 'TE'].includes(pos) && p.snapShare >= 85) {
                 pros.push(`<strong>Every-Down Workhorse:</strong> Never leaves the field (<strong>${p.snapShare.toFixed(0)}% snap share</strong>). True bellcow deployment completely immunizes him from substitution risk.`);
             } else if (['RB', 'WR', 'TE'].includes(pos) && p.snapShare >= 72) {
@@ -818,7 +833,8 @@ const UI = {
         }
 
         if (p.bmi && p.bmi >= 31.5 && p.Pos === 'RB') {
-            let formattedH = (p.height && !isNaN(p.height)) ? `${Math.floor(p.height / 12)}'${p.height % 12}"` : p.height;
+            let hMatch = String(p.height).match(/(\d+)['\-]+(\d+)/);
+            let formattedH = hMatch ? `${hMatch[1]}'${hMatch[2]}"` : (!isNaN(p.height) ? `${Math.floor(p.height / 12)}'${p.height % 12}"` : p.height);
             pros.push(`<strong>Elite Power Profile:</strong> At ${formattedH} and ${p.weight} lbs, possesses prototypical workhorse size and short-yardage gravity.`);
         }
 
@@ -991,6 +1007,16 @@ const UI = {
             } else if (pos === 'RB' && rushEnv && rushEnv.ybcAtt <= 2.2) {
                 cons.push(`<strong>Poor Blocking Scheme:</strong> The offensive line generates a dismal <strong>${rushEnv.ybcAtt} Yards Before Contact (YBC)</strong>. He frequently faces defenders in the backfield and must work incredibly hard for every yard.`);
                 riskScore += 1;
+            }
+
+            if (pos === 'WR' && p.height && p.weight) {
+                let hMatch = String(p.height).match(/(\d+)['\-]+(\d+)/);
+                let inches = hMatch ? ((parseInt(hMatch[1]) * 12) + parseInt(hMatch[2])) : parseInt(p.height, 10);
+                let weightLbs = parseInt(p.weight, 10);
+                if (inches > 0 && inches <= 69 && weightLbs <= 182) {
+                    cons.push(`<strong>Slight Frame:</strong> At ${Math.floor(inches / 12)}'${inches % 12}" and ${weightLbs} lbs, faces press-coverage and durability concerns against physical DBs.`);
+                    riskScore += 1;
+                }
             }
 
             // QB Receiver Drops
@@ -1470,8 +1496,9 @@ const UI = {
             injModalBadge = `<span class="text-xs border ${color} px-2 py-0.5 rounded-full font-bold">🏥 ${p.injuryStatus}</span>`;
         }
         
-        let formattedHeight = (p.height && !isNaN(p.height)) ? `${Math.floor(p.height / 12)}'${p.height % 12}"` : p.height;
-        let sizeBadge = (p.height && p.weight) ? `<span class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-medium">${p.height}, ${p.weight} lbs</span>` : '';
+        let hMatch = p.height ? String(p.height).match(/(\d+)['\-]+(\d+)/) : null;
+        let formattedHeight = hMatch ? `${hMatch[1]}'${hMatch[2]}"` : (!isNaN(p.height) ? `${Math.floor(p.height / 12)}'${p.height % 12}"` : p.height);
+        let sizeBadge = (p.height && p.weight) ? `<span class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-medium">${formattedHeight}, ${p.weight} lbs</span>` : '';
 
         let modalTitle = `<div class="flex items-center flex-wrap gap-2">
             <span>${p.Player}</span>

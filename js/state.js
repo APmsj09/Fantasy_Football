@@ -1850,14 +1850,11 @@ const State = {
             if (p.height && p.weight && p.Pos === 'RB') {
                 // Sleeper heights format e.g., "5'10" or "6-1"
                 let hMatch = String(p.height).match(/(\d+)['\-]+(\d+)/);
-                if (hMatch) {
-                    let inches = (parseInt(hMatch[1]) * 12) + parseInt(hMatch[2]);
-                    let weightLbs = parseInt(p.weight);
-                    if (inches > 0 && weightLbs > 0) {
-                        p.bmi = (weightLbs / (inches * inches)) * 703;
-                        // Give a micro-boost to elite power frames (e.g. Derrick Henry, Nick Chubb)
-                        if (p.bmi >= 31.5) p.AdvVBD *= 1.02; 
-                    }
+                let inches = hMatch ? ((parseInt(hMatch[1]) * 12) + parseInt(hMatch[2])) : parseInt(p.height, 10);
+                let weightLbs = parseInt(p.weight, 10);
+                if (inches > 0 && weightLbs > 0) {
+                    p.bmi = (weightLbs / (inches * inches)) * 703;
+                    if (p.bmi >= 31.5) p.AdvVBD *= 1.02; 
                 }
             }
 
