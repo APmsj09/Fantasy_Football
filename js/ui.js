@@ -242,7 +242,7 @@ const UI = {
         const hasNoPastStats = !p.pastStats || !p.pastStats.gp || p.pastStats.gp === 0;
         const isTargetRole = p.isNewRole || isRookieOrYoung || hasNoPastStats || (p.depthChart && p.depthChart <= 2);
 
-        // Prevents spamming past stats in both the general narrative blurb AND the context box (Fixed mutual exclusivity)
+        // Prevents spamming past stats in both the general narrative blurb AND the context box
         const showPastStatsInBox = Boolean(p.pastStats && p.pastStats.gp > 0 && (p.isNewRole || isRookieOrYoung));
 
         if (isTargetRole && isOffense) {
@@ -415,8 +415,6 @@ const UI = {
                 archetypeNote = "Lacking high-volume rushing stats, his fantasy floor is tied directly to passing volume, TD efficiency, and red-zone conversions.";
             }
         } else if (pos === 'RB') {
-            // Fixed: Removed the 1:1 mapping of team RB% to individual target share to prevent 
-            // backup running backs from triggering alpha receiver writeups.
             let effTargetShare = p.targetShare || 0;
 
             if (p.hvo && p.hvo >= 70) {
@@ -439,7 +437,6 @@ const UI = {
                 ]);
             }
         } else if (pos === 'WR') {
-            // For rookies/new roles, if they are the WR1 on the depth chart, assume an Alpha role
             let isAlphaRole = (p.targetShare && p.targetShare >= 23) || ((hasNoPastStats || p.isNewRole) && p.depthChart === 1);
 
             if (isAlphaRole) {
@@ -462,7 +459,6 @@ const UI = {
                 ]);
             }
         } else if (pos === 'TE') {
-            // Rookies entering a TE-friendly scheme as the TE1 get the elite archetype
             let isPrimaryTE = posRank <= 6 || (p.targetShare && p.targetShare >= 18) || ((hasNoPastStats || p.isNewRole) && p.depthChart === 1 && teamDist && teamDist['TE %'] >= 22.0);
 
             if (isPrimaryTE) {
@@ -486,7 +482,6 @@ const UI = {
 
             let rbPassInvolvement = "";
             if (hasNoPastStats || p.isNewRole) {
-                // For rookies and team-changers, evaluate the team's historical RB target usage
                 let teamRbPct = (teamDist && teamDist['RB %']) ? teamDist['RB %'] : 0;
                 if (teamRbPct >= 17.0) {
                     rbPassInvolvement = `steps into a backfield scheme that heavily targets running backs in the passing game`;
@@ -822,6 +817,10 @@ const UI = {
             pros.push(`<strong>Bye Week Insurance:</strong> Provides a critical +${p._byeFillPts.toFixed(1)} point boost during Week ${p._byeFillWeek}.`);
         }
 
+        if (p.bmi && p.bmi >= 31.5 && p.Pos === 'RB') {
+            pros.push(`<strong>Elite Power Profile:</strong> At ${p.height} and ${p.weight} lbs, possesses prototypical workhorse size and short-yardage gravity.`);
+        }
+
         if (pros.length === 0) {
             pros.push(`<strong>Dependable Volume Role:</strong> Projected for a reliable ${proj.toFixed(1)} season points as the ${posRankStr} in fantasy.`);
         }
@@ -1080,7 +1079,6 @@ const UI = {
 
             // Structural Flaws for Non-Elites
             if (!isUltraElite) {
-                // Ensure they don't get the script dependency con if they were labeled "moderately involved" in the intro
                 let hasModerateReceiving = (p.targetShare && p.targetShare >= 5) || (p.pastStats && p.pastStats.rec >= 20);
 
                 if (pos === 'RB' && (!p.hvo || p.hvo < 40) && !hasScriptDependencyCon && !hasModerateReceiving) {
@@ -1126,10 +1124,22 @@ const UI = {
         if (p.avgStars && p.avgStars <= 2.2) { cons.push(`<strong>Brutal Overall Schedule:</strong> Faces a grueling ${p.avgStars.toFixed(2)}/5.0 star schedule loaded with elite offenses.`); riskScore += 2; }
         else if (p.avgStars && p.avgStars <= 2.8) { cons.push(`<strong>Tough Overall Schedule:</strong> Faces a difficult ${p.avgStars.toFixed(2)}/5.0 star schedule.`); riskScore += 1; }
 
+        // 🚑 INJURY CHECKS (MUST BE BEFORE RISK BADGE EVALUATION)
+        if (p.injuryStatus) {
+            if (['Out', 'IR', 'PUP'].includes(p.injuryStatus)) {
+                cons.push(`<strong>Currently Injured (${p.injuryStatus}):</strong> Expected to miss significant time. Drafting him requires stash capacity and patience.`);
+                riskScore += 2;
+            } else if (['Questionable', 'Doubtful'].includes(p.injuryStatus)) {
+                cons.push(`<strong>Currently ${p.injuryStatus}:</strong> Dealing with an active injury designation leading into the season.`);
+                riskScore += 1;
+            }
+        }
+
         if (cons.length === 0) {
             cons.push(`<strong>Standard Game-Flow Variance:</strong> Subject to standard week-to-week game script fluctuations.`);
         }
 
+        // 🛡️ RISK BADGE (DECLARED ONCE HERE)
         let riskBadge = `<span class="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2.5 py-0.5 rounded-full font-bold">🛡️ LOW RISK</span>`;
         if (riskScore >= 4) riskBadge = `<span class="bg-rose-500/20 text-rose-300 border border-rose-500/30 px-2.5 py-0.5 rounded-full font-bold">🚨 HIGH RISK</span>`;
         else if (riskScore === 3) riskBadge = `<span class="bg-rose-500/20 text-rose-300 border border-rose-500/30 px-2.5 py-0.5 rounded-full font-bold">⚠️ ELEVATED RISK</span>`;
@@ -1154,8 +1164,6 @@ const UI = {
         if (p.upsideScore > 0 && p.AdvVBD > 0) {
             let ratio = p.upsideScore / p.AdvVBD;
             if (Number.isFinite(ratio) && ratio > 0) {
-                // Prevents the ceiling from being capped down by Math.min(1.4) 
-                // if their variance profile gives them a larger boost inherently.
                 let upsideBoost = Math.max(1.1, ratio);
                 maxMultiplier = Math.max(maxMultiplier, upsideBoost);
             }
@@ -1173,23 +1181,6 @@ const UI = {
                 marketValueHTML = `<div class="p-2.5 bg-rose-950/60 border border-rose-800 rounded-lg text-rose-200">⚠️ <strong>Market Premium / Reach:</strong> Current ADP (#<strong>${p.adp.toFixed(0)}</strong>) requires drafting him ahead of his #<strong>${overallRank}</strong> VBD Rank.</div>`;
             }
         }
-
-        // INJURY & PHYSICAL BEAR/BULL CASES
-        if (p.injuryStatus) {
-            if (['Out', 'IR', 'PUP'].includes(p.injuryStatus)) {
-                cons.push(`<strong>Currently Injured (${p.injuryStatus}):</strong> Expected to miss significant time. Drafting him requires stash capacity and patience.`);
-                riskScore += 2;
-            } else if (['Questionable', 'Doubtful'].includes(p.injuryStatus)) {
-                cons.push(`<strong>Currently ${p.injuryStatus}:</strong> Dealing with an active injury designation leading into the season.`);
-                riskScore += 1;
-            }
-        }
-
-        if (p.bmi && p.bmi >= 31.5 && p.Pos === 'RB') {
-            pros.push(`<strong>Elite Power Profile:</strong> At ${p.height} and ${p.weight} lbs, possesses prototypical workhorse size and short-yardage gravity.`);
-        }
-
-        let riskBadge = `<span class="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2.5 py-0.5 rounded-full font-bold">🛡️ LOW RISK</span>`;
 
         return `
             <div class="space-y-4 text-xs leading-relaxed">
@@ -1274,7 +1265,7 @@ const UI = {
         const passEnv = State.teamAdvPass ? State.teamAdvPass[tTeam] : null;
         const rushEnv = State.teamAdvRush ? State.teamAdvRush[tTeam] : null;
 
-        // Environmental Badges (Offense Only)
+        // Environmental Badges
         if (isOffense) {
             if (rushEnv && rushEnv.ybcAtt >= 2.8 && p.Pos === 'RB') {
                 envBadges.push(`<span class="bg-emerald-100 text-emerald-800 text-xs font-bold px-2.5 py-1 rounded-full border border-emerald-200">⚡ High YBC Scheme (${rushEnv.ybcAtt} YBC)</span>`);
@@ -1482,6 +1473,8 @@ const UI = {
         let modalTitle = `<div class="flex items-center flex-wrap gap-2">
             <span>${p.Player}</span>
             <span class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-normal">${p.Pos} • ${p.Team}</span>
+            ${injModalBadge}
+            ${sizeBadge}
             ${handcuffBadge}
             ${ageDisplay ? `<span class="text-xs bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full font-semibold">Age ${ageDisplay}</span>` : ''}
             ${p.byeWeek && p.byeWeek !== 'N/A' ? `<span class="text-xs border border-gray-200 text-gray-500 px-2 py-0.5 rounded-full font-semibold">Wk ${p.byeWeek} Bye</span>` : ''}
