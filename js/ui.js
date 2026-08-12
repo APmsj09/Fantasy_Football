@@ -247,32 +247,37 @@ const UI = {
 
             let opportunityBullets = [];
 
-            // 1. Reference Player's Previous Stats (if applicable for moved players/rookies)
+            // 1. Reference Player's Previous Stats with Qualitative Grades
             if (showPastStatsInBox) {
                 let ps = p.pastStats;
                 let contextNote = isRookieOrYoung ? "Prior Production:" : "Previous Season Production:";
                 if (pos === 'RB') {
                     let touches = (ps.rushAtt || 0) + (ps.rec || 0);
                     let yds = (ps.rushYds || 0) + (ps.recYds || 0);
-                    opportunityBullets.push(`<strong>${contextNote}</strong> Handled ${touches} touches for ${yds} total yards and ${ps.totalTd || 0} TDs.`);
+                    let volGrade = touches >= 250 ? "[Heavy Workload]" : (touches >= 150 ? "[Moderate Workload]" : "[Light Workload]");
+                    opportunityBullets.push(`<strong>${contextNote}</strong> Handled ${touches} touches for ${yds} total yards and ${ps.totalTd || 0} TDs <span class="text-amber-700 font-bold">${volGrade}</span>.`);
                 } else if (['WR', 'TE'].includes(pos)) {
-                    opportunityBullets.push(`<strong>${contextNote}</strong> Earned ${ps.targets || 0} targets, securing ${ps.rec || 0} receptions for ${ps.recYds || 0} yards and ${ps.recTd || 0} TDs.`);
+                    let tgts = ps.targets || 0;
+                    let volGrade = tgts >= 110 ? "[Alpha Target Volume]" : (tgts >= 75 ? "[Solid Volume]" : "[Low Volume]");
+                    opportunityBullets.push(`<strong>${contextNote}</strong> Earned ${tgts} targets, securing ${ps.rec || 0} receptions for ${ps.recYds || 0} yards and ${ps.recTd || 0} TDs <span class="text-amber-700 font-bold">${volGrade}</span>.`);
                 } else if (pos === 'QB') {
                     opportunityBullets.push(`<strong>${contextNote}</strong> Threw for ${ps.passYds || 0} yards and ${ps.passTd || 0} TDs, while adding ${ps.rushYds || 0} yards and ${ps.rushTd || 0} TDs on the ground.`);
                 }
             }
 
-            // 2. Reference Team's Positional Stats & Incoming Environment Context
+            // 2. Reference Team Positional Usage with Plain-English Grades
             if (pos === 'RB') {
                 if (teamDist && teamDist['RB %']) {
                     let rbPct = teamDist['RB %'];
+                    let grade = rbPct >= 22.0 ? "[ELITE - Top 5 in NFL]" : (rbPct >= 17.0 ? "[GREAT - Above Average]" : (rbPct >= 12.0 ? "[AVERAGE]" : "[POOR - Low Passing Focus]"));
                     let rbTgts = teamDist['RB Targets'] || 0;
                     let totalTgts = teamDist['Total Targets'] || 0;
-                    opportunityBullets.push(`<strong>Team Positional Usage:</strong> ${p.Team}'s scheme funneled <strong>${rbPct}% of total passes</strong> (${rbTgts} targets out of ${totalTgts}) to running backs last season.`);
+                    opportunityBullets.push(`<strong>Pass-Game Funnel:</strong> ${p.Team}'s scheme funneled <strong>${rbPct}% of total passes</strong> (${rbTgts}/${totalTgts} targets) to running backs <span class="text-indigo-800 font-bold">${grade}</span>.`);
                 }
                 if (rushEnv && rushEnv.ybcAtt) {
-                    let blockingQuality = rushEnv.ybcAtt >= 2.6 ? "High-Quality" : (rushEnv.ybcAtt <= 2.0 ? "Struggling" : "Average");
-                    opportunityBullets.push(`<strong>Blocking Environment:</strong> ${p.Team} generated <strong>${rushEnv.ybcAtt} Yards Before Contact</strong> per carry (${blockingQuality} run-blocking scheme).`);
+                    let ybc = rushEnv.ybcAtt;
+                    let grade = ybc >= 2.8 ? "[ELITE - Massive Open Lanes]" : (ybc >= 2.4 ? "[ABOVE AVERAGE - High-Quality Line]" : (ybc >= 2.0 ? "[AVERAGE]" : "[POOR - Defenders in Backfield]"));
+                    opportunityBullets.push(`<strong>Blocking Environment:</strong> ${p.Team} generated <strong>${ybc} Yards Before Contact</strong> per carry <span class="text-indigo-800 font-bold">${grade}</span>.`);
                 }
                 if (opportunityBullets.length === 0 || (opportunityBullets.length === 1 && showPastStatsInBox)) {
                     opportunityBullets.push(`<strong>Inherited Workload:</strong> ${p.Player} enters the ${p.Team} backfield as a primary workload candidate.`);
@@ -282,24 +287,33 @@ const UI = {
                     let posPct = teamDist[`${pos} %`];
                     let posTgts = teamDist[`${pos} Targets`] || 0;
                     let totalTgts = teamDist['Total Targets'] || 0;
-                    opportunityBullets.push(`<strong>Team Positional Usage:</strong> ${p.Team}'s offense funneled <strong>${posPct}% of total team targets</strong> (${posTgts} targets out of ${totalTgts}) to ${pos}s last season.`);
+                    
+                    let grade = "";
+                    if (pos === 'WR') {
+                        grade = posPct >= 62.0 ? "[HEAVY WR FOCUS - Top 10 NFL]" : (posPct >= 54.0 ? "[ABOVE AVERAGE]" : "[LOW WR FOCUS]");
+                    } else {
+                        grade = posPct >= 24.0 ? "[ELITE TE FUNNEL - Top 5 NFL]" : (posPct >= 18.0 ? "[ABOVE AVERAGE]" : "[LOW TE FOCUS]");
+                    }
+                    opportunityBullets.push(`<strong>Positional Target Funnel:</strong> ${p.Team}'s offense funneled <strong>${posPct}% of team targets</strong> (${posTgts}/${totalTgts} targets) to ${pos}s <span class="text-indigo-800 font-bold">${grade}</span>.`);
                 }
                 if (passEnv && passEnv.playActionYds) {
-                    opportunityBullets.push(`<strong>Play-Action Scheme:</strong> ${p.Team} generated <strong>${passEnv.playActionYds} passing yards off Play-Action</strong>.`);
+                    let paYds = passEnv.playActionYds;
+                    let grade = paYds >= 950 ? "[HEAVY PLAY-ACTION - High Upside Scheme]" : (paYds >= 700 ? "[MODERATE PLAY-ACTION]" : "[LOW PLAY-ACTION]");
+                    opportunityBullets.push(`<strong>Play-Action Scheme:</strong> ${p.Team} generated <strong>${paYds} passing yards off Play-Action</strong> <span class="text-indigo-800 font-bold">${grade}</span>.`);
                 }
                 if (passEnv && passEnv.onTgtPct) {
-                    opportunityBullets.push(`<strong>QB Accuracy Context:</strong> ${p.Team} QBs delivered on-target passes <strong>${passEnv.onTgtPct}%</strong> of the time last season.`);
+                    let acc = passEnv.onTgtPct;
+                    let grade = acc >= 77.0 ? "[GREAT QB ACCURACY]" : (acc >= 72.0 ? "[AVERAGE QB ACCURACY]" : "[POOR QB ACCURACY]");
+                    opportunityBullets.push(`<strong>QB Accuracy Context:</strong> ${p.Team} QBs delivered on-target passes <strong>${acc}%</strong> of the time <span class="text-indigo-800 font-bold">${grade}</span>.`);
                 }
                 if (opportunityBullets.length === 0 || (opportunityBullets.length === 1 && showPastStatsInBox)) {
                     opportunityBullets.push(`<strong>Target Opportunity:</strong> ${p.Player} enters the ${p.Team} passing attack with starting route potential.`);
                 }
             } else if (pos === 'QB') {
                 if (passEnv && passEnv.pktTime) {
-                    opportunityBullets.push(`<strong>Pocket Protection:</strong> ${p.Team}'s offensive line allowed <strong>${passEnv.pktTime}s pocket time</strong> with a <strong>${passEnv.prssPct}% pressure rate</strong> last season.`);
-                }
-                if (teamDist && teamDist['Total Targets']) {
-                    let passPace = teamDist['Total Targets'] > 580 ? 'High-Volume' : (teamDist['Total Targets'] < 520 ? 'Low-Volume' : 'Balanced');
-                    opportunityBullets.push(`<strong>Passing Volume:</strong> Inherits a <strong>${passPace}</strong> passing attack that attempted ${teamDist['Total Targets']} targets last season.`);
+                    let pkt = passEnv.pktTime;
+                    let grade = pkt >= 2.5 ? "[GREAT POCKET PROTECTION]" : (pkt >= 2.3 ? "[AVERAGE PROTECTION]" : "[POOR PROTECTION - High Pressure]");
+                    opportunityBullets.push(`<strong>Pocket Protection:</strong> ${p.Team}'s line allowed <strong>${pkt}s pocket time</strong> with a <strong>${passEnv.prssPct}% pressure rate</strong> <span class="text-indigo-800 font-bold">${grade}</span>.`);
                 }
             }
 
@@ -394,27 +408,33 @@ const UI = {
                 archetypeNote = "Lacking high-volume rushing stats, his fantasy floor is tied directly to passing volume, TD efficiency, and red-zone conversions.";
             }
         } else if (pos === 'RB') {
+            // For rookies or new roles, use team scheme target % as effective target share
+            let effTargetShare = p.targetShare || ((hasNoPastStats || p.isNewRole) && teamDist ? teamDist['RB %'] : 0);
+
             if (p.hvo && p.hvo >= 70) {
                 archetypeNote = pickVar([
                     "Dominating high-value opportunities (receiving work + red-zone carries), his role is tailored for fantasy success.",
                     "His monopoly over money touches—receptions and inside-the-10 carries—makes him a usage monster.",
                     "He captures the coveted dual-threat RB role, taking pass-game targets alongside goal-line work."
                 ]);
-            } else if (p.targetShare && p.targetShare >= 12) {
+            } else if (effTargetShare >= 15.0) {
                 archetypeNote = pickVar([
-                    "His pass-catching involvement builds a resilient PPR floor even when negative game scripts limit carries.",
-                    "Passive receiving work elevates his floor, making him script-independent in high-scoring games.",
-                    "Operating as a receiving outlet gives him steady week-in, week-out PPR value."
+                    "Stepping into a backfield with heavy pass-catching involvement, he projects for a high PPR baseline.",
+                    "Involvement in the passing attack elevates his floor, making him script-independent in high-scoring games.",
+                    "Capturing pass-catching work out of the backfield gives him steady week-in, week-out PPR value."
                 ]);
             } else {
                 archetypeNote = pickVar([
                     "His fantasy production relies heavily on positive game scripts, rushing volume, and touchdown conversions.",
-                    "Operating primarily as an early-down grinder, his floor requires sustained lead-state game scripts.",
+                    "Operating primarily on early downs, his floor relies on sustained ground volume and lead-state game scripts.",
                     "He relies on ground volume and goal-line conversions to carry his fantasy output."
                 ]);
             }
         } else if (pos === 'WR') {
-            if (p.targetShare && p.targetShare >= 23) {
+            // For rookies/new roles, if they are the WR1 on the depth chart, assume an Alpha role
+            let isAlphaRole = (p.targetShare && p.targetShare >= 23) || ((hasNoPastStats || p.isNewRole) && p.depthChart === 1);
+            
+            if (isAlphaRole) {
                 archetypeNote = pickVar([
                     "Demanding alpha target share, he functions as the undeniable focal point of his team's air attack.",
                     "As a true high-volume target magnet, he commands the passing game with bulletproof opportunity.",
@@ -434,7 +454,10 @@ const UI = {
                 ]);
             }
         } else if (pos === 'TE') {
-            if (posRank <= 6 || (p.targetShare && p.targetShare >= 18)) {
+            // Rookies entering a TE-friendly scheme as the TE1 get the elite archetype
+            let isPrimaryTE = posRank <= 6 || (p.targetShare && p.targetShare >= 18) || ((hasNoPastStats || p.isNewRole) && p.depthChart === 1 && teamDist && teamDist['TE %'] >= 22.0);
+            
+            if (isPrimaryTE) {
                 archetypeNote = pickVar([
                     "Functioning effectively as a top-two passing option on his team, he bypasses the typical tight-end wasteland.",
                     "His WR-like target volume lifts him above the volatile touchdown-dependent TE pack.",
@@ -454,9 +477,21 @@ const UI = {
             let share = p.targetShare || 0;
 
             let rbPassInvolvement = "";
-            if (share >= 10 || recs >= 40) rbPassInvolvement = `is highly involved in the passing game, offering a safe PPR floor`;
-            else if (share >= 5 || recs >= 20) rbPassInvolvement = `is moderately involved as a receiver out of the backfield`;
-            else rbPassInvolvement = `is minimally targeted in the passing game, relying primarily on ground volume`;
+            if (hasNoPastStats || p.isNewRole) {
+                // For rookies and team-changers, evaluate the team's historical RB target usage
+                let teamRbPct = (teamDist && teamDist['RB %']) ? teamDist['RB %'] : 0;
+                if (teamRbPct >= 17.0) {
+                    rbPassInvolvement = `steps into a backfield scheme that heavily targets running backs in the passing game`;
+                } else if (teamRbPct >= 12.0) {
+                    rbPassInvolvement = `steps into a system with moderate running back target involvement`;
+                } else {
+                    rbPassInvolvement = `enters a system that rarely targets running backs, relying primarily on ground volume`;
+                }
+            } else {
+                if (share >= 10 || recs >= 40) rbPassInvolvement = `is highly involved in the passing game, offering a safe PPR floor`;
+                else if (share >= 5 || recs >= 20) rbPassInvolvement = `is moderately involved as a receiver out of the backfield`;
+                else rbPassInvolvement = `is minimally targeted in the passing game, relying primarily on ground volume`;
+            }
 
             archetypeNote += ` Operating alongside <strong>${qbName}</strong> in a <strong>${offensePace}</strong> offense, he ${rbPassInvolvement}.`;
         } else if (['WR', 'TE'].includes(pos)) {
@@ -745,8 +780,8 @@ const UI = {
                 pros.push(`<strong>YBC Scheme Boost:</strong> Run-blocking scheme generates ${rushEnv.ybcAtt} Yards Before Contact (YBC) per carry.`);
             }
 
-            if (isRookieOrYoung && posRank <= 24 && !p.isNewRole) {
-                pros.push(`<strong>Youth Upside:</strong> At just ${pAge} years old, possesses high-end athletic ceiling and fresh legs heading into the season.`);
+            if (isRookieOrYoung && posRank <= 36) {
+                pros.push(`<strong>Fresh Legs & Youth Ceiling:</strong> At just ${pAge} years old, enters the season with high-end athletic potential and minimal NFL workload wear.`);
             }
         }
 
@@ -1080,7 +1115,7 @@ const UI = {
         if (riskScore >= 4) riskBadge = `<span class="bg-rose-500/20 text-rose-300 border border-rose-500/30 px-2.5 py-0.5 rounded-full font-bold">🚨 HIGH RISK</span>`;
         else if (riskScore === 3) riskBadge = `<span class="bg-rose-500/20 text-rose-300 border border-rose-500/30 px-2.5 py-0.5 rounded-full font-bold">⚠️ ELEVATED RISK</span>`;
         else if (riskScore === 2) riskBadge = `<span class="bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2.5 py-0.5 rounded-full font-bold">⚡ MODERATE RISK</span>`;
-        
+
         // -------------------------------------------------------------
         // RANGE OF OUTCOMES
         // -------------------------------------------------------------
@@ -1725,15 +1760,20 @@ const UI = {
         let userRoster = userTeam.roster;
         let earlyRBs = userRoster.filter(p => p.Pos === 'RB' && (p.draftPickNum || 99) <= 60).length;
         let earlyWRs = userRoster.filter(p => p.Pos === 'WR' && (p.draftPickNum || 99) <= 60).length;
+        
         let strategyBanner = "";
+        let buildStrategy = "Balanced";
 
         // Determine Roster Strategy Build
         if (currentRound <= 7) {
-            if (earlyRBs === 0 && userRoster.length >= 3) {
-                strategyBanner = `<div class="p-2 mb-2 bg-indigo-950 border border-indigo-700 rounded-lg text-[10px] text-indigo-200">🛡️ <strong>Zero-RB Build:</strong> Target WR/TE depth. Look for high-HVO passing RBs in Rnds 7-10.</div>`;
+            if (earlyRBs === 0 && userRoster.length >= 2) {
+                buildStrategy = "Zero-RB";
+                strategyBanner = `<div class="p-2 mb-2 bg-indigo-950 border border-indigo-700 rounded-lg text-[10px] text-indigo-200">🛡️ <strong>Zero-RB Build:</strong> Target WR/TE depth. Avoid early RBs and look for high-HVO passing RBs in Rnds 7-10.</div>`;
             } else if (earlyRBs === 1 && earlyWRs >= 2) {
-                strategyBanner = `<div class="p-2 mb-2 bg-emerald-950 border border-emerald-700 rounded-lg text-[10px] text-emerald-200">🦸 <strong>Hero-RB Build:</strong> Anchor RB locked. Focus on WR/TE value before filling RB2.</div>`;
+                buildStrategy = "Hero-RB";
+                strategyBanner = `<div class="p-2 mb-2 bg-emerald-950 border border-emerald-700 rounded-lg text-[10px] text-emerald-200">🦸 <strong>Hero-RB Build:</strong> Anchor RB locked. Focus heavily on WR/TE value before filling RB2.</div>`;
             } else if (earlyRBs >= 3) {
+                buildStrategy = "Robust-RB";
                 strategyBanner = `<div class="p-2 mb-2 bg-amber-950 border border-amber-700 rounded-lg text-[10px] text-amber-200">💪 <strong>Robust-RB Build:</strong> RB foundation set. Heavily target WR/TE depth to balance roster.</div>`;
             }
         }
@@ -1748,8 +1788,8 @@ const UI = {
         });
 
         // Determine Contextual Roster Needs
-        let needsSafety = (teamSafeCore < 3) && currentRound >= 5 && currentRound <= 9;
-        let needsUpside = (teamSafeCore >= 3) && currentRound >= 7;
+        let needsSafety = (teamSafeCore < 3) && currentRound >= 4 && currentRound <= 9;
+        let needsUpside = (teamSafeCore >= 3) && currentRound >= 6;
 
         let userQBs = userRoster.filter(r => r.Pos === 'QB');
 
@@ -1821,6 +1861,30 @@ const UI = {
             } else if (p.upsideScore && (p.AdvVBD || p.VBD) > 0) {
                 let ceilingGain = (p.upsideScore - (p.AdvVBD || p.VBD)) * 0.25;
                 score += Math.max(0, ceilingGain);
+            }
+
+            // 3.5 STRATEGY MATHEMATICAL ENFORCEMENT
+            if (currentRound <= 6) {
+                if (buildStrategy === 'Zero-RB') {
+                    if (['WR', 'TE', 'QB'].includes(p.Pos)) score *= 1.25; // Heavily favor pass catchers/QBs
+                    if (p.Pos === 'RB') score *= 0.40; // Mathematically bury RBs to prevent breaking the strategy
+                } else if (buildStrategy === 'Hero-RB') {
+                    if (p.Pos === 'RB') score *= 0.60; // Penalize taking a 2nd RB early to protect the Hero-RB build
+                    if (['WR', 'TE'].includes(p.Pos)) score *= 1.15; // Boost receivers
+                } else if (buildStrategy === 'Robust-RB') {
+                    if (['WR', 'TE'].includes(p.Pos)) score *= 1.30; // Desperately need pass catchers to balance roster
+                }
+            }
+
+            // 4. Portfolio Context Adjustments (Safe vs Flyer)
+            p._rosterContextBadge = null;
+            if (needsSafety && p._isSafeFloor && currentRound <= 9) {
+                if (score > 0) score *= 1.30;
+                p._rosterContextBadge = "🛡️ Safe Floor (Balances Roster Risk)";
+            }
+            else if (needsUpside && p._isFlyer && currentRound >= 6) {
+                if (score > 0) score *= 1.35;
+                p._rosterContextBadge = "🚀 Upside Flyer (High Ceiling)";
             }
 
             // 4. Portfolio Context Adjustments (Safe vs Flyer)

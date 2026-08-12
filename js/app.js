@@ -24,13 +24,41 @@ document.addEventListener('DOMContentLoaded', () => {
     const sidebar = document.getElementById('sidebar');
     const sidebarToggle = document.getElementById('sidebar-toggle');
     const storedSidebarState = localStorage.getItem('draft-pro-sidebar-collapsed');
+
     if (sidebar && sidebarToggle) {
+        const applySidebarState = (isCollapsed) => {
+            sidebar.classList.toggle('sidebar-collapsed', isCollapsed);
+
+            // Toggle Tailwind width classes
+            if (isCollapsed) {
+                sidebar.classList.remove('w-64');
+                sidebar.classList.add('w-16');
+            } else {
+                sidebar.classList.remove('w-16');
+                sidebar.classList.add('w-64');
+            }
+
+            // Toggle visibility of text titles and navigation labels
+            sidebar.querySelectorAll('.nav-label, .sidebar-title').forEach(el => {
+                el.classList.toggle('hidden', isCollapsed);
+            });
+
+            // Flip the toggle arrow icon
+            const svgIcon = sidebarToggle.querySelector('svg');
+            if (svgIcon) {
+                svgIcon.classList.toggle('rotate-180', isCollapsed);
+            }
+        };
+
+        // Restore saved collapsed state on load
         if (storedSidebarState === 'true') {
-            sidebar.classList.add('sidebar-collapsed');
+            applySidebarState(true);
         }
+
         sidebarToggle.addEventListener('click', () => {
-            const collapsed = sidebar.classList.toggle('sidebar-collapsed');
-            localStorage.setItem('draft-pro-sidebar-collapsed', String(collapsed));
+            const isCollapsed = !sidebar.classList.contains('sidebar-collapsed');
+            applySidebarState(isCollapsed);
+            localStorage.setItem('draft-pro-sidebar-collapsed', String(isCollapsed));
         });
     }
 

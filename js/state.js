@@ -1468,7 +1468,8 @@ const State = {
                 p.isNewRole = true;
                 let teamDist = (this.teamTargets || []).find(t => t.Team === p.Team);
 
-                if (teamDist && p.depthChart === 1) {
+                // FIX: Apply to depthChart 1 AND 2, so rookies backing up veterans get credit for the scheme's upside
+                if (teamDist && (p.depthChart === 1 || p.depthChart === 2)) {
                     let posPctKey = `${p.Pos} %`;
                     let teamPosPct = teamDist[posPctKey] || 0;
                     
