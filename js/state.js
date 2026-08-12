@@ -1644,7 +1644,8 @@ const State = {
 
             p._isFlyer = false;
             p._isSafeFloor = false;
-            let tTeam = this.normalizeTeam(p.Team);
+            
+            // tTeam is already defined up in Step 7, so we just use it here!
             const teamDist = (this.teamTargets || []).find(t => this.normalizeTeam(t.Team) === tTeam);
 
             // 🌟 INHERITED ROLE FLAG (For Rookies & Free Agents)
