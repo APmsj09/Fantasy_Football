@@ -235,8 +235,8 @@ const UI = {
         const hasNoPastStats = !p.pastStats || !p.pastStats.gp || p.pastStats.gp === 0;
         const isTargetRole = p.isNewRole || isRookieOrYoung || hasNoPastStats || (p.depthChart && p.depthChart <= 2);
         
-        // Prevents spamming past stats in both the general narrative blurb AND the context box
-        const showPastStatsInBox = p.pastStats && p.pastStats.gp > 0 && (p.isNewRole || isRookieOrYoung || hasNoPastStats);
+        // Prevents spamming past stats in both the general narrative blurb AND the context box (Fixed mutual exclusivity)
+        const showPastStatsInBox = Boolean(p.pastStats && p.pastStats.gp > 0 && (p.isNewRole || isRookieOrYoung));
 
         if (isTargetRole && isOffense) {
             let roleTitle = "";
@@ -408,8 +408,9 @@ const UI = {
                 archetypeNote = "Lacking high-volume rushing stats, his fantasy floor is tied directly to passing volume, TD efficiency, and red-zone conversions.";
             }
         } else if (pos === 'RB') {
-            // For rookies or new roles, use team scheme target % as effective target share
-            let effTargetShare = p.targetShare || ((hasNoPastStats || p.isNewRole) && teamDist ? teamDist['RB %'] : 0);
+            // Fixed: Removed the 1:1 mapping of team RB% to individual target share to prevent 
+            // backup running backs from triggering alpha receiver writeups.
+            let effTargetShare = p.targetShare || 0;
 
             if (p.hvo && p.hvo >= 70) {
                 archetypeNote = pickVar([
@@ -1019,10 +1020,18 @@ const UI = {
             }
 
             if (p.pressureRate && p.pressureRate > 27.0) { 
-                cons.push(`<strong>Under Constant Siege:</strong> Faced a catastrophic <strong>${p.pressureRate.toFixed(1)}% pressure rate</strong>. Offensive line play completely derails his timing.`); 
+                if (p.olTier === 'S' || p.olTier === 'A') {
+                    cons.push(`<strong>Holds the Ball Too Long:</strong> Faced a catastrophic <strong>${p.pressureRate.toFixed(1)}% pressure rate</strong> despite elite O-Line play. He frequently creates his own pressure by failing to process quickly.`);
+                } else {
+                    cons.push(`<strong>Under Constant Siege:</strong> Faced a catastrophic <strong>${p.pressureRate.toFixed(1)}% pressure rate</strong>. Offensive line play completely derails his timing.`);
+                }
                 riskScore += 2; 
             } else if (p.pressureRate && p.pressureRate > 22.0) { 
-                cons.push(`<strong>Pressure Vulnerability:</strong> Faced a high <strong>${p.pressureRate.toFixed(1)}% pressure rate</strong> in the pocket (high pressure leads to rushed throws, sacks, and turnovers).`); 
+                if (p.olTier === 'S' || p.olTier === 'A') {
+                    cons.push(`<strong>Slow Processor:</strong> Faced a high <strong>${p.pressureRate.toFixed(1)}% pressure rate</strong> despite strong blocking, indicating he holds the ball too long.`);
+                } else {
+                    cons.push(`<strong>Pressure Vulnerability:</strong> Faced a high <strong>${p.pressureRate.toFixed(1)}% pressure rate</strong> in the pocket.`); 
+                }
                 riskScore += 1; 
             }
 
@@ -1064,7 +1073,10 @@ const UI = {
 
             // Structural Flaws for Non-Elites
             if (!isUltraElite) {
-                if (pos === 'RB' && (!p.hvo || p.hvo < 40) && !hasScriptDependencyCon && !isReceivingSpecialist) {
+                // Ensure they don't get the script dependency con if they were labeled "moderately involved" in the intro
+                let hasModerateReceiving = (p.targetShare && p.targetShare >= 5) || (p.pastStats && p.pastStats.rec >= 20);
+                
+                if (pos === 'RB' && (!p.hvo || p.hvo < 40) && !hasScriptDependencyCon && !hasModerateReceiving) {
                     cons.push(pickVar([
                         `<strong>Game-Script Dependency:</strong> Lacks pass-game work; vulnerable if ${p.Team} falls behind.`,
                         `<strong>Script Sensitivity:</strong> Production drops if negative game scripts force ${p.Team} to pass.`
@@ -1130,15 +1142,19 @@ const UI = {
 
         let baselinePpg = Number(ppg) || 0;
         let floorPpg = (baselinePpg * (1 - varianceSpread)).toFixed(1);
-        let ceilingPpg = (baselinePpg * (1 + varianceSpread)).toFixed(1);
+        let maxMultiplier = 1 + varianceSpread;
 
         if (p.upsideScore > 0 && p.AdvVBD > 0) {
             let ratio = p.upsideScore / p.AdvVBD;
             if (Number.isFinite(ratio) && ratio > 0) {
-                let upsideBoost = Math.min(1.4, Math.max(1.1, ratio));
-                ceilingPpg = (baselinePpg * upsideBoost).toFixed(1);
+                // Prevents the ceiling from being capped down by Math.min(1.4) 
+                // if their variance profile gives them a larger boost inherently.
+                let upsideBoost = Math.max(1.1, ratio);
+                maxMultiplier = Math.max(maxMultiplier, upsideBoost);
             }
         }
+        
+        let ceilingPpg = (baselinePpg * maxMultiplier).toFixed(1);
 
         // Market Value Check
         let marketValueHTML = "";

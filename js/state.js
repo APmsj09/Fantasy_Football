@@ -1446,7 +1446,7 @@ const State = {
                 else if (p.olPassBlk >= 29) olModifier = -0.04;
                 else if (p.olPassBlk >= 24) olModifier = -0.02;
             }
-            
+
             // Fallback to broad tier only if rank data didn't trigger a change
             if (olModifier === 0 && p.olTier) {
                 if (p.olTier === 'S') olModifier = 0.04;
@@ -1472,7 +1472,7 @@ const State = {
                 if (teamDist && (p.depthChart === 1 || p.depthChart === 2)) {
                     let posPctKey = `${p.Pos} %`;
                     let teamPosPct = teamDist[posPctKey] || 0;
-                    
+
                     if (p.Pos === 'RB') {
                         if (teamPosPct >= 24.0) adjMultiplier += 0.04;
                         else if (teamPosPct >= 19.0) adjMultiplier += 0.02;
@@ -1490,15 +1490,15 @@ const State = {
             if (p.targetShare) {
                 if (p.targetShare >= 28) adjMultiplier += 0.05;
                 else if (p.targetShare >= 23) adjMultiplier += 0.025;
-                
+
                 if (p.targetShare >= 22 && p.aDOT >= 12.0) adjMultiplier += 0.03;
 
                 // --- WOPR (Weighted Opportunity Rating) ENGINE ---
                 if (['WR', 'TE'].includes(p.Pos)) {
-                    const teamAirYards = 3500; 
+                    const teamAirYards = 3500;
                     const tgtShare = Number(p.targetShare) || 0;
                     const airYardsShare = p.airYards ? ((Number(p.airYards) / teamAirYards) * 100) : tgtShare;
-                    
+
                     p.wopr = (1.5 * (tgtShare / 100)) + (0.7 * (airYardsShare / 100));
 
                     if (p.wopr >= 0.65) adjMultiplier += 0.05;
@@ -1560,10 +1560,10 @@ const State = {
                 } else if (p.Pos === 'QB' && pAge >= 38) {
                     adjMultiplier -= Math.pow(pAge - 37, 1.2) * 0.02;
                 }
-                
+
                 // NEW: Breakout Window Bonus
                 if (!p.isNewRole && pAge >= 21 && pAge <= 23 && ['WR', 'RB', 'TE'].includes(p.Pos)) {
-                    adjMultiplier += 0.02; 
+                    adjMultiplier += 0.02;
                 }
             }
 
@@ -1624,7 +1624,7 @@ const State = {
             // 9. Tiered Advanced Realism Penalties (Workload Wear & Injury Risk)
             if (p.pastStats) {
                 let totalTouches = (p.pastStats.rushAtt || 0) + (p.pastStats.rec || 0);
-                
+
                 if (p.Pos === 'RB') {
                     if (totalTouches >= 360) adjMultiplier -= 0.06;
                     else if (totalTouches >= 300) adjMultiplier -= 0.03;
@@ -1644,7 +1644,8 @@ const State = {
 
             p._isFlyer = false;
             p._isSafeFloor = false;
-            const teamDist = (this.teamTargets || []).find(t => t.Team === p.Team);
+            let tTeam = this.normalizeTeam(p.Team);
+            const teamDist = (this.teamTargets || []).find(t => this.normalizeTeam(t.Team) === tTeam);
 
             // 🌟 INHERITED ROLE FLAG (For Rookies & Free Agents)
             let isInheritedStarter = p.isNewRole && p.depthChart === 1;
@@ -1654,11 +1655,35 @@ const State = {
             // -----------------------------------------------------------
             if (p.Pos === 'RB') {
                 // 🚀 CEILING / FLYER TRAITS
-                if (p.isRBHandcuff || (pAge && pAge <= 22)) {
+
+                // TIERED HANDCUFF ENGINE
+                if (p.isRBHandcuff) {
                     p._isFlyer = true;
-                    upsideMultiplier += 0.35;
-                    ceilingTags.push(p.isRBHandcuff ? "Lottery Ticket" : "Breakout Age");
+                    let handcuffTierBonus = 0.15; // Base handcuff upside
+
+                    let starter = this.matchPlayerFast(p.starterName, p.Team, 'RB');
+                    if (starter) {
+                        // Tiers for the role they would inherit
+                        if (starter.ProjPts >= 240) handcuffTierBonus += 0.25;      // Elite bellcow role
+                        else if (starter.ProjPts >= 200) handcuffTierBonus += 0.15; // High-end starter role
+                        else if (starter.ProjPts >= 160) handcuffTierBonus += 0.10; // Solid starter role
+                    }
+
+                    // Tiers for blocking environment inheritance
+                    if (p.olTier === 'S') handcuffTierBonus += 0.10;
+                    else if (p.olTier === 'A') handcuffTierBonus += 0.05;
+                    if (rushEnv && rushEnv.ybcAtt >= 2.5) handcuffTierBonus += 0.05;
+
+                    upsideMultiplier += handcuffTierBonus;
+                    ceilingTags.push("League-Winning Upside (Contingent)");
                 }
+
+                if (pAge && pAge <= 22) {
+                    p._isFlyer = true;
+                    upsideMultiplier += 0.20;
+                    ceilingTags.push("Breakout Age");
+                }
+
                 if (p.pastStats && p.pastStats.bigPlays >= 8) {
                     p._isFlyer = true;
                     upsideMultiplier += 0.15;
@@ -1714,6 +1739,26 @@ const State = {
                     if (!ceilingTags.includes("Spike Week Upside")) ceilingTags.push("Spike Week Upside");
                 }
 
+                // 🚀 NEW: System-Based Contingent Upside (Next-Man-Up)
+                if (p.depthChart && teamDist) {
+                    // If they are a backup WR in a scheme that heavily funnels targets to WRs
+                    if (p.Pos === 'WR' && p.depthChart >= 3 && teamDist['WR %'] >= 62.0) {
+                        p._isFlyer = true;
+                        upsideMultiplier += 0.10; // Smaller than RB's 0.25, but still gives a noticeable late-round bump
+                        if (!ceilingTags.includes("Scheme Upside (Next-Man-Up)")) {
+                            ceilingTags.push("Scheme Upside (Next-Man-Up)");
+                        }
+                    }
+                    // If they are a backup TE in a scheme that heavily features TEs
+                    else if (p.Pos === 'TE' && p.depthChart === 2 && teamDist['TE %'] >= 22.0) {
+                        p._isFlyer = true;
+                        upsideMultiplier += 0.10;
+                        if (!ceilingTags.includes("TE-Friendly Scheme Contingency")) {
+                            ceilingTags.push("TE-Friendly Scheme Contingency");
+                        }
+                    }
+                }
+
                 // 🛡️ SAFE FLOOR TRAITS
                 let hasTargetFloor = (p.targetShare && p.targetShare >= 20);
                 let hasEfficiencyFloor = (p.trueCatchRate && p.trueCatchRate >= 85.0);
@@ -1746,7 +1791,8 @@ const State = {
 
                 // 🛡️ SAFE FLOOR TRAITS
                 let hasCleanPocket = (p.pressureRate && p.pressureRate <= 18.0) || (p.olTier === 'S' || p.olTier === 'A');
-                let hasAccuracyFloor = (p.trueCatchRate && p.trueCatchRate >= 70.0) || (p.stats && p.stats.passCmp / p.stats.passAtt >= 0.66);
+                // FIXED: Use trueAccuracy for QBs instead of trueCatchRate
+                let hasAccuracyFloor = (p.trueAccuracy && p.trueAccuracy >= 70.0) || (p.stats && p.stats.passCmp / p.stats.passAtt >= 0.66);
 
                 // 🌟 ROOKIE/NEW STARTER INHERITED FLOOR
                 if (isInheritedStarter) {
