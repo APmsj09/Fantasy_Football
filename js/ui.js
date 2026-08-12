@@ -818,7 +818,8 @@ const UI = {
         }
 
         if (p.bmi && p.bmi >= 31.5 && p.Pos === 'RB') {
-            pros.push(`<strong>Elite Power Profile:</strong> At ${p.height} and ${p.weight} lbs, possesses prototypical workhorse size and short-yardage gravity.`);
+            let formattedH = (p.height && !isNaN(p.height)) ? `${Math.floor(p.height / 12)}'${p.height % 12}"` : p.height;
+            pros.push(`<strong>Elite Power Profile:</strong> At ${formattedH} and ${p.weight} lbs, possesses prototypical workhorse size and short-yardage gravity.`);
         }
 
         if (pros.length === 0) {
@@ -1044,18 +1045,18 @@ const UI = {
             if (pAge) {
                 if (pos === 'RB' && pAge >= 29) {
                     cons.push(`<strong>Dangerous Age Cliff:</strong> At ${pAge} y/o, he is well past the historical RB expiration date. The risk of total physical collapse is extremely high.`);
-                    riskScore += 3;
+                    riskScore += 2;
                 } else if (pos === 'RB' && pAge >= 27) {
                     cons.push(`<strong>Age Curve Warning:</strong> At ${pAge} y/o, faces steep historical efficiency decline at RB.`);
-                    riskScore += 2;
+                    riskScore += 1;
                 }
 
                 if (pos === 'WR' && pAge >= 33) {
                     cons.push(`<strong>Dangerous Age Cliff:</strong> At ${pAge} y/o, the risk of sudden athletic drop-off and persistent soft tissue injuries is severe.`);
-                    riskScore += 3;
+                    riskScore += 2;
                 } else if (pos === 'WR' && pAge >= 31) {
                     cons.push(`<strong>Veteran Age Risk:</strong> Age ${pAge} puts him past the peak WR productivity curve.`);
-                    riskScore += 2;
+                    riskScore += 1;
                 }
             }
             if (p.olTier === 'F') {
@@ -1141,9 +1142,9 @@ const UI = {
 
         // 🛡️ RISK BADGE (DECLARED ONCE HERE)
         let riskBadge = `<span class="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2.5 py-0.5 rounded-full font-bold">🛡️ LOW RISK</span>`;
-        if (riskScore >= 4) riskBadge = `<span class="bg-rose-500/20 text-rose-300 border border-rose-500/30 px-2.5 py-0.5 rounded-full font-bold">🚨 HIGH RISK</span>`;
-        else if (riskScore === 3) riskBadge = `<span class="bg-rose-500/20 text-rose-300 border border-rose-500/30 px-2.5 py-0.5 rounded-full font-bold">⚠️ ELEVATED RISK</span>`;
-        else if (riskScore === 2) riskBadge = `<span class="bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2.5 py-0.5 rounded-full font-bold">⚡ MODERATE RISK</span>`;
+        if (riskScore >= 6) riskBadge = `<span class="bg-rose-500/20 text-rose-300 border border-rose-500/30 px-2.5 py-0.5 rounded-full font-bold">🚨 HIGH RISK</span>`;
+        else if (riskScore >= 4) riskBadge = `<span class="bg-rose-500/20 text-rose-300 border border-rose-500/30 px-2.5 py-0.5 rounded-full font-bold">⚠️ ELEVATED RISK</span>`;
+        else if (riskScore >= 2) riskBadge = `<span class="bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2.5 py-0.5 rounded-full font-bold">⚡ MODERATE RISK</span>`;
 
         // -------------------------------------------------------------
         // RANGE OF OUTCOMES
@@ -1468,6 +1469,8 @@ const UI = {
             let color = ['Out', 'IR', 'PUP'].includes(p.injuryStatus) ? 'bg-rose-100 text-rose-700 border-rose-200' : 'bg-amber-100 text-amber-700 border-amber-200';
             injModalBadge = `<span class="text-xs border ${color} px-2 py-0.5 rounded-full font-bold">🏥 ${p.injuryStatus}</span>`;
         }
+        
+        let formattedHeight = (p.height && !isNaN(p.height)) ? `${Math.floor(p.height / 12)}'${p.height % 12}"` : p.height;
         let sizeBadge = (p.height && p.weight) ? `<span class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-medium">${p.height}, ${p.weight} lbs</span>` : '';
 
         let modalTitle = `<div class="flex items-center flex-wrap gap-2">
