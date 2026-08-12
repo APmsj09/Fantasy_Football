@@ -98,65 +98,72 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const startBtn = document.getElementById('start-draft-btn');
 
-    async function enrichPlayerAges() {
+    async function enrichPlayerData() {
         try {
-            const cacheKey = 'sleeper_nfl_players_cache';
+            // Using a new cache key to prevent conflicts with your old one
+            const cacheKey = 'sleeper_nfl_players_minimal_cache';
             const cacheTimeKey = 'sleeper_nfl_players_time';
             const cacheExpiry = 24 * 60 * 60 * 1000; // 24 hours
-            let data;
+            let minimalData = {};
 
             if (localStorage.getItem(cacheKey) && (Date.now() - localStorage.getItem(cacheTimeKey) < cacheExpiry)) {
-                data = JSON.parse(localStorage.getItem(cacheKey));
+                minimalData = JSON.parse(localStorage.getItem(cacheKey));
             } else {
                 const response = await fetch('https://api.sleeper.app/v1/players/nfl');
                 if (!response.ok) return;
-                data = await response.json();
+                const data = await response.json();
+
+                // ⚡ Extract ONLY necessary info to keep localStorage extremely lightweight
+                Object.values(data).forEach(entry => {
+                    if (entry && entry.full_name) {
+                        const nName = State.normalizeName(entry.full_name);
+                        const nTeam = State.normalizeTeam(entry.team);
+                        const nPos = State.normalizePos(entry.position);
+                        const key = `${nName}::${nTeam || 'NONE'}::${nPos || 'NONE'}`;
+
+                        minimalData[key] = {
+                            a: entry.age,
+                            h: entry.height,     // e.g. "5'10" or "6-2"
+                            w: entry.weight,     // e.g. 215
+                            i: entry.injury_status // e.g. "Questionable", "Out", "IR", null
+                        };
+                    }
+                });
+
                 try {
-                    localStorage.setItem(cacheKey, JSON.stringify(data));
+                    localStorage.setItem(cacheKey, JSON.stringify(minimalData));
                     localStorage.setItem(cacheTimeKey, Date.now().toString());
                 } catch (e) {
                     console.warn('LocalStorage quota exceeded, skipping cache');
                 }
             }
-            const ageMap = {};
-
-            const normalizedAgeEntries = Object.values(data || {}).filter(entry => entry && entry.full_name);
-
-            normalizedAgeEntries.forEach(entry => {
-                const normalizedName = State.normalizeName(entry.full_name);
-                const normalizedTeam = State.normalizeTeam(entry.team);
-                const normalizedPos = State.normalizePos(entry.position);
-                const key = `${normalizedName}::${normalizedTeam || 'NONE'}::${normalizedPos || 'NONE'}`;
-                ageMap[key] = entry.age;
-            });
 
             State.allPlayers.forEach(player => {
-                if (player.age !== undefined && player.age !== null && player.age !== '') return;
+                const nName = State.normalizeName(player.Player);
+                const nTeam = State.normalizeTeam(player.Team);
+                const nPos = State.normalizePos(player.Pos);
+                const directKey = `${nName}::${nTeam || 'NONE'}::${nPos || 'NONE'}`;
+                const fallbackKey = `${nName}::${nTeam || 'NONE'}::NONE`;
+                const fallbackNameKey = `${nName}::NONE::NONE`;
 
-                const normalizedName = State.normalizeName(player.Player);
-                const normalizedTeam = State.normalizeTeam(player.Team);
-                const normalizedPos = State.normalizePos(player.Pos);
-                const directKey = `${normalizedName}::${normalizedTeam || 'NONE'}::${normalizedPos || 'NONE'}`;
-                const fallbackKey = `${normalizedName}::${normalizedTeam || 'NONE'}::NONE`;
-                const fallbackNameKey = `${normalizedName}::NONE::NONE`;
+                const match = minimalData[directKey] ?? minimalData[fallbackKey] ?? minimalData[fallbackNameKey];
 
-                const matchedAge = ageMap[directKey]
-                    ?? ageMap[fallbackKey]
-                    ?? ageMap[fallbackNameKey];
-
-                if (matchedAge !== undefined) {
-                    player.age = matchedAge;
+                if (match) {
+                    if (player.age === undefined || player.age === null || player.age === '') player.age = match.a;
+                    player.height = match.h;
+                    player.weight = match.w;
+                    player.injuryStatus = match.i;
                 }
             });
 
             if (typeof UI.renderDatabase === 'function') UI.renderDatabase();
             if (typeof UI.renderDraftAvailablePlayers === 'function' && State.draftStarted) UI.renderDraftAvailablePlayers();
         } catch (err) {
-            console.warn('Could not load player ages');
+            console.warn('Could not load player metadata');
         }
     }
 
-    window.enrichPlayerAges = enrichPlayerAges;
+    window.enrichPlayerData = enrichPlayerData;
 
     async function autoLoadData() {
         const loadBtn = document.getElementById('load-data-button');
@@ -188,11 +195,10 @@ document.addEventListener('DOMContentLoaded', () => {
             await fetchTSV(`./k_proj_${SEASON}.tsv`, State.parseKickerData.bind(State), data => State.allPlayers.push(...data));
 
             State.enrichPlayerMap();
-            //await enrichPlayerAges();
 
-            // Load all advanced metrics concurrently
+            // Load all advanced metrics concurrently (swapped to enrichPlayerData)
             await Promise.all([
-                enrichPlayerAges(),
+                enrichPlayerData(),
                 fetchTSV(`./Schedule_${SEASON}.tsv`, State.parseScheduleData.bind(State)),
                 fetchTSV(`./SOS_${SEASON}.tsv`, State.parseSOSData.bind(State), State.mergeSOSData.bind(State)),
                 fetchTSV(`./RB_Handcuffs_${SEASON}.tsv`, State.parseHandcuffData.bind(State), State.mergeHandcuffData.bind(State)),

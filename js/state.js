@@ -1834,6 +1834,33 @@ const State = {
             if (isNaN(p.VBD)) p.VBD = 0;
             if (isNaN(p.AdvVBD)) p.AdvVBD = p.VBD;
 
+            // 11. INJURY PENALTIES & PHYSICAL ATTRIBUTES (BMI)
+            if (p.injuryStatus) {
+                // Severe penalty for players slated to miss serious time
+                if (['Out', 'IR', 'PUP', 'COV'].includes(p.injuryStatus)) {
+                    p.AdvVBD *= 0.85; 
+                } 
+                // Minor deduction for camp injuries/questionable tags
+                else if (p.injuryStatus === 'Doubtful') {
+                    p.AdvVBD *= 0.95;
+                }
+            }
+
+            // BMI Calculator for Running Backs (BMI = 703 x (weight / height^2))
+            if (p.height && p.weight && p.Pos === 'RB') {
+                // Sleeper heights format e.g., "5'10" or "6-1"
+                let hMatch = String(p.height).match(/(\d+)['\-]+(\d+)/);
+                if (hMatch) {
+                    let inches = (parseInt(hMatch[1]) * 12) + parseInt(hMatch[2]);
+                    let weightLbs = parseInt(p.weight);
+                    if (inches > 0 && weightLbs > 0) {
+                        p.bmi = (weightLbs / (inches * inches)) * 703;
+                        // Give a micro-boost to elite power frames (e.g. Derrick Henry, Nick Chubb)
+                        if (p.bmi >= 31.5) p.AdvVBD *= 1.02; 
+                    }
+                }
+            }
+
             // Range of Outcomes / Upside Potential 
             let upsideBonus = 0;
             if (p.aDOT && p.aDOT >= 12.0) upsideBonus += 0.05;
