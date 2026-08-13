@@ -1584,16 +1584,58 @@ const State = {
                 }
             }
 
-            // --- ADD THIS NEW ARCHETYPE BLOCK ---
-            // A. The "1B Back" (Standalone Value Handcuffs)
+            // ===========================================================
+            // ARCHETYPE DETECTION & MULTIPLIER ADJUSTMENTS
+            // ===========================================================
+
+            // 1B Back / Handcuff+
             if (p.Pos === 'RB' && p.isRBHandcuff && p.snapShare >= 35) {
                 adjMultiplier += 0.04;
-                p._isHandcuffPlus = true; 
+                p._isHandcuffPlus = true;
             }
-            // B. The "Empty Calories" Receiver (High Volume, Terrible Efficiency)
+
+            // Empty Calories Receiver
             if (['WR', 'TE'].includes(p.Pos) && p.targetShare >= 18 && p.ypt && p.ypt <= 6.5) {
                 adjMultiplier -= 0.06;
                 p._isEmptyCalories = true;
+            }
+
+            // Cardio King
+            if (['WR', 'TE'].includes(p.Pos) && p.snapShare >= 75 && p.targetShare && p.targetShare <= 11.5) {
+                adjMultiplier -= 0.07;
+                p._isCardioKing = true;
+            }
+
+            // Satellite Back
+            if (p.Pos === 'RB' && p.targetShare >= 12 && p.stats && p.stats.rushAtt < 120) {
+                if (this.scoring.ppr >= 1.0) adjMultiplier += 0.05;
+                else if (this.scoring.ppr === 0) adjMultiplier -= 0.04;
+                p._isSatelliteBack = true;
+            }
+
+            // TD-or-Bust Tight End
+            if (p.Pos === 'TE' && p.targetShare && p.targetShare <= 14 && p.rzTgt && p.rzTgt >= 10) {
+                adjMultiplier -= 0.02;
+                p._isTDorBust = true;
+            }
+
+            // Short-aDOT PPR Operator
+            if (['WR', 'TE'].includes(p.Pos) && p.targetShare >= 18 && p.aDOT && p.aDOT <= 6.5) {
+                if (this.scoring.ppr >= 1.0) adjMultiplier += 0.03;
+                else if (this.scoring.ppr === 0) adjMultiplier -= 0.03;
+                p._isShortAdotOperator = true;
+            }
+
+            // Play-Action Merchant QB
+            if (p.Pos === 'QB' && passEnv && (passEnv.playActionYds >= 1000 || passEnv.rpoYds >= 600)) {
+                adjMultiplier += 0.03;
+                p._isPlayActionMerchant = true;
+            }
+
+            // Red Zone Vulture RB
+            if (p.Pos === 'RB' && p.rzAtt && p.rzAtt >= 18 && p.snapShare && p.snapShare <= 50 && !p.isRBStarter) {
+                adjMultiplier += 0.02;
+                p._isRedZoneVulture = true;
             }
 
             // 7. Advanced Team Environment Metrics & Scheme Archetypes

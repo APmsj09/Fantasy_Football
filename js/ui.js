@@ -436,15 +436,19 @@ const UI = {
         } else if (pos === 'RB') {
             let effTargetShare = p.targetShare || 0;
 
-            // REPLACE THE RB ARCHETYPE LOGIC WITH THIS UPDATED VERSION:
+            // THE RB ARCHETYPE LOGIC:
             if (p.hvo && p.hvo >= 70) {
                 archetypeNote = pickVar([
                     "Dominating high-value opportunities (receiving work + red-zone carries), his role is tailored for fantasy success.",
                     "His monopoly over money touches—receptions and inside-the-10 carries—makes him a usage monster.",
                     "He captures the coveted dual-threat RB role, taking pass-game targets alongside goal-line work."
                 ]);
+            } else if (p._isGoalLineHammer) {
+                archetypeNote = "A pure 'Goal-Line Hammer': He monopolizes inside-the-5 carries for massive touchdown upside, but offers virtually zero receiving floor in PPR formats.";
             } else if (p._isHandcuffPlus) {
                 archetypeNote = "Operating as a high-end '1B' back, he provides standalone Flex value while carrying league-winning contingent upside if the starter goes down.";
+            } else if (p._isSatelliteBack) {
+                archetypeNote = "Operating as a pure passing-down specialist, he holds immense value in PPR formats but severely lacks the rushing volume to survive in standard leagues.";
             } else if (effTargetShare >= 15.0) {
                 archetypeNote = pickVar([
                     "Stepping into a backfield with heavy pass-catching involvement, he projects for a high PPR baseline.",
@@ -468,8 +472,12 @@ const UI = {
                     "As a true high-volume target magnet, he commands the passing game with bulletproof opportunity.",
                     "His heavy target command builds an elite PPR foundation that few defenses can disrupt."
                 ]);
+            } else if (p._isSpikeWeekWeapon) {
+                archetypeNote = "A 'Spike-Week Weapon': Leveraging extreme downfield depth of target (aDOT), he can singlehandedly win fantasy matchups on 2-3 big plays, despite volatile week-to-week target counts.";
             } else if (p._isEmptyCalories) {
                 archetypeNote = "An 'Empty Calories' profile: He sees significant target volume, but his dismal efficiency yields a safe floor with virtually zero weekly ceiling.";
+            } else if (p._isCardioKing) {
+                archetypeNote = "A true 'Cardio King' profile: Despite rarely leaving the field, he is almost entirely ignored in the passing game, acting as a decoy or pure blocker.";
             } else if (p.aDOT && p.aDOT >= 12.5) {
                 archetypeNote = pickVar([
                     "Operating as a downfield weapon, his high aDOT profile equips him with slate-breaking splash-play ceiling.",
@@ -492,6 +500,10 @@ const UI = {
                     "His WR-like target volume lifts him above the volatile touchdown-dependent TE pack.",
                     "He operates as a legitimate passing weapon rather than an inline blocking tight end."
                 ]);
+            } else if (p._isTDorBust) {
+                archetypeNote = "The definition of 'Touchdown-or-Bust', his fantasy relevance is entirely dependent on converting his high-leverage red zone targets into scores.";
+            } else if (p._isCardioKing) {
+                archetypeNote = "Serving primarily as an inline blocker, he is on the field constantly but rarely factors into the passing game design.";
             } else {
                 archetypeNote = pickVar([
                     "Like most tight ends in his range, his weekly floor is TD-dependent and relies on red-zone looks.",
@@ -525,8 +537,12 @@ const UI = {
         } else if (['WR', 'TE'].includes(pos)) {
             archetypeNote += ` Catching passes from <strong>${qbName}</strong> in a <strong>${offensePace}</strong> offense heavily shapes his weekly volume expectations.`;
         } else if (pos === 'QB') {
-            let lineContext = p.olTier ? ` behind a <strong>Tier ${p.olTier} offensive line</strong>` : '';
-            archetypeNote += ` Directing a <strong>${offensePace}</strong> offense${lineContext}, his overall fantasy ceiling is strongly influenced by passing volume and the playmaking ability of his receiving corps.`;
+            if (p._isPressureLiability) {
+                archetypeNote = "A 'Pressure Liability': Frequently under siege behind a weak pass-blocking unit (or holding the ball too long), his drive efficiency and fantasy ceiling are regularly sabotaged by sacks and fumbles.";
+            } else {
+                let lineContext = p.olTier ? ` behind a <strong>Tier ${p.olTier} offensive line</strong>` : '';
+                archetypeNote += ` Directing a <strong>${offensePace}</strong> offense${lineContext}, his overall fantasy ceiling is strongly influenced by passing volume and the playmaking ability of his receiving corps.`;
+            }
         }
 
         // Past Stats Context Sentence
@@ -634,6 +650,7 @@ const UI = {
         let isGoalLineVulture = (p.rzAtt && p.rzAtt >= 25) || (p.pastStats && p.pastStats.rushTd >= 8);
 
         if (isOffense) {
+            // 1. Past Stats Block (ONLY runs if player has 2025 historical data)
             if (p.pastStats) {
                 const ps = p.pastStats;
                 const pastGP = (ps && ps.gp > 0) ? ps.gp : 17;
@@ -693,6 +710,31 @@ const UI = {
                         pros.push(`<strong>Expected Production Leap:</strong> 2026 projection (${projPpg.toFixed(1)} PPG) marks a significant improvement over last year's output (${p.pastPpg.toFixed(1)} PPG), reflecting a much better role or environment.`);
                     }
                 }
+            } 
+
+            // 2. Archetype & Trait Badges (Runs for ALL players, including Rookies)
+            if (p._isGoalLineHammer) {
+                pros.push(`<strong>Goal-Line Hammer:</strong> Monopolizes high-value carries inside the 5-yard line, providing elite touchdown conversion upside.`);
+            }
+
+            if (p._isSpikeWeekWeapon) {
+                pros.push(`<strong>💥 Slate-Breaking Spike Weeks:</strong> Generates massive per-target air yards (<strong>${p.aDOT ? p.aDOT + ' aDOT' : 'Deep Target'}</strong>), giving him matchup-winning ceiling on high-efficiency splash plays.`);
+            }
+
+            if (p._isSatelliteBack && State.scoring.ppr >= 0.5) {
+                pros.push(`<strong>PPR Cheat Code:</strong> Commands elite passing game usage for a running back, ensuring a rock-solid floor in PPR formats despite a lack of carries.`);
+            }
+
+            if (p._isShortAdotOperator && State.scoring.ppr >= 0.5) {
+                pros.push(`<strong>Short-aDOT PPR Operator:</strong> Commands high catch volume near the line of scrimmage (<strong>${p.aDOT} aDOT</strong>), building a rock-solid weekly PPR baseline.`);
+            }
+
+            if (p._isPlayActionMerchant) {
+                pros.push(`<strong>Play-Action Scheme Merchant:</strong> Operates in an elite play-action system that generates wide-open completions and elevated yards per target.`);
+            }
+
+            if (p._isRedZoneVulture) {
+                pros.push(`<strong>Red Zone Vulture:</strong> Monopolizes high-value inside-the-10 carries despite playing behind a lead back.`);
             }
 
             // Tiered Target Quality
@@ -720,9 +762,13 @@ const UI = {
                 pros.push(`<strong>High-Value Opportunities:</strong> Secures highly profitable touches with <strong>${hvoPerGame.toFixed(1)} combined receptions & RZ carries per game</strong>.`);
             }
 
+            // ADD THIS NEW SATELLITE BACK CHECK HERE:
+            if (p._isSatelliteBack && State.scoring.ppr >= 0.5) {
+                pros.push(`<strong>PPR Cheat Code:</strong> Commands elite passing game usage for a running back, ensuring a rock-solid floor in PPR formats despite a lack of carries.`);
+            }
+
             // Committee RB Strengths
             if (pos === 'RB' && p.snapShare && p.snapShare >= 40 && p.snapShare <= 65) {
-                // ADD THIS LINE FOR THE 1B TIER:
                 if (p._isHandcuffPlus) {
                     pros.push(`<strong>Premium 1B Back:</strong> While technically a backup, his <strong>${p.snapShare.toFixed(0)}% snap share</strong> gives him standalone flex value every week.`);
                 }
@@ -1016,7 +1062,7 @@ const UI = {
                         riskScore += 1;
                     }
                 }
-            }
+            } // <<< CLOSE p.pastStats BLOCK HERE
 
             // 9. Tiered Target Quality Check
             if (['WR', 'TE'].includes(pos) && p.catchable && p.pastStats && (Number(p.pastStats.targets) || 0) > 0) {
@@ -1039,6 +1085,68 @@ const UI = {
                 riskScore += 1;
             }
 
+            // ===========================================================
+            // 10. ARCHETYPE RISK WARNINGS (SAFE FOR ALL PLAYERS / ROOKIES)
+            // ===========================================================
+
+            // Satellite Back in Standard Scoring
+            if (p._isSatelliteBack && State.scoring.ppr === 0) {
+                cons.push(`<strong>Lacks Rushing Floor:</strong> Barely utilized in the traditional running game, making him incredibly difficult to start in Standard (Non-PPR) scoring formats.`);
+                riskScore += 2;
+            }
+
+            // Goal-Line Hammer in PPR Scoring
+            if (p._isGoalLineHammer && State.scoring.ppr >= 0.5) {
+                cons.push(`<strong>Zero Pass-Catching Floor:</strong> Virtually non-existent in the passing game, making his weekly fantasy output 100% dependent on scoring touchdowns.`);
+                riskScore += 1;
+            }
+
+            // Cardio King
+            if (p._isCardioKing) {
+                cons.push(`<strong>Cardio King / Decoy:</strong> Logged a massive <strong>${p.snapShare ? p.snapShare.toFixed(0) : '75+'}% snap share</strong> but an abysmal <strong>${p.targetShare}% target share</strong>. He is on the field constantly just to run wind sprints and block.`);
+                riskScore += 2;
+            }
+
+            // Empty Calories Receiver
+            if (p._isEmptyCalories) {
+                cons.push(`<strong>Empty Calories Trap:</strong> Despite seeing heavy volume, his atrocious <strong>${p.ypt ? p.ypt.toFixed(1) : 'low'} YPT</strong> mathematically destroys his fantasy ceiling.`);
+                riskScore += 1;
+            }
+
+            // NEW: Short-aDOT PPR Operator
+            if (p._isShortAdotOperator && State.scoring.ppr === 0) {
+                cons.push(`<strong>Capped Downfield Ceiling:</strong> Low aDOT (<strong>${p.aDOT || '6.5'} yds</strong>) limits explosive play upside; relies entirely on PPR catch volume to remain fantasy relevant.`);
+                riskScore += 1;
+            }
+
+            // Spike-Week Floor Volatility
+            if (p._isSpikeWeekWeapon) {
+                cons.push(`<strong>Volatile Target Floor:</strong> Lower overall target share leaves him susceptible to low-point duds when deep passes don't connect.`);
+            }
+
+            // TD-or-Bust Tight End
+            if (p._isTDorBust) {
+                cons.push(`<strong>Touchdown Dependent:</strong> Lacks consistent between-the-20s target volume. If he doesn't score a touchdown, he will likely ruin your weekly matchup.`);
+                riskScore += 1;
+            }
+
+            // NEW: Red Zone Vulture
+            if (p._isRedZoneVulture) {
+                cons.push(`<strong>Game-Script Sensitive Vulture:</strong> Low snap share (<strong>${p.snapShare || '40'}%</strong>) makes his weekly baseline heavily dependent on the team reaching the red zone.`);
+                riskScore += 1;
+            }
+
+            // Pressure Liability QB
+            if (p._isPressureLiability) {
+                cons.push(`<strong>🚨 Heavy Sack & Pressure Risk:</strong> Faces relentless pressure in the pocket, leading to drive-killing sacks, intentional grounding, and fumble risks.`);
+                riskScore += 2;
+            }
+
+            // NEW: Play-Action Merchant Drop-Back Risk
+            if (p._isPlayActionMerchant) {
+                cons.push(`<strong>Drop-Back Passing Risk:</strong> Highly dependent on play-action designs; can struggle when trailing and forced into obvious drop-back passing situations.`);
+            }
+
             // Tiered Committee Risk
             if (pos === 'RB' && p.snapShare && p.snapShare <= 65) {
                 if (!isReceivingSpecialist && !isGoalLineVulture && !p.isRBStarter) {
@@ -1050,6 +1158,12 @@ const UI = {
                         riskScore += 1;
                     }
                 }
+            }
+
+            // ADD THIS SATELLITE BACK STANDARD SCORING PENALTY HERE:
+            if (p._isSatelliteBack && State.scoring.ppr === 0) {
+                cons.push(`<strong>Lacks Rushing Floor:</strong> Barely utilized in the traditional running game, making him incredibly difficult to start in Standard (Non-PPR) scoring formats.`);
+                riskScore += 2;
             }
 
             if (['WR', 'TE'].includes(pos) && offensePace === 'run-heavy') {
@@ -1272,19 +1386,19 @@ const UI = {
         if (p.aDOT) {
             // Neutral aDOT baseline is 9.5 yds. Downfield routes = wider variance; short routes = tight PPR floor
             let aDotDelta = p.aDOT - 9.5;
-            varianceSpread += (aDotDelta * 0.012); 
+            varianceSpread += (aDotDelta * 0.012);
         }
 
         // 4. Continuous Target Share Stability (Higher Share = Tightened Floor)
         if (p.targetShare && ['WR', 'TE', 'RB'].includes(pos)) {
             if (p.targetShare > 12.0) {
-                varianceSpread -= Math.min(0.08, (p.targetShare - 12.0) * 0.004); 
+                varianceSpread -= Math.min(0.08, (p.targetShare - 12.0) * 0.004);
             }
         }
 
         // 5. Continuous QB Rushing Mobility
         if (pos === 'QB' && p.stats && p.stats.rushAtt) {
-            varianceSpread += Math.min(0.10, (p.stats.rushAtt / 100) * 0.07); 
+            varianceSpread += Math.min(0.10, (p.stats.rushAtt / 100) * 0.07);
         }
 
         // 6. Safe Floor Qualifier Adjustment
@@ -2044,9 +2158,9 @@ const UI = {
                 let urgency = 1 - survivalProb;
 
                 // Don't let ADP urgency force a lower-projecting player over a better player at the same position
-                let betterSamePosPlayer = viablePlayers.find(other => 
-                    other.Pos === p.Pos && 
-                    (other.AdvVBD || other.VBD) > (p.AdvVBD || p.VBD) && 
+                let betterSamePosPlayer = viablePlayers.find(other =>
+                    other.Pos === p.Pos &&
+                    (other.AdvVBD || other.VBD) > (p.AdvVBD || p.VBD) &&
                     (other._addedPPW || 0) >= (p._addedPPW || 0)
                 );
                 if (betterSamePosPlayer) urgency *= 0.15; // Suppress urgency boost
@@ -2064,15 +2178,15 @@ const UI = {
             if (matchingQB && ['WR', 'TE'].includes(p.Pos) && score > 0) {
                 // Base 5% boost. Scales up to 15-20% based on Target Share or Depth Chart.
                 let stackBoost = 1.05;
-                if (p.targetShare) stackBoost += (Math.min(30, p.targetShare) * 0.005); 
+                if (p.targetShare) stackBoost += (Math.min(30, p.targetShare) * 0.005);
                 else if (p.depthChart === 1) stackBoost += 0.10;
                 else if (p.depthChart === 2) stackBoost += 0.05;
-                
+
                 score = applyFactor(score, stackBoost);
                 p._stackPartner = matchingQB.Player;
             } else if (matchingReceiver && p.Pos === 'QB' && score > 0) {
                 // NEW: Reverse Stack - Boost QB if we already have his elite weapon
-                let stackBoost = 1.10; 
+                let stackBoost = 1.10;
                 score = applyFactor(score, stackBoost);
                 p._stackPartner = matchingReceiver.Player;
             } else {
@@ -2163,14 +2277,14 @@ const UI = {
 
             // 6. Handcuff Starter Bonus & Bye Week Penalty
             let userOwnsStarter = p.starterName && userRoster.some(r => r._cleanName === State.normalizeName(p.starterName));
-            
+
             // REMOVE THIS LINE: if (userOwnsStarter) score += 5;
 
             if (['QB', 'TE', 'PK', 'DST'].includes(p.Pos) && userTeam.counts[p.Pos] >= 1) {
                 const starter = userRoster.find(r => r.Pos === p.Pos);
                 if (starter && starter.byeWeek === p.byeWeek && p.byeWeek !== 'N/A') {
                     let draftProgress = Math.min(1.0, currentRound / totalRounds);
-                    let byePenalty = 0.50 + (draftProgress * 0.35); 
+                    let byePenalty = 0.50 + (draftProgress * 0.35);
                     score = applyFactor(score, byePenalty);
                 }
             }
@@ -2198,7 +2312,7 @@ const UI = {
                     score += (8.0 * roundScale);
                     p._sleeperBadge = `🚀 Deep Threat (${p.aDOT} aDOT)`;
                 }
-                
+
                 let playerAge = p.age || p.Age;
                 if (playerAge && playerAge <= 24 && !p._sleeperBadge) {
                     score += (6.0 * roundScale);
