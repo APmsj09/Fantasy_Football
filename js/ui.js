@@ -1972,17 +1972,32 @@ const UI = {
         viablePlayers.forEach(p => {
             let score = p.AdvVBD || p.VBD;
 
-            // 1. Urgency / ADP Check
+            // 1. Urgency / ADP Check (Dampened if a superior player exists at the same position)
             if (score > 0) {
                 let survivalProb = getSurvivalProb(p.adp);
                 let urgency = 1 - survivalProb;
+
+                // Don't let ADP urgency force a lower-projecting player over a better player at the same position
+                let betterSamePosPlayer = viablePlayers.find(other => 
+                    other.Pos === p.Pos && 
+                    (other.AdvVBD || other.VBD) > (p.AdvVBD || p.VBD) && 
+                    (other._addedPPW || 0) >= (p._addedPPW || 0)
+                );
+                if (betterSamePosPlayer) urgency *= 0.15; // Suppress urgency boost
+
                 score += (score * 0.25 * urgency);
             }
 
-            // 2. QB/Pass-Catcher Stacking
+            // 2. QB/Pass-Catcher Stacking (Tiered by Receiver Quality)
             let matchingQB = userQBs.find(qb => qb._cleanTeam === p._cleanTeam);
             if (matchingQB && ['WR', 'TE'].includes(p.Pos) && score > 0) {
-                score += Math.max(3.0, (p.AdvVBD || p.VBD) * 0.12);
+                // Base 5% boost. Scales up to 15-20% based on Target Share or Depth Chart.
+                let stackBoost = 1.05;
+                if (p.targetShare) stackBoost += (Math.min(30, p.targetShare) * 0.005); // e.g., 25% share = +12.5% boost
+                else if (p.depthChart === 1) stackBoost += 0.10;
+                else if (p.depthChart === 2) stackBoost += 0.05;
+                
+                score = applyFactor(score, stackBoost);
                 p._stackPartner = matchingQB.Player;
             } else {
                 p._stackPartner = null;
@@ -2074,11 +2089,13 @@ const UI = {
             let userOwnsStarter = p.starterName && userRoster.some(r => r._cleanName === State.normalizeName(p.starterName));
             if (userOwnsStarter) score += 5;
 
-            if (['QB', 'TE'].includes(p.Pos) && userTeam.counts[p.Pos] >= 1) {
+            if (['QB', 'TE', 'PK', 'DST'].includes(p.Pos) && userTeam.counts[p.Pos] >= 1) {
                 const starter = userRoster.find(r => r.Pos === p.Pos);
                 if (starter && starter.byeWeek === p.byeWeek && p.byeWeek !== 'N/A') {
-                    if (score > 0) score *= 0.5;
-                    else score *= 2.0;
+                    // Starts at a harsh 50% penalty, smoothly softens to just 15% by the late rounds
+                    let draftProgress = Math.min(1.0, currentRound / totalRounds);
+                    let byePenalty = 0.50 + (draftProgress * 0.35); 
+                    score = applyFactor(score, byePenalty);
                 }
             }
 
@@ -2100,8 +2117,16 @@ const UI = {
                     score += (8.0 * roundScale);
                     p._sleeperBadge = `🎯 ${p.targetShare}% Target Share Sleeper`;
                 } else if (p.aDOT && p.aDOT >= 12.0) {
-                    score += (6.0 * roundScale);
-                    p._sleeperBadge = `🚀 Deep Threat (${p.aDOT} aDOT)`;
+                    p._isFlyer = true;
+                    upsideMultiplier += 0.20;
+                    if (!ceilingTags.includes("Deep Threat")) ceilingTags.push("Deep Threat");
+                }
+                // Continuous Youth Upside Scale
+                if (pAge && pAge <= 24) {
+                    p._isFlyer = true;
+                    let youthBoost = Math.max(0.04, (25 - pAge) * 0.06); 
+                    upsideMultiplier += youthBoost;
+                    if (pAge <= 23 && !ceilingTags.includes("Breakout Age")) ceilingTags.push("Breakout Age");
                 }
             }
 

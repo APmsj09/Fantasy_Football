@@ -1715,10 +1715,12 @@ const State = {
                     ceilingTags.push("League-Winning Upside (Contingent)");
                 }
 
-                if (pAge && pAge <= 22) {
+                // Continuous Youth Upside Scale (Max +22% at 21yo, fades to +4% at 24yo)
+                if (pAge && pAge <= 24) {
                     p._isFlyer = true;
-                    upsideMultiplier += 0.20;
-                    ceilingTags.push("Breakout Age");
+                    let youthBoost = Math.max(0.04, (25 - pAge) * 0.06); 
+                    upsideMultiplier += youthBoost;
+                    if (pAge <= 23 && !ceilingTags.includes("Breakout Age")) ceilingTags.push("Breakout Age");
                 }
 
                 if (p.pastStats && p.pastStats.bigPlays >= 8) {

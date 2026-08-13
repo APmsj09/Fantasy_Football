@@ -222,7 +222,8 @@ window.Compare = {
                 consForAlt.push(`<strong>Tier Difference:</strong> ${topPick.Player} is in <strong>${topTier.tierName}</strong> while ${alt.Player} falls into <strong>${altTier.tierName}</strong> (-${vbdGap} VBD gap).`);
             }
 
-            if (topTier.isLastInTier) {
+            // Only warn if the alternative player is in the SAME or WORSE tier
+            if (topTier.isLastInTier && altTier.tierNum >= topTier.tierNum) {
                 consForAlt.push(`<strong>Tier Cliff Warning:</strong> ${topPick.Player} is the <strong>final player</strong> in ${topTier.tierName}. Drafting ${alt.Player} causes you to completely miss this tier.`);
             }
 
