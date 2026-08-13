@@ -83,20 +83,23 @@ window.AutoDraft = {
 
             // Manager Personality Strategy Multipliers
             if (profile) {
-                // 1. Early-Round Strategy Multipliers (Rounds 1-5)
-                if (round <= 5) {
+                // 1. Early-Round Strategy Multipliers (Rounds 1-6)
+                if (round <= 6) {
                     if (profile.strategy === 'Hero-RB') {
-                        // Boost WRs heavily if they already drafted their 1 Hero RB
-                        if (team.counts['RB'] >= 1 && p.Pos === 'WR') multiplier *= 1.35;
-                        // Prevent taking a 2nd RB early
-                        if (team.counts['RB'] >= 1 && p.Pos === 'RB') multiplier *= 0.60;
+                        if (team.counts['RB'] >= 1 && p.Pos === 'WR' && round <= 4) multiplier *= 1.35;
+                        if (team.counts['RB'] >= 1 && p.Pos === 'RB' && round <= 4) multiplier *= 0.60;
                     }
                     else if (profile.strategy === 'Zero-RB' && round <= 5) {
-                        if (p.Pos === 'WR') multiplier *= 1.40;
-                        if (p.Pos === 'RB') multiplier *= 0.30; // Strictly avoid early RBs
+                        if (['WR', 'TE'].includes(p.Pos) && team.counts['RB'] === 0) multiplier *= 1.35;
+                        if (p.Pos === 'RB' && round <= 4 && team.counts['WR'] < 3) multiplier *= 0.35;
                     }
-                    else if (profile.strategy === 'Robust-RB' && round <= 3) {
-                        if (p.Pos === 'RB') multiplier *= 1.35;
+                    else if (profile.strategy === 'Robust-RB') {
+                        if (p.Pos === 'RB' && round <= 3) multiplier *= 1.35;
+                        if (['WR', 'TE'].includes(p.Pos) && round >= 4 && team.counts['RB'] >= 3) multiplier *= 1.30; // Pivot to WR/TE
+                    }
+                    else if (profile.strategy === 'Double-Elite' && round <= 4) {
+                        if (p.Pos === 'QB' && team.counts['QB'] === 0) multiplier *= 1.30;
+                        if (p.Pos === 'TE' && team.counts['TE'] === 0) multiplier *= 1.30;
                     }
                 }
 
@@ -135,7 +138,8 @@ window.AutoDraft = {
             } else if (isFlexRBWROpen || isFlexOpen || isSuperflexOpen) {
                 starterBonus = 15;
             } else {
-                let overage = currentCount - starterMax;
+                let totalPosCount = team.roster.filter(r => r.Pos === p.Pos).length;
+                let overage = Math.max(0, totalPosCount - starterMax);
                 if (isFlexRBWROpen || isFlexOpen || isSuperflexOpen || State.isPositionFlexEligible(p.Pos)) {
                     multiplier *= Math.pow(0.5, overage + 1);
                 } else {
@@ -151,7 +155,7 @@ window.AutoDraft = {
                 }
             }
 
-            if (p.Pos === 'PK' && round <= totalRounds - 3) multiplier *= 0.001;
+            if (['PK', 'DST'].includes(p.Pos) && round <= totalRounds - 3) multiplier *= 0.001;
 
             let rawVbd = p.AdvVBD ?? p.VBD ?? 0;
             let baseValue = rawVbd >= 0 ? (rawVbd * multiplier) : (rawVbd / multiplier);

@@ -543,7 +543,7 @@ const UI = {
             if (p.wopr && p.wopr >= 0.55) specificStats.push(`boasts a dominant <strong>${p.wopr.toFixed(2)} WOPR</strong>`);
             if (p.Pos === 'QB' && p.stats && p.stats.rushAtt >= 50) specificStats.push(`adds crucial rushing floor with <strong>${p.stats.rushAtt} projected carries</strong>`);
             if (p.snapShare && p.snapShare >= 75) specificStats.push(`rarely leaves the field (<strong>${p.snapShare.toFixed(0)}% snap share</strong>)`);
-            
+
             if (specificStats.length > 0) {
                 statProof = ` His elite profile is backed by raw data: he ${specificStats.slice(0, 2).join(', and ')}.`;
             }
@@ -1950,7 +1950,7 @@ const UI = {
         // Filter valid players
         let viablePlayers = State.availablePlayers.filter(p => {
             let pos = p.Pos;
-            if (pos === 'PK' && currentRound <= totalRounds - 3) return false;
+            if (['PK', 'DST'].includes(pos) && currentRound <= totalRounds - 3) return false;
 
             let posRoster = State.settings.roster[pos];
             let starterMax = posRoster ? posRoster.max : 1;
@@ -1962,6 +1962,9 @@ const UI = {
             if (userTeam.counts['Bench'] < State.settings.roster.Bench.max) return true;
             return false;
         });
+
+        // Helper to scale positive and negative scores accurately
+        const applyFactor = (s, f) => s >= 0 ? s * f : (f >= 1 ? s / f : s * (1 / f));
 
         // ===========================================================
         // LOOP: EVALUATE INDIVIDUAL PLAYERS
@@ -2006,17 +2009,25 @@ const UI = {
 
             // 3.5 STRATEGY MATHEMATICAL ENFORCEMENT (ADP-Aware)
             if (currentRound <= 6) {
-                let isSlippingValue = p.adp && (currentOverallPick - p.adp >= 10); // Player falling 10+ picks past ADP
-                let adpBuffer = isSlippingValue ? 1.35 : 1.0; // Soften penalty if player is an undeniable falling value
+                let isSlippingValue = p.adp && (currentOverallPick - p.adp >= 10);
+                let adpBuffer = isSlippingValue ? 1.35 : 1.0;
+
+                let needsRB2 = userTeam.counts['RB'] < (State.settings.roster.RB?.max || 2);
+                let needsBothRBs = userTeam.counts['RB'] === 0;
+                let wrStarterSlotsFull = (userTeam.counts['WR'] + userTeam.counts['Flex']) >= 3;
 
                 if (buildStrategy === 'Zero-RB') {
-                    if (['WR', 'TE', 'QB'].includes(p.Pos)) score *= 1.25;
-                    if (p.Pos === 'RB') score *= (0.40 * adpBuffer);
+                    // Stop penalizing RBs in Round 5+ if WR starters are full or user has 0 RBs
+                    let penalizeRB = (currentRound <= 4) || (currentRound <= 6 && !needsBothRBs && !wrStarterSlotsFull);
+                    if (['WR', 'TE', 'QB'].includes(p.Pos) && !wrStarterSlotsFull) score = applyFactor(score, 1.25);
+                    if (p.Pos === 'RB' && penalizeRB) score = applyFactor(score, 0.40 * adpBuffer);
                 } else if (buildStrategy === 'Hero-RB') {
-                    if (p.Pos === 'RB') score *= (0.60 * adpBuffer);
-                    if (['WR', 'TE'].includes(p.Pos)) score *= 1.15;
+                    // Stop penalizing RBs in Round 5+ if RB2 is needed or WR starter slots are full
+                    let penalizeRB = (currentRound <= 4) && !needsRB2;
+                    if (p.Pos === 'RB' && penalizeRB) score = applyFactor(score, 0.60 * adpBuffer);
+                    if (['WR', 'TE'].includes(p.Pos) && currentRound <= 4) score = applyFactor(score, 1.15);
                 } else if (buildStrategy === 'Robust-RB') {
-                    if (['WR', 'TE'].includes(p.Pos)) score *= 1.30;
+                    if (['WR', 'TE'].includes(p.Pos)) score = applyFactor(score, 1.30);
                 }
             }
 
@@ -2036,12 +2047,13 @@ const UI = {
                     contextMultiplier += ((1.0 - posSafetyDeficit) * 0.18);
                     if (!p._rosterContextBadge) p._rosterContextBadge = `🚀 ${p.Pos} Upside Flyer (${p.Pos} Floor Secured)`;
                 }
-                if (score > 0) score *= contextMultiplier;
+                score = applyFactor(score, contextMultiplier);
             }
 
             // 5. Roster Limit / Overage Penalties
             let posRoster = State.settings.roster[p.Pos];
             let starterMax = posRoster ? posRoster.max : 0;
+            let totalPosCount = userRoster.filter(r => r.Pos === p.Pos).length;
             let currentCount = userTeam.counts[p.Pos] || 0;
 
             let isStarterOpen = currentCount < starterMax;
@@ -2050,13 +2062,12 @@ const UI = {
             let isSuperflexOpen = ['QB', 'RB', 'WR', 'TE'].includes(p.Pos) && (userTeam.counts['Superflex'] < (State.settings.roster.Superflex?.max || 0));
 
             if (!isStarterOpen && !(isFlexRBWROpen || isFlexOpen || isSuperflexOpen)) {
-                let overage = currentCount - starterMax;
+                let overage = totalPosCount - starterMax;
                 let penalty = State.isPositionFlexEligible(p.Pos)
                     ? Math.pow(0.5, overage + 1)
                     : (overage === 0 ? 0.05 : 0.01);
 
-                if (score > 0) score *= penalty;
-                else score /= penalty;
+                score = applyFactor(score, penalty);
             }
 
             // 6. Handcuff Starter Bonus & Bye Week Penalty
@@ -2214,7 +2225,7 @@ const UI = {
         }).join('');
 
         State.currentRecommendations = finalRecs;
-        
+
         if (finalRecs.length > 1) {
             htmlStr += `
             <button onclick="Compare.showComparison()" class="w-full mt-3 py-2.5 bg-indigo-900/40 hover:bg-indigo-800/60 border border-indigo-700/50 rounded-xl text-xs font-bold text-indigo-200 transition-colors flex items-center justify-center gap-2 shadow-sm">

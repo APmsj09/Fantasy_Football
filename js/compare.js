@@ -6,7 +6,7 @@ window.Compare = {
         // Dynamic drop threshold: Scales down automatically as VBD values decrease in deep rounds
         const topVal = Math.max(8.0, avail[0].AdvVBD || avail[0].VBD || 8.0);
         const dropThreshold = Math.max(2.0, Math.min(9.5, topVal * 0.18));
-        
+
         let tierNum = 1;
         let tierPlayers = [];
         let currentTier = [];
@@ -45,12 +45,12 @@ window.Compare = {
             else if (tierNum === 3) tierName = `Tier 3 (Solid ${player.Pos})`;
             else tierName = `Tier ${tierNum} (${player.Pos} Starters)`;
         } else {
-            // Late-Round Archetype Tier Naming
+            // Late-Round Archetype Tier Naming (Removes misleading Tier X numbers)
             if (player.isRBHandcuff) tierName = `Handcuff / Lottery Ticket Tier`;
             else if (player.targetShare && player.targetShare >= 15) tierName = `Target-Share / PPR Floor Tier`;
             else if (player.aDOT && player.aDOT >= 12) tierName = `Deep-Threat / Spike-Week Tier`;
             else if (player.age && player.age <= 22) tierName = `Rookie / Youth Upside Tier`;
-            else tierName = `Tier ${tierNum} (${player.Pos} Bench Depth)`;
+            else tierName = `${player.Pos} Bench Depth Tier`;
         }
 
         let remaining = tierPlayers.length;
@@ -66,7 +66,7 @@ window.Compare = {
         const topPick = recs[0];
         const alternatives = recs.slice(1);
         const userTeam = State.teamsById[State.userTeamId];
-        
+
         const nextUserPick = State.currentPick + 1 + (State.settings.numTeams * 2) - 1; // Rough estimation of next pick
 
         let html = `
@@ -105,7 +105,7 @@ window.Compare = {
 
     generateTopPickHighlights(p, team) {
         let highlights = [];
-        
+
         // 1. Lineup impact (PPW)
         if (p._addedPPW >= 1.0 || (p._addedPPW > 0 && !p._byeFillWeek)) {
             highlights.push(`<li><strong class="text-emerald-700">Optimal Lineup Fit:</strong> Adding him instantly increases your optimal starting lineup by <strong>+${p._addedPPW.toFixed(2)} Points Per Week</strong>.</li>`);
@@ -149,32 +149,45 @@ window.Compare = {
         let prosForAlt = [];
         let consForAlt = [];
 
-        // 1. Raw Value vs Positional Need
-        if ((alt.AdvVBD || alt.VBD) > (topPick.AdvVBD || topPick.VBD)) {
-            let diff = ((alt.AdvVBD || alt.VBD) - (topPick.AdvVBD || topPick.VBD)).toFixed(1);
-            prosForAlt.push(`<strong>Higher Absolute Value:</strong> In a vacuum, ${alt.Player} has a mathematically higher value (+${diff} VBD) regardless of roster needs.`);
+        // 1. Raw Value vs Positional Need (With Tiebreaker Logic)
+        let topVBD = topPick.AdvVBD || topPick.VBD || 0;
+        let altVBD = alt.AdvVBD || alt.VBD || 0;
+        let diff = altVBD - topVBD;
+
+        if (diff > 0) {
+            if (diff <= 6.0) {
+                prosForAlt.push(`<strong>Slight Value Edge:</strong> Projects marginally higher (+${diff.toFixed(1)} VBD) in a vacuum, but the difference is small enough that roster needs dictate the pick.`);
+            } else {
+                prosForAlt.push(`<strong>Higher Absolute Value:</strong> In a vacuum, ${alt.Player} has a mathematically higher value (+${diff.toFixed(1)} VBD) regardless of roster needs.`);
+            }
             
-            if (team.counts[topPick.Pos] < team.counts[alt.Pos]) {
+            if ((team.counts[topPick.Pos] || 0) < (team.counts[alt.Pos] || 0)) {
                 consForAlt.push(`<strong>Roster Logjam:</strong> You already have depth at ${alt.Pos}. Taking ${topPick.Player} (${topPick.Pos}) fills a bigger structural hole on your team.`);
             }
+        } else if (diff < 0 && Math.abs(diff) <= 6.0) {
+            consForAlt.push(`<strong>Virtual Value Tie:</strong> Projects within ${Math.abs(diff).toFixed(1)} VBD of ${alt.Player}. The algorithm leans ${topPick.Player} strictly due to roster construction and lineup impact.`);
         }
 
-        // 2. Draft Urgency (ADP Comparison)
-        if (alt.adp && topPick.adp) {
-            if (alt.adp > topPick.adp + 10) {
-                consForAlt.push(`<strong>You Can Wait:</strong> ${alt.Player}'s ADP is ${alt.adp.toFixed(1)}. You have a much higher chance of snagging him in the next round. ${topPick.Player} won't make it back.`);
-            } else if (topPick.adp > alt.adp + 10) {
-                prosForAlt.push(`<strong>Extreme ADP Value:</strong> ${alt.Player} is sliding way past his ADP (${alt.adp.toFixed(1)}), presenting massive market value.`);
+        // 2. Draft Urgency & True ADP Value Comparison
+        const currentPickNum = State.currentPick + 1;
+        if (alt.adp) {
+            if (currentPickNum - alt.adp >= 8) {
+                prosForAlt.push(`<strong>Extreme ADP Value:</strong> ${alt.Player} is sliding past his ADP (${alt.adp.toFixed(1)}), presenting strong market value at Pick ${currentPickNum}.`);
+            } else if (alt.adp > currentPickNum + 15) {
+                consForAlt.push(`<strong>You Can Wait:</strong> ${alt.Player}'s ADP is ${alt.adp.toFixed(1)}. You have a high chance of drafting him in later rounds.`);
             }
         }
 
-        // 3. Lineup Optimization
+        // 3. Lineup Optimization & Opportunity Cost
         let topPPW = topPick._addedPPW || 0;
         let altPPW = alt._addedPPW || 0;
         if (altPPW > topPPW + 0.5) {
-            prosForAlt.push(`<strong>Better Lineup Booster:</strong> Actually adds more points (+${altPPW.toFixed(1)} PPW) to your specific optimal starting lineup than ${topPick.Player}.`);
+            prosForAlt.push(`<strong>Higher Immediate Lineup Boost:</strong> Adds +${altPPW.toFixed(1)} PPW to your weekly optimal score (vs. +${topPPW.toFixed(1)} PPW for ${topPick.Player}).`);
         } else if (topPPW > altPPW + 0.5) {
-            consForAlt.push(`<strong>Bench Warmer Risk:</strong> Because of your current roster, ${alt.Player} only adds +${altPPW.toFixed(1)} PPW to your starters, whereas ${topPick.Player} slides right into your lineup (+${topPPW.toFixed(1)} PPW).`);
+            let altPosRoster = State.settings.roster[alt.Pos];
+            let isAltStarterFull = (team.counts[alt.Pos] || 0) >= (altPosRoster ? altPosRoster.max : 1);
+            let impactLabel = (topPick.Pos === alt.Pos) ? "Slightly Lower Lineup Boost" : (isAltStarterFull ? "Bench Warmer Risk" : "Lower Lineup Impact");
+            consForAlt.push(`<strong>${impactLabel}:</strong> Adds +${altPPW.toFixed(1)} PPW to your starters compared to +${topPPW.toFixed(1)} PPW for ${topPick.Player}.`);
         }
 
         // 4. Boom/Bust Consistency Check
@@ -217,16 +230,25 @@ window.Compare = {
                 consForAlt.push(`<strong>Inferior Volume:</strong> Commands significantly less target share (${alt.targetShare}%) compared to ${topPick.Player} (${topPick.targetShare}%).`);
             }
         } else {
-            // Cross-Position Tier Scarcity Comparison (Adapts for Early vs. Late Rounds)
-            if (topTier.isLastInTier && (topTier.tierNum <= 2 || currentRound >= 7)) {
+            // Cross-Position Tier Scarcity Comparison (Caps at Round 7 to prevent late-round noise)
+            if (topTier.isLastInTier && (topTier.tierNum <= 2 || currentRound <= 7)) {
                 let scarcityLabel = currentRound <= 6 ? `in ${topTier.tierName}` : `in the ${topTier.tierName} pool`;
                 consForAlt.push(`<strong>Cross-Positional Scarcity:</strong> ${topPick.Player} is the <strong>LAST remaining option</strong> ${scarcityLabel} (${topTier.remaining} left), whereas ${alt.Pos} still has <strong>${altTier.remaining} option(s)</strong> available in ${altTier.tierName}.`);
             }
         }
 
+        // 6. Position & Strategy Specific Trade-offs
+        const currentRound = Math.floor(State.currentPick / State.settings.numTeams) + 1;
+        if (alt.Pos === 'QB' && ['RB', 'WR'].includes(topPick.Pos) && currentRound <= 4) {
+            consForAlt.push(`<strong>1-QB Opportunity Cost:</strong> Drafting a QB in Round ${currentRound} sacrifices elite ${topPick.Pos} positional scarcity when quality QBs remain available later.`);
+        }
+        if (topPick.targetShare && alt.targetShare && topPick.targetShare > alt.targetShare + 4) {
+            consForAlt.push(`<strong>Lower Target Command:</strong> ${alt.Player} (${alt.targetShare}% Tgt Share) commands less passing volume than ${topPick.Player} (${topPick.targetShare}%).`);
+        }
+
         // Fallbacks if arrays are empty
-        if (prosForAlt.length === 0) prosForAlt.push(`Provides excellent depth as a highly-rated ${alt.Pos}.`);
-        if (consForAlt.length === 0) consForAlt.push(`Simply edged out by ${topPick.Player}'s slightly superior overall metrics and team fit.`);
+        if (prosForAlt.length === 0) prosForAlt.push(`Offers solid baseline production as a top-tier ${alt.Pos}.`);
+        if (consForAlt.length === 0) consForAlt.push(`Prioritizes ${topPick.Player}'s positional scarcity and roster structural balance at ${topPick.Pos}.`);
 
         return `
             <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm mb-4">
