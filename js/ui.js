@@ -243,7 +243,7 @@ const UI = {
 
         // Expanded to include WR3s in high-volume passing attacks (570+ targets) or WR-funnel schemes
         const isWR3PassHeavy = (pos === 'WR' && p.depthChart === 3 && (passVolume >= 570 || (teamDist && teamDist['WR %'] >= 60.0)));
-        const isTargetRole = p.isNewRole || isRookieOrYoung || hasNoPastStats || (p.depthChart && p.depthChart <= 2) || isWR3PassHeavy;
+        const isTargetRole = p.isNewRole || (isRookieOrYoung && hasNoPastStats) || (p.depthChart && p.depthChart <= 2) || isWR3PassHeavy;
 
         // Prevents spamming past stats in both the general narrative blurb AND the context box
         const showPastStatsInBox = Boolean(p.pastStats && p.pastStats.gp > 0 && (p.isNewRole || isRookieOrYoung));
@@ -436,12 +436,15 @@ const UI = {
         } else if (pos === 'RB') {
             let effTargetShare = p.targetShare || 0;
 
+            // REPLACE THE RB ARCHETYPE LOGIC WITH THIS UPDATED VERSION:
             if (p.hvo && p.hvo >= 70) {
                 archetypeNote = pickVar([
                     "Dominating high-value opportunities (receiving work + red-zone carries), his role is tailored for fantasy success.",
                     "His monopoly over money touches—receptions and inside-the-10 carries—makes him a usage monster.",
                     "He captures the coveted dual-threat RB role, taking pass-game targets alongside goal-line work."
                 ]);
+            } else if (p._isHandcuffPlus) {
+                archetypeNote = "Operating as a high-end '1B' back, he provides standalone Flex value while carrying league-winning contingent upside if the starter goes down.";
             } else if (effTargetShare >= 15.0) {
                 archetypeNote = pickVar([
                     "Stepping into a backfield with heavy pass-catching involvement, he projects for a high PPR baseline.",
@@ -458,12 +461,15 @@ const UI = {
         } else if (pos === 'WR') {
             let isAlphaRole = (p.targetShare && p.targetShare >= 23) || ((hasNoPastStats || p.isNewRole) && p.depthChart === 1);
 
+            // REPLACE THE WR ARCHETYPE LOGIC WITH THIS UPDATED VERSION:
             if (isAlphaRole) {
                 archetypeNote = pickVar([
                     "Demanding alpha target share, he functions as the undeniable focal point of his team's air attack.",
                     "As a true high-volume target magnet, he commands the passing game with bulletproof opportunity.",
                     "His heavy target command builds an elite PPR foundation that few defenses can disrupt."
                 ]);
+            } else if (p._isEmptyCalories) {
+                archetypeNote = "An 'Empty Calories' profile: He sees significant target volume, but his dismal efficiency yields a safe floor with virtually zero weekly ceiling.";
             } else if (p.aDOT && p.aDOT >= 12.5) {
                 archetypeNote = pickVar([
                     "Operating as a downfield weapon, his high aDOT profile equips him with slate-breaking splash-play ceiling.",
@@ -738,9 +744,9 @@ const UI = {
             }
 
             // Tiered Catch Rate
-            if (['WR', 'TE'].includes(pos) && p.trueCatchRate >= 92.0) {
+            if (['WR', 'TE'].includes(pos) && p.trueCatchRate >= 94.0) {
                 pros.push(`<strong>Vacuum Hands:</strong> Secured an elite <strong>${p.trueCatchRate.toFixed(1)}% of catchable targets</strong> last season.`);
-            } else if (['WR', 'TE'].includes(pos) && p.trueCatchRate >= 86.0) {
+            } else if (['WR', 'TE'].includes(pos) && p.trueCatchRate >= 90.0) {
                 pros.push(`<strong>Reliable Hands:</strong> Secured <strong>${p.trueCatchRate.toFixed(1)}% of catchable targets</strong> last season.`);
             }
 
@@ -796,6 +802,12 @@ const UI = {
                 pros.push(`<strong>Every-Down Workhorse:</strong> Never leaves the field (<strong>${p.snapShare.toFixed(0)}% snap share</strong>). True bellcow deployment completely immunizes him from substitution risk.`);
             } else if (['RB', 'WR', 'TE'].includes(pos) && p.snapShare >= 72) {
                 pros.push(`<strong>High Snap Share:</strong> On the field for ${p.snapShare.toFixed(0)}% of offensive snaps (High snap volume minimizes the risk of losing touches to backups).`);
+            }
+
+            if (pos === 'QB' && p.stats && p.stats.rushYds >= 600) {
+                pros.push(`<strong>Konami Code Upside:</strong> Projected for <strong>${p.stats.rushYds} rushing yards</strong>. Elite rushing mobility gives him an unmatched weekly floor and ceiling combination.`);
+            } else if (pos === 'QB' && p.stats && p.stats.rushYds >= 350) {
+                pros.push(`<strong>Dual-Threat Asset:</strong> Projected for <strong>${p.stats.rushYds} rushing yards</strong>, padding his fantasy output on the ground.`);
             }
 
             if (p.boomBust && p.boomBust.games >= 4) {
@@ -2029,20 +2041,30 @@ const UI = {
                 );
                 if (betterSamePosPlayer) urgency *= 0.15; // Suppress urgency boost
 
-                score += (score * 0.25 * urgency);
+                // REPLACE THIS LINE: score += (score * 0.25 * urgency);
+                let urgencyBoost = Math.min(8.0, score * 0.10 * urgency);
+                score += urgencyBoost;
             }
 
             // 2. QB/Pass-Catcher Stacking (Tiered by Receiver Quality)
             let matchingQB = userQBs.find(qb => qb._cleanTeam === p._cleanTeam);
+            let userReceivers = userRoster.filter(r => ['WR', 'TE'].includes(r.Pos));
+            let matchingReceiver = userReceivers.find(r => r._cleanTeam === p._cleanTeam);
+
             if (matchingQB && ['WR', 'TE'].includes(p.Pos) && score > 0) {
                 // Base 5% boost. Scales up to 15-20% based on Target Share or Depth Chart.
                 let stackBoost = 1.05;
-                if (p.targetShare) stackBoost += (Math.min(30, p.targetShare) * 0.005); // e.g., 25% share = +12.5% boost
+                if (p.targetShare) stackBoost += (Math.min(30, p.targetShare) * 0.005); 
                 else if (p.depthChart === 1) stackBoost += 0.10;
                 else if (p.depthChart === 2) stackBoost += 0.05;
                 
                 score = applyFactor(score, stackBoost);
                 p._stackPartner = matchingQB.Player;
+            } else if (matchingReceiver && p.Pos === 'QB' && score > 0) {
+                // NEW: Reverse Stack - Boost QB if we already have his elite weapon
+                let stackBoost = 1.10; 
+                score = applyFactor(score, stackBoost);
+                p._stackPartner = matchingReceiver.Player;
             } else {
                 p._stackPartner = null;
             }
@@ -2131,12 +2153,12 @@ const UI = {
 
             // 6. Handcuff Starter Bonus & Bye Week Penalty
             let userOwnsStarter = p.starterName && userRoster.some(r => r._cleanName === State.normalizeName(p.starterName));
-            if (userOwnsStarter) score += 5;
+            
+            // REMOVE THIS LINE: if (userOwnsStarter) score += 5;
 
             if (['QB', 'TE', 'PK', 'DST'].includes(p.Pos) && userTeam.counts[p.Pos] >= 1) {
                 const starter = userRoster.find(r => r.Pos === p.Pos);
                 if (starter && starter.byeWeek === p.byeWeek && p.byeWeek !== 'N/A') {
-                    // Starts at a harsh 50% penalty, smoothly softens to just 15% by the late rounds
                     let draftProgress = Math.min(1.0, currentRound / totalRounds);
                     let byePenalty = 0.50 + (draftProgress * 0.35); 
                     score = applyFactor(score, byePenalty);
@@ -2146,13 +2168,15 @@ const UI = {
             // 7. Late-Round Sleeper & Handcuff Badges (Rounds 8+, Scaled by Round)
             p._sleeperBadge = null;
             if (currentRound >= 8 && ['RB', 'WR', 'TE', 'QB'].includes(p.Pos)) {
-                let roundScale = Math.min(1.0, (currentRound - 7) * 0.25); // R8 = 0.25x, R10 = 0.75x, R12+ = 1.0x
+                let roundScale = Math.min(1.0, (currentRound - 7) * 0.25);
 
                 if (userOwnsStarter) {
-                    score += (22.0 * roundScale);
+                    // REPLACE THIS LINE: score += (22.0 * roundScale);
+                    score += (12.0 * roundScale);
                     p._sleeperBadge = `🔒 Handcuff for ${p.starterName}`;
                 } else if (p.isRBHandcuff) {
-                    score += (14.0 * roundScale);
+                    // REPLACE THIS LINE: score += (14.0 * roundScale);
+                    score += (8.0 * roundScale);
                     p._sleeperBadge = `🎲 Lottery Ticket (${p.starterName}'s Backup)`;
                 } else if (p.age && p.age <= 22) {
                     score += (10.0 * roundScale);
@@ -2161,16 +2185,14 @@ const UI = {
                     score += (8.0 * roundScale);
                     p._sleeperBadge = `🎯 ${p.targetShare}% Target Share Sleeper`;
                 } else if (p.aDOT && p.aDOT >= 12.0) {
-                    p._isFlyer = true;
-                    upsideMultiplier += 0.20;
-                    if (!ceilingTags.includes("Deep Threat")) ceilingTags.push("Deep Threat");
+                    score += (8.0 * roundScale);
+                    p._sleeperBadge = `🚀 Deep Threat (${p.aDOT} aDOT)`;
                 }
-                // Continuous Youth Upside Scale
-                if (pAge && pAge <= 24) {
-                    p._isFlyer = true;
-                    let youthBoost = Math.max(0.04, (25 - pAge) * 0.06); 
-                    upsideMultiplier += youthBoost;
-                    if (pAge <= 23 && !ceilingTags.includes("Breakout Age")) ceilingTags.push("Breakout Age");
+                
+                let playerAge = p.age || p.Age;
+                if (playerAge && playerAge <= 24 && !p._sleeperBadge) {
+                    score += (6.0 * roundScale);
+                    p._sleeperBadge = `🌱 Youth Breakout (Age ${playerAge})`;
                 }
             }
 

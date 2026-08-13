@@ -81,6 +81,13 @@ window.AutoDraft = {
                 multiplier *= (1 + (p.avgStars - 3.0) * 0.04);
             }
 
+            // ADD THIS BLOCK BELOW:
+            let hasSameBye = team.roster.some(r => r.Pos === p.Pos && r.byeWeek === p.byeWeek && p.byeWeek !== 'N/A');
+            let isStarterOpen = (team.counts[p.Pos] || 0) < (State.settings.roster[p.Pos]?.max || 1);
+            if (hasSameBye && !isStarterOpen) {
+                multiplier *= 0.25;
+            }
+
             // Manager Personality Strategy Multipliers
             if (profile) {
                 // 1. Early-Round Strategy Multipliers (Rounds 1-6)

@@ -39,11 +39,13 @@ window.Compare = {
         const currentRound = Math.floor(State.currentPick / State.settings.numTeams) + 1;
         let tierName = `Tier ${tierNum}`;
 
+        let posRankNum = player.posRank ? parseInt(player.posRank.replace(/[^\d]/g, ''), 10) : 99;
+
         if (currentRound <= 6) {
-            if (tierNum === 1) tierName = `Tier 1 (Elite ${player.Pos})`;
-            else if (tierNum === 2) tierName = `Tier 2 (High-End ${player.Pos})`;
-            else if (tierNum === 3) tierName = `Tier 3 (Solid ${player.Pos})`;
-            else tierName = `Tier ${tierNum} (${player.Pos} Starters)`;
+            if (posRankNum <= 12) tierName = `Tier 1 (Elite ${player.Pos})`;
+            else if (posRankNum <= 24) tierName = `Tier 2 (High-End ${player.Pos})`;
+            else if (posRankNum <= 36) tierName = `Tier 3 (Solid ${player.Pos})`;
+            else tierName = `Tier ${tierNum} (${player.Pos} Depth)`;
         } else {
             // Late-Round Archetype Tier Naming (Removes misleading Tier X numbers)
             if (player.isRBHandcuff) tierName = `Handcuff / Lottery Ticket Tier`;

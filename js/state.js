@@ -1176,6 +1176,11 @@ const State = {
                 p.ProjPts = sackPts + turnoverPts + tdPts + safetyPts + blkPts + (weeklyPaPts * gp);
             }
             else {
+                let recPoints = (s.rec || 0) * this.scoring.ppr;
+                if (p.Pos === 'TE' && (this.scoring.tePremium || 0) > 0) {
+                    recPoints += (s.rec || 0) * this.scoring.tePremium;
+                }
+
                 let basePts =
                     ((s.passYds || 0) * this.scoring.passYds) +
                     ((s.passTd || 0) * this.scoring.passTd) +
@@ -1184,7 +1189,7 @@ const State = {
                     ((s.rushTd || 0) * this.scoring.rushTd) +
                     ((s.recYds || 0) * this.scoring.recYds) +
                     ((s.recTd || 0) * this.scoring.recTd) +
-                    ((s.rec || 0) * this.scoring.ppr) +
+                    recPoints +
                     ((s.fum || 0) * this.scoring.fumLost);
 
                 let passYpg = s.passYds / gp;
@@ -1503,7 +1508,8 @@ const State = {
 
             // 5. Tiered Efficiency & "TD-Dependency" Penalties
             if (p.targetShare) {
-                if (p.targetShare >= 28) adjMultiplier += 0.05;
+                if (p.targetShare >= 32) adjMultiplier += 0.08;      // Mega-Alpha Tier
+                else if (p.targetShare >= 28) adjMultiplier += 0.05;
                 else if (p.targetShare >= 23) adjMultiplier += 0.025;
 
                 if (p.targetShare >= 22 && p.aDOT >= 12.0) adjMultiplier += 0.03;
@@ -1534,7 +1540,8 @@ const State = {
                     else if (p.brokenTackles >= 20) adjMultiplier += 0.02;
                 }
                 if (p.hvo) {
-                    if (p.hvo >= 80) adjMultiplier += 0.04;
+                    if (p.hvo >= 100) adjMultiplier += 0.08; // NEW: CMC/Breece Hall Tier
+                    else if (p.hvo >= 80) adjMultiplier += 0.04;
                     else if (p.hvo >= 60) adjMultiplier += 0.02;
                 }
             }
@@ -1575,7 +1582,18 @@ const State = {
                 } else if (p.Pos === 'QB' && pAge >= 38) {
                     adjMultiplier -= Math.pow(pAge - 37, 1.2) * 0.02;
                 }
+            }
 
+            // --- ADD THIS NEW ARCHETYPE BLOCK ---
+            // A. The "1B Back" (Standalone Value Handcuffs)
+            if (p.Pos === 'RB' && p.isRBHandcuff && p.snapShare >= 35) {
+                adjMultiplier += 0.04;
+                p._isHandcuffPlus = true; 
+            }
+            // B. The "Empty Calories" Receiver (High Volume, Terrible Efficiency)
+            if (['WR', 'TE'].includes(p.Pos) && p.targetShare >= 18 && p.ypt && p.ypt <= 6.5) {
+                adjMultiplier -= 0.06;
+                p._isEmptyCalories = true;
             }
 
             // 7. Advanced Team Environment Metrics & Scheme Archetypes
@@ -1718,7 +1736,7 @@ const State = {
                 // Continuous Youth Upside Scale (Max +22% at 21yo, fades to +4% at 24yo)
                 if (pAge && pAge <= 24) {
                     p._isFlyer = true;
-                    let youthBoost = Math.max(0.04, (25 - pAge) * 0.06); 
+                    let youthBoost = Math.max(0.04, (25 - pAge) * 0.06);
                     upsideMultiplier += youthBoost;
                     if (pAge <= 23 && !ceilingTags.includes("Breakout Age")) ceilingTags.push("Breakout Age");
                 }
@@ -1909,7 +1927,7 @@ const State = {
 
                 // Position-specific baselines (QBs naturally hit Top 12 more; TEs rarely Boom)
                 let top12Baseline = p.Pos === 'QB' ? 58 : (p.Pos === 'TE' ? 42 : 48);
-                let boomBaseline  = p.Pos === 'TE' ? 12 : (p.Pos === 'QB' ? 22 : 16);
+                let boomBaseline = p.Pos === 'TE' ? 12 : (p.Pos === 'QB' ? 22 : 16);
                 let bustTolerance = p.Pos === 'WR' ? 28 : (p.Pos === 'QB' ? 18 : 22);
 
                 // 1. Continuous Consistency Floor Bonus
