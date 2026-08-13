@@ -25,7 +25,7 @@ window.AutoDraft = {
 
     makeCPUPick(team) {
         // Filter out players with invalid positions to prevent evaluateRosterFits 
-        // from throwing a TypeError on unrecognized positions (e.g. Defensive Linemen).
+        // from throwing a TypeError on unrecognized positions.
         let safeAvailablePlayers = State.availablePlayers.filter(p => State.settings.roster[p.Pos]);
         State.evaluateRosterFits(team, safeAvailablePlayers);
 
@@ -34,8 +34,6 @@ window.AutoDraft = {
         const currentOverallPick = State.currentPick + 1;
         const profile = team.profile;
 
-        // Create a protected, explicitly sorted array for the CPU.
-        // Relying on State.availablePlayers directly is dangerous if the user sorted the table via the UI.
         let cpuSorted = [...safeAvailablePlayers].sort((a, b) => (b.AdvVBD ?? b.VBD ?? 0) - (a.AdvVBD ?? a.VBD ?? 0));
 
         // 1. CALCULATE POSITIONAL SCARCITY (Tier Drop-offs)
@@ -43,7 +41,6 @@ window.AutoDraft = {
         ['QB', 'RB', 'WR', 'TE'].forEach(pos => {
             let avail = cpuSorted.filter(p => p.Pos === pos);
             if (avail.length > 5) {
-                // Use Nullish Coalescing (??) so a true VBD of `0` isn't skipped as falsy.
                 let top = avail[0].AdvVBD ?? avail[0].VBD ?? 0;
                 let fifth = avail[4].AdvVBD ?? avail[4].VBD ?? 0;
                 scarcity[pos] = Math.max(0, top - fifth) * 0.5;
@@ -58,7 +55,7 @@ window.AutoDraft = {
         [...topWRs, ...topRBs].forEach(p => { avgTopFlexVBD += (p.AdvVBD ?? p.VBD ?? 0); flexBenchCount++; });
         avgTopFlexVBD = flexBenchCount > 0 ? (avgTopFlexVBD / flexBenchCount) : 20;
 
-        // 2. FILTER OUT PLAYERS THAT DO NOT FIT ON THE ROSTER (Prevents infinite loops)
+        // 2. FILTER OUT PLAYERS THAT DO NOT FIT ON THE ROSTER
         let validPlayers = cpuSorted.filter(p => {
             let pos = p.Pos;
             let posRoster = State.settings.roster[pos];
@@ -77,20 +74,23 @@ window.AutoDraft = {
         let evaluatedWrapper = validPlayers.slice(0, 150).map(p => {
             let multiplier = 1.0;
 
+            let posRoster = State.settings.roster[p.Pos];
+            let starterMax = posRoster ? posRoster.max : 0;
+            let currentCount = team.counts[p.Pos] || 0;
+            let isStarterOpen = currentCount < starterMax;
+
             if (p.avgStars) {
                 multiplier *= (1 + (p.avgStars - 3.0) * 0.04);
             }
 
-            // ADD THIS BLOCK BELOW:
             let hasSameBye = team.roster.some(r => r.Pos === p.Pos && r.byeWeek === p.byeWeek && p.byeWeek !== 'N/A');
-            let isStarterOpen = (team.counts[p.Pos] || 0) < (State.settings.roster[p.Pos]?.max || 1);
             if (hasSameBye && !isStarterOpen) {
                 multiplier *= 0.25;
             }
 
             // Manager Personality Strategy Multipliers
             if (profile) {
-                // 1. Early-Round Strategy Multipliers (Rounds 1-6)
+                // Early-Round Strategy Multipliers (Rounds 1-6)
                 if (round <= 6) {
                     if (profile.strategy === 'Hero-RB') {
                         if (team.counts['RB'] >= 1 && p.Pos === 'WR' && round <= 4) multiplier *= 1.35;
@@ -102,7 +102,7 @@ window.AutoDraft = {
                     }
                     else if (profile.strategy === 'Robust-RB') {
                         if (p.Pos === 'RB' && round <= 3) multiplier *= 1.35;
-                        if (['WR', 'TE'].includes(p.Pos) && round >= 4 && team.counts['RB'] >= 3) multiplier *= 1.30; // Pivot to WR/TE
+                        if (['WR', 'TE'].includes(p.Pos) && round >= 4 && team.counts['RB'] >= 3) multiplier *= 1.30;
                     }
                     else if (profile.strategy === 'Double-Elite' && round <= 4) {
                         if (p.Pos === 'QB' && team.counts['QB'] === 0) multiplier *= 1.30;
@@ -110,31 +110,25 @@ window.AutoDraft = {
                     }
                 }
 
-                // 2. Mid-Round Handcuff / RB Collector Tendency (Rounds 7-11)
+                // Mid-Round Handcuff / RB Collector Tendency (Rounds 7-11)
                 if (round >= 7 && round <= 11 && profile.likesHandcuffs) {
                     if (p.Pos === 'RB') multiplier *= 1.25;
                 }
 
-                // 3. Early Kicker / DST Reacher (Rounds 10-12)
+                // Early Kicker / DST Reacher (Rounds 10-12)
                 if (round >= 10 && round <= 12) {
-                    if (p.Pos === 'PK' && profile.reachesForKicker) multiplier *= 1000.0; // Fully cancels the round <= 13 penalty (0.001)
+                    if (p.Pos === 'PK' && profile.reachesForKicker) multiplier *= 1000.0;
                     if (p.Pos === 'DST' && profile.reachesForDST) multiplier *= 1000.0;
                 }
 
-                // 4. Stacking Synergy Boost (Rounds 4-10)
-                // If CPU already drafted a QB, boost receivers on the SAME NFL team
+                // Stacking Synergy Boost (Rounds 4-10)
                 let draftedQBs = team.roster.filter(r => r.Pos === 'QB');
                 if (draftedQBs.length > 0 && ['WR', 'TE'].includes(p.Pos)) {
                     let matchesQB = draftedQBs.some(qb => qb._cleanTeam === p._cleanTeam);
-                    if (matchesQB) multiplier *= 1.20; // 20% stack boost
+                    if (matchesQB) multiplier *= 1.20;
                 }
             }
 
-            let posRoster = State.settings.roster[p.Pos];
-            let starterMax = posRoster ? posRoster.max : 0;
-            let currentCount = team.counts[p.Pos] || 0;
-
-            let isStarterOpen = currentCount < starterMax;
             let isFlexRBWROpen = ['RB', 'WR'].includes(p.Pos) && (team.counts['FlexRBWR'] < (State.settings.roster.FlexRBWR?.max || 0));
             let isFlexOpen = ['RB', 'WR', 'TE'].includes(p.Pos) && (team.counts['Flex'] < (State.settings.roster.Flex?.max || 0));
             let isSuperflexOpen = ['QB', 'RB', 'WR', 'TE'].includes(p.Pos) && (team.counts['Superflex'] < (State.settings.roster.Superflex?.max || 0));
@@ -188,7 +182,6 @@ window.AutoDraft = {
             let p = item.player;
             let pos = p.Pos;
 
-            // Safely read the max positional limit
             let posRoster = State.settings.roster[pos];
             let maxForPos = posRoster ? posRoster.max : 0;
 
@@ -204,7 +197,6 @@ window.AutoDraft = {
             }
         }
 
-        // Failsafe execution: If a player is found, draft them. If not, pick a fallback so the app never freezes.
         if (selectedPlayer) {
             this.executeDraft(selectedPlayer, team, slottedPos);
         } else {
@@ -212,7 +204,7 @@ window.AutoDraft = {
             if (fallback) {
                 this.executeDraft(fallback, team, 'Bench');
             } else {
-                State.currentPick++; // Give up and move onto the next pick
+                State.currentPick++;
             }
         }
     },
@@ -221,7 +213,6 @@ window.AutoDraft = {
         const idx = State.availablePlayers.findIndex(p => p._cleanName === player._cleanName && p.Pos === player.Pos && p.Team === player.Team);
         if (idx !== -1) State.availablePlayers.splice(idx, 1);
 
-        // Record the overall pick number on the player object for strategy detection
         player.draftPickNum = State.currentPick + 1;
 
         team.roster.push({ ...player, slottedPos: slot });

@@ -1428,6 +1428,13 @@ const State = {
         };
 
         this.allPlayers.forEach(p => {
+            
+            const tTeam = this.normalizeTeam(p.Team);
+            const passEnv = this.teamAdvPass[tTeam];
+            const rushEnv = this.teamAdvRush[tTeam];
+            const recEnv = this.teamAdvRec[tTeam];
+            const teamDist = (this.teamTargets || []).find(t => this.normalizeTeam(t.Team) === tTeam);
+
             let basePts = baselines[p.Pos] || 0;
             let rawVBD = p.ProjPts - basePts;
 
@@ -1639,11 +1646,6 @@ const State = {
             }
 
             // 7. Advanced Team Environment Metrics & Scheme Archetypes
-            const tTeam = this.normalizeTeam(p.Team);
-            const passEnv = this.teamAdvPass[tTeam];
-            const rushEnv = this.teamAdvRush[tTeam];
-            const recEnv = this.teamAdvRec[tTeam];
-
             if (passEnv) {
                 // Play-Action & RPO Scheme Impact
                 if (['QB', 'WR', 'TE'].includes(p.Pos)) {
