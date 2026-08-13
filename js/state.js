@@ -1896,11 +1896,11 @@ const State = {
                 }
             }
 
-            // Range of Outcomes / Upside Potential 
+            // Range of Outcomes / Upside Potential (Continuous & Gradient-Based)
             let upsideBonus = 0;
-            if (p.aDOT && p.aDOT >= 12.0) upsideBonus += 0.05;
-            if (p.hvo && p.hvo >= 75) upsideBonus += 0.05;
-            if (p.pastStats && p.pastStats.bigPlays && p.pastStats.bigPlays >= 12) upsideBonus += 0.04;
+            if (p.aDOT && p.aDOT > 8.0) upsideBonus += Math.min(0.08, (p.aDOT - 8.0) * 0.012); // e.g. 14 aDOT = +0.072
+            if (p.hvo && p.hvo > 30) upsideBonus += Math.min(0.08, (p.hvo - 30) * 0.0015);      // e.g. 80 HVO = +0.075
+            if (p.pastStats && p.pastStats.bigPlays) upsideBonus += Math.min(0.08, p.pastStats.bigPlays * 0.006); // e.g. 10 big plays = +0.060
 
             // Nuanced Positional Boom/Bust Continuous Scaling
             if (p.boomBust && p.boomBust.games >= 4) {

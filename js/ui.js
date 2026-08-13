@@ -1289,14 +1289,14 @@ const UI = {
         varianceSpread = Math.max(0.08, Math.min(0.55, varianceSpread));
 
         let baselinePpg = Number(ppg) || 0;
-        let floorPpg = (baselinePpg * (1 - varianceSpread)).toFixed(1);
-        let maxMultiplier = 1 + varianceSpread;
+        let floorPpg = (baselinePpg * Math.max(0.40, 1 - varianceSpread)).toFixed(1);
 
+        // Ceiling PPG scales dynamically off varianceSpread and the continuous upsideScore
+        let maxMultiplier = 1 + varianceSpread;
         if (p.upsideScore > 0 && p.AdvVBD > 0) {
             let ratio = p.upsideScore / p.AdvVBD;
-            if (Number.isFinite(ratio) && ratio > 0) {
-                let upsideBoost = Math.max(1.1, ratio);
-                maxMultiplier = Math.max(maxMultiplier, upsideBoost);
+            if (Number.isFinite(ratio) && ratio > 1.0) {
+                maxMultiplier = Math.max(maxMultiplier, ratio);
             }
         }
 
