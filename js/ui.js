@@ -722,6 +722,10 @@ const UI = {
 
             // Committee RB Strengths
             if (pos === 'RB' && p.snapShare && p.snapShare >= 40 && p.snapShare <= 65) {
+                // ADD THIS LINE FOR THE 1B TIER:
+                if (p._isHandcuffPlus) {
+                    pros.push(`<strong>Premium 1B Back:</strong> While technically a backup, his <strong>${p.snapShare.toFixed(0)}% snap share</strong> gives him standalone flex value every week.`);
+                }
                 if (isReceivingSpecialist) {
                     pros.push(`<strong>PPR Pass Specialist:</strong> Captures high-value receiving work (<strong>${p.targetShare || 10}% target share</strong>), maintaining a solid PPR floor despite a shared backfield.`);
                 } else if (isGoalLineVulture) {
@@ -1103,8 +1107,14 @@ const UI = {
                 cons.push(`<strong>Dismal Target Efficiency:</strong> Generated only <strong>${p.ypt.toFixed(1)} Yards Per Target</strong> last season (meaning his targets are painfully inefficient).`);
                 riskScore += 2;
             } else if (['WR', 'TE'].includes(pos) && p.ypt && p.ypt < 7.2) {
-                cons.push(`<strong>Low Target Efficiency:</strong> Generated only <strong>${p.ypt.toFixed(1)} Yards Per Target</strong> last season.`);
-                riskScore += 1;
+                // ADD THIS FOR THE EMPTY CALORIE TIER:
+                if (p._isEmptyCalories) {
+                    cons.push(`<strong>Empty Calories Trap:</strong> Despite seeing heavy volume, his atrocious <strong>${p.ypt.toFixed(1)} YPT</strong> mathematically destroys his fantasy ceiling.`);
+                    riskScore += 1;
+                } else {
+                    cons.push(`<strong>Low Target Efficiency:</strong> Generated only <strong>${p.ypt.toFixed(1)} Yards Per Target</strong> last season.`);
+                    riskScore += 1;
+                }
             }
 
             if (p.dropRate && p.dropRate >= 10.0) {
