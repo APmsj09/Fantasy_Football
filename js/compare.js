@@ -238,7 +238,6 @@ window.Compare = {
         }
 
         // 6. Position & Strategy Specific Trade-offs
-        const currentRound = Math.floor(State.currentPick / State.settings.numTeams) + 1;
         if (alt.Pos === 'QB' && ['RB', 'WR'].includes(topPick.Pos) && currentRound <= 4) {
             consForAlt.push(`<strong>1-QB Opportunity Cost:</strong> Drafting a QB in Round ${currentRound} sacrifices elite ${topPick.Pos} positional scarcity when quality QBs remain available later.`);
         }
