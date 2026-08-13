@@ -1932,19 +1932,6 @@ const UI = {
             }
         }
 
-        // Evaluate Portfolio Risk (Floor vs Ceiling)
-        let teamSafeCore = 0;
-        let teamFlyers = 0;
-
-        userRoster.forEach(r => {
-            if (r._isSafeFloor) teamSafeCore++;
-            if (r._isFlyer) teamFlyers++;
-        });
-
-        // Determine Contextual Roster Needs
-        let needsSafety = (teamSafeCore < 3) && currentRound >= 4 && currentRound <= 9;
-        let needsUpside = (teamSafeCore >= 3) && currentRound >= 6;
-
         let userQBs = userRoster.filter(r => r.Pos === 'QB');
 
         // Calculate Tier Drops
@@ -2017,39 +2004,39 @@ const UI = {
                 score += Math.max(0, ceilingGain);
             }
 
-            // 3.5 STRATEGY MATHEMATICAL ENFORCEMENT
+            // 3.5 STRATEGY MATHEMATICAL ENFORCEMENT (ADP-Aware)
             if (currentRound <= 6) {
+                let isSlippingValue = p.adp && (currentOverallPick - p.adp >= 10); // Player falling 10+ picks past ADP
+                let adpBuffer = isSlippingValue ? 1.35 : 1.0; // Soften penalty if player is an undeniable falling value
+
                 if (buildStrategy === 'Zero-RB') {
-                    if (['WR', 'TE', 'QB'].includes(p.Pos)) score *= 1.25; // Heavily favor pass catchers/QBs
-                    if (p.Pos === 'RB') score *= 0.40; // Mathematically bury RBs to prevent breaking the strategy
+                    if (['WR', 'TE', 'QB'].includes(p.Pos)) score *= 1.25;
+                    if (p.Pos === 'RB') score *= (0.40 * adpBuffer);
                 } else if (buildStrategy === 'Hero-RB') {
-                    if (p.Pos === 'RB') score *= 0.60; // Penalize taking a 2nd RB early to protect the Hero-RB build
-                    if (['WR', 'TE'].includes(p.Pos)) score *= 1.15; // Boost receivers
+                    if (p.Pos === 'RB') score *= (0.60 * adpBuffer);
+                    if (['WR', 'TE'].includes(p.Pos)) score *= 1.15;
                 } else if (buildStrategy === 'Robust-RB') {
-                    if (['WR', 'TE'].includes(p.Pos)) score *= 1.30; // Desperately need pass catchers to balance roster
+                    if (['WR', 'TE'].includes(p.Pos)) score *= 1.30;
                 }
             }
 
-            // 4. Portfolio Context Adjustments (Safe vs Flyer)
+            // 4. Positional Safety Deficit & Continuous Portfolio Balancing
             p._rosterContextBadge = null;
-            if (needsSafety && p._isSafeFloor && currentRound <= 9) {
-                if (score > 0) score *= 1.30;
-                p._rosterContextBadge = "🛡️ Safe Floor (Balances Roster Risk)";
-            }
-            else if (needsUpside && p._isFlyer && currentRound >= 6) {
-                if (score > 0) score *= 1.35;
-                p._rosterContextBadge = "🚀 Upside Flyer (High Ceiling)";
-            }
+            let posMax = State.settings.roster[p.Pos]?.max || 1;
+            let posSafeCount = userRoster.filter(r => r.Pos === p.Pos && r._isSafeFloor).length;
+            let posSafetyDeficit = Math.max(0, (posMax - posSafeCount) / posMax);
 
-            // 4. Portfolio Context Adjustments (Safe vs Flyer)
-            p._rosterContextBadge = null;
-            if (needsSafety && p._isSafeFloor && currentRound <= 9) {
-                if (score > 0) score *= 1.30;
-                p._rosterContextBadge = "🛡️ Safe Floor (Balances Roster Risk)";
-            }
-            else if (needsUpside && p._isFlyer && currentRound >= 7) {
-                if (score > 0) score *= 1.35;
-                p._rosterContextBadge = "🚀 Upside Flyer (High Ceiling)";
+            if (currentRound >= 3 && currentRound <= 11) {
+                let contextMultiplier = 1.0;
+                if (p._isSafeFloor && posSafetyDeficit > 0) {
+                    contextMultiplier += (posSafetyDeficit * 0.22);
+                    p._rosterContextBadge = `🛡️ Safe ${p.Pos} Floor (Needs ${p.Pos} Safety)`;
+                }
+                if (p._isFlyer && posSafetyDeficit < 0.5) {
+                    contextMultiplier += ((1.0 - posSafetyDeficit) * 0.18);
+                    if (!p._rosterContextBadge) p._rosterContextBadge = `🚀 ${p.Pos} Upside Flyer (${p.Pos} Floor Secured)`;
+                }
+                if (score > 0) score *= contextMultiplier;
             }
 
             // 5. Roster Limit / Overage Penalties
@@ -2084,23 +2071,25 @@ const UI = {
                 }
             }
 
-            // 7. NEW: Late-Round Sleeper & Handcuff Badges (Rounds 8+)
+            // 7. Late-Round Sleeper & Handcuff Badges (Rounds 8+, Scaled by Round)
             p._sleeperBadge = null;
             if (currentRound >= 8 && ['RB', 'WR', 'TE', 'QB'].includes(p.Pos)) {
+                let roundScale = Math.min(1.0, (currentRound - 7) * 0.25); // R8 = 0.25x, R10 = 0.75x, R12+ = 1.0x
+
                 if (userOwnsStarter) {
-                    score += 25.0;
+                    score += (22.0 * roundScale);
                     p._sleeperBadge = `🔒 Handcuff for ${p.starterName}`;
                 } else if (p.isRBHandcuff) {
-                    score += 15.0;
+                    score += (14.0 * roundScale);
                     p._sleeperBadge = `🎲 Lottery Ticket (${p.starterName}'s Backup)`;
                 } else if (p.age && p.age <= 22) {
-                    score += 12.0;
+                    score += (10.0 * roundScale);
                     p._sleeperBadge = `🌱 Rookie Breakout (Age ${p.age})`;
                 } else if (p.targetShare && p.targetShare >= 15.0) {
-                    score += 10.0;
+                    score += (8.0 * roundScale);
                     p._sleeperBadge = `🎯 ${p.targetShare}% Target Share Sleeper`;
                 } else if (p.aDOT && p.aDOT >= 12.0) {
-                    score += 8.0;
+                    score += (6.0 * roundScale);
                     p._sleeperBadge = `🚀 Deep Threat (${p.aDOT} aDOT)`;
                 }
             }
@@ -2132,18 +2121,18 @@ const UI = {
 
         let finalRecs = [];
 
-        // 1. If K/DST needed in late rounds, assign EXACTLY 1 slot to top K/DST
-        if ((needsPK || needsDST) && kDstPlayers.length > 0 && currentRound >= totalRounds - 3) {
-            finalRecs.push(kDstPlayers[0]);
-        }
-
-        // 2. Fill remaining slots (at least 3) with top Skill Position Sleepers/Fits
+        // 1. Fill top 3 slots with skill position sleepers first (keeps #1 spot for skill players)
         for (let p of skillPlayers) {
-            if (finalRecs.length >= 4) break;
+            if (finalRecs.length >= 3) break;
             if (!finalRecs.includes(p)) finalRecs.push(p);
         }
 
-        // 3. Failsafe fill if under 4
+        // 2. Add 1 K/DST slot in position #4 in late rounds (R13+)
+        if ((needsPK || needsDST) && kDstPlayers.length > 0 && currentRound >= totalRounds - 3) {
+            if (!finalRecs.includes(kDstPlayers[0])) finalRecs.push(kDstPlayers[0]);
+        }
+
+        // 3. Failsafe fill to 4 total recommendations
         for (let p of [...viablePlayers].sort((a, b) => b._recScore - a._recScore)) {
             if (finalRecs.length >= 4) break;
             if (!finalRecs.includes(p)) finalRecs.push(p);

@@ -1,4 +1,64 @@
 window.Compare = {
+    getTierDetails(player) {
+        const avail = State.availablePlayers.filter(p => p.Pos === player.Pos);
+        if (!avail.length) return { tierNum: 1, tierName: 'Depth', remaining: 1, isLastInTier: true, gapToNext: '0.0' };
+
+        // Dynamic drop threshold: Scales down automatically as VBD values decrease in deep rounds
+        const topVal = Math.max(8.0, avail[0].AdvVBD || avail[0].VBD || 8.0);
+        const dropThreshold = Math.max(2.0, Math.min(9.5, topVal * 0.18));
+        
+        let tierNum = 1;
+        let tierPlayers = [];
+        let currentTier = [];
+        let gapToNext = 0;
+
+        for (let i = 0; i < avail.length; i++) {
+            let p = avail[i];
+            if (i > 0) {
+                let prevVal = avail[i - 1].AdvVBD || avail[i - 1].VBD;
+                let currVal = p.AdvVBD || p.VBD;
+                if ((prevVal - currVal) >= dropThreshold) {
+                    if (currentTier.some(x => x._cleanName === player._cleanName)) {
+                        gapToNext = prevVal - currVal;
+                        tierPlayers = [...currentTier];
+                        break;
+                    }
+                    tierNum++;
+                    currentTier = [];
+                }
+            }
+            currentTier.push(p);
+            if (p._cleanName === player._cleanName && i === avail.length - 1) {
+                tierPlayers = [...currentTier];
+            }
+        }
+
+        if (tierPlayers.length === 0) tierPlayers = [player];
+
+        // Contextual Tier Naming for Early Rounds vs. Deep Rounds
+        const currentRound = Math.floor(State.currentPick / State.settings.numTeams) + 1;
+        let tierName = `Tier ${tierNum}`;
+
+        if (currentRound <= 6) {
+            if (tierNum === 1) tierName = `Tier 1 (Elite ${player.Pos})`;
+            else if (tierNum === 2) tierName = `Tier 2 (High-End ${player.Pos})`;
+            else if (tierNum === 3) tierName = `Tier 3 (Solid ${player.Pos})`;
+            else tierName = `Tier ${tierNum} (${player.Pos} Starters)`;
+        } else {
+            // Late-Round Archetype Tier Naming
+            if (player.isRBHandcuff) tierName = `Handcuff / Lottery Ticket Tier`;
+            else if (player.targetShare && player.targetShare >= 15) tierName = `Target-Share / PPR Floor Tier`;
+            else if (player.aDOT && player.aDOT >= 12) tierName = `Deep-Threat / Spike-Week Tier`;
+            else if (player.age && player.age <= 22) tierName = `Rookie / Youth Upside Tier`;
+            else tierName = `Tier ${tierNum} (${player.Pos} Bench Depth)`;
+        }
+
+        let remaining = tierPlayers.length;
+        let isLastInTier = (tierPlayers[tierPlayers.length - 1]._cleanName === player._cleanName);
+
+        return { tierNum, tierName, remaining, isLastInTier, gapToNext: gapToNext.toFixed(1) };
+    },
+
     showComparison() {
         const recs = State.currentRecommendations;
         if (!recs || recs.length < 2) return;
@@ -137,14 +197,30 @@ window.Compare = {
             consForAlt.push(`<strong>Lower Ceiling:</strong> Lacks the slate-breaking upside and advanced metrics that ${topPick.Player} possesses.`);
         }
 
-        // 5. Positional Head-to-Head
+        // 5. Enhanced Positional & Cross-Positional Tier Analysis
+        let topTier = this.getTierDetails(topPick);
+        let altTier = this.getTierDetails(alt);
+        const currentRound = Math.floor(State.currentPick / State.settings.numTeams) + 1;
+
         if (topPick.Pos === alt.Pos) {
-            let topTierDrop = topPick._tierCliffTag;
-            if (topTierDrop) {
-                consForAlt.push(`<strong>Tier Cliff:</strong> Taking ${alt.Player} means missing out on the last player in a major tier (${topPick.Player}). The drop-off after ${topPick.Player} is steep.`);
+            // Same Position Tier Comparison
+            if (topTier.tierNum < altTier.tierNum) {
+                let vbdGap = ((topPick.AdvVBD || topPick.VBD) - (alt.AdvVBD || alt.VBD)).toFixed(1);
+                consForAlt.push(`<strong>Tier Difference:</strong> ${topPick.Player} is in <strong>${topTier.tierName}</strong> while ${alt.Player} falls into <strong>${altTier.tierName}</strong> (-${vbdGap} VBD gap).`);
             }
+
+            if (topTier.isLastInTier) {
+                consForAlt.push(`<strong>Tier Cliff Warning:</strong> ${topPick.Player} is the <strong>final player</strong> in ${topTier.tierName}. Drafting ${alt.Player} causes you to completely miss this tier.`);
+            }
+
             if (topPick.targetShare && alt.targetShare && topPick.targetShare > alt.targetShare + 5) {
                 consForAlt.push(`<strong>Inferior Volume:</strong> Commands significantly less target share (${alt.targetShare}%) compared to ${topPick.Player} (${topPick.targetShare}%).`);
+            }
+        } else {
+            // Cross-Position Tier Scarcity Comparison (Adapts for Early vs. Late Rounds)
+            if (topTier.isLastInTier && (topTier.tierNum <= 2 || currentRound >= 7)) {
+                let scarcityLabel = currentRound <= 6 ? `in ${topTier.tierName}` : `in the ${topTier.tierName} pool`;
+                consForAlt.push(`<strong>Cross-Positional Scarcity:</strong> ${topPick.Player} is the <strong>LAST remaining option</strong> ${scarcityLabel} (${topTier.remaining} left), whereas ${alt.Pos} still has <strong>${altTier.remaining} option(s)</strong> available in ${altTier.tierName}.`);
             }
         }
 
