@@ -117,7 +117,19 @@ window.Compare = {
             consForAlt.push(`<strong>Bench Warmer Risk:</strong> Because of your current roster, ${alt.Player} only adds +${altPPW.toFixed(1)} PPW to your starters, whereas ${topPick.Player} slides right into your lineup (+${topPPW.toFixed(1)} PPW).`);
         }
 
-        // 4. Scheme & Floor/Ceiling Check
+        // 4. Boom/Bust Consistency Check
+        if (alt.boomBust && topPick.boomBust) {
+            if (alt.boomBust.bust + 8 < topPick.boomBust.bust) {
+                prosForAlt.push(`<strong>Dramatically Safer Floor:</strong> Busted in only <strong>${alt.boomBust.bust}%</strong> of 2025 games vs. ${topPick.Player}'s <strong>${topPick.boomBust.bust}%</strong> bust rate.`);
+            } else if (topPick.boomBust.bust + 8 < alt.boomBust.bust) {
+                consForAlt.push(`<strong>Volatile Bust Risk:</strong> Busted in <strong>${alt.boomBust.bust}%</strong> of games last year compared to ${topPick.Player}'s clean <strong>${topPick.boomBust.bust}%</strong> bust rate.`);
+            }
+
+            if (alt.boomBust.boom > topPick.boomBust.boom + 8) {
+                prosForAlt.push(`<strong>Higher Weekly Ceiling:</strong> Posted a "Boom" week in <strong>${alt.boomBust.boom}%</strong> of games vs. ${topPick.Player}'s ${topPick.boomBust.boom}%.`);
+            }
+        }
+
         if (alt._isSafeFloor && !topPick._isSafeFloor) {
             prosForAlt.push(`<strong>Safer Floor:</strong> Provides more reliable week-to-week stability if you are looking to insulate a risky roster.`);
         }

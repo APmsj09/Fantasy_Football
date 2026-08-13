@@ -215,9 +215,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (typeof UI.renderProfileAssignments === "function") UI.renderProfileAssignments();
                 }),
 
-                // Previous Year Data (Actual Stats, Advanced Metrics, Snap Counts)
+                // Previous Year Data (Actual Stats, Advanced Metrics, Snap Counts, Boom/Bust)
                 fetchTSV(`${PREV_DATA_DIR}/DST_Data.tsv`, State.parseDSTActualsData.bind(State), State.mergeDSTActualsData.bind(State)),
                 fetchTSV(`${PREV_DATA_DIR}/Snap_Count_${SEASON}.tsv`, State.parseSnapCountData.bind(State), State.mergeSnapCountData.bind(State)),
+                ...['QB', 'RB', 'WR', 'TE'].map(pos => fetchTSV(`${PREV_DATA_DIR}/${pos}_BB_${PREV_SEASON}.tsv`, State.parseAdvancedData.bind(State), State.mergeBoomBustData.bind(State))),
                 fetchTSV(`${PREV_DATA_DIR}/Team_Adv_Pass_${PREV_SEASON}.tsv`, State.parseTeamAdvPassData.bind(State)),
                 fetchTSV(`${PREV_DATA_DIR}/Team_Adv_Rush_${PREV_SEASON}.tsv`, State.parseTeamAdvRushData.bind(State)),
                 fetchTSV(`${PREV_DATA_DIR}/Team_Adv_Rec_${PREV_SEASON}.tsv`, State.parseTeamAdvRecData.bind(State)),

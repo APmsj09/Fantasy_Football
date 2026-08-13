@@ -798,6 +798,22 @@ const UI = {
                 pros.push(`<strong>High Snap Share:</strong> On the field for ${p.snapShare.toFixed(0)}% of offensive snaps (High snap volume minimizes the risk of losing touches to backups).`);
             }
 
+            if (p.boomBust && p.boomBust.games >= 4) {
+                let bb = p.boomBust;
+                let boomTarget = p.Pos === 'TE' ? 12 : (p.Pos === 'QB' ? 22 : 16);
+                let top12Target = p.Pos === 'QB' ? 58 : (p.Pos === 'TE' ? 42 : 48);
+
+                if (bb.boom >= boomTarget) {
+                    pros.push(`<strong>💥 Elite Spike-Week Upside:</strong> Posted a "Boom" week in <strong>${bb.boom}%</strong> of starts (vs ${p.Pos} baseline of ${boomTarget}%).`);
+                }
+                if (bb.top12 >= top12Target) {
+                    pros.push(`<strong>🛡️ High Starter Consistency:</strong> Finished as a Top-12 ${p.Pos} in <strong>${bb.top12}%</strong> of games last season.`);
+                }
+                if (bb.boom >= boomTarget && bb.bust <= 18) {
+                    pros.push(`<strong>⭐ Ideal Volatility Profile:</strong> High boom rate (${bb.boom}%) coupled with an exceptionally low bust rate (${bb.bust}%).`);
+                }
+            }
+
             if (p._addedPPW && p._addedPPW >= 1.0) {
                 pros.push(`<strong>Elite Lineup Difference Maker:</strong> Adds a massive +${p._addedPPW.toFixed(1)} Points Per Week directly to your optimal starters.`);
             } else if (p._addedPPW && p._addedPPW >= 0.3 && !p._byeFillWeek) {
@@ -1120,6 +1136,15 @@ const UI = {
                     riskScore += 1;
                 }
             }
+            if (p.boomBust && p.boomBust.games >= 4) {
+                let bustTolerance = p.Pos === 'WR' ? 28 : (p.Pos === 'QB' ? 18 : 22);
+                if (p.boomBust.bust > bustTolerance) {
+                    let excessBust = p.boomBust.bust - bustTolerance;
+                    cons.push(`<strong>🚨 High Bust Volatility:</strong> Busted in <strong>${p.boomBust.bust}%</strong> of games last season (exceeds ${p.Pos} baseline tolerance of ${bustTolerance}%).`);
+                    riskScore += excessBust >= 10 ? 2 : 1;
+                }
+            }
+
             if (p.olTier === 'F') {
                 cons.push(`<strong>Disastrous O-Line Environment:</strong> Operating behind a bottom-tier (Tier ${p.olTier}) offensive line that routinely sabotages play development.`);
                 riskScore += 2;
@@ -1398,6 +1423,21 @@ const UI = {
             }
         }
 
+        let bbWidgetHTML = '';
+        if (p.boomBust && p.boomBust.games >= 4) {
+            let bb = p.boomBust;
+            bbWidgetHTML = `
+                <div class="bg-slate-900 text-white p-3 rounded-xl mb-4 border border-slate-800 shadow-sm flex items-center justify-between text-xs">
+                    <span class="text-[10px] uppercase font-extrabold tracking-wider text-slate-400">2025 Weekly Finishes (${bb.games} G)</span>
+                    <div class="flex gap-2">
+                        <span class="bg-emerald-950 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded font-bold" title="Explosive Overall Finish">💥 ${bb.boom}% Boom</span>
+                        <span class="bg-indigo-950 text-indigo-300 border border-indigo-800 px-2 py-0.5 rounded font-bold" title="Top 12 Positional Finish">🥇 ${bb.top12}% Top 12</span>
+                        <span class="${bb.bust >= 25 ? 'bg-rose-950 text-rose-400 border-rose-800' : 'bg-slate-800 text-slate-300 border-slate-700'} border px-2 py-0.5 rounded font-bold" title="Sub-par / Unstartable Finish">🚨 ${bb.bust}% Bust</span>
+                    </div>
+                </div>
+            `;
+        }
+
         let pastStatsHTML = '';
         if (p.pastStats && p.pastPts !== undefined) {
             let ps = p.pastStats;
@@ -1556,6 +1596,7 @@ const UI = {
             <div id="card-tab-overview">
                 <div class="mb-3">${envBadgesHTML}${ppwBadge}</div>
                 ${statsDashboard}
+                ${bbWidgetHTML}
                 ${pastStatsHTML} 
                 ${advancedMetricsHTML}
                 

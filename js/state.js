@@ -557,6 +557,29 @@ const State = {
         });
     },
 
+    mergeBoomBustData(bbList) {
+        if (!bbList || !Array.isArray(bbList)) return;
+        const cleanPct = (val) => typeof val === 'number' ? val : parseFloat(String(val || '0').replace('%', '')) || 0;
+
+        bbList.forEach(row => {
+            const player = row.Player || row.PLAYER;
+            const team = row.Team || row.TEAM;
+            if (!player) return;
+
+            let p = this.matchPlayerFast(player, team, '');
+            if (!p) return;
+
+            p.boomBust = {
+                boom: cleanPct(row['Boom']),
+                top6: cleanPct(row['Top 6']),
+                top12: cleanPct(row['Top 12']),
+                bust: cleanPct(row['Bust']),
+                other: cleanPct(row['Other']),
+                games: parseInt(row['Games'], 10) || 0
+            };
+        });
+    },
+
     mergeActualStatsData(statsList) {
         if (!statsList || !Array.isArray(statsList)) return;
         this.advancedMetrics = [...this.advancedMetrics, ...statsList];
@@ -1876,6 +1899,38 @@ const State = {
             if (p.aDOT && p.aDOT >= 12.0) upsideBonus += 0.05;
             if (p.hvo && p.hvo >= 75) upsideBonus += 0.05;
             if (p.pastStats && p.pastStats.bigPlays && p.pastStats.bigPlays >= 12) upsideBonus += 0.04;
+
+            // Nuanced Positional Boom/Bust Continuous Scaling
+            if (p.boomBust && p.boomBust.games >= 4) {
+                let bb = p.boomBust;
+                let sampleWeight = Math.min(1.0, bb.games / 14); // Sample size confidence weight
+
+                // Position-specific baselines (QBs naturally hit Top 12 more; TEs rarely Boom)
+                let top12Baseline = p.Pos === 'QB' ? 58 : (p.Pos === 'TE' ? 42 : 48);
+                let boomBaseline  = p.Pos === 'TE' ? 12 : (p.Pos === 'QB' ? 22 : 16);
+                let bustTolerance = p.Pos === 'WR' ? 28 : (p.Pos === 'QB' ? 18 : 22);
+
+                // 1. Continuous Consistency Floor Bonus
+                if (bb.top12 > top12Baseline) {
+                    adjMultiplier += ((bb.top12 - top12Baseline) * 0.0012) * sampleWeight;
+                    if (bb.top12 >= 55) p._isSafeFloor = true;
+                }
+
+                // 2. Continuous Spike-Week Upside Bonus
+                if (bb.boom > boomBaseline || bb.top6 > (boomBaseline * 1.8)) {
+                    let boomDiff = Math.max(bb.boom - boomBaseline, (bb.top6 - (boomBaseline * 1.8)) * 0.5);
+                    upsideBonus += (boomDiff * 0.008) * sampleWeight;
+                    p._isFlyer = true;
+                    if (boomDiff >= 5 && !ceilingTags.includes("Spike Week Dominance")) {
+                        ceilingTags.push("Spike Week Dominance");
+                    }
+                }
+
+                // 3. Continuous Bust Penalty
+                if (bb.bust > bustTolerance) {
+                    adjMultiplier -= ((bb.bust - bustTolerance) * 0.0015) * sampleWeight;
+                }
+            }
 
             // Combine upsideBonus with the dynamic upsideScore from Step 10
             if (p.upsideScore > 0) {
