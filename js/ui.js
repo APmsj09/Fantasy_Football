@@ -1235,14 +1235,58 @@ const UI = {
         // -------------------------------------------------------------
         // RANGE OF OUTCOMES
         // -------------------------------------------------------------
-        let varianceSpread = 0.25;
-        if (p._isFlyer || p.isRBHandcuff || (pAge && pAge <= 22)) varianceSpread += 0.12;
-        if (p.aDOT && p.aDOT >= 12.5) varianceSpread += 0.10;
-        if (pos === 'QB' && p.stats && p.stats.rushAtt >= 60) varianceSpread += 0.08;
-        if (p._isSafeFloor && (!p.aDOT || p.aDOT <= 8.5)) varianceSpread -= 0.08;
-        if (p.targetShare && p.targetShare >= 24.0 && (!p.aDOT || p.aDOT < 10.0)) varianceSpread -= 0.05;
+        let varianceSpread = 0.22; // Neutral baseline spread
 
-        varianceSpread = Math.max(0.12, Math.min(0.45, varianceSpread));
+        // 1. Role & Archetype Volatility
+        if (p.isRBHandcuff) varianceSpread += 0.08;
+        if (p._isFlyer) varianceSpread += 0.04;
+
+        // 2. Continuous Age Volatility (Decays smoothly from 21yo to 24yo)
+        if (pAge && pAge <= 24) {
+            varianceSpread += (25 - pAge) * 0.025; // 21yo = +0.10, 22yo = +0.075, 24yo = +0.025
+        }
+
+        // 3. Continuous Depth of Target (aDOT) Volatility
+        if (p.aDOT) {
+            // Neutral aDOT baseline is 9.5 yds. Downfield routes = wider variance; short routes = tight PPR floor
+            let aDotDelta = p.aDOT - 9.5;
+            varianceSpread += (aDotDelta * 0.012); 
+        }
+
+        // 4. Continuous Target Share Stability (Higher Share = Tightened Floor)
+        if (p.targetShare && ['WR', 'TE', 'RB'].includes(pos)) {
+            if (p.targetShare > 12.0) {
+                varianceSpread -= Math.min(0.08, (p.targetShare - 12.0) * 0.004); 
+            }
+        }
+
+        // 5. Continuous QB Rushing Mobility
+        if (pos === 'QB' && p.stats && p.stats.rushAtt) {
+            varianceSpread += Math.min(0.10, (p.stats.rushAtt / 100) * 0.07); 
+        }
+
+        // 6. Safe Floor Qualifier Adjustment
+        if (p._isSafeFloor) varianceSpread -= 0.03;
+
+        // 7. Historical Boom / Bust Continuous Scaling
+        if (p.boomBust && p.boomBust.games >= 4) {
+            let bb = p.boomBust;
+            let sampleWeight = Math.min(1.0, bb.games / 12);
+            let bustTolerance = pos === 'WR' ? 28 : (pos === 'QB' ? 18 : 22);
+            let top12Baseline = pos === 'QB' ? 58 : (pos === 'TE' ? 42 : 48);
+
+            // High bust rate widens the spread (lowers floor)
+            if (bb.bust > bustTolerance) {
+                varianceSpread += ((bb.bust - bustTolerance) * 0.005) * sampleWeight;
+            }
+            // High Top-12 rate tightens the spread (raises floor)
+            if (bb.top12 > top12Baseline) {
+                varianceSpread -= ((bb.top12 - top12Baseline) * 0.003) * sampleWeight;
+            }
+        }
+
+        // Final Bounds Safety Check
+        varianceSpread = Math.max(0.08, Math.min(0.55, varianceSpread));
 
         let baselinePpg = Number(ppg) || 0;
         let floorPpg = (baselinePpg * (1 - varianceSpread)).toFixed(1);
