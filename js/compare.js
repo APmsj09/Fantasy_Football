@@ -222,13 +222,22 @@ window.Compare = {
                 consForAlt.push(`<strong>Tier Difference:</strong> ${topPick.Player} is in <strong>${topTier.tierName}</strong> while ${alt.Player} falls into <strong>${altTier.tierName}</strong> (-${vbdGap} VBD gap).`);
             }
 
-            // Only warn if the alternative player is in the SAME or WORSE tier
             if (topTier.isLastInTier && altTier.tierNum >= topTier.tierNum) {
                 consForAlt.push(`<strong>Tier Cliff Warning:</strong> ${topPick.Player} is the <strong>final player</strong> in ${topTier.tierName}. Drafting ${alt.Player} causes you to completely miss this tier.`);
             }
 
-            if (topPick.targetShare && alt.targetShare && topPick.targetShare > alt.targetShare + 5) {
-                consForAlt.push(`<strong>Inferior Volume:</strong> Commands significantly less target share (${alt.targetShare}%) compared to ${topPick.Player} (${topPick.targetShare}%).`);
+            // Same-Position Raw Projection & Metric Tiebreakers
+            let projDiff = (topPick.ProjPts || 0) - (alt.ProjPts || 0);
+            if (projDiff >= 5.0) {
+                consForAlt.push(`<strong>Higher Total Season Projection:</strong> ${topPick.Player} projects for <strong>+${projDiff.toFixed(1)} more total season points</strong> (${topPick.ProjPts.toFixed(1)} vs ${alt.ProjPts.toFixed(1)}).`);
+            } else if (projDiff <= -5.0) {
+                prosForAlt.push(`<strong>Higher Total Season Projection:</strong> ${alt.Player} projects for <strong>+${Math.abs(projDiff).toFixed(1)} more season points</strong> (${alt.ProjPts.toFixed(1)} vs ${topPick.ProjPts.toFixed(1)}).`);
+            }
+
+            if (topPick.brokenTackles && alt.brokenTackles && (topPick.brokenTackles - alt.brokenTackles >= 3)) {
+                consForAlt.push(`<strong>Elusiveness Edge:</strong> ${topPick.Player} logged <strong>${topPick.brokenTackles} broken tackles</strong> vs ${alt.Player}'s ${alt.brokenTackles}.`);
+            } else if (alt.brokenTackles && topPick.brokenTackles && (alt.brokenTackles - topPick.brokenTackles >= 3)) {
+                prosForAlt.push(`<strong>Elusiveness Edge:</strong> ${alt.Player} logged <strong>${alt.brokenTackles} broken tackles</strong> vs ${topPick.Player}'s ${topPick.brokenTackles}.`);
             }
         } else {
             // Cross-Position Tier Scarcity Comparison (Caps at Round 7 to prevent late-round noise)
@@ -247,8 +256,15 @@ window.Compare = {
         }
 
         // Fallbacks if arrays are empty
-        if (prosForAlt.length === 0) prosForAlt.push(`Offers solid baseline production as a top-tier ${alt.Pos}.`);
-        if (consForAlt.length === 0) consForAlt.push(`Prioritizes ${topPick.Player}'s positional scarcity and roster structural balance at ${topPick.Pos}.`);
+        if (prosForAlt.length === 0) prosForAlt.push(`Offers elite, foundational baseline production as a top-tier ${alt.Pos}.`);
+        if (consForAlt.length === 0) {
+            if (topPick.Pos === alt.Pos) {
+                let vbdGap = ((topPick.AdvVBD || topPick.VBD) - (alt.AdvVBD || alt.VBD)).toFixed(1);
+                consForAlt.push(`Leans ${topPick.Player} due to a slightly higher overall season projection (+${vbdGap} VBD edge).`);
+            } else {
+                consForAlt.push(`Prioritizes ${topPick.Player}'s positional scarcity and roster structural balance at ${topPick.Pos}.`);
+            }
+        }
 
         return `
             <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm mb-4">
