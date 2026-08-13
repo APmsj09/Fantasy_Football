@@ -240,7 +240,10 @@ const UI = {
         const pAge = p.age || p.Age;
         const isRookieOrYoung = pAge && pAge <= 22;
         const hasNoPastStats = !p.pastStats || !p.pastStats.gp || p.pastStats.gp === 0;
-        const isTargetRole = p.isNewRole || isRookieOrYoung || hasNoPastStats || (p.depthChart && p.depthChart <= 2);
+
+        // Expanded to include WR3s in high-volume passing attacks (570+ targets) or WR-funnel schemes
+        const isWR3PassHeavy = (pos === 'WR' && p.depthChart === 3 && (passVolume >= 570 || (teamDist && teamDist['WR %'] >= 60.0)));
+        const isTargetRole = p.isNewRole || isRookieOrYoung || hasNoPastStats || (p.depthChart && p.depthChart <= 2) || isWR3PassHeavy;
 
         // Prevents spamming past stats in both the general narrative blurb AND the context box
         const showPastStatsInBox = Boolean(p.pastStats && p.pastStats.gp > 0 && (p.isNewRole || isRookieOrYoung));
@@ -249,6 +252,7 @@ const UI = {
             let roleTitle = "";
             if (isRookieOrYoung && hasNoPastStats) roleTitle = `🌱 Rookie Profile & Team Context (${p.Team})`;
             else if (isRookieOrYoung) roleTitle = `🌱 Youth Profile & Team Context (${p.Team})`;
+            else if (pos === 'WR' && p.depthChart === 3) roleTitle = `🎯 11-Personnel / WR3 Scheme Context (${p.Team})`;
             else if (p.isNewRole || hasNoPastStats) roleTitle = `📋 New Role / Environment Context (${p.Team})`;
             else roleTitle = `🔄 Team Scheme & Volume Context (${p.Team})`;
 
@@ -272,13 +276,19 @@ const UI = {
                 }
             }
 
-            // 2. Reference Team Positional Usage with Plain-English Grades
+            // 2. Reference Team Positional Usage with Scaled Raw Volume + Target %
             if (pos === 'RB') {
                 if (teamDist && teamDist['RB %']) {
                     let rbPct = teamDist['RB %'];
-                    let grade = rbPct >= 22.0 ? "[ELITE - Top 5 in NFL]" : (rbPct >= 17.0 ? "[GREAT - Above Average]" : (rbPct >= 12.0 ? "[AVERAGE]" : "[POOR - Low Passing Focus]"));
-                    let rbTgts = teamDist['RB Targets'] || 0;
-                    let totalTgts = teamDist['Total Targets'] || 0;
+                    let rbTgts = teamDist['RB Targets'] || Math.round((passVolume * rbPct) / 100);
+                    let totalTgts = teamDist['Total Targets'] || passVolume;
+
+                    let grade = "";
+                    if (rbTgts >= 120 || rbPct >= 22.0) grade = "[ELITE - Top 5 in NFL]";
+                    else if (rbTgts >= 90 || rbPct >= 17.0) grade = "[GREAT - Above Average]";
+                    else if (rbTgts <= 60 || rbPct <= 12.0) grade = "[POOR - Low Passing Focus]";
+                    else grade = "[AVERAGE]";
+
                     opportunityBullets.push(`<strong>Pass-Game Funnel:</strong> ${p.Team}'s scheme funneled <strong>${rbPct}% of total passes</strong> (${rbTgts}/${totalTgts} targets) to running backs <span class="text-indigo-800 font-bold">${grade}</span>.`);
                 }
                 if (rushEnv && rushEnv.ybcAtt) {
@@ -292,16 +302,25 @@ const UI = {
             } else if (['WR', 'TE'].includes(pos)) {
                 if (teamDist && teamDist[`${pos} %`]) {
                     let posPct = teamDist[`${pos} %`];
-                    let posTgts = teamDist[`${pos} Targets`] || 0;
-                    let totalTgts = teamDist['Total Targets'] || 0;
+                    let posTgts = teamDist[`${pos} Targets`] || Math.round((passVolume * posPct) / 100);
+                    let totalTgts = teamDist['Total Targets'] || passVolume;
 
                     let grade = "";
                     if (pos === 'WR') {
-                        grade = posPct >= 62.0 ? "[HEAVY WR FOCUS - Top 10 NFL]" : (posPct >= 54.0 ? "[ABOVE AVERAGE]" : "[LOW WR FOCUS]");
+                        if (posTgts >= 370 || (posPct >= 62.0 && passVolume >= 560)) grade = "[ELITE HIGH-VOLUME WR SYSTEM]";
+                        else if (posTgts >= 310 || posPct >= 55.0) grade = "[ABOVE AVERAGE WR FOCUS]";
+                        else if (posTgts <= 250 || posPct <= 47.0) grade = "[LOW WR FOCUS / RUN-HEAVY]";
+                        else grade = "[AVERAGE WR VOLUME]";
                     } else {
-                        grade = posPct >= 24.0 ? "[ELITE TE FUNNEL - Top 5 NFL]" : (posPct >= 18.0 ? "[ABOVE AVERAGE]" : "[LOW TE FOCUS]");
+                        if (posTgts >= 130 || (posPct >= 24.0 && passVolume >= 550)) grade = "[ELITE TE FUNNEL - Top 5 NFL]";
+                        else if (posTgts >= 95 || posPct >= 18.0) grade = "[ABOVE AVERAGE TE FOCUS]";
+                        else grade = "[LOW TE FOCUS]";
                     }
                     opportunityBullets.push(`<strong>Positional Target Funnel:</strong> ${p.Team}'s offense funneled <strong>${posPct}% of team targets</strong> (${posTgts}/${totalTgts} targets) to ${pos}s <span class="text-indigo-800 font-bold">${grade}</span>.`);
+
+                    if (pos === 'WR' && p.depthChart === 3) {
+                        opportunityBullets.push(`<strong>WR3 / 11-Personnel Role:</strong> In this ${offensePace} attack (${totalTgts} total targets), the WR3 position sees elevated route participation due to heavy 3-receiver sets.`);
+                    }
                 }
                 if (passEnv && passEnv.playActionYds) {
                     let paYds = passEnv.playActionYds;
@@ -514,6 +533,22 @@ const UI = {
             pastStatsContext = ` ${pronoun} coming off a 2025 campaign averaging <strong>${p.pastPpg.toFixed(1)} PPG</strong> over ${ps.gp || 17} games (${tdText}).`;
         }
 
+        let statProof = "";
+        if (isOffense) {
+            let specificStats = [];
+            if (p.targetShare && p.targetShare >= 15) specificStats.push(`commands a massive <strong>${p.targetShare}% target share</strong>`);
+            if (p.hvo && p.hvo >= 40) specificStats.push(`dominates with <strong>${p.hvo} high-value opportunities</strong> (RZ carries + targets)`);
+            if (p.aDOT && p.aDOT >= 12.0) specificStats.push(`stretches the field with an elite <strong>${p.aDOT} aDOT</strong>`);
+            if (p.pastStats && p.pastStats.bigPlays >= 8) specificStats.push(`generated <strong>${p.pastStats.bigPlays} explosive plays</strong> (20+ yards)`);
+            if (p.wopr && p.wopr >= 0.55) specificStats.push(`boasts a dominant <strong>${p.wopr.toFixed(2)} WOPR</strong>`);
+            if (p.Pos === 'QB' && p.stats && p.stats.rushAtt >= 50) specificStats.push(`adds crucial rushing floor with <strong>${p.stats.rushAtt} projected carries</strong>`);
+            if (p.snapShare && p.snapShare >= 75) specificStats.push(`rarely leaves the field (<strong>${p.snapShare.toFixed(0)}% snap share</strong>)`);
+            
+            if (specificStats.length > 0) {
+                statProof = ` His elite profile is backed by raw data: he ${specificStats.slice(0, 2).join(', and ')}.`;
+            }
+        }
+
         let narrativeBlurb = "";
         if (isDST || isPK) {
             if (posRank <= 5) {
@@ -542,28 +577,28 @@ const UI = {
                     `Few players match the combination of raw ceiling and floor that ${p.Player} brings as the ${posRankStr} (#${overallRank} overall).`,
                     `Anchor your draft with ${p.Player}, a top-tier centerpiece in the ${p.Team} attack projected for ${ppg} PPG.`
                 ];
-                narrativeBlurb = `${pickVar(ultraIntros)}${pastStatsContext} ${archetypeNote} Fantasy managers can construct rosters around his bulletproof baseline.`;
+                narrativeBlurb = `${pickVar(ultraIntros)}${pastStatsContext} ${archetypeNote}${statProof} Fantasy managers can construct rosters around his bulletproof baseline.`;
             } else if (posRank <= 12) {
                 const starterIntros = [
                     `${p.Player} headlines the ${p.Team} skill group as a premier ${tierLabel} candidate.`,
                     `Locking in ${p.Player} gives fantasy managers a foundational weekly starter projected for ${ppg} PPG.`,
                     `The ${p.Team} offense relies heavily on ${p.Player}, positioning him firmly in the ${tierLabel} tier.`
                 ];
-                narrativeBlurb = `${pickVar(starterIntros)}${pastStatsContext} ${archetypeNote}`;
+                narrativeBlurb = `${pickVar(starterIntros)}${pastStatsContext} ${archetypeNote}${statProof}`;
             } else if (posRank <= 24) {
                 const solidIntros = [
                     `${p.Player} offers reliable weekly starting value as a ${tierLabel} for ${p.Team}.`,
                     `Expect a steady diet of opportunities for ${p.Player}, who projects for ${ppg} PPG (${proj.toFixed(1)} total points).`,
                     `Navigating the middle rounds with ${p.Player} secures a functional ${tierLabel} with manageable variance.`
                 ];
-                narrativeBlurb = `${pickVar(solidIntros)}${pastStatsContext} ${archetypeNote}`;
+                narrativeBlurb = `${pickVar(solidIntros)}${pastStatsContext} ${archetypeNote}${statProof}`;
             } else if (posRank <= 36) {
                 const flexIntros = [
                     `${p.Player} enters the conversation as a viable ${tierLabel} with situational starting appeal.`,
                     `Drafting ${p.Player} secures a functional ${tierLabel} who projects for ${ppg} PPG in the ${p.Team} offense.`,
                     `While he may lack elite every-week certainty, ${p.Player} provides strong ${tierLabel} value projected for ${ppg} PPG.`
                 ];
-                narrativeBlurb = `${pickVar(flexIntros)}${pastStatsContext} ${archetypeNote}`;
+                narrativeBlurb = `${pickVar(flexIntros)}${pastStatsContext} ${archetypeNote}${statProof}`;
             } else {
                 if (age && age >= 30) {
                     const veteranIntros = [
@@ -571,14 +606,14 @@ const UI = {
                         `While long past his physical prime, ${p.Player} remains a functional piece of the ${p.Team} offense and a viable bench stash (${ppg} PPG proj).`,
                         `${p.Player} offers veteran savvy and depth for your roster, though fantasy managers should temper expectations for explosive upside (${ppg} PPG proj).`
                     ];
-                    narrativeBlurb = `${pickVar(veteranIntros)}${pastStatsContext} ${archetypeNote}`;
+                    narrativeBlurb = `${pickVar(veteranIntros)}${pastStatsContext} ${archetypeNote}${statProof}`;
                 } else {
                     const depthIntros = [
                         `${p.Player} fits the mold of an upside bench stash on ${p.Team}.`,
                         `Drafting ${p.Player} is a bet on contingent volume and match-up-dependent flexibility (${ppg} PPG proj).`,
                         `${p.Player} enters the year as a depth option with potential for expanded usage should injury strike.`
                     ];
-                    narrativeBlurb = `${pickVar(depthIntros)}${pastStatsContext} ${archetypeNote}`;
+                    narrativeBlurb = `${pickVar(depthIntros)}${pastStatsContext} ${archetypeNote}${statProof}`;
                 }
             }
         }
@@ -1495,7 +1530,7 @@ const UI = {
             let color = ['Out', 'IR', 'PUP'].includes(p.injuryStatus) ? 'bg-rose-100 text-rose-700 border-rose-200' : 'bg-amber-100 text-amber-700 border-amber-200';
             injModalBadge = `<span class="text-xs border ${color} px-2 py-0.5 rounded-full font-bold">🏥 ${p.injuryStatus}</span>`;
         }
-        
+
         let hMatch = p.height ? String(p.height).match(/(\d+)['\-]+(\d+)/) : null;
         let formattedHeight = hMatch ? `${hMatch[1]}'${hMatch[2]}"` : (!isNaN(p.height) ? `${Math.floor(p.height / 12)}'${p.height % 12}"` : p.height);
         let sizeBadge = (p.height && p.weight) ? `<span class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-medium">${formattedHeight}, ${p.weight} lbs</span>` : '';
@@ -2147,6 +2182,16 @@ const UI = {
                 </div>
             </div>`;
         }).join('');
+
+        State.currentRecommendations = finalRecs;
+        
+        if (finalRecs.length > 1) {
+            htmlStr += `
+            <button onclick="Compare.showComparison()" class="w-full mt-3 py-2.5 bg-indigo-900/40 hover:bg-indigo-800/60 border border-indigo-700/50 rounded-xl text-xs font-bold text-indigo-200 transition-colors flex items-center justify-center gap-2 shadow-sm">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                Compare Recommendations
+            </button>`;
+        }
 
         container.innerHTML = htmlStr;
     },

@@ -1,6 +1,7 @@
 const State = {
     allPlayers: [],
     availablePlayers: [],
+    currentRecommendations: [],
     teamsById: {},
     draftOrder: [],
     currentPick: 0,
@@ -1427,24 +1428,15 @@ const State = {
             // 2. Smooth & Tiered Schedule Strength
             if (p.avgStars) adjMultiplier += (p.avgStars - 3.0) * 0.025; // Scales smoothly dynamically
             if (p.playoffSOS) {
-                if (p.playoffSOS >= 4.2) adjMultiplier += 0.03;
-                else if (p.playoffSOS >= 3.6) adjMultiplier += 0.015;
-                else if (p.playoffSOS <= 1.8) adjMultiplier -= 0.03;
-                else if (p.playoffSOS <= 2.4) adjMultiplier -= 0.015;
+                adjMultiplier += (p.playoffSOS - 3.0) * 0.015; // Smooth playoff scaling
             }
 
-            // 3. Tiered Offensive Line Quality
+            // 3. Continuous Offensive Line Quality
             let olModifier = 0;
             if (p.Pos === 'RB' && p.olRunBlk) {
-                if (p.olRunBlk <= 3) olModifier = 0.05;
-                else if (p.olRunBlk <= 8) olModifier = 0.025;
-                else if (p.olRunBlk >= 29) olModifier = -0.05;
-                else if (p.olRunBlk >= 24) olModifier = -0.025;
+                olModifier = (16.5 - p.olRunBlk) * 0.0035; // Continuous float scale for more variance
             } else if (['QB', 'WR', 'TE'].includes(p.Pos) && p.olPassBlk) {
-                if (p.olPassBlk <= 3) olModifier = 0.04;
-                else if (p.olPassBlk <= 8) olModifier = 0.02;
-                else if (p.olPassBlk >= 29) olModifier = -0.04;
-                else if (p.olPassBlk >= 24) olModifier = -0.02;
+                olModifier = (16.5 - p.olPassBlk) * 0.0030; // Continuous float scale for more variance
             }
 
             // Fallback to broad tier only if rank data didn't trigger a change
@@ -1561,30 +1553,44 @@ const State = {
                     adjMultiplier -= Math.pow(pAge - 37, 1.2) * 0.02;
                 }
 
-                // NEW: Breakout Window Bonus
-                if (!p.isNewRole && pAge >= 21 && pAge <= 23 && ['WR', 'RB', 'TE'].includes(p.Pos)) {
-                    adjMultiplier += 0.02;
-                }
             }
 
-            // 7. Advanced Team Environment Metrics
+            // 7. Advanced Team Environment Metrics & Scheme Archetypes
             const tTeam = this.normalizeTeam(p.Team);
             const passEnv = this.teamAdvPass[tTeam];
             const rushEnv = this.teamAdvRush[tTeam];
             const recEnv = this.teamAdvRec[tTeam];
 
             if (passEnv) {
+                // Play-Action & RPO Scheme Impact
                 if (['QB', 'WR', 'TE'].includes(p.Pos)) {
                     if (passEnv.playActionYds >= 1100 || passEnv.rpoYds >= 700) adjMultiplier += 0.035;
-                    else if (passEnv.playActionYds >= 900 || passEnv.rpoYds >= 500) adjMultiplier += 0.015;
-                    else if (passEnv.playActionYds < 500 && passEnv.rpoYds < 200) adjMultiplier -= 0.02;
+                    else if (passEnv.playActionYds >= 850 || passEnv.rpoYds >= 450) adjMultiplier += 0.018;
+                    else if (passEnv.playActionYds < 500 && passEnv.rpoYds < 200) adjMultiplier -= 0.018;
                 }
-                if (['QB', 'WR', 'TE'].includes(p.Pos) && (!p.olPassBlk || (p.olPassBlk > 5 && p.olPassBlk < 25))) {
-                    if (passEnv.prssPct >= 28.0) adjMultiplier -= 0.04;
-                    else if (passEnv.prssPct >= 25.0) adjMultiplier -= 0.02;
+
+                // Quick-Release vs. Deep-Vertical Pocket Time Dynamics
+                if (['QB', 'WR', 'TE'].includes(p.Pos)) {
+                    const isQuickThrowScheme = passEnv.pktTime > 0 && passEnv.pktTime <= 2.25;
+                    const isLongDevelopingScheme = passEnv.pktTime >= 2.55;
+
+                    if (isQuickThrowScheme) {
+                        // Quick-strike schemes insulate pass catchers from poor line ranks
+                        if (p.olPassBlk && p.olPassBlk >= 22) adjMultiplier += 0.015;
+                    } else if (isLongDevelopingScheme) {
+                        // Deep vertical schemes demand elite protection to avoid drive-killing sacks
+                        if (p.olPassBlk && p.olPassBlk <= 8) adjMultiplier += 0.025;
+                        else if (p.olPassBlk && p.olPassBlk >= 24) adjMultiplier -= 0.025;
+                    }
                 }
+
+                // Residual historical pressure modifier (blended with olPassBlk)
+                if (passEnv.prssPct >= 28.0) adjMultiplier -= 0.015;
+                else if (passEnv.prssPct >= 25.0) adjMultiplier -= 0.008;
+                else if (passEnv.prssPct <= 18.0) adjMultiplier += 0.010;
             }
 
+            // Team Starting QB Accuracy Impact on Pass Catchers
             if (['WR', 'TE'].includes(p.Pos)) {
                 let teamQB = this.allPlayers.find(q => q._cleanTeam === tTeam && q._cleanPos === 'QB' && q.depthChart === 1);
                 if (!teamQB) {
@@ -1605,12 +1611,19 @@ const State = {
                     else if (rushEnv.ybcAtt >= 2.6) adjMultiplier += 0.02;
                     else if (rushEnv.ybcAtt <= 1.8) adjMultiplier -= 0.04;
                     else if (rushEnv.ybcAtt <= 2.2) adjMultiplier -= 0.02;
+
+                    // Power Push / Goal-Line Conversion Efficiency
+                    if (rushEnv.firstDownRate && rushEnv.firstDownRate >= 25.0 && ((p.rzAtt && p.rzAtt >= 20) || (p.stats && p.stats.rushTd >= 6))) {
+                        adjMultiplier += 0.020;
+                    }
                 }
+
                 if (['WR', 'TE'].includes(p.Pos) && recEnv) {
                     if (recEnv.yacPerRec >= 6.0) adjMultiplier += 0.03;
                     else if (recEnv.yacPerRec >= 5.5) adjMultiplier += 0.015;
                     else if (recEnv.yacPerRec <= 4.2) adjMultiplier -= 0.03;
                 }
+
                 if (p.Pos === 'QB' && passEnv) {
                     if (passEnv.pktTime >= 2.6) adjMultiplier += 0.03;
                     else if (passEnv.pktTime >= 2.4) adjMultiplier += 0.015;
@@ -1644,7 +1657,7 @@ const State = {
 
             p._isFlyer = false;
             p._isSafeFloor = false;
-            
+
             // tTeam is already defined up in Step 7, so we just use it here!
             const teamDist = (this.teamTargets || []).find(t => this.normalizeTeam(t.Team) === tTeam);
 
@@ -1838,8 +1851,8 @@ const State = {
             if (p.injuryStatus) {
                 // Severe penalty for players slated to miss serious time
                 if (['Out', 'IR', 'PUP', 'COV'].includes(p.injuryStatus)) {
-                    p.AdvVBD *= 0.85; 
-                } 
+                    p.AdvVBD *= 0.85;
+                }
                 // Minor deduction for camp injuries/questionable tags
                 else if (p.injuryStatus === 'Doubtful') {
                     p.AdvVBD *= 0.95;
@@ -1854,7 +1867,7 @@ const State = {
                 let weightLbs = parseInt(p.weight, 10);
                 if (inches > 0 && weightLbs > 0) {
                     p.bmi = (weightLbs / (inches * inches)) * 703;
-                    if (p.bmi >= 31.5) p.AdvVBD *= 1.02; 
+                    if (p.bmi >= 31.5) p.AdvVBD *= 1.02;
                 }
             }
 
