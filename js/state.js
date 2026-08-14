@@ -2069,11 +2069,17 @@ const State = {
 
         let tiers = [];
         let currentTier = [avail[0]];
-        let dropThreshold = (pos === 'QB' || pos === 'TE') ? 7.5 : 9.5;
+        
+        // Dynamic threshold: Scales down as the draft progresses to create nuanced micro-tiers in late rounds.
+        // Takes ~15% of the top available player's value, bounded between 1.5 and 8.5 points.
+        let topVal = avail[0].AdvVBD || avail[0].VBD || 0;
+        let baseThreshold = (pos === 'QB' || pos === 'TE') ? 0.12 : 0.15; // Tighter thresholds for onesie positions
+        let dropThreshold = Math.max(1.5, Math.min(8.5, topVal * baseThreshold));
 
         for (let i = 1; i < avail.length; i++) {
-            let prevVal = avail[i - 1].AdvVBD || avail[i - 1].VBD;
-            let currVal = avail[i].AdvVBD || avail[i].VBD;
+            let prevVal = avail[i - 1].AdvVBD || avail[i - 1].VBD || 0;
+            let currVal = avail[i].AdvVBD || avail[i].VBD || 0;
+            
             if ((prevVal - currVal) >= dropThreshold) {
                 tiers.push(currentTier);
                 currentTier = [];

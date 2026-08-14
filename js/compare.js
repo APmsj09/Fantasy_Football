@@ -1,55 +1,43 @@
 window.Compare = {
     getTierDetails(player) {
-        const avail = State.availablePlayers.filter(p => p.Pos === player.Pos);
-        if (!avail.length) return { tierNum: 1, tierName: 'Depth', remaining: 1, isLastInTier: true, gapToNext: '0.0' };
-
-        // Dynamic drop threshold: Scales down automatically as VBD values decrease in deep rounds
-        const topVal = Math.max(8.0, avail[0].AdvVBD || avail[0].VBD || 8.0);
-        const dropThreshold = Math.max(2.0, Math.min(9.5, topVal * 0.18));
-
+        // Unify with the newly upgraded core math in state.js
+        const tiers = State.getPositionalTiers(player.Pos);
         let tierNum = 1;
         let tierPlayers = [];
-        let currentTier = [];
         let gapToNext = 0;
 
-        for (let i = 0; i < avail.length; i++) {
-            let p = avail[i];
-            if (i > 0) {
-                let prevVal = avail[i - 1].AdvVBD || avail[i - 1].VBD;
-                let currVal = p.AdvVBD || p.VBD;
-                if ((prevVal - currVal) >= dropThreshold) {
-                    if (currentTier.some(x => x._cleanName === player._cleanName)) {
-                        gapToNext = prevVal - currVal;
-                        tierPlayers = [...currentTier];
-                        break;
-                    }
-                    tierNum++;
-                    currentTier = [];
+        for (let i = 0; i < tiers.length; i++) {
+            if (tiers[i].some(p => p._cleanName === player._cleanName)) {
+                tierNum = i + 1;
+                tierPlayers = tiers[i];
+                if (i + 1 < tiers.length) {
+                    let lastInTier = tiers[i][tiers[i].length - 1];
+                    let firstInNext = tiers[i + 1][0];
+                    gapToNext = (lastInTier.AdvVBD || lastInTier.VBD) - (firstInNext.AdvVBD || firstInNext.VBD);
                 }
-            }
-            currentTier.push(p);
-            if (p._cleanName === player._cleanName && i === avail.length - 1) {
-                tierPlayers = [...currentTier];
+                break;
             }
         }
 
         if (tierPlayers.length === 0) tierPlayers = [player];
 
-        // Contextual Tier Naming for Early Rounds vs. Deep Rounds
+        // Expanded Contextual Tier Naming
         const currentRound = Math.floor(State.currentPick / State.settings.numTeams) + 1;
         let tierName = `Tier ${tierNum}`;
 
-        if (currentRound <= 6) {
+        if (currentRound <= 8) {
             if (tierNum === 1) tierName = `Tier 1 (Elite ${player.Pos})`;
             else if (tierNum === 2) tierName = `Tier 2 (High-End ${player.Pos})`;
             else if (tierNum === 3) tierName = `Tier 3 (Solid ${player.Pos})`;
+            else if (tierNum === 4) tierName = `Tier 4 (Low-End ${player.Pos} / Flex)`;
+            else if (tierNum === 5) tierName = `Tier 5 (Premium Depth)`;
             else tierName = `Tier ${tierNum} (${player.Pos} Depth)`;
         } else {
-            // Late-Round Archetype Tier Naming (Removes misleading Tier X numbers)
+            // Late-Round Archetype Tier Naming
             if (player.isRBHandcuff) tierName = `Handcuff / Lottery Ticket Tier`;
             else if (player.targetShare && player.targetShare >= 15) tierName = `Target-Share / PPR Floor Tier`;
             else if (player.aDOT && player.aDOT >= 12) tierName = `Deep-Threat / Spike-Week Tier`;
-            else if (player.age && player.age <= 22) tierName = `Rookie / Youth Upside Tier`;
+            else if (player.age && player.age <= 23) tierName = `Youth Upside / Breakout Tier`;
             else tierName = `${player.Pos} Bench Depth Tier`;
         }
 
@@ -183,8 +171,13 @@ window.Compare = {
             if ((team.counts[topPick.Pos] || 0) < (team.counts[alt.Pos] || 0)) {
                 consForAlt.push(`<strong>Roster Logjam:</strong> You already have depth at ${alt.Pos}. Taking ${topPick.Player} (${topPick.Pos}) fills a bigger structural hole on your team.`);
             }
-        } else if (diff < 0 && Math.abs(diff) <= 6.0) {
-            consForAlt.push(`<strong>Virtual Value Tie:</strong> Projects within ${Math.abs(diff).toFixed(1)} VBD of ${alt.Player}. The algorithm leans ${topPick.Player} strictly due to roster construction and lineup impact.`);
+        } else if (diff < 0) {
+            let absDiff = Math.abs(diff);
+            if (absDiff <= 6.0) {
+                consForAlt.push(`<strong>Slight Value Edge:</strong> ${topPick.Player} projects marginally higher (+${absDiff.toFixed(1)} VBD) in a vacuum. Combined with roster context, he is the safer mathematical pick.`);
+            } else {
+                consForAlt.push(`<strong>Significant Value Edge:</strong> ${topPick.Player} projects significantly higher (+${absDiff.toFixed(1)} VBD) in a vacuum. Passing on him sacrifices too much baseline value.`);
+            }
         }
 
         // 2. Draft Urgency & True ADP Value Comparison
@@ -257,6 +250,8 @@ window.Compare = {
 
             if (alt.boomBust.boom > topPick.boomBust.boom + 8) {
                 prosForAlt.push(`<strong>Higher Weekly Ceiling:</strong> Posted a "Boom" week in <strong>${alt.boomBust.boom}%</strong> of games vs. ${topPick.Player}'s ${topPick.boomBust.boom}%.`);
+            } else if (topPick.boomBust.boom > alt.boomBust.boom + 8) {
+                consForAlt.push(`<strong>Higher Weekly Ceiling:</strong> ${topPick.Player} posted a "Boom" week in <strong>${topPick.boomBust.boom}%</strong> of games vs. ${alt.Player}'s ${alt.boomBust.boom}%.`);
             }
         }
 
@@ -297,31 +292,15 @@ window.Compare = {
                 prosForAlt.push(`<strong>Elusiveness Edge:</strong> ${alt.Player} logged <strong>${alt.brokenTackles} broken tackles</strong> vs ${topPick.Player}'s ${topPick.brokenTackles}.`);
             }
         } else {
-            // Cross-Position Tier Scarcity Comparison (Caps at Round 7 to prevent late-round noise)
-            if (topTier.isLastInTier && (topTier.tierNum <= 2 || currentRound <= 7)) {
-                // --- NEW: Optimized O(N) tier boundary check instead of O(N^2) ---
-                const altAvail = State.availablePlayers.filter(p => p.Pos === alt.Pos);
-                let currentAltTierNum = 1;
+            // Cross-Position Tier Scarcity Comparison
+            if (topTier.isLastInTier && (topTier.tierNum <= 3 || currentRound <= 8)) {
+                // Determine how many of the alternative's tier-mates will survive to the next pick
+                const altTiers = State.getPositionalTiers(alt.Pos);
                 let altSurvivingCount = 0;
                 
-                if (altAvail.length > 0) {
-                    const altTopVal = Math.max(8.0, altAvail[0].AdvVBD || altAvail[0].VBD || 8.0);
-                    const altDropThresh = Math.max(2.0, Math.min(9.5, altTopVal * 0.18));
-                    
-                    for (let i = 0; i < altAvail.length; i++) {
-                        if (i > 0) {
-                            let prevVal = altAvail[i - 1].AdvVBD || altAvail[i - 1].VBD;
-                            let currVal = altAvail[i].AdvVBD || altAvail[i].VBD;
-                            if ((prevVal - currVal) >= altDropThresh) {
-                                currentAltTierNum++;
-                            }
-                        }
-                        if (currentAltTierNum === altTier.tierNum) {
-                            if ((altAvail[i].adp || 0) > nextPick) altSurvivingCount++;
-                        } else if (currentAltTierNum > altTier.tierNum) {
-                            break;
-                        }
-                    }
+                if (altTiers.length >= altTier.tierNum) {
+                    let actualAltTierGroup = altTiers[altTier.tierNum - 1];
+                    altSurvivingCount = actualAltTierGroup.filter(p => (p.adp || 0) > nextPick).length;
                 }
                 
                 let survivalNote = altSurvivingCount > 0 
@@ -352,7 +331,12 @@ window.Compare = {
                     consForAlt.push(`Prioritizes ${topPick.Player}'s ceiling, advanced metrics, or optimal lineup fit over ${alt.Player}'s raw projection.`);
                 }
             } else {
-                consForAlt.push(`Prioritizes ${topPick.Player}'s positional scarcity and roster structural balance at ${topPick.Pos}.`);
+                let vbdGap = ((topPick.AdvVBD || topPick.VBD) - (alt.AdvVBD || alt.VBD)).toFixed(1);
+                if (parseFloat(vbdGap) >= 5.0) {
+                    consForAlt.push(`Significant Projection Advantage: ${topPick.Player} projects for far more baseline value (+${vbdGap} VBD edge) than ${alt.Player}.`);
+                } else {
+                    consForAlt.push(`Prioritizes ${topPick.Player}'s positional scarcity, draft capital urgency, and roster structural balance at ${topPick.Pos}.`);
+                }
             }
         }
 

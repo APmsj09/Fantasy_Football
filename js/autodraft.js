@@ -39,13 +39,18 @@ window.AutoDraft = {
         // 1. CALCULATE POSITIONAL SCARCITY (Tier Drop-offs)
         let scarcity = {};
         ['QB', 'RB', 'WR', 'TE'].forEach(pos => {
-            let avail = cpuSorted.filter(p => p.Pos === pos);
-            if (avail.length > 5) {
-                let top = avail[0].AdvVBD ?? avail[0].VBD ?? 0;
-                let fifth = avail[4].AdvVBD ?? avail[4].VBD ?? 0;
-                scarcity[pos] = Math.max(0, top - fifth) * 0.5;
+            let tiers = State.getPositionalTiers(pos);
+            // If the current top tier is almost empty (3 or fewer players), calculate the VBD drop to the next tier
+            if (tiers.length > 1 && tiers[0].length <= 3) {
+                let lastInTopTier = tiers[0][tiers[0].length - 1];
+                let firstInNextTier = tiers[1][0];
+                let drop = (lastInTopTier.AdvVBD ?? lastInTopTier.VBD ?? 0) - (firstInNextTier.AdvVBD ?? firstInNextTier.VBD ?? 0);
+                
+                // Urgency multiplier: The fewer players left in the tier, the higher the panic/scarcity bonus
+                let urgencyMult = tiers[0].length === 1 ? 1.0 : (tiers[0].length === 2 ? 0.7 : 0.4);
+                scarcity[pos] = Math.max(0, drop) * urgencyMult;
             } else {
-                scarcity[pos] = 0;
+                scarcity[pos] = 0; // Plenty of options in the current tier, no scarcity panic
             }
         });
 
