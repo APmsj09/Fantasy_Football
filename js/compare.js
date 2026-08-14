@@ -190,7 +190,7 @@ window.Compare = {
             consForAlt.push(`<strong>${impactLabel}:</strong> Adds +${altPPW.toFixed(1)} PPW to your starters compared to +${topPPW.toFixed(1)} PPW for ${topPick.Player}.`);
         }
 
-         // 3.5. Sample Size Reliability & Multi-Level Trait Context
+        // 4. Sample Size Reliability & Multi-Level Trait Context
         const topGp = topPick.pastStats?.gp ?? 17;
         const altGp = alt.pastStats?.gp ?? 17;
 
@@ -213,18 +213,7 @@ window.Compare = {
             consForAlt.push(`<strong>TD Fluke Warning:</strong> 2025 TD output lacked underlying red-zone opportunity volume, making high regression likely.`);
         }
 
-        // 4. Boom/Bust Consistency Check
-        const topGp = topPick.pastStats?.gp ?? 17;
-        const altGp = alt.pastStats?.gp ?? 17;
-
-        if (topGp >= 14 && altGp <= 7 && alt.pastPpg >= 14.0) {
-            prosForAlt.push(`<strong>Explosive Per-Game Ceiling:</strong> Produced at a higher per-game clip in 2025 (${alt.pastPpg.toFixed(1)} PPG), though in a limited ${altGp}-game sample.`);
-            consForAlt.push(`<strong>Proven Full-Season Reliability:</strong> ${topPick.Player} sustained elite production over a full ${topGp}-game slate, whereas ${alt.Player}'s efficiency carries small-sample volatility.`);
-        } else if (altGp >= 14 && topGp <= 7 && topPick.pastPpg >= 14.0) {
-            prosForAlt.push(`<strong>Full-Season Track Record:</strong> Proven ${altGp}-game durability and volume baseline compared to ${topPick.Player}'s limited ${topGp}-game sample.`);
-            consForAlt.push(`<strong>Per-Game Ceiling Gap:</strong> ${topPick.Player} flashed league-winning per-game dominance (${topPick.pastPpg.toFixed(1)} PPG) when active.`);
-        }
-
+        // 4b. Boom/Bust Consistency Check
         if (alt.boomBust && topPick.boomBust) {
             if (alt.boomBust.bust + 8 < topPick.boomBust.bust) {
                 prosForAlt.push(`<strong>Dramatically Safer Floor:</strong> Busted in only <strong>${alt.boomBust.bust}%</strong> of 2025 games vs. ${topPick.Player}'s <strong>${topPick.boomBust.bust}%</strong> bust rate.`);
