@@ -2101,26 +2101,20 @@ const UI = {
         };
 
         // ===========================================================
-        // PRE-LOOP: EVALUATE TEAM NEEDS & STRATEGY
+        // PRE-LOOP: STRATEGY BADGES 
         // ===========================================================
         let userRoster = userTeam.roster;
         let earlyRBs = userRoster.filter(p => p.Pos === 'RB' && (p.draftPickNum || 99) <= 60).length;
         let earlyWRs = userRoster.filter(p => p.Pos === 'WR' && (p.draftPickNum || 99) <= 60).length;
 
         let strategyBanner = "";
-        let buildStrategy = "Balanced";
-
-        // Determine Roster Strategy Build
         if (currentRound <= 7) {
             if (earlyRBs === 0 && userRoster.length >= 2) {
-                buildStrategy = "Zero-RB";
-                strategyBanner = `<div class="p-2 mb-2 bg-indigo-950 border border-indigo-700 rounded-lg text-[10px] text-indigo-200">🛡️ <strong>Zero-RB Build:</strong> Target WR/TE depth. Avoid early RBs and look for high-HVO passing RBs in Rnds 7-10.</div>`;
+                strategyBanner = `<div class="p-2 mb-2 bg-indigo-950 border border-indigo-700 rounded-lg text-[10px] text-indigo-200">🛡️ <strong>Zero-RB Build:</strong> Prioritizing WR/TE value. Target high-opportunity RBs in rounds 7-10.</div>`;
             } else if (earlyRBs === 1 && earlyWRs >= 2) {
-                buildStrategy = "Hero-RB";
-                strategyBanner = `<div class="p-2 mb-2 bg-emerald-950 border border-emerald-700 rounded-lg text-[10px] text-emerald-200">🦸 <strong>Hero-RB Build:</strong> Anchor RB locked. Focus heavily on WR/TE value before filling RB2.</div>`;
-            } else if (earlyRBs >= 3) {
-                buildStrategy = "Robust-RB";
-                strategyBanner = `<div class="p-2 mb-2 bg-amber-950 border border-amber-700 rounded-lg text-[10px] text-amber-200">💪 <strong>Robust-RB Build:</strong> RB foundation set. Heavily target WR/TE depth to balance roster.</div>`;
+                strategyBanner = `<div class="p-2 mb-2 bg-emerald-950 border border-emerald-700 rounded-lg text-[10px] text-emerald-200">🦸 <strong>Hero-RB Build:</strong> Anchor RB locked. Evaluating best player available across Flex & WR.</div>`;
+            } else if (earlyRBs >= 2) {
+                strategyBanner = `<div class="p-2 mb-2 bg-amber-950 border border-amber-700 rounded-lg text-[10px] text-amber-200">💪 <strong>Dual/Robust-RB Foundation:</strong> Multiple high-end RBs drafted. Flex slots will optimize automatically.</div>`;
             }
         }
 
@@ -2139,16 +2133,15 @@ const UI = {
             }
         });
 
-        // Filter valid players
+        // Filter valid players (Delay Kickers & non-elite DSTs)
         let viablePlayers = State.availablePlayers.filter(p => {
             let pos = p.Pos;
             
-            // Delay Kickers and Non-Elite Defenses
             if (pos === 'PK' && currentRound <= totalRounds - 2) return false;
             if (pos === 'DST') {
                 let posRank = parseInt(p.posRank?.replace(/\D/g, '') || 99);
                 if (posRank <= 6 && currentRound >= 10) {
-                    // Allow elite Top 6 DSTs to be recommended starting Round 10
+                    // Elite DST allowed starting Round 10
                 } else if (currentRound <= totalRounds - 2) {
                     return false;
                 }
@@ -2165,7 +2158,6 @@ const UI = {
             return false;
         });
 
-        // Helper to scale positive and negative scores accurately
         const applyFactor = (s, f) => s >= 0 ? s * f : (f >= 1 ? s / f : s * (1 / f));
 
         // ===========================================================
@@ -2174,48 +2166,64 @@ const UI = {
         viablePlayers.forEach(p => {
             let score = p.AdvVBD || p.VBD;
 
-            // 1. Urgency / ADP Check (Dampened if a superior player exists at the same position)
-            if (score > 0) {
-                let survivalProb = getSurvivalProb(p.adp);
-                let urgency = 1 - survivalProb;
+            // Check if player fills an active STARTING or FLEX slot vs BENCH
+            let posRoster = State.settings.roster[p.Pos];
+            let starterMax = posRoster ? posRoster.max : 0;
+            let currentCount = userTeam.counts[p.Pos] || 0;
+            let totalPosCount = userRoster.filter(r => r.Pos === p.Pos).length;
 
-                // Don't let ADP urgency force a lower-projecting player over a better player at the same position
-                let betterSamePosPlayer = viablePlayers.find(other =>
-                    other.Pos === p.Pos &&
-                    (other.AdvVBD || other.VBD) > (p.AdvVBD || p.VBD) &&
-                    (other._addedPPW || 0) >= (p._addedPPW || 0)
-                );
-                if (betterSamePosPlayer) urgency *= 0.15; // Suppress urgency boost
+            let isStarterOpen = currentCount < starterMax;
+            let isFlexRBWROpen = ['RB', 'WR'].includes(p.Pos) && (userTeam.counts['FlexRBWR'] < (State.settings.roster.FlexRBWR?.max || 0));
+            let isFlexOpen = ['RB', 'WR', 'TE'].includes(p.Pos) && (userTeam.counts['Flex'] < (State.settings.roster.Flex?.max || 0));
+            let isSuperflexOpen = ['QB', 'RB', 'WR', 'TE'].includes(p.Pos) && (userTeam.counts['Superflex'] < (State.settings.roster.Superflex?.max || 0));
 
-                // REPLACE THIS LINE: score += (score * 0.25 * urgency);
-                let urgencyBoost = Math.min(8.0, score * 0.10 * urgency);
-                score += urgencyBoost;
+            let isAnyStartingSlotOpen = isStarterOpen || isFlexRBWROpen || isFlexOpen || isSuperflexOpen;
+
+            // 1. Lineup Value (+PPW): Starting/Flex slots are weighted by true weekly addition
+            if (isAnyStartingSlotOpen && p._addedPPW && p._addedPPW >= 0.5) {
+                score += (p._addedPPW * 0.75); // Rewards players who actively increase optimal starting score
             }
 
-            // 2. QB/Pass-Catcher Stacking (Tiered by Receiver Quality)
+            // 2. Draft Capital & Survival Probability (Opportunity Cost Optimization)
+            if (p.adp) {
+                let survivalProb = getSurvivalProb(p.adp); // Chance player is available at nextUserOverallPick
+                let urgency = 1 - survivalProb;
+
+                // Urgency Boost: Player will be GONE before your next pick
+                if (survivalProb < 0.25 && score > 0) {
+                    let urgencyBoost = Math.min(8.0, score * 0.12 * urgency);
+                    score += urgencyBoost;
+                }
+                // Next-Round Availability Discount: Player is almost guaranteed to survive to your next pick
+                // (Prevents reaching 20+ picks early when you can get them in the next round)
+                else if (survivalProb > 0.65 && currentRound <= 8) {
+                    let picksPastNext = p.adp - nextUserOverallPick;
+                    if (picksPastNext > 0) {
+                        let waitDiscount = Math.min(12.0, picksPastNext * 0.35 * (survivalProb - 0.50));
+                        score -= waitDiscount;
+                    }
+                }
+            }
+
+            // 3. Correlated Stacking (QB + Pass Catchers)
             let matchingQB = userQBs.find(qb => qb._cleanTeam === p._cleanTeam);
             let userReceivers = userRoster.filter(r => ['WR', 'TE'].includes(r.Pos));
             let matchingReceiver = userReceivers.find(r => r._cleanTeam === p._cleanTeam);
 
             if (matchingQB && ['WR', 'TE'].includes(p.Pos) && score > 0) {
-                // Base 5% boost. Scales up to 15-20% based on Target Share or Depth Chart.
                 let stackBoost = 1.05;
                 if (p.targetShare) stackBoost += (Math.min(30, p.targetShare) * 0.005);
                 else if (p.depthChart === 1) stackBoost += 0.10;
-                else if (p.depthChart === 2) stackBoost += 0.05;
-
                 score = applyFactor(score, stackBoost);
                 p._stackPartner = matchingQB.Player;
             } else if (matchingReceiver && p.Pos === 'QB' && score > 0) {
-                // NEW: Reverse Stack - Boost QB if we already have his elite weapon
-                let stackBoost = 1.10;
-                score = applyFactor(score, stackBoost);
+                score = applyFactor(score, 1.10);
                 p._stackPartner = matchingReceiver.Player;
             } else {
                 p._stackPartner = null;
             }
 
-            // 3. Late-Round Upside Shift & Breakout Candidates
+            // 4. Late-Round Upside Shift (Rounds 7+)
             if (currentRound >= 7) {
                 let upsideWeight = Math.min(1.0, (currentRound - 6) * 0.15);
                 let floorWeight = 1.0 - upsideWeight;
@@ -2228,93 +2236,38 @@ const UI = {
                 score += Math.max(0, ceilingGain);
             }
 
-            // 3.5 STRATEGY MATHEMATICAL ENFORCEMENT (ADP-Aware)
-            if (currentRound <= 6) {
-                let isSlippingValue = p.adp && (currentOverallPick - p.adp >= 10);
-                let adpBuffer = isSlippingValue ? 1.35 : 1.0;
-
-                let needsRB2 = userTeam.counts['RB'] < (State.settings.roster.RB?.max || 2);
-                let needsBothRBs = userTeam.counts['RB'] === 0;
-                let wrStarterSlotsFull = (userTeam.counts['WR'] + userTeam.counts['Flex']) >= 3;
-
-                if (buildStrategy === 'Zero-RB') {
-                    // Stop penalizing RBs in Round 5+ if WR starters are full or user has 0 RBs
-                    let penalizeRB = (currentRound <= 4) || (currentRound <= 6 && !needsBothRBs && !wrStarterSlotsFull);
-                    if (['WR', 'TE', 'QB'].includes(p.Pos) && !wrStarterSlotsFull) score = applyFactor(score, 1.25);
-                    if (p.Pos === 'RB' && penalizeRB) score = applyFactor(score, 0.40 * adpBuffer);
-                } else if (buildStrategy === 'Hero-RB') {
-                    // Stop penalizing RBs in Round 5+ if RB2 is needed or WR starter slots are full
-                    let penalizeRB = (currentRound <= 4) && !needsRB2;
-                    if (p.Pos === 'RB' && penalizeRB) score = applyFactor(score, 0.60 * adpBuffer);
-                    if (['WR', 'TE'].includes(p.Pos) && currentRound <= 4) score = applyFactor(score, 1.15);
-                } else if (buildStrategy === 'Robust-RB') {
-                    if (['WR', 'TE'].includes(p.Pos)) score = applyFactor(score, 1.30);
-                }
-            }
-
-            // 4. Positional Safety Deficit & Continuous Portfolio Balancing
-            p._rosterContextBadge = null;
-            let posMax = State.settings.roster[p.Pos]?.max || 1;
-            let posSafeCount = userRoster.filter(r => r.Pos === p.Pos && r._isSafeFloor).length;
-            let posSafetyDeficit = Math.max(0, (posMax - posSafeCount) / posMax);
-
-            if (currentRound >= 3 && currentRound <= 11) {
-                let contextMultiplier = 1.0;
-                if (p._isSafeFloor && posSafetyDeficit > 0) {
-                    contextMultiplier += (posSafetyDeficit * 0.22);
-                    p._rosterContextBadge = `🛡️ Safe ${p.Pos} Floor (Needs ${p.Pos} Safety)`;
-                }
-                if (p._isFlyer && posSafetyDeficit < 0.5) {
-                    contextMultiplier += ((1.0 - posSafetyDeficit) * 0.18);
-                    if (!p._rosterContextBadge) p._rosterContextBadge = `🚀 ${p.Pos} Upside Flyer (${p.Pos} Floor Secured)`;
-                }
-                score = applyFactor(score, contextMultiplier);
-            }
-
-            // 5. Roster Limit / Overage Penalties
-            let posRoster = State.settings.roster[p.Pos];
-            let starterMax = posRoster ? posRoster.max : 0;
-            let totalPosCount = userRoster.filter(r => r.Pos === p.Pos).length;
-            let currentCount = userTeam.counts[p.Pos] || 0;
-
-            let isStarterOpen = currentCount < starterMax;
-            let isFlexRBWROpen = ['RB', 'WR'].includes(p.Pos) && (userTeam.counts['FlexRBWR'] < (State.settings.roster.FlexRBWR?.max || 0));
-            let isFlexOpen = ['RB', 'WR', 'TE'].includes(p.Pos) && (userTeam.counts['Flex'] < (State.settings.roster.Flex?.max || 0));
-            let isSuperflexOpen = ['QB', 'RB', 'WR', 'TE'].includes(p.Pos) && (userTeam.counts['Superflex'] < (State.settings.roster.Superflex?.max || 0));
-
-            if (!isStarterOpen && !(isFlexRBWROpen || isFlexOpen || isSuperflexOpen)) {
+            // 5. Bench vs. Starter Threshold (Overage Penalties only apply when starting/flex slots are FULL)
+            if (!isAnyStartingSlotOpen) {
                 let overage = totalPosCount - starterMax;
                 let penalty;
 
-                // Evaluate the strength of the player(s) already drafted at this position
                 let draftedAtPos = userRoster.filter(r => r.Pos === p.Pos);
                 let bestStarterRank = draftedAtPos.length > 0 ? Math.min(...draftedAtPos.map(r => parseInt(r.posRank?.replace(/\D/g, '') || 99))) : 99;
 
                 if (['RB', 'WR'].includes(p.Pos)) {
-                    // Extremely soft penalty to encourage hoarding RB/WR depth
+                    // Soft penalty to encourage hoarding RB/WR bench upside
                     penalty = Math.pow(0.85, overage + 1);
                 } else if (p.Pos === 'TE') {
-                    if (overage === 0) { // Evaluating your 1st Backup TE
-                        if (bestStarterRank <= 5) penalty = 0.05;       // Elite TE drafted -> Hard penalty
-                        else if (bestStarterRank <= 10) penalty = 0.25; // Mid TE drafted -> Moderate penalty
-                        else penalty = 0.60;                            // Weak TE drafted -> Soft penalty (Encourage upside)
+                    if (overage === 0) {
+                        if (bestStarterRank <= 5) penalty = 0.05;       // Elite TE -> Hard penalty
+                        else if (bestStarterRank <= 10) penalty = 0.25; // Mid TE -> Moderate penalty
+                        else penalty = 0.60;                            // Weak TE -> Soft penalty (Encourage upside backup)
                     } else {
-                        penalty = 0.05; // 2nd+ backup TE -> Hard penalty
+                        penalty = 0.05;
                     }
                 } else if (p.Pos === 'QB') {
                     if ((State.settings.roster.Superflex?.max || 0) > 0) {
                         penalty = Math.pow(0.70, overage + 1);
                     } else {
-                        if (overage === 0) { // Evaluating your 1st Backup QB
-                            if (bestStarterRank <= 6) penalty = 0.05;       // Elite QB drafted -> Hard penalty
-                            else if (bestStarterRank <= 12) penalty = 0.15; // Mid QB drafted -> Moderate penalty
-                            else penalty = 0.45;                            // Weak QB drafted -> Soft penalty (Encourage upside)
+                        if (overage === 0) {
+                            if (bestStarterRank <= 6) penalty = 0.05;       // Elite QB -> Hard penalty
+                            else if (bestStarterRank <= 12) penalty = 0.15; // Mid QB -> Moderate penalty
+                            else penalty = 0.45;                            // Weak QB -> Soft penalty
                         } else {
-                            penalty = 0.05; // 2nd+ backup QB -> Hard penalty
+                            penalty = 0.05;
                         }
                     }
                 } else {
-                    // PK and DST
                     penalty = overage === 0 ? 0.05 : 0.01;
                 }
 
