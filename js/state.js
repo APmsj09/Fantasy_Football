@@ -1493,7 +1493,7 @@ const State = {
 
             if (lacksIndividualMetrics) {
                 p.isNewRole = true;
-                let teamDist = (this.teamTargets || []).find(t => t.Team === p.Team);
+                
 
                 // FIX: Apply to depthChart 1 AND 2, so rookies backing up veterans get credit for the scheme's upside
                 if (teamDist && (p.depthChart === 1 || p.depthChart === 2)) {
@@ -1742,9 +1742,6 @@ const State = {
 
             p._isFlyer = false;
             p._isSafeFloor = false;
-
-            // tTeam is already defined up in Step 7, so we just use it here!
-            const teamDist = (this.teamTargets || []).find(t => this.normalizeTeam(t.Team) === tTeam);
 
             // 🌟 INHERITED ROLE FLAG (For Rookies & Free Agents)
             let isInheritedStarter = p.isNewRole && p.depthChart === 1;
