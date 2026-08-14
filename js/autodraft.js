@@ -208,18 +208,19 @@ window.AutoDraft = {
                 rawVbd = (rawVbd * floorWeight) + (ceilingScore * upsideWeight);
 
                 if (['RB', 'WR', 'TE', 'QB'].includes(p.Pos)) {
+                    let roundScale = Math.min(1.0, (round - 6) * 0.25);
+
                     // Draft Handcuffs to protect key investments or find league-winners
-                    if (userOwnsStarter && p.Pos === 'RB') rawVbd += (round * 1.5);
-                    else if (p.isRBHandcuff) rawVbd += (round * 0.8);
+                    if (userOwnsStarter && p.Pos === 'RB') rawVbd += (45.0 * roundScale);
+                    else if (p.isRBHandcuff) rawVbd += (30.0 * roundScale);
                     
                     // Breakout youth/stash potential based on situation and metrics
-                    if (p.age && p.age <= 23) rawVbd += (round * 0.5);
-                    if (p.depthChart === 2 && p.isNewRole) rawVbd += (round * 0.6); // Injury away from massive role
-
-                    if (p.targetShare && p.targetShare >= 15) rawVbd += 2.0;
-                    if (p.aDOT && p.aDOT >= 12.0) rawVbd += 1.5;
-                    if (p.brokenTackles && p.brokenTackles > 15) rawVbd += 1.5;
-                    if (p.hvo && p.hvo >= 40) rawVbd += 1.5;
+                    else if (p.depthChart === 2 && p.isNewRole) rawVbd += (25.0 * roundScale);
+                    else if (p.age && p.age <= 23) rawVbd += (20.0 * roundScale);
+                    else if (p.targetShare && p.targetShare >= 15) rawVbd += (18.0 * roundScale);
+                    else if (p.aDOT && p.aDOT >= 12.0) rawVbd += (18.0 * roundScale);
+                    else if (p.brokenTackles && p.brokenTackles > 15) rawVbd += (15.0 * roundScale);
+                    else if (p.hvo && p.hvo >= 40) rawVbd += (15.0 * roundScale);
                 }
             }
 

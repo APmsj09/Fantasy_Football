@@ -2223,7 +2223,8 @@ const UI = {
                 p._stackPartner = null;
             }
 
-            // 4. Late-Round Upside Shift (Rounds 7+)
+            // 4. Late-Round Upside Shift & Archetype Bonuses (Rounds 7+)
+            p._sleeperBadge = null;
             if (currentRound >= 7) {
                 let upsideWeight = Math.min(1.0, (currentRound - 6) * 0.15);
                 let floorWeight = 1.0 - upsideWeight;
@@ -2231,6 +2232,39 @@ const UI = {
                 let floorScore = score;
                 let ceilingScore = p.upsideScore || score;
                 score = (floorScore * floorWeight) + (ceilingScore * upsideWeight);
+
+                // ⚡ Inject massive archetype bonuses to bury generic low-upside backups
+                if (['RB', 'WR', 'TE', 'QB'].includes(p.Pos)) {
+                    let roundScale = Math.min(1.0, (currentRound - 6) * 0.25);
+                    let playerAge = p.age || p.Age;
+                    let userOwnsStarter = p.starterName && userRoster.some(r => r._cleanName === State.normalizeName(p.starterName));
+
+                    if (userOwnsStarter && p.Pos === 'RB') {
+                        score += (45.0 * roundScale); // Massive boost to secure the direct handcuff
+                        p._sleeperBadge = `🔒 Direct Handcuff for ${p.starterName}`;
+                    } else if (p.isRBHandcuff) {
+                        score += (30.0 * roundScale); // High boost for lottery ticket RBs
+                        p._sleeperBadge = `🎲 Lottery Ticket (${p.starterName}'s Backup)`;
+                    } else if (p.depthChart === 2 && p.isNewRole) {
+                        score += (25.0 * roundScale);
+                        p._sleeperBadge = `📈 Breakout Stash (1 Injury Away)`;
+                    } else if (playerAge && playerAge <= 23) {
+                        score += (20.0 * roundScale);
+                        p._sleeperBadge = `🌱 Youth Breakout (Age ${playerAge})`;
+                    } else if (p.targetShare && p.targetShare >= 15.0) {
+                        score += (18.0 * roundScale);
+                        p._sleeperBadge = `🎯 ${p.targetShare}% Tgt Share Sleeper`;
+                    } else if (p.aDOT && p.aDOT >= 12.0) {
+                        score += (18.0 * roundScale);
+                        p._sleeperBadge = `🚀 Deep Threat (${p.aDOT} aDOT)`;
+                    } else if (p.brokenTackles && p.brokenTackles > 15) {
+                        score += (15.0 * roundScale);
+                        p._sleeperBadge = `🏃 Elusive (${p.brokenTackles} Broken Tackles)`;
+                    } else if (p.hvo && p.hvo >= 40) {
+                        score += (15.0 * roundScale);
+                        p._sleeperBadge = `💎 High Value Touch Profile`;
+                    }
+                }
             } else if (p.upsideScore && (p.AdvVBD || p.VBD) > 0) {
                 let ceilingGain = (p.upsideScore - (p.AdvVBD || p.VBD)) * 0.25;
                 score += Math.max(0, ceilingGain);
@@ -2409,7 +2443,8 @@ const UI = {
 
             // ⚡ Full Decision Tree (Context Badges + Tier Cliffs + Stacks + Urgency + Need)
             let highlight = '';
-            if (p._rosterContextBadge) highlight = `<span class="text-amber-300 font-bold">${p._rosterContextBadge}</span>`;
+            if (p._sleeperBadge) highlight = `<span class="text-emerald-300 font-bold">${p._sleeperBadge}</span>`;
+            else if (p._rosterContextBadge) highlight = `<span class="text-amber-300 font-bold">${p._rosterContextBadge}</span>`;
             else if (p._tierCliffTag) highlight = `<span class="text-amber-300 font-bold">${p._tierCliffTag}</span>`;
             else if (currentRound >= 9 && p._ceilingTags && p._ceilingTags.length > 0) highlight = `🚀 Upside: ${p._ceilingTags.join(' & ')}`;
             else if (survivalProb < 0.15 && (isStarterNeeded || hasPositiveValue)) highlight = `⚡ High Urgency (Gone by Pick ${nextUserOverallPick})`;
