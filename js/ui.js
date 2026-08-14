@@ -552,7 +552,8 @@ const UI = {
             const totalTds = isDST ? ((ps.defTd || 0) + (ps.spcTd || 0)) : (ps.totalTd || 0);
             const tdText = isDST ? `${totalTds} DEF/ST TDs` : `${totalTds} total TDs`;
             const pronoun = isDST ? "They are" : "He is";
-            pastStatsContext = ` ${pronoun} coming off a 2025 campaign averaging <strong>${p.pastPpg.toFixed(1)} PPG</strong> over ${ps.gp || 17} games (${tdText}).`;
+            const sampleCaveat = (!isDST && ps.gp && ps.gp <= 6) ? ` <span class="text-amber-300 font-bold">(limited ${ps.gp}-game sample)</span>` : "";
+            pastStatsContext = ` ${pronoun} coming off a 2025 campaign averaging <strong>${p.pastPpg.toFixed(1)} PPG</strong> over ${ps.gp || 17} games (${tdText})${sampleCaveat}.`;
         }
 
         let statProof = "";
@@ -665,9 +666,17 @@ const UI = {
 
                 // Tiered PPG
                 if (p.pastPpg && p.pastPpg >= 18.0) {
-                    pros.push(`<strong>Superstar Production:</strong> Delivered an elite <strong>${p.pastPpg.toFixed(1)} PPG</strong> in 2025, anchoring fantasy lineups.`);
+                    if (pastGP <= 6) {
+                        pros.push(`<strong>Elite Small-Sample Dominance:</strong> Averaged a staggering <strong>${p.pastPpg.toFixed(1)} PPG</strong> in 2025, though across a limited ${pastGP}-game sample.`);
+                    } else {
+                        pros.push(`<strong>Superstar Production:</strong> Delivered an elite <strong>${p.pastPpg.toFixed(1)} PPG</strong> in 2025, anchoring fantasy lineups.`);
+                    }
                 } else if (p.pastPpg && p.pastPpg >= 14.5) {
-                    pros.push(`<strong>Proven High-End Output:</strong> Delivered a strong <strong>${p.pastPpg.toFixed(1)} PPG</strong> in 2025.`);
+                    if (pastGP <= 6) {
+                        pros.push(`<strong>High-Impact Sample:</strong> Produced <strong>${p.pastPpg.toFixed(1)} PPG</strong> across a limited ${pastGP} games in 2025.`);
+                    } else {
+                        pros.push(`<strong>Proven High-End Output:</strong> Delivered a strong <strong>${p.pastPpg.toFixed(1)} PPG</strong> in 2025.`);
+                    }
                 }
 
                 // Tiered Ground Efficiency
@@ -982,6 +991,9 @@ const UI = {
                 if (games <= 8 && games > 0) {
                     cons.push(`<strong>Severe Durability Risk:</strong> Missed over half the season, playing only <strong>${games} games</strong>. Staying on the field is a major question mark.`);
                     riskScore += 3;
+                    if (games <= 6) {
+                        cons.push(`<strong>Small Sample Volatility:</strong> 2025 efficiency metrics are based on just <strong>${games} games</strong>. Rates like PPG and TD frequency carry elevated regression risk over a full 17-game slate.`);
+                    }
                 } else if (games <= 12 && games > 0) {
                     cons.push(`<strong>Durability Risk:</strong> Missed significant time last season, playing only <strong>${games} games</strong>. Injury variance lowers his floor.`);
                     riskScore += 2;

@@ -1513,13 +1513,33 @@ const State = {
                 }
             }
 
-            // 5. Tiered Efficiency & "TD-Dependency" Penalties
-            if (p.targetShare) {
-                if (p.targetShare >= 32) adjMultiplier += 0.08;      // Mega-Alpha Tier
-                else if (p.targetShare >= 28) adjMultiplier += 0.05;
-                else if (p.targetShare >= 23) adjMultiplier += 0.025;
+            // 5. Multi-Tiered Sample Confidence & Volume Density Engine
+            let pastGp = p.pastStats?.gp ?? p.boomBust?.games ?? 17;
+            let sampleConfidence = 1.0;
+            let isMicroSample = pastGp <= 4;
+            let isPartialSample = pastGp > 4 && pastGp <= 8;
 
-                if (p.targetShare >= 22 && p.aDOT >= 12.0) adjMultiplier += 0.03;
+            if (pastGp <= 4) sampleConfidence = 0.45;       // Micro-Sample (1-4 GP)
+            else if (pastGp <= 8) sampleConfidence = 0.68;  // Partial-Sample (5-8 GP)
+            else if (pastGp <= 13) sampleConfidence = 0.88; // Solid-Sample (9-13 GP)
+            else sampleConfidence = 1.00;                   // Full-Season (14+ GP)
+
+            // 2nd-Level: Volume Density Check
+            let tgtsPerGame = (p.pastStats?.targets || 0) / Math.max(1, pastGp);
+            let touchesPerGame = ((p.pastStats?.rushAtt || 0) + (p.pastStats?.rec || 0)) / Math.max(1, pastGp);
+            let hasAlphaDensity = (['WR', 'TE'].includes(p.Pos) && tgtsPerGame >= 7.5) || (p.Pos === 'RB' && touchesPerGame >= 15.0);
+
+            if ((isMicroSample || isPartialSample) && hasAlphaDensity) {
+                sampleConfidence = Math.min(0.85, sampleConfidence + 0.18);
+                p._isSmallSampleAlpha = true;
+            }
+
+            if (p.targetShare) {
+                if (p.targetShare >= 32) adjMultiplier += (0.08 * sampleConfidence);
+                else if (p.targetShare >= 28) adjMultiplier += (0.05 * sampleConfidence);
+                else if (p.targetShare >= 23) adjMultiplier += (0.025 * sampleConfidence);
+
+                if (p.targetShare >= 22 && p.aDOT >= 12.0) adjMultiplier += (0.03 * sampleConfidence);
 
                 // --- WOPR (Weighted Opportunity Rating) ENGINE ---
                 if (['WR', 'TE'].includes(p.Pos)) {
@@ -1543,25 +1563,48 @@ const State = {
 
             if (p.Pos === 'RB') {
                 if (p.brokenTackles) {
-                    if (p.brokenTackles >= 30) adjMultiplier += 0.04;
-                    else if (p.brokenTackles >= 20) adjMultiplier += 0.02;
+                    if (p.brokenTackles >= 30) adjMultiplier += (0.04 * sampleConfidence);
+                    else if (p.brokenTackles >= 20) adjMultiplier += (0.02 * sampleConfidence);
                 }
                 if (p.hvo) {
-                    if (p.hvo >= 100) adjMultiplier += 0.08; // NEW: CMC/Breece Hall Tier
-                    else if (p.hvo >= 80) adjMultiplier += 0.04;
-                    else if (p.hvo >= 60) adjMultiplier += 0.02;
+                    if (p.hvo >= 100) adjMultiplier += (0.08 * sampleConfidence);
+                    else if (p.hvo >= 80) adjMultiplier += (0.04 * sampleConfidence);
+                    else if (p.hvo >= 60) adjMultiplier += (0.02 * sampleConfidence);
+                }
+
+                // 2nd/3rd-Level: YAC vs. O-Line Blocking Context Check
+                if (p.pastStats && p.pastStats.rushAtt >= 60) {
+                    let ypc = (p.pastStats.rushYds || 0) / p.pastStats.rushAtt;
+                    let yac = p.yacAtt || 0;
+                    if (yac >= 3.2 && (!rushEnv || rushEnv.ybcAtt <= 2.2)) {
+                        adjMultiplier += 0.035;
+                        p._isIndependentYACCreator = true;
+                    } else if (ypc >= 4.8 && yac <= 2.3 && rushEnv && rushEnv.ybcAtt >= 2.8) {
+                        adjMultiplier -= 0.025;
+                        p._isSystemDependentRB = true;
+                    }
+                }
+            }
+
+            // 2nd/3rd-Level: Red Zone Opportunity vs. TD Regression Check
+            if (p.pastStats && p.pastStats.gp >= 4) {
+                let rzOpps = (p.rzAtt || 0) + (p.rzTgt || 0);
+                let actualTds = p.pastStats.totalTd || 0;
+                if (actualTds >= 7 && rzOpps < 8 && !p._isSmallSampleAlpha) {
+                    adjMultiplier -= 0.04;
+                    p._isFlukeTDScorer = true;
                 }
             }
 
             if (['WR', 'TE'].includes(p.Pos)) {
                 if (p.ypt && p.targetShare && p.targetShare >= 15) {
-                    if (p.ypt >= 10.5) adjMultiplier += 0.04;
-                    else if (p.ypt >= 9.0) adjMultiplier += 0.02;
+                    if (p.ypt >= 10.5) adjMultiplier += (0.04 * sampleConfidence);
+                    else if (p.ypt >= 9.0) adjMultiplier += (0.02 * sampleConfidence);
                     else if (p.ypt < 6.5) adjMultiplier -= 0.04;
                 }
                 if (p.trueCatchRate) {
-                    if (p.trueCatchRate >= 92) adjMultiplier += 0.03;
-                    else if (p.trueCatchRate >= 86) adjMultiplier += 0.015;
+                    if (p.trueCatchRate >= 92) adjMultiplier += (0.03 * sampleConfidence);
+                    else if (p.trueCatchRate >= 86) adjMultiplier += (0.015 * sampleConfidence);
                 }
                 if (p.dropRate) {
                     if (p.dropRate > 10) adjMultiplier -= 0.04;
@@ -1957,6 +2000,9 @@ const State = {
 
             // Range of Outcomes / Upside Potential (Continuous & Gradient-Based)
             let upsideBonus = 0;
+            if (pastGp <= 6 && p.pastPpg >= 15.0) {
+                upsideBonus += Math.min(0.20, (p.pastPpg - 14.0) * 0.015);
+            }
             if (p.aDOT && p.aDOT > 8.0) upsideBonus += Math.min(0.08, (p.aDOT - 8.0) * 0.012); // e.g. 14 aDOT = +0.072
             if (p.hvo && p.hvo > 30) upsideBonus += Math.min(0.08, (p.hvo - 30) * 0.0015);      // e.g. 80 HVO = +0.075
             if (p.pastStats && p.pastStats.bigPlays) upsideBonus += Math.min(0.08, p.pastStats.bigPlays * 0.006); // e.g. 10 big plays = +0.060

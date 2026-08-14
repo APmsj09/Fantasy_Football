@@ -39,12 +39,10 @@ window.Compare = {
         const currentRound = Math.floor(State.currentPick / State.settings.numTeams) + 1;
         let tierName = `Tier ${tierNum}`;
 
-        let posRankNum = player.posRank ? parseInt(player.posRank.replace(/[^\d]/g, ''), 10) : 99;
-
         if (currentRound <= 6) {
-            if (posRankNum <= 12) tierName = `Tier 1 (Elite ${player.Pos})`;
-            else if (posRankNum <= 24) tierName = `Tier 2 (High-End ${player.Pos})`;
-            else if (posRankNum <= 36) tierName = `Tier 3 (Solid ${player.Pos})`;
+            if (tierNum === 1) tierName = `Tier 1 (Elite ${player.Pos})`;
+            else if (tierNum === 2) tierName = `Tier 2 (High-End ${player.Pos})`;
+            else if (tierNum === 3) tierName = `Tier 3 (Solid ${player.Pos})`;
             else tierName = `Tier ${tierNum} (${player.Pos} Depth)`;
         } else {
             // Late-Round Archetype Tier Naming (Removes misleading Tier X numbers)
@@ -192,7 +190,41 @@ window.Compare = {
             consForAlt.push(`<strong>${impactLabel}:</strong> Adds +${altPPW.toFixed(1)} PPW to your starters compared to +${topPPW.toFixed(1)} PPW for ${topPick.Player}.`);
         }
 
+         // 3.5. Sample Size Reliability & Multi-Level Trait Context
+        const topGp = topPick.pastStats?.gp ?? 17;
+        const altGp = alt.pastStats?.gp ?? 17;
+
+        if (topGp >= 14 && altGp <= 7 && alt.pastPpg >= 14.0) {
+            let densityNote = alt._isSmallSampleAlpha ? "with undeniable alpha per-game usage density" : "though heavily skewed by limited sample variance";
+            prosForAlt.push(`<strong>Explosive Per-Game Ceiling:</strong> Produced at an elite rate (${alt.pastPpg.toFixed(1)} PPG in ${altGp} games) ${densityNote}.`);
+            consForAlt.push(`<strong>Proven Full-Season Reliability:</strong> ${topPick.Player} sustained high-end production over a full ${topGp}-game slate, carrying far less regression risk.`);
+        } else if (altGp >= 14 && topGp <= 7 && topPick.pastPpg >= 14.0) {
+            prosForAlt.push(`<strong>Full-Season Track Record:</strong> Bankable ${altGp}-game durability and volume baseline vs. ${topPick.Player}'s ${topGp}-game sample.`);
+            consForAlt.push(`<strong>Per-Game Dominance:</strong> ${topPick.Player} flashed league-winning per-game dominance (${topPick.pastPpg.toFixed(1)} PPG) when active.`);
+        }
+
+        if (alt._isIndependentYACCreator) {
+            prosForAlt.push(`<strong>Independent Tackle-Breaker:</strong> Creates high yards after contact independently without relying on elite blocking.`);
+        }
+        if (alt._isSystemDependentRB) {
+            consForAlt.push(`<strong>System-Dependent Rusher:</strong> 2025 efficiency was heavily propped up by massive blocking lanes rather than individual tackle-breaking.`);
+        }
+        if (alt._isFlukeTDScorer) {
+            consForAlt.push(`<strong>TD Fluke Warning:</strong> 2025 TD output lacked underlying red-zone opportunity volume, making high regression likely.`);
+        }
+
         // 4. Boom/Bust Consistency Check
+        const topGp = topPick.pastStats?.gp ?? 17;
+        const altGp = alt.pastStats?.gp ?? 17;
+
+        if (topGp >= 14 && altGp <= 7 && alt.pastPpg >= 14.0) {
+            prosForAlt.push(`<strong>Explosive Per-Game Ceiling:</strong> Produced at a higher per-game clip in 2025 (${alt.pastPpg.toFixed(1)} PPG), though in a limited ${altGp}-game sample.`);
+            consForAlt.push(`<strong>Proven Full-Season Reliability:</strong> ${topPick.Player} sustained elite production over a full ${topGp}-game slate, whereas ${alt.Player}'s efficiency carries small-sample volatility.`);
+        } else if (altGp >= 14 && topGp <= 7 && topPick.pastPpg >= 14.0) {
+            prosForAlt.push(`<strong>Full-Season Track Record:</strong> Proven ${altGp}-game durability and volume baseline compared to ${topPick.Player}'s limited ${topGp}-game sample.`);
+            consForAlt.push(`<strong>Per-Game Ceiling Gap:</strong> ${topPick.Player} flashed league-winning per-game dominance (${topPick.pastPpg.toFixed(1)} PPG) when active.`);
+        }
+
         if (alt.boomBust && topPick.boomBust) {
             if (alt.boomBust.bust + 8 < topPick.boomBust.bust) {
                 prosForAlt.push(`<strong>Dramatically Safer Floor:</strong> Busted in only <strong>${alt.boomBust.bust}%</strong> of 2025 games vs. ${topPick.Player}'s <strong>${topPick.boomBust.bust}%</strong> bust rate.`);
@@ -244,8 +276,15 @@ window.Compare = {
         } else {
             // Cross-Position Tier Scarcity Comparison (Caps at Round 7 to prevent late-round noise)
             if (topTier.isLastInTier && (topTier.tierNum <= 2 || currentRound <= 7)) {
+                const altAvailInTier = State.availablePlayers.filter(p => p.Pos === alt.Pos && Compare.getTierDetails(p).tierNum === altTier.tierNum);
+                const altSurvivingCount = altAvailInTier.filter(p => (p.adp || 0) > nextPick).length;
+                
+                let survivalNote = altSurvivingCount > 0 
+                    ? `(with ~<strong>${altSurvivingCount}</strong> likely to reach your next pick at Pick ${nextPick})` 
+                    : `(though <strong>none</strong> are projected to survive to your next pick at Pick ${nextPick})`;
+
                 let scarcityLabel = currentRound <= 6 ? `in ${topTier.tierName}` : `in the ${topTier.tierName} pool`;
-                consForAlt.push(`<strong>Cross-Positional Scarcity:</strong> ${topPick.Player} is the <strong>LAST remaining option</strong> ${scarcityLabel} (${topTier.remaining} left), whereas ${alt.Pos} still has <strong>${altTier.remaining} option(s)</strong> available in ${altTier.tierName}.`);
+                consForAlt.push(`<strong>Cross-Positional Scarcity:</strong> ${topPick.Player} is the <strong>LAST remaining option</strong> ${scarcityLabel}, whereas ${alt.Pos} has <strong>${altTier.remaining} option(s)</strong> available in ${altTier.tierName} ${survivalNote}.`);
             }
         }
 
