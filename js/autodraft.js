@@ -141,10 +141,36 @@ window.AutoDraft = {
             } else {
                 let totalPosCount = team.roster.filter(r => r.Pos === p.Pos).length;
                 let overage = Math.max(0, totalPosCount - starterMax);
-                if (isFlexRBWROpen || isFlexOpen || isSuperflexOpen || State.isPositionFlexEligible(p.Pos)) {
-                    multiplier *= Math.pow(0.5, overage + 1);
+                
+                // Evaluate the strength of the player(s) already drafted at this position by the CPU
+                let draftedAtPos = team.roster.filter(r => r.Pos === p.Pos);
+                let bestStarterRank = draftedAtPos.length > 0 ? Math.min(...draftedAtPos.map(r => parseInt(r.posRank?.replace(/\D/g, '') || 99))) : 99;
+
+                if (['RB', 'WR'].includes(p.Pos)) {
+                    multiplier *= Math.pow(0.65, overage + 1); // CPUs are slightly more conservative than humans
+                } else if (p.Pos === 'TE') {
+                    if (overage === 0) {
+                        if (bestStarterRank <= 5) multiplier *= 0.05;
+                        else if (bestStarterRank <= 10) multiplier *= 0.25;
+                        else multiplier *= 0.60;
+                    } else {
+                        multiplier *= 0.05;
+                    }
+                } else if (p.Pos === 'QB') {
+                    if ((State.settings.roster.Superflex?.max || 0) > 0) {
+                        multiplier *= Math.pow(0.60, overage + 1);
+                    } else {
+                        if (overage === 0) {
+                            if (bestStarterRank <= 6) multiplier *= 0.05;
+                            else if (bestStarterRank <= 12) multiplier *= 0.15;
+                            else multiplier *= 0.45;
+                        } else {
+                            multiplier *= 0.05;
+                        }
+                    }
                 } else {
-                    multiplier *= (overage === 0 ? 0.05 : 0.01);
+                    // PK and DST
+                    multiplier *= (overage === 0 ? 0.15 : 0.05); 
                 }
             }
 
@@ -159,24 +185,41 @@ window.AutoDraft = {
             // Suppress PK and DST until late rounds unless manager profile historically reaches
             const canDraftPK = profile && profile.reachesForKicker && round >= Math.floor(profile.pkAvgRound);
             const canDraftDST = profile && profile.reachesForDST && round >= Math.floor(profile.dstAvgRound);
-            if (p.Pos === 'PK' && round <= totalRounds - 3 && !canDraftPK) multiplier *= 0.001;
-            if (p.Pos === 'DST' && round <= totalRounds - 3 && !canDraftDST) multiplier *= 0.001;
+            
+            if (p.Pos === 'PK' && round <= totalRounds - 2 && !canDraftPK) {
+                multiplier *= 0.001; // Kickers streamed easily; delay until end
+            }
+            if (p.Pos === 'DST' && !canDraftDST) {
+                if (posRank < 6 && round >= 10) {
+                    multiplier *= 0.8; // Top 5-6 DSTs hold enough value to grab in double-digit rounds
+                } else if (round <= totalRounds - 2) {
+                    multiplier *= 0.001; // Wait to stream DSTs outside the elite tier
+                }
+            }
 
             let rawVbd = p.AdvVBD ?? p.VBD ?? 0;
+            let userOwnsStarter = p.starterName && team.roster.some(r => r._cleanName === State.normalizeName(p.starterName));
 
-            // --- NEW: CPU Late-Round Upside & Sleeper Shift ---
-            if (round >= 9) {
-                let upsideWeight = Math.min(1.0, (round - 8) * 0.15);
+            // --- CPU Late-Round Upside, Handcuffs, & Sleeper Shift ---
+            if (round >= 7) {
+                let upsideWeight = Math.min(1.0, (round - 6) * 0.15);
                 let floorWeight = 1.0 - upsideWeight;
                 let ceilingScore = p.upsideScore || rawVbd;
                 rawVbd = (rawVbd * floorWeight) + (ceilingScore * upsideWeight);
 
                 if (['RB', 'WR', 'TE', 'QB'].includes(p.Pos)) {
-                    if (p.isRBHandcuff) rawVbd += (round * 0.6);
-                    else if (p.age && p.age <= 23) rawVbd += (round * 0.5);
+                    // Draft Handcuffs to protect key investments or find league-winners
+                    if (userOwnsStarter && p.Pos === 'RB') rawVbd += (round * 1.5);
+                    else if (p.isRBHandcuff) rawVbd += (round * 0.8);
+                    
+                    // Breakout youth/stash potential based on situation and metrics
+                    if (p.age && p.age <= 23) rawVbd += (round * 0.5);
+                    if (p.depthChart === 2 && p.isNewRole) rawVbd += (round * 0.6); // Injury away from massive role
 
                     if (p.targetShare && p.targetShare >= 15) rawVbd += 2.0;
                     if (p.aDOT && p.aDOT >= 12.0) rawVbd += 1.5;
+                    if (p.brokenTackles && p.brokenTackles > 15) rawVbd += 1.5;
+                    if (p.hvo && p.hvo >= 40) rawVbd += 1.5;
                 }
             }
 

@@ -2142,7 +2142,17 @@ const UI = {
         // Filter valid players
         let viablePlayers = State.availablePlayers.filter(p => {
             let pos = p.Pos;
-            if (['PK', 'DST'].includes(pos) && currentRound <= totalRounds - 3) return false;
+            
+            // Delay Kickers and Non-Elite Defenses
+            if (pos === 'PK' && currentRound <= totalRounds - 2) return false;
+            if (pos === 'DST') {
+                let posRank = parseInt(p.posRank?.replace(/\D/g, '') || 99);
+                if (posRank <= 6 && currentRound >= 10) {
+                    // Allow elite Top 6 DSTs to be recommended starting Round 10
+                } else if (currentRound <= totalRounds - 2) {
+                    return false;
+                }
+            }
 
             let posRoster = State.settings.roster[pos];
             let starterMax = posRoster ? posRoster.max : 1;
@@ -2205,20 +2215,14 @@ const UI = {
                 p._stackPartner = null;
             }
 
-            // 3. Late-Round Upside Shift
-            if (currentRound >= 9) {
-                let upsideWeight = Math.min(1.0, (currentRound - 8) * 0.15);
+            // 3. Late-Round Upside Shift & Breakout Candidates
+            if (currentRound >= 7) {
+                let upsideWeight = Math.min(1.0, (currentRound - 6) * 0.15);
                 let floorWeight = 1.0 - upsideWeight;
 
                 let floorScore = score;
                 let ceilingScore = p.upsideScore || score;
                 score = (floorScore * floorWeight) + (ceilingScore * upsideWeight);
-
-                if (p.Pos !== 'PK' && p.Pos !== 'DST') {
-                    if (p.isRBHandcuff || (p.age && p.age <= 22)) {
-                        score += (currentRound * 0.8);
-                    }
-                }
             } else if (p.upsideScore && (p.AdvVBD || p.VBD) > 0) {
                 let ceilingGain = (p.upsideScore - (p.AdvVBD || p.VBD)) * 0.25;
                 score += Math.max(0, ceilingGain);
@@ -2280,9 +2284,39 @@ const UI = {
 
             if (!isStarterOpen && !(isFlexRBWROpen || isFlexOpen || isSuperflexOpen)) {
                 let overage = totalPosCount - starterMax;
-                let penalty = State.isPositionFlexEligible(p.Pos)
-                    ? Math.pow(0.5, overage + 1)
-                    : (overage === 0 ? 0.05 : 0.01);
+                let penalty;
+
+                // Evaluate the strength of the player(s) already drafted at this position
+                let draftedAtPos = userRoster.filter(r => r.Pos === p.Pos);
+                let bestStarterRank = draftedAtPos.length > 0 ? Math.min(...draftedAtPos.map(r => parseInt(r.posRank?.replace(/\D/g, '') || 99))) : 99;
+
+                if (['RB', 'WR'].includes(p.Pos)) {
+                    // Extremely soft penalty to encourage hoarding RB/WR depth
+                    penalty = Math.pow(0.85, overage + 1);
+                } else if (p.Pos === 'TE') {
+                    if (overage === 0) { // Evaluating your 1st Backup TE
+                        if (bestStarterRank <= 5) penalty = 0.05;       // Elite TE drafted -> Hard penalty
+                        else if (bestStarterRank <= 10) penalty = 0.25; // Mid TE drafted -> Moderate penalty
+                        else penalty = 0.60;                            // Weak TE drafted -> Soft penalty (Encourage upside)
+                    } else {
+                        penalty = 0.05; // 2nd+ backup TE -> Hard penalty
+                    }
+                } else if (p.Pos === 'QB') {
+                    if ((State.settings.roster.Superflex?.max || 0) > 0) {
+                        penalty = Math.pow(0.70, overage + 1);
+                    } else {
+                        if (overage === 0) { // Evaluating your 1st Backup QB
+                            if (bestStarterRank <= 6) penalty = 0.05;       // Elite QB drafted -> Hard penalty
+                            else if (bestStarterRank <= 12) penalty = 0.15; // Mid QB drafted -> Moderate penalty
+                            else penalty = 0.45;                            // Weak QB drafted -> Soft penalty (Encourage upside)
+                        } else {
+                            penalty = 0.05; // 2nd+ backup QB -> Hard penalty
+                        }
+                    }
+                } else {
+                    // PK and DST
+                    penalty = overage === 0 ? 0.05 : 0.01;
+                }
 
                 score = applyFactor(score, penalty);
             }
@@ -2301,34 +2335,36 @@ const UI = {
                 }
             }
 
-            // 7. Late-Round Sleeper & Handcuff Badges (Rounds 8+, Scaled by Round)
+            // 7. Late-Round Sleeper & Breakout Badges (Rounds 7+, Scaled by Round)
             p._sleeperBadge = null;
-            if (currentRound >= 8 && ['RB', 'WR', 'TE', 'QB'].includes(p.Pos)) {
-                let roundScale = Math.min(1.0, (currentRound - 7) * 0.25);
+            if (currentRound >= 7 && ['RB', 'WR', 'TE', 'QB'].includes(p.Pos)) {
+                let roundScale = Math.min(1.0, (currentRound - 6) * 0.25);
+                let playerAge = p.age || p.Age;
 
-                if (userOwnsStarter) {
-                    // REPLACE THIS LINE: score += (22.0 * roundScale);
-                    score += (12.0 * roundScale);
+                if (userOwnsStarter && p.Pos === 'RB') {
+                    score += (15.0 * roundScale);
                     p._sleeperBadge = `🔒 Handcuff for ${p.starterName}`;
                 } else if (p.isRBHandcuff) {
-                    // REPLACE THIS LINE: score += (14.0 * roundScale);
-                    score += (8.0 * roundScale);
-                    p._sleeperBadge = `🎲 Lottery Ticket (${p.starterName}'s Backup)`;
-                } else if (p.age && p.age <= 22) {
                     score += (10.0 * roundScale);
-                    p._sleeperBadge = `🌱 Rookie Breakout (Age ${p.age})`;
+                    p._sleeperBadge = `🎲 Lottery Ticket (${p.starterName}'s Backup)`;
+                } else if (p.depthChart === 2 && p.isNewRole) {
+                    score += (9.0 * roundScale);
+                    p._sleeperBadge = `📈 Breakout Stash (1 Injury Away)`;
+                } else if (playerAge && playerAge <= 23) {
+                    score += (8.0 * roundScale);
+                    p._sleeperBadge = `🌱 Youth Breakout (Age ${playerAge})`;
                 } else if (p.targetShare && p.targetShare >= 15.0) {
                     score += (8.0 * roundScale);
-                    p._sleeperBadge = `🎯 ${p.targetShare}% Target Share Sleeper`;
+                    p._sleeperBadge = `🎯 ${p.targetShare}% Tgt Share Sleeper`;
                 } else if (p.aDOT && p.aDOT >= 12.0) {
                     score += (8.0 * roundScale);
                     p._sleeperBadge = `🚀 Deep Threat (${p.aDOT} aDOT)`;
-                }
-
-                let playerAge = p.age || p.Age;
-                if (playerAge && playerAge <= 24 && !p._sleeperBadge) {
-                    score += (6.0 * roundScale);
-                    p._sleeperBadge = `🌱 Youth Breakout (Age ${playerAge})`;
+                } else if (p.brokenTackles && p.brokenTackles > 15) {
+                    score += (7.0 * roundScale);
+                    p._sleeperBadge = `🏃 Elusive (${p.brokenTackles} Broken Tackles)`;
+                } else if (p.hvo && p.hvo >= 40) {
+                    score += (7.0 * roundScale);
+                    p._sleeperBadge = `💎 High Value Touch Profile`;
                 }
             }
 
@@ -2422,7 +2458,6 @@ const UI = {
             let highlight = '';
             if (p._rosterContextBadge) highlight = `<span class="text-amber-300 font-bold">${p._rosterContextBadge}</span>`;
             else if (p._tierCliffTag) highlight = `<span class="text-amber-300 font-bold">${p._tierCliffTag}</span>`;
-            else if (p._stackPartner) highlight = `⚡ Stack with ${p._stackPartner}`;
             else if (currentRound >= 9 && p._ceilingTags && p._ceilingTags.length > 0) highlight = `🚀 Upside: ${p._ceilingTags.join(' & ')}`;
             else if (survivalProb < 0.15 && (isStarterNeeded || hasPositiveValue)) highlight = `⚡ High Urgency (Gone by Pick ${nextUserOverallPick})`;
             else if (p.adp && (p.adp < currentOverallPick)) highlight = `ADP Value (Passed ADP ${p.adp.toFixed(0)})`;

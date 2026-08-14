@@ -100,9 +100,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function enrichPlayerData() {
         try {
-            // Using a new cache key to prevent conflicts with your old one
-            const cacheKey = 'sleeper_nfl_players_minimal_cache';
-            const cacheTimeKey = 'sleeper_nfl_players_time';
+            // Bumped cache key to ensure fresh fetch with depth chart fields
+            const cacheKey = 'sleeper_nfl_players_depth_v3_cache';
+            const cacheTimeKey = 'sleeper_nfl_players_time_v3';
             const cacheExpiry = 24 * 60 * 60 * 1000; // 24 hours
             let minimalData = {};
 
@@ -113,7 +113,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!response.ok) return;
                 const data = await response.json();
 
-                // ⚡ Extract ONLY necessary info to keep localStorage extremely lightweight
+                // ⚡ Extract physical attributes, injuries, and live Sleeper depth chart order
                 Object.values(data).forEach(entry => {
                     if (entry && entry.full_name) {
                         const nName = State.normalizeName(entry.full_name);
@@ -121,11 +121,18 @@ document.addEventListener('DOMContentLoaded', () => {
                         const nPos = State.normalizePos(entry.position);
                         const key = `${nName}::${nTeam || 'NONE'}::${nPos || 'NONE'}`;
 
+                        const rawDepth = entry.depth_chart_order;
+                        const depthOrder = (rawDepth !== null && rawDepth !== undefined && !isNaN(rawDepth))
+                            ? parseInt(rawDepth, 10)
+                            : null;
+
                         minimalData[key] = {
                             a: entry.age,
-                            h: entry.height,     // e.g. "5'10" or "6-2"
-                            w: entry.weight,     // e.g. 215
-                            i: entry.injury_status // e.g. "Questionable", "Out", "IR", null
+                            h: entry.height,       // e.g. "5'10" or "6-2"
+                            w: entry.weight,       // e.g. 215
+                            i: entry.injury_status, // e.g. "Questionable", "Out", "IR", null
+                            d: depthOrder,         // Sleeper live depth chart (1, 2, 3, etc.)
+                            dp: entry.depth_chart_position || null // e.g. "QB", "RB", "LWR", "RWR", "TE"
                         };
                     }
                 });
@@ -153,7 +160,36 @@ document.addEventListener('DOMContentLoaded', () => {
                     player.height = match.h;
                     player.weight = match.w;
                     player.injuryStatus = match.i;
+                    if (match.d !== null && match.d !== undefined) {
+                        player.depthChart = match.d;
+                    }
+                    if (match.dp) {
+                        player.depthChartPos = match.dp;
+                    }
                 }
+            });
+
+            // ⚡ Resolve LWR/RWR/SWR alignment into clean sequential team WR hierarchy (WR1, WR2, WR3, WR4...)
+            const teams = [...new Set(State.allPlayers.map(p => State.normalizeTeam(p.Team)).filter(Boolean))];
+            teams.forEach(team => {
+                const teamWRs = State.allPlayers.filter(p => State.normalizeTeam(p.Team) === team && p.Pos === 'WR');
+                if (!teamWRs.length) return;
+
+                teamWRs.sort((a, b) => {
+                    const depthA = (a.depthChart !== undefined && a.depthChart !== null) ? a.depthChart : 99;
+                    const depthB = (b.depthChart !== undefined && b.depthChart !== null) ? b.depthChart : 99;
+
+                    // 1. Group by Sleeper tier (all order 1 starters first, then order 2 backups, etc.)
+                    if (depthA !== depthB) return depthA - depthB;
+
+                    // 2. Tiebreaker within the same tier (e.g. LWR1 vs RWR1): Higher projected points wins WR1 rank
+                    return (b.ProjPts || 0) - (a.ProjPts || 0);
+                });
+
+                // Assign clean sequential hierarchy
+                teamWRs.forEach((wr, index) => {
+                    wr.depthChart = index + 1; // WR1, WR2, WR3, WR4...
+                });
             });
 
             if (typeof UI.renderDatabase === 'function') UI.renderDatabase();

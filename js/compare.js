@@ -125,16 +125,35 @@ window.Compare = {
             highlights.push(`<li><strong class="text-amber-600">Positional Need:</strong> Secures a critical starting ${p.Pos} spot on your roster.</li>`);
         }
 
-        // 4. Stacking
+        // 4. Stacking & Handcuffing
         if (p._stackPartner) {
             highlights.push(`<li><strong class="text-purple-600">Stack Synergy:</strong> Pairs perfectly with your QB (${p._stackPartner}) for correlated ceiling upside.</li>`);
         }
+        
+        let userOwnsStarter = p.starterName && team.roster.some(r => r._cleanName === State.normalizeName(p.starterName));
+        if (userOwnsStarter) {
+            highlights.push(`<li><strong class="text-blue-600">Premium Insurance:</strong> Protects your investment in ${p.starterName} by securing his direct handcuff.</li>`);
+        } else if (p.isRBHandcuff) {
+            highlights.push(`<li><strong class="text-emerald-600">League-Winning Upside:</strong> An elite bench stash who would inherit a massive role if ${p.starterName} misses time.</li>`);
+        }
 
-        // 5. Volume/Ceiling tags
+        // Defensive / Kicker Context
+        let overallPosRank = State.allPlayers.filter(x => x.Pos === p.Pos).findIndex(x => x._cleanName === p._cleanName) + 1;
+        if (p.Pos === 'DST') {
+            if (overallPosRank <= 6) {
+                highlights.push(`<li><strong class="text-indigo-600">Elite Defense Advantage:</strong> Secures a top-tier defensive unit, avoiding the unpredictable weekly streaming carousel.</li>`);
+            } else {
+                highlights.push(`<li><strong class="text-gray-600">Streamable Defense:</strong> A solid option if you missed the elite tier of DSTs.</li>`);
+            }
+        }
+
+        // 5. Volume/Ceiling & Breakout tags
         if (p._isFlyer && p.upsideScore) {
             highlights.push(`<li><strong class="text-rose-600">Elite Ceiling:</strong> Provides league-winning upside metrics (Upside Score: ${(p.upsideScore).toFixed(1)}).</li>`);
         } else if (p.targetShare && p.targetShare >= 20) {
             highlights.push(`<li><strong class="text-blue-600">Volume Security:</strong> Commands a massive ${p.targetShare}% of his team's targets.</li>`);
+        } else if (p.depthChart === 2 && p.isNewRole) {
+            highlights.push(`<li><strong class="text-amber-600">Breakout Stash:</strong> High-potential stash who is one depth-chart shift away from inheriting a massive role.</li>`);
         }
 
         // Fallback
@@ -211,6 +230,21 @@ window.Compare = {
         }
         if (alt._isFlukeTDScorer) {
             consForAlt.push(`<strong>TD Fluke Warning:</strong> 2025 TD output lacked underlying red-zone opportunity volume, making high regression likely.`);
+        }
+
+        let userOwnsAltStarter = alt.starterName && team.roster.some(r => r._cleanName === State.normalizeName(alt.starterName));
+        let userOwnsTopStarter = topPick.starterName && team.roster.some(r => r._cleanName === State.normalizeName(topPick.starterName));
+
+        if (userOwnsAltStarter) {
+            prosForAlt.push(`<strong>Direct Handcuff:</strong> Protects your investment in ${alt.starterName}.`);
+        } else if (alt.isRBHandcuff && !userOwnsAltStarter) {
+            prosForAlt.push(`<strong>Lottery Ticket Stash:</strong> Huge contingent upside if ${alt.starterName} goes down.`);
+        }
+
+        if (userOwnsTopStarter) {
+            consForAlt.push(`<strong>Missed Insurance:</strong> Passing on ${topPick.Player} leaves your RB1 (${topPick.starterName}) exposed without a handcuff.`);
+        } else if (topPick.isRBHandcuff && !userOwnsTopStarter) {
+            consForAlt.push(`<strong>Passed Lottery Ticket:</strong> ${topPick.Player} offers a league-winning ceiling if the starter goes down, which provides more value to a bench stash.`);
         }
 
         // 4b. Boom/Bust Consistency Check
@@ -312,7 +346,11 @@ window.Compare = {
         if (consForAlt.length === 0) {
             if (topPick.Pos === alt.Pos) {
                 let vbdGap = ((topPick.AdvVBD || topPick.VBD) - (alt.AdvVBD || alt.VBD)).toFixed(1);
-                consForAlt.push(`Leans ${topPick.Player} due to a slightly higher overall season projection (+${vbdGap} VBD edge).`);
+                if (parseFloat(vbdGap) > 0) {
+                    consForAlt.push(`Leans ${topPick.Player} due to a slightly higher overall season projection (+${vbdGap} VBD edge).`);
+                } else {
+                    consForAlt.push(`Prioritizes ${topPick.Player}'s ceiling, advanced metrics, or optimal lineup fit over ${alt.Player}'s raw projection.`);
+                }
             } else {
                 consForAlt.push(`Prioritizes ${topPick.Player}'s positional scarcity and roster structural balance at ${topPick.Pos}.`);
             }

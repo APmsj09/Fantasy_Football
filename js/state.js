@@ -517,7 +517,10 @@ const State = {
         depthList.forEach(entry => {
             const player = this.matchPlayerFast(entry.name, entry.team, entry.pos);
             if (player) {
-                player.depthChart = entry.depth;
+                // Preserve live Sleeper depth chart; use TSV as fallback if missing
+                if (player.depthChart === undefined || player.depthChart === null) {
+                    player.depthChart = entry.depth;
+                }
                 player.ecr = entry.ecr;
             }
         });
