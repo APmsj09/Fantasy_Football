@@ -2083,21 +2083,36 @@ const State = {
 
     parseHistory(text) {
         const rows = text.split(/\r?\n/).filter(row => row.trim() !== '');
+        if (rows.length < 2) return;
+
+        const headers = rows[0].split('\t').map(h => h.trim().toUpperCase());
+        const roundIdx = headers.indexOf('ROUND');
+        const teamIdx = headers.indexOf('TEAM');
+        const playerIdx = headers.indexOf('PLAYER');
+        const posIdx = headers.findIndex(h => h.includes('POS'));
+        const nflTeamIdx = headers.findIndex(h => h.includes('NFL'));
+        const yearIdx = headers.indexOf('YEAR');
+
         const profiles = {};
 
         for (let i = 1; i < rows.length; i++) {
             const cols = rows[i].split('\t');
-            if (cols.length < 5) continue;
+            if (cols.length < 4) continue;
 
-            const round = parseInt(cols[0], 10);
-            const teamName = cols[2].replace(/,/g, '').trim();
-            const playerName = cols[3]?.replace(/,/g, '').trim();
-            const pos = this.normalizePos(cols[4]);
+            const round = parseInt(cols[roundIdx], 10);
+            const teamName = cols[teamIdx]?.replace(/,/g, '').trim();
+            const playerName = cols[playerIdx]?.replace(/,/g, '').trim();
+            const pos = this.normalizePos(cols[posIdx]);
+            const rawNflTeam = nflTeamIdx !== -1 ? cols[nflTeamIdx]?.trim() : '';
+            const year = yearIdx !== -1 ? (cols[yearIdx]?.trim() || 'default') : 'default';
+
+            if (!teamName || !pos) continue;
 
             if (!profiles[teamName]) {
                 profiles[teamName] = {
                     name: teamName,
-                    totalDrafts: 0,
+                    years: new Set(),
+                    yearlyPicks: {}, // year -> { r1: pos, r2: pos }
                     earlyRBs: 0, earlyWRs: 0,
                     firstQbRound: 99, firstTeRound: 99,
                     qbAvgRound: 0, qbCount: 0,
@@ -2110,48 +2125,49 @@ const State = {
             }
 
             let p = profiles[teamName];
+            p.years.add(year);
 
-            // Track distinct draft instances (increment whenever Round 1 is processed)
-            if (round === 1) {
-                p.totalDrafts++;
-            }
+            if (!p.yearlyPicks[year]) p.yearlyPicks[year] = {};
+            if (round === 1 && !p.yearlyPicks[year].r1) p.yearlyPicks[year].r1 = pos;
+            if (round === 2 && !p.yearlyPicks[year].r2) p.yearlyPicks[year].r2 = pos;
 
-            // Track Early Rounds 1-3
+            // Rounds 1-3 Early Capital
             if (round <= 3) {
                 if (pos === 'RB') p.earlyRBs++;
                 if (pos === 'WR') p.earlyWRs++;
             }
 
-            // Track Mid-Rounds 6-10
+            // Rounds 6-10 Depth Capital
             if (round >= 6 && round <= 10) {
                 if (pos === 'RB') p.midRoundRBs++;
                 if (pos === 'WR') p.midRoundWRs++;
             }
 
-            // Track First QB / TE Selected
+            // Positional Targets
             if (pos === 'QB' && round < p.firstQbRound) p.firstQbRound = round;
             if (pos === 'TE' && round < p.firstTeRound) p.firstTeRound = round;
 
-            // Position Averages
             if (pos === 'QB' && round < 12) { p.qbAvgRound += round; p.qbCount++; }
             if (pos === 'TE' && round < 12) { p.teAvgRound += round; p.teCount++; }
             if (pos === 'PK') { p.pkAvgRound += round; p.pkCount++; }
             if (pos === 'DST') { p.dstAvgRound += round; p.dstCount++; }
 
-            // Track NFL Team Bias
-            let matchedPlayer = this.matchPlayerFast(playerName, '', pos);
-            if (matchedPlayer && matchedPlayer.Team) {
-                let nflTeam = this.normalizeTeam(matchedPlayer.Team);
+            // Team Bias Tracking from NFL Team column
+            let nflTeam = this.normalizeTeam(rawNflTeam);
+            if (!nflTeam) {
+                let matchedPlayer = this.matchPlayerFast(playerName, '', pos);
+                if (matchedPlayer && matchedPlayer.Team) nflTeam = this.normalizeTeam(matchedPlayer.Team);
+            }
+            if (nflTeam) {
                 p.teamTally[nflTeam] = (p.teamTally[nflTeam] || 0) + 1;
             }
         }
 
-        // Resolve Manager Personalities & Mid-Round Tendencies
+        // Finalize Strategy Archetypes & Personalities
         for (let key in profiles) {
             let p = profiles[key];
-            let draftsCount = Math.max(1, p.totalDrafts || 1);
+            let draftsCount = Math.max(1, p.years.size);
 
-            // Per-draft averages
             let avgEarlyRBs = p.earlyRBs / draftsCount;
             let avgEarlyWRs = p.earlyWRs / draftsCount;
             let avgMidRBs = p.midRoundRBs / draftsCount;
@@ -2164,39 +2180,45 @@ const State = {
             p.draftsEarlyQB = p.firstQbRound <= 5;
             p.draftsEarlyTE = p.firstTeRound <= 5;
 
-            // --- Core Strategy Logic (Normalized per Draft) ---
-            if (avgEarlyRBs >= 1.5) {
-                p.strategy = "Robust-RB";
-            } else if (avgEarlyRBs >= 0.8 && avgEarlyWRs >= 1.5) {
-                p.strategy = "Hero-RB";
-            } else if (avgEarlyRBs < 0.8 && avgEarlyWRs >= 1.5) {
+            // Analyze Opening 2-Round Combinations
+            let wrWrStarts = 0, rbRbStarts = 0, heroStarts = 0;
+            Object.values(p.yearlyPicks).forEach(combo => {
+                if (combo.r1 === 'WR' && combo.r2 === 'WR') wrWrStarts++;
+                else if (combo.r1 === 'RB' && combo.r2 === 'RB') rbRbStarts++;
+                else if ((combo.r1 === 'RB' && combo.r2 === 'WR') || (combo.r1 === 'WR' && combo.r2 === 'RB')) heroStarts++;
+            });
+
+            // Core Strategy Determination
+            if (wrWrStarts / draftsCount >= 0.5 || (avgEarlyWRs >= 2.0 && avgEarlyRBs <= 0.5)) {
                 p.strategy = "Zero-RB";
+            } else if (rbRbStarts / draftsCount >= 0.5 || avgEarlyRBs >= 1.8) {
+                p.strategy = "Robust-RB";
+            } else if (heroStarts / draftsCount >= 0.5 || (avgEarlyRBs >= 0.8 && avgEarlyWRs >= 1.2)) {
+                p.strategy = "Hero-RB";
             } else if (p.draftsEarlyQB && p.draftsEarlyTE) {
                 p.strategy = "Double-Elite";
             } else {
                 p.strategy = "Balanced";
             }
 
-            // --- Mid-Round Tendency Flags ---
-            p.likesHandcuffs = avgMidRBs >= 2.0;
+            p.likesHandcuffs = avgMidRBs >= 1.5;
             p.reachesForKicker = p.pkAvgRound <= 12;
             p.reachesForDST = p.dstAvgRound <= 12;
 
-            // Team Bias
+            // NFL Team Fandom
             let maxTally = 0, bias = 'None';
             for (let teamKey in p.teamTally) {
                 let avgTally = p.teamTally[teamKey] / draftsCount;
-                if (avgTally > maxTally) {
+                if (avgTally > maxTally && avgTally >= 1.5) {
                     maxTally = avgTally;
                     bias = teamKey;
                 }
             }
-            p.teamBias = maxTally >= 2.0 ? bias : 'None';
+            p.teamBias = bias;
         }
 
         this.managerProfiles = profiles;
     },
-
 
     parseDefData(text) {
         const rows = text.split(/\r?\n/).filter(row => row.trim() !== '');

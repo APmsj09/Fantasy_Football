@@ -265,8 +265,30 @@ window.Compare = {
         } else {
             // Cross-Position Tier Scarcity Comparison (Caps at Round 7 to prevent late-round noise)
             if (topTier.isLastInTier && (topTier.tierNum <= 2 || currentRound <= 7)) {
-                const altAvailInTier = State.availablePlayers.filter(p => p.Pos === alt.Pos && Compare.getTierDetails(p).tierNum === altTier.tierNum);
-                const altSurvivingCount = altAvailInTier.filter(p => (p.adp || 0) > nextPick).length;
+                // --- NEW: Optimized O(N) tier boundary check instead of O(N^2) ---
+                const altAvail = State.availablePlayers.filter(p => p.Pos === alt.Pos);
+                let currentAltTierNum = 1;
+                let altSurvivingCount = 0;
+                
+                if (altAvail.length > 0) {
+                    const altTopVal = Math.max(8.0, altAvail[0].AdvVBD || altAvail[0].VBD || 8.0);
+                    const altDropThresh = Math.max(2.0, Math.min(9.5, altTopVal * 0.18));
+                    
+                    for (let i = 0; i < altAvail.length; i++) {
+                        if (i > 0) {
+                            let prevVal = altAvail[i - 1].AdvVBD || altAvail[i - 1].VBD;
+                            let currVal = altAvail[i].AdvVBD || altAvail[i].VBD;
+                            if ((prevVal - currVal) >= altDropThresh) {
+                                currentAltTierNum++;
+                            }
+                        }
+                        if (currentAltTierNum === altTier.tierNum) {
+                            if ((altAvail[i].adp || 0) > nextPick) altSurvivingCount++;
+                        } else if (currentAltTierNum > altTier.tierNum) {
+                            break;
+                        }
+                    }
+                }
                 
                 let survivalNote = altSurvivingCount > 0 
                     ? `(with ~<strong>${altSurvivingCount}</strong> likely to reach your next pick at Pick ${nextPick})` 

@@ -156,20 +156,44 @@ window.AutoDraft = {
                 }
             }
 
-            if (['PK', 'DST'].includes(p.Pos) && round <= totalRounds - 3) multiplier *= 0.001;
+            // Suppress PK and DST until late rounds unless manager profile historically reaches
+            const canDraftPK = profile && profile.reachesForKicker && round >= Math.floor(profile.pkAvgRound);
+            const canDraftDST = profile && profile.reachesForDST && round >= Math.floor(profile.dstAvgRound);
+            if (p.Pos === 'PK' && round <= totalRounds - 3 && !canDraftPK) multiplier *= 0.001;
+            if (p.Pos === 'DST' && round <= totalRounds - 3 && !canDraftDST) multiplier *= 0.001;
 
             let rawVbd = p.AdvVBD ?? p.VBD ?? 0;
+
+            // --- NEW: CPU Late-Round Upside & Sleeper Shift ---
+            if (round >= 9) {
+                let upsideWeight = Math.min(1.0, (round - 8) * 0.15);
+                let floorWeight = 1.0 - upsideWeight;
+                let ceilingScore = p.upsideScore || rawVbd;
+                rawVbd = (rawVbd * floorWeight) + (ceilingScore * upsideWeight);
+
+                if (['RB', 'WR', 'TE', 'QB'].includes(p.Pos)) {
+                    if (p.isRBHandcuff) rawVbd += (round * 0.6);
+                    else if (p.age && p.age <= 23) rawVbd += (round * 0.5);
+
+                    if (p.targetShare && p.targetShare >= 15) rawVbd += 2.0;
+                    if (p.aDOT && p.aDOT >= 12.0) rawVbd += 1.5;
+                }
+            }
+
             let baseValue = rawVbd >= 0 ? (rawVbd * multiplier) : (rawVbd / multiplier);
 
             let adpPenalty = 0;
+            let adpBonus = 0;
             if (p.adp) {
                 let adpDiff = p.adp - currentOverallPick;
                 if (adpDiff > 18) adpPenalty = Math.min(15, (adpDiff - 18) * 0.25);
+                else if (adpDiff < -12) adpBonus = Math.min(10, Math.abs(adpDiff + 12) * 0.3); // Catch sliding value
             }
+
 
             return {
                 player: p,
-                adjustedVBD: baseValue + starterBonus + scarcityBonus - adpPenalty
+                adjustedVBD: baseValue + starterBonus + scarcityBonus + adpBonus - adpPenalty
             };
         });
 
