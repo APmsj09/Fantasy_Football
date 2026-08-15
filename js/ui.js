@@ -223,6 +223,7 @@ const UI = {
         const teamDist = State.teamTargetsMap ? State.teamTargetsMap[tTeam] : null;
         const rushEnv = State.teamAdvRush ? State.teamAdvRush[tTeam] : null;
         const passEnv = State.teamAdvPass ? State.teamAdvPass[tTeam] : null;
+        const recEnv = State.teamAdvRec ? State.teamAdvRec[tTeam] : null;
 
         let passVolume = teamDist ? (teamDist['Total Targets'] || 550) : 550;
         let offensePace = "balanced";
@@ -1513,6 +1514,7 @@ const UI = {
         const tTeam = State.normalizeTeam(p.Team);
         const passEnv = State.teamAdvPass ? State.teamAdvPass[tTeam] : null;
         const rushEnv = State.teamAdvRush ? State.teamAdvRush[tTeam] : null;
+        const recEnv = State.teamAdvRec ? State.teamAdvRec[tTeam] : null;
 
         // Environmental Badges
         if (isOffense) {
