@@ -1,50 +1,25 @@
 window.Compare = {
     getTierDetails(player) {
-        // Unify with the newly upgraded core math in state.js
+        // Use static absolute baseline tiers
+        const tierNum = player.staticTier || 1;
         const tiers = State.getPositionalTiers(player.Pos);
-        let tierNum = 1;
-        let tierPlayers = [];
-        let gapToNext = 0;
+        const availableInSameTier = State.availablePlayers.filter(p => p.Pos === player.Pos && (p.staticTier || 1) === tierNum);
+        
+        const tierNames = {
+            1: `Tier 1 (Elite ${player.Pos})`,
+            2: `Tier 2 (High-End ${player.Pos} Starter)`,
+            3: `Tier 3 (Solid ${player.Pos} Starter)`,
+            4: `Tier 4 (Low-End Starter / High Flex)`,
+            5: `Tier 5 (Premium Bench / Rotational)`,
+            6: `Tier 6 (Upside Flyers & Handcuffs)`,
+            7: `Tier 7 (Deep Stash & Depth)`
+        };
+        let tierName = tierNames[tierNum] || `Tier ${tierNum} (${player.Pos} Depth)`;
 
-        for (let i = 0; i < tiers.length; i++) {
-            if (tiers[i].some(p => p._cleanName === player._cleanName)) {
-                tierNum = i + 1;
-                tierPlayers = tiers[i];
-                if (i + 1 < tiers.length) {
-                    let lastInTier = tiers[i][tiers[i].length - 1];
-                    let firstInNext = tiers[i + 1][0];
-                    gapToNext = (lastInTier.AdvVBD || lastInTier.VBD) - (firstInNext.AdvVBD || firstInNext.VBD);
-                }
-                break;
-            }
-        }
+        let remaining = availableInSameTier.length;
+        let isLastInTier = (remaining === 1 && availableInSameTier[0]._cleanName === player._cleanName);
 
-        if (tierPlayers.length === 0) tierPlayers = [player];
-
-        // Expanded Contextual Tier Naming
-        const currentRound = Math.floor(State.currentPick / State.settings.numTeams) + 1;
-        let tierName = `Tier ${tierNum}`;
-
-        if (currentRound <= 8) {
-            if (tierNum === 1) tierName = `Tier 1 (Elite ${player.Pos})`;
-            else if (tierNum === 2) tierName = `Tier 2 (High-End ${player.Pos})`;
-            else if (tierNum === 3) tierName = `Tier 3 (Solid ${player.Pos})`;
-            else if (tierNum === 4) tierName = `Tier 4 (Low-End ${player.Pos} / Flex)`;
-            else if (tierNum === 5) tierName = `Tier 5 (Premium Depth)`;
-            else tierName = `Tier ${tierNum} (${player.Pos} Depth)`;
-        } else {
-            // Late-Round Archetype Tier Naming
-            if (player.isRBHandcuff) tierName = `Handcuff / Lottery Ticket Tier`;
-            else if (player.targetShare && player.targetShare >= 15) tierName = `Target-Share / PPR Floor Tier`;
-            else if (player.aDOT && player.aDOT >= 12) tierName = `Deep-Threat / Spike-Week Tier`;
-            else if (player.age && player.age <= 23) tierName = `Youth Upside / Breakout Tier`;
-            else tierName = `${player.Pos} Bench Depth Tier`;
-        }
-
-        let remaining = tierPlayers.length;
-        let isLastInTier = (tierPlayers[tierPlayers.length - 1]._cleanName === player._cleanName);
-
-        return { tierNum, tierName, remaining, isLastInTier, gapToNext: gapToNext.toFixed(1) };
+        return { tierNum, tierName, remaining, isLastInTier, gapToNext: "0.0" };
     },
 
     showComparison() {
@@ -161,6 +136,10 @@ window.Compare = {
         let altVBD = alt.AdvVBD || alt.VBD || 0;
         let diff = altVBD - topVBD;
 
+        const altPosLimit = (State.settings.roster[alt.Pos]?.max || 2);
+        const altPosCount = team.counts[alt.Pos] || 0;
+        const topPosCount = team.counts[topPick.Pos] || 0;
+
         if (diff > 0) {
             if (diff <= 6.0) {
                 prosForAlt.push(`<strong>Slight Value Edge:</strong> Projects marginally higher (+${diff.toFixed(1)} VBD) in a vacuum, but the difference is small enough that roster needs dictate the pick.`);
@@ -168,8 +147,11 @@ window.Compare = {
                 prosForAlt.push(`<strong>Higher Absolute Value:</strong> In a vacuum, ${alt.Player} has a mathematically higher value (+${diff.toFixed(1)} VBD) regardless of roster needs.`);
             }
             
-            if ((team.counts[topPick.Pos] || 0) < (team.counts[alt.Pos] || 0)) {
-                consForAlt.push(`<strong>Roster Logjam:</strong> You already have depth at ${alt.Pos}. Taking ${topPick.Player} (${topPick.Pos}) fills a bigger structural hole on your team.`);
+            // Only declare a Roster Logjam if starters at that position are fully saturated
+            if (altPosCount >= altPosLimit) {
+                consForAlt.push(`<strong>Roster Logjam:</strong> Your starting ${alt.Pos} slots are already filled (${altPosCount}/${altPosLimit}). Taking ${topPick.Player} (${topPick.Pos}) addresses an unfilled starting spot.`);
+            } else if (altPosCount > topPosCount && currentPickNum <= 36) {
+                consForAlt.push(`<strong>Positional Balance:</strong> Having already secured a ${alt.Pos} in earlier rounds, drafting ${topPick.Player} (${topPick.Pos}) builds a more balanced starting foundation.`);
             }
         } else if (diff < 0) {
             let absDiff = Math.abs(diff);

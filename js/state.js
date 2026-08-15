@@ -2051,7 +2051,7 @@ const State = {
         // Fail-safe sort
         this.allPlayers.sort((a, b) => (b.AdvVBD || 0) - (a.AdvVBD || 0));
 
-        // Assign static ranks for the Draft UI
+        // Assign static ranks and absolute pre-draft baseline tiers across the entire player pool
         let posTracker = {};
         this.allPlayers.forEach((p, index) => {
             p.ovrRank = index + 1;
@@ -2059,35 +2059,49 @@ const State = {
             p.posRank = `${p.Pos}${posTracker[p.Pos]}`;
         });
 
+        // ⚡ Calibrated 7-Tier Distribution based on full draft pool
+        ['QB', 'RB', 'WR', 'TE', 'PK', 'DST'].forEach(pos => {
+            let allPos = this.allPlayers.filter(p => p.Pos === pos).sort((a, b) => (b.AdvVBD || 0) - (a.AdvVBD || 0));
+            if (!allPos.length) return;
+
+            let topVal = allPos[0].AdvVBD || 0;
+            let minVal = allPos[allPos.length - 1].AdvVBD || 0;
+            let totalSpread = Math.max(1.0, topVal - minVal);
+
+            // Dynamic tier step sizing scaled to span 7 tiers across the player pool
+            let baseStep = totalSpread / 6.8;
+            let currentTierNum = 1;
+
+            allPos[0].staticTier = 1;
+            for (let i = 1; i < allPos.length; i++) {
+                let prevVal = allPos[i - 1].AdvVBD || 0;
+                let currVal = allPos[i].AdvVBD || 0;
+                let dropFromTierTop = (allPos.find(p => p.staticTier === currentTierNum)?.AdvVBD || prevVal) - currVal;
+
+                // Move to next tier if a natural drop occurs or bracket distance is reached
+                if ((dropFromTierTop >= baseStep || (prevVal - currVal) >= (baseStep * 0.75)) && currentTierNum < 7) {
+                    currentTierNum++;
+                }
+                allPos[i].staticTier = currentTierNum;
+            }
+        });
+
         this.availablePlayers = [...this.allPlayers];
     },
 
-    // Helper: Calculates positional tiers for available players based on AdvVBD clusters
+    // Helper: Returns positional groups respecting true absolute baseline tiers
     getPositionalTiers(pos) {
         let avail = this.availablePlayers.filter(p => p.Pos === pos);
         if (!avail.length) return [];
 
-        let tiers = [];
-        let currentTier = [avail[0]];
-        
-        // Dynamic threshold: Scales down as the draft progresses to create nuanced micro-tiers in late rounds.
-        // Takes ~15% of the top available player's value, bounded between 1.5 and 8.5 points.
-        let topVal = avail[0].AdvVBD || avail[0].VBD || 0;
-        let baseThreshold = (pos === 'QB' || pos === 'TE') ? 0.12 : 0.15; // Tighter thresholds for onesie positions
-        let dropThreshold = Math.max(1.5, Math.min(8.5, topVal * baseThreshold));
+        let tierMap = {};
+        avail.forEach(p => {
+            let t = p.staticTier || 1;
+            if (!tierMap[t]) tierMap[t] = [];
+            tierMap[t].push(p);
+        });
 
-        for (let i = 1; i < avail.length; i++) {
-            let prevVal = avail[i - 1].AdvVBD || avail[i - 1].VBD || 0;
-            let currVal = avail[i].AdvVBD || avail[i].VBD || 0;
-            
-            if ((prevVal - currVal) >= dropThreshold) {
-                tiers.push(currentTier);
-                currentTier = [];
-            }
-            currentTier.push(avail[i]);
-        }
-        if (currentTier.length) tiers.push(currentTier);
-        return tiers;
+        return Object.keys(tierMap).sort((a, b) => a - b).map(t => tierMap[t]);
     },
 
     parseHistory(text) {

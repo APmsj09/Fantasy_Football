@@ -2369,7 +2369,7 @@ const UI = {
         });
 
         // ===========================================================
-        // POST-LOOP: SORT AND DEDICATE SLOTS (Caps Kicker/DST to 1 Slot Max)
+        // POST-LOOP: SORT AND DEDICATE UP TO 10 SLOTS (COMPACT LAYOUT)
         // ===========================================================
         let needsPK = userTeam.counts['PK'] < (State.settings.roster.PK?.max || 1);
         let needsDST = userTeam.counts['DST'] < (State.settings.roster.DST?.max || 1);
@@ -2382,94 +2382,96 @@ const UI = {
 
         let finalRecs = [];
 
-        // 1. Fill top 3 slots with skill position sleepers first (keeps #1 spot for skill players)
+        // 1. Fill top slots with skill positions first (up to 9)
         for (let p of skillPlayers) {
-            if (finalRecs.length >= 3) break;
+            if (finalRecs.length >= 9) break;
             if (!finalRecs.includes(p)) finalRecs.push(p);
         }
 
-        // 2. Add 1 K/DST slot in position #4 in late rounds (R13+)
+        // 2. Add 1 K/DST slot in position #10 if in late rounds (R13+) and needed
         if ((needsPK || needsDST) && kDstPlayers.length > 0 && currentRound >= totalRounds - 3) {
             if (!finalRecs.includes(kDstPlayers[0])) finalRecs.push(kDstPlayers[0]);
         }
 
-        // 3. Failsafe fill to 4 total recommendations
+        // 3. Fill remaining slots up to 10 recommendations
         for (let p of [...viablePlayers].sort((a, b) => b._recScore - a._recScore)) {
-            if (finalRecs.length >= 4) break;
+            if (finalRecs.length >= 10) break;
             if (!finalRecs.includes(p)) finalRecs.push(p);
         }
 
         let bestFit = finalRecs[0];
-        let vbdRecs = finalRecs.slice(1, 4);
+        let vbdRecs = finalRecs.slice(1, 10);
 
         let htmlStr = strategyBanner;
 
         if (bestFit) {
             let ppwText = '';
             if (bestFit._addedPPW >= 1.0 || (bestFit._addedPPW > 0 && !bestFit._byeFillWeek)) {
-                ppwText = `+${bestFit._addedPPW.toFixed(2)} PPW`;
+                ppwText = `+${bestFit._addedPPW.toFixed(1)} PPW`;
             } else if (bestFit._byeFillWeek) {
-                ppwText = `Wk ${bestFit._byeFillWeek} Bye Fill`;
+                ppwText = `Wk ${bestFit._byeFillWeek} Fill`;
             } else {
-                ppwText = `Flex Depth`;
+                ppwText = `Flex`;
             }
             let stackBadge = bestFit._stackPartner ? ` • ⚡ Stack w/ ${bestFit._stackPartner}` : '';
 
-            // Dynamic Context / Upside Badges for Best Fit
             let cliffBadge = '';
             if (bestFit._rosterContextBadge) cliffBadge = ` • <span class="text-amber-200 font-bold">${bestFit._rosterContextBadge}</span>`;
             else if (bestFit._tierCliffTag) cliffBadge = ` • <span class="text-amber-200 font-bold">${bestFit._tierCliffTag}</span>`;
-            else if (currentRound >= 9 && bestFit._ceilingTags && bestFit._ceilingTags.length > 0) cliffBadge = ` • <span class="text-amber-200 font-bold">🚀 Upside: ${bestFit._ceilingTags.join(' & ')}</span>`;
 
             htmlStr += `
-            <div class="p-3 bg-gradient-to-br from-emerald-700 to-teal-900 rounded-xl border border-emerald-500/50 flex justify-between items-center shadow-md cursor-pointer hover:shadow-lg transition mb-2" onclick="UI.showPlayerCard('${bestFit._cleanName}')">
-                <div>
-                    <span class="text-[9px] font-extrabold uppercase tracking-widest text-emerald-200 mb-1 flex items-center">
-                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg> Best Lineup Addition
-                    </span>
-                    <h4 class="font-bold text-sm text-white">${bestFit.Player}</h4>
-                    <p class="text-[10px] text-emerald-100 font-medium">${bestFit.Pos} • ${ppwText}${stackBadge}${cliffBadge}</p>
+            <div class="p-2 bg-gradient-to-br from-emerald-800 to-teal-950 rounded-lg border border-emerald-500/50 flex justify-between items-center shadow-sm cursor-pointer hover:brightness-110 transition mb-1.5" onclick="UI.showPlayerCard('${bestFit._cleanName}')">
+                <div class="min-w-0 pr-2">
+                    <div class="flex items-center gap-1.5 leading-none mb-0.5">
+                        <span class="text-[8px] font-extrabold uppercase tracking-wider text-emerald-300">#1 Lineup Fit</span>
+                        <span class="text-[9px] text-emerald-200 font-medium">(${bestFit.Pos})</span>
+                    </div>
+                    <h4 class="font-bold text-xs text-white truncate leading-tight">${bestFit.Player} <span class="text-[10px] font-normal text-emerald-200">(${bestFit.Team})</span></h4>
+                    <p class="text-[9px] text-emerald-100 font-medium truncate mt-0.5">${ppwText}${stackBadge}${cliffBadge}</p>
+                </div>
+                <div class="text-right shrink-0">
+                    <span class="text-[9px] font-extrabold text-emerald-300 bg-emerald-950/80 border border-emerald-700/80 px-1.5 py-0.5 rounded">${(bestFit.AdvVBD || bestFit.VBD).toFixed(1)} VBD</span>
                 </div>
             </div>`;
         }
 
         htmlStr += vbdRecs.map((p, i) => {
-            let stackBadge = p._stackPartner ? ` • ⚡ Stack w/ ${p._stackPartner}` : '';
+            let stackBadge = p._stackPartner ? ` • ⚡ ${p._stackPartner}` : '';
             let survivalProb = getSurvivalProb(p.adp);
             let posRoster = State.settings.roster[p.Pos];
             let starterMax = posRoster ? posRoster.max : 1;
             let isStarterNeeded = userTeam.counts[p.Pos] < starterMax;
             let hasPositiveValue = (p.AdvVBD || p.VBD) > 0;
 
-            // ⚡ Full Decision Tree (Context Badges + Tier Cliffs + Stacks + Urgency + Need)
             let highlight = '';
             if (p._sleeperBadge) highlight = `<span class="text-emerald-300 font-bold">${p._sleeperBadge}</span>`;
             else if (p._rosterContextBadge) highlight = `<span class="text-amber-300 font-bold">${p._rosterContextBadge}</span>`;
-            else if (p._tierCliffTag) highlight = `<span class="text-amber-300 font-bold">${p._tierCliffTag}</span>`;
-            else if (currentRound >= 9 && p._ceilingTags && p._ceilingTags.length > 0) highlight = `🚀 Upside: ${p._ceilingTags.join(' & ')}`;
-            else if (survivalProb < 0.15 && (isStarterNeeded || hasPositiveValue)) highlight = `⚡ High Urgency (Gone by Pick ${nextUserOverallPick})`;
-            else if (p.adp && (p.adp < currentOverallPick)) highlight = `ADP Value (Passed ADP ${p.adp.toFixed(0)})`;
-            else if (isStarterNeeded) highlight = `Strong Team Need`;
-            else highlight = `Flex / Bench Depth`;
+            else if (survivalProb < 0.15 && (isStarterNeeded || hasPositiveValue)) highlight = `⚡ High Urgency`;
+            else if (p.adp && (p.adp < currentOverallPick)) highlight = `ADP Value (${p.adp.toFixed(0)})`;
+            else if (isStarterNeeded) highlight = `Team Need`;
+            else highlight = `Depth`;
 
             let ppwVal = '';
             if (p._addedPPW >= 1.0 || (p._addedPPW > 0 && !p._byeFillWeek)) {
-                ppwVal = `+${p._addedPPW.toFixed(2)}/wk`;
+                ppwVal = `+${p._addedPPW.toFixed(1)}/wk`;
             } else if (p._byeFillWeek) {
-                ppwVal = `Wk ${p._byeFillWeek} Fill`;
+                ppwVal = `Wk ${p._byeFillWeek}`;
             } else {
                 let vbdVal = (p.AdvVBD || p.VBD).toFixed(1);
-                ppwVal = `${vbdVal >= 0 ? '+' : ''}${vbdVal} VBD`;
+                ppwVal = `${vbdVal >= 0 ? '+' : ''}${vbdVal}`;
             }
 
             return `
-            <div class="p-3 bg-indigo-800/80 rounded-xl border border-indigo-700/50 flex justify-between items-center shadow-inner cursor-pointer hover:bg-indigo-700 transition mb-2" onclick="UI.showPlayerCard('${p._cleanName}')">
-                <div>
-                    <h4 class="font-bold text-xs text-white">${bestFit ? i + 2 : i + 1}. ${p.Player} <span class="text-[10px] font-normal text-indigo-300">(${p.Team})</span></h4>
-                    <p class="text-[10px] text-indigo-200 font-medium mt-0.5">${p.Pos} • ${highlight}${stackBadge}</p>
+            <div class="py-1.5 px-2 bg-indigo-950/70 rounded-lg border border-indigo-800/60 flex justify-between items-center cursor-pointer hover:bg-indigo-900/80 transition mb-1" onclick="UI.showPlayerCard('${p._cleanName}')">
+                <div class="min-w-0 pr-2">
+                    <h4 class="font-bold text-[11px] text-white truncate leading-tight">
+                        <span class="text-indigo-400 font-normal mr-1">${bestFit ? i + 2 : i + 1}.</span>${p.Player} 
+                        <span class="text-[9px] font-normal text-indigo-300">(${p.Pos} • ${p.Team})</span>
+                    </h4>
+                    <p class="text-[9px] text-indigo-200 font-medium truncate mt-0.5">${highlight}${stackBadge}</p>
                 </div>
-                <div class="text-right shrink-0 ml-2">
-                    <span class="text-[10px] font-extrabold text-emerald-300 bg-emerald-950/80 border border-emerald-700/80 px-2 py-0.5 rounded shadow-sm">${ppwVal}</span>
+                <div class="text-right shrink-0">
+                    <span class="text-[9px] font-extrabold text-emerald-300 bg-emerald-950/90 border border-emerald-800/80 px-1.5 py-0.5 rounded">${ppwVal}</span>
                 </div>
             </div>`;
         }).join('');
@@ -2478,9 +2480,9 @@ const UI = {
 
         if (finalRecs.length > 1) {
             htmlStr += `
-            <button onclick="Compare.showComparison()" class="w-full mt-3 py-2.5 bg-indigo-900/40 hover:bg-indigo-800/60 border border-indigo-700/50 rounded-xl text-xs font-bold text-indigo-200 transition-colors flex items-center justify-center gap-2 shadow-sm">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
-                Compare Recommendations
+            <button onclick="Compare.showComparison()" class="w-full mt-2 py-1.5 bg-indigo-900/50 hover:bg-indigo-800/70 border border-indigo-700/60 rounded-lg text-[11px] font-bold text-indigo-200 transition-colors flex items-center justify-center gap-1.5 shadow-sm">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                Compare Top ${Math.min(finalRecs.length, 5)} Targets
             </button>`;
         }
 
