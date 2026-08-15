@@ -767,6 +767,86 @@ const State = {
         });
     },
 
+    // ===========================================================
+    // 2024 HISTORICAL DATA PARSER & MERGER
+    // ===========================================================
+    parseHistoricalStatsData(text) {
+        const rows = text.split(/\r?\n/).filter(row => row.trim() !== '');
+        if (rows.length < 2) return [];
+        const headers = rows[0].split('\t').map(h => h.trim());
+        const parsed = [];
+
+        const cleanNum = (val) => {
+            if (val === undefined || val === null || val === '') return 0;
+            if (typeof val === 'number') return isNaN(val) ? 0 : val;
+            let num = parseFloat(String(val).replace(/,/g, '').replace('%', '').trim());
+            return isNaN(num) ? 0 : num;
+        };
+
+        for (let i = 1; i < rows.length; i++) {
+            const vals = rows[i].split('\t').map(v => v.trim());
+            if (vals.length < 3) continue;
+
+            const player = vals[headers.indexOf('Player')];
+            const team = vals[headers.indexOf('Team')];
+            if (!player) continue;
+
+            let obj = {
+                Player: player,
+                Team: this.normalizeTeam(team),
+                gp: cleanNum(vals[headers.indexOf('G')]) || 17,
+                passCmp: cleanNum(vals[headers.indexOf('CMP')]),
+                passAtt: cleanNum(vals[headers.indexOf('PassATT')]),
+                passYds: cleanNum(vals[headers.indexOf('PassATTYDS')]),
+                passTd: cleanNum(vals[headers.indexOf('PassATTTD')]),
+                int: cleanNum(vals[headers.indexOf('INT')]),
+                rushAtt: cleanNum(vals[headers.indexOf('RushATT')]),
+                rushYds: cleanNum(vals[headers.indexOf('RushYDS')]),
+                rushTd: cleanNum(vals[headers.indexOf('RushTD')] || vals[headers.indexOf('TD')]),
+                targets: cleanNum(vals[headers.indexOf('TGT')]),
+                rec: cleanNum(vals[headers.indexOf('REC')]),
+                recYds: cleanNum(vals[headers.indexOf('RecYDS')]),
+                recTd: cleanNum(vals[headers.indexOf('RecTD')]),
+                targetShare: cleanNum(vals[headers.indexOf('TGT %')]),
+                bigRush: cleanNum(vals[headers.indexOf('20+Rush')]),
+                bigRec: cleanNum(vals[headers.indexOf('20+Rec')]),
+                fum: cleanNum(vals[headers.indexOf('FL')])
+            };
+
+            obj.bigPlays = (obj.bigRush || 0) + (obj.bigRec || 0);
+            obj.totalTd = (obj.passTd || 0) + (obj.rushTd || 0) + (obj.recTd || 0);
+            parsed.push(obj);
+        }
+        return parsed;
+    },
+
+    merge2024StatsData(statsList) {
+        if (!statsList || !Array.isArray(statsList)) return;
+
+        statsList.forEach(row => {
+            let p = this.matchPlayerFast(row.Player, row.Team, '');
+            if (!p) return;
+
+            if (!p.stats2024) p.stats2024 = {};
+            p.stats2024 = row;
+
+            // Calculate 2024 Fantasy PPG using custom scoring rules
+            let pts24 = 0;
+            pts24 += (row.passYds || 0) * (this.scoring.passYds || 0.04);
+            pts24 += (row.passTd || 0) * (this.scoring.passTd || 6);
+            pts24 += (row.int || 0) * (this.scoring.int || -2);
+            pts24 += (row.rushYds || 0) * (this.scoring.rushYds || 0.1);
+            pts24 += (row.rushTd || 0) * (this.scoring.rushTd || 6);
+            pts24 += (row.recYds || 0) * (this.scoring.recYds || 0.1);
+            pts24 += (row.rec || 0) * (this.scoring.ppr || 1);
+            pts24 += (row.recTd || 0) * (this.scoring.recTd || 6);
+            pts24 += (row.fum || 0) * (this.scoring.fumLost || -2);
+
+            p.stats2024.totalPts = pts24;
+            p.stats2024.ppg = (row.gp > 0) ? (pts24 / row.gp) : 0;
+        });
+    },
+
     calculateOptimalWeeklyScore(roster, weekNum) {
         let qb = []; let rb = []; let wr = []; let te = []; let pk = []; let dst = [];
 
@@ -1158,37 +1238,87 @@ const State = {
         });
     },
 
-    parseProjectedData(text) {
+    parseCBS_QB(text) {
         const rows = text.split(/\r?\n/).filter(row => row.trim() !== '');
-        const headers = rows[0].split('\t').map(h => h.trim());
         const parsed = [];
-
         for (let i = 1; i < rows.length; i++) {
             const vals = rows[i].split('\t');
-            let rawPos = this.normalizePos(vals[headers.indexOf('Position')]);
-
+            if (vals.length < 15) continue;
             let p = {
-                Player: vals[headers.indexOf('Player')],
-                Pos: rawPos,
-                Team: this.normalizeTeam(vals[headers.indexOf('Team')]),
+                Player: vals[0], Pos: 'QB', Team: this.normalizeTeam(vals[2]),
                 stats: {
-                    gp: parseFloat(vals[headers.indexOf('GP')]) || 17,
-                    passAtt: parseFloat(vals[headers.indexOf('Pass Att')]) || 0,
-                    passCmp: parseFloat(vals[headers.indexOf('Pass Cmp')]) || 0,
-                    passYds: parseFloat(vals[headers.indexOf('Pass Yds')]) || 0,
-                    passTd: parseFloat(vals[headers.indexOf('Pass TD')]) || 0,
-                    int: parseFloat(vals[headers.indexOf('INT')]) || 0,
-                    passerRating: parseFloat(vals[headers.indexOf('Passer Rating')]) || 0,
-                    rushAtt: parseFloat(vals[headers.indexOf('Rush Att')]) || 0,
-                    rushYds: parseFloat(vals[headers.indexOf('Rush Yds')]) || 0,
-                    rushAvg: parseFloat(vals[headers.indexOf('Rush Avg')]) || 0,
-                    rushTd: parseFloat(vals[headers.indexOf('Rush TD')]) || 0,
-                    targets: parseFloat(vals[headers.indexOf('Targets')]) || 0,
-                    rec: parseFloat(vals[headers.indexOf('Receptions')]) || 0,
-                    recYds: parseFloat(vals[headers.indexOf('Rec Yds')]) || 0,
-                    recAvg: parseFloat(vals[headers.indexOf('Rec Avg')]) || 0,
-                    recTd: parseFloat(vals[headers.indexOf('Rec TD')]) || 0,
-                    fum: parseFloat(vals[headers.indexOf('Fumbles Lost')]) || 0,
+                    gp: parseFloat(vals[3]) || 17, passAtt: parseFloat(vals[4]) || 0,
+                    passCmp: parseFloat(vals[5]) || 0, passYds: parseFloat(vals[6]) || 0,
+                    passTd: parseFloat(vals[8]) || 0, int: parseFloat(vals[9]) || 0,
+                    passerRating: parseFloat(vals[10]) || 0, rushAtt: parseFloat(vals[11]) || 0,
+                    rushYds: parseFloat(vals[12]) || 0, rushAvg: parseFloat(vals[13]) || 0,
+                    rushTd: parseFloat(vals[14]) || 0, fum: parseFloat(vals[15]) || 0,
+                    targets: 0, rec: 0, recYds: 0, recAvg: 0, recTd: 0
+                },
+                ProjPts: 0, VBD: 0, AdvVBD: 0
+            };
+            if (p.Player) parsed.push(p);
+        }
+        return parsed;
+    },
+
+    parseCBS_RB(text) {
+        const rows = text.split(/\r?\n/).filter(row => row.trim() !== '');
+        const parsed = [];
+        for (let i = 1; i < rows.length; i++) {
+            const vals = rows[i].split('\t');
+            if (vals.length < 14) continue;
+            let p = {
+                Player: vals[0], Pos: 'RB', Team: this.normalizeTeam(vals[2]),
+                stats: {
+                    gp: parseFloat(vals[3]) || 17, passAtt: 0, passCmp: 0, passYds: 0, passTd: 0, int: 0, passerRating: 0,
+                    rushAtt: parseFloat(vals[4]) || 0, rushYds: parseFloat(vals[5]) || 0, rushAvg: parseFloat(vals[6]) || 0,
+                    rushTd: parseFloat(vals[7]) || 0, targets: parseFloat(vals[8]) || 0, rec: parseFloat(vals[9]) || 0,
+                    recYds: parseFloat(vals[10]) || 0, recAvg: parseFloat(vals[12]) || 0, recTd: parseFloat(vals[13]) || 0,
+                    fum: parseFloat(vals[14]) || 0
+                },
+                ProjPts: 0, VBD: 0, AdvVBD: 0
+            };
+            if (p.Player) parsed.push(p);
+        }
+        return parsed;
+    },
+
+    parseCBS_WR(text) {
+        const rows = text.split(/\r?\n/).filter(row => row.trim() !== '');
+        const parsed = [];
+        for (let i = 1; i < rows.length; i++) {
+            const vals = rows[i].split('\t');
+            if (vals.length < 14) continue;
+            let p = {
+                Player: vals[0], Pos: 'WR', Team: this.normalizeTeam(vals[2]),
+                stats: {
+                    gp: parseFloat(vals[3]) || 17, passAtt: 0, passCmp: 0, passYds: 0, passTd: 0, int: 0, passerRating: 0,
+                    targets: parseFloat(vals[4]) || 0, rec: parseFloat(vals[5]) || 0, recYds: parseFloat(vals[6]) || 0,
+                    recAvg: parseFloat(vals[8]) || 0, recTd: parseFloat(vals[9]) || 0, rushAtt: parseFloat(vals[10]) || 0,
+                    rushYds: parseFloat(vals[11]) || 0, rushAvg: parseFloat(vals[12]) || 0, rushTd: parseFloat(vals[13]) || 0,
+                    fum: parseFloat(vals[14]) || 0
+                },
+                ProjPts: 0, VBD: 0, AdvVBD: 0
+            };
+            if (p.Player) parsed.push(p);
+        }
+        return parsed;
+    },
+
+    parseCBS_TE(text) {
+        const rows = text.split(/\r?\n/).filter(row => row.trim() !== '');
+        const parsed = [];
+        for (let i = 1; i < rows.length; i++) {
+            const vals = rows[i].split('\t');
+            if (vals.length < 10) continue;
+            let p = {
+                Player: vals[0], Pos: 'TE', Team: this.normalizeTeam(vals[2]),
+                stats: {
+                    gp: parseFloat(vals[3]) || 17, passAtt: 0, passCmp: 0, passYds: 0, passTd: 0, int: 0, passerRating: 0,
+                    targets: parseFloat(vals[4]) || 0, rec: parseFloat(vals[5]) || 0, recYds: parseFloat(vals[6]) || 0,
+                    recAvg: parseFloat(vals[8]) || 0, recTd: parseFloat(vals[9]) || 0, rushAtt: 0, rushYds: 0, rushAvg: 0, rushTd: 0,
+                    fum: parseFloat(vals[10]) || 0
                 },
                 ProjPts: 0, VBD: 0, AdvVBD: 0
             };
@@ -1702,6 +1832,45 @@ const State = {
             else if (pastGp <= 8) sampleConfidence = 0.68;  // Partial-Sample (5-8 GP)
             else if (pastGp <= 13) sampleConfidence = 0.88; // Solid-Sample (9-13 GP)
             else sampleConfidence = 1.00;                   // Full-Season (14+ GP)
+
+            // ===========================================================
+            // MULTI-YEAR TRENDING & 65/35 BLENDED STATS ENGINE (2024 + 2025)
+            // ===========================================================
+            let s25 = p.pastStats;
+            let s24 = p.stats2024;
+
+            if (s25 && s24 && s25.gp > 0 && s24.gp > 0) {
+                let w25 = 0.65;
+                let w24 = 0.35;
+
+                // Bayesian Injury Adjustment: If 2025 was an injury fluke, don't ignore 2024 workhorse capacity
+                if (s25.gp <= 6 && s24.gp >= 14) {
+                    w25 = 0.40;
+                    w24 = 0.60;
+                    p._isInjuryBounceback = true;
+                }
+
+                p.blendedPpg = (p.pastPpg * w25) + (s24.ppg * w24);
+
+                // Multi-Year Alpha Validation
+                let share25 = p.targetShare || s25.targetShare || 0;
+                let share24 = s24.targetShare || 0;
+                if (share25 >= 24.0 && share24 >= 24.0) {
+                    p._isProvenMultiYearAlpha = true;
+                    adjMultiplier += 0.035; // Locked-in elite talent floor
+                }
+
+                // 3-Year Career Arc Vector (2024 -> 2025 -> 2026)
+                let projPpg = (p.ProjPts || 0) / Math.max(1, p.stats?.gp || 17);
+                if (s24.ppg > 0 && p.pastPpg > s24.ppg * 1.12 && projPpg > p.pastPpg * 1.05) {
+                    p._isAscendingCareerArc = true;
+                    upsideMultiplier += 0.12;
+                    ceilingTags.push("3-Year Ascending Arc");
+                } else if (p.pastPpg < s24.ppg * 0.85 && projPpg < p.pastPpg && (p.age || 25) >= 28) {
+                    p._isDecliningCareerArc = true;
+                    adjMultiplier -= 0.035;
+                }
+            }
 
             // 2nd-Level: Volume Density Check
             let tgtsPerGame = (p.pastStats?.targets || 0) / Math.max(1, pastGp);
@@ -2535,18 +2704,18 @@ const State = {
 
     parseKickerData(text) {
         const rows = text.split(/\r?\n/).filter(row => row.trim() !== '');
-        const headers = rows[0].split('\t').map(h => h.trim());
+        const headers = rows[0].split('\t').map(h => h.trim().toLowerCase());
         const parsed = [];
 
         for (let i = 1; i < rows.length; i++) {
             const vals = rows[i].split('\t');
             let p = {
-                Player: vals[headers.indexOf('Player')],
+                Player: vals[headers.indexOf('player')],
                 Pos: 'PK',
-                Team: vals[headers.indexOf('Team')],
+                Team: vals[headers.indexOf('team')],
                 stats: {
-                    fgTotal: parseFloat(vals[headers.indexOf('FGM')]) || 0,
-                    xp: parseFloat(vals[headers.indexOf('XPM')]) || 0
+                    fgTotal: parseFloat(vals[headers.indexOf('fgm')]) || 0,
+                    xp: parseFloat(vals[headers.indexOf('xpm')]) || 0
                 },
                 ProjPts: 0, VBD: 0, AdvVBD: 0
             };

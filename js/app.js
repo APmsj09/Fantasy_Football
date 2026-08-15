@@ -187,8 +187,10 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const SEASON = "26";
             const PREV_SEASON = "25";
+            const HIST_SEASON = "24";
             const DATA_DIR = `./data/20${SEASON}`;
             const PREV_DATA_DIR = `./data/20${PREV_SEASON}`;
+            const HIST_DATA_DIR = `./data/20${HIST_SEASON}`;
 
             const fetchTSV = async (fileName, parser, merger) => {
                 try {
@@ -205,7 +207,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Base projections MUST load sequentially first to build the base array
             State.allPlayers = [];
-            await fetchTSV(`${DATA_DIR}/projected_data_${SEASON}.tsv`, State.parseProjectedData.bind(State), data => State.allPlayers.push(...data));
+            await fetchTSV(`${DATA_DIR}/QB_CBS_${SEASON}.tsv`, State.parseCBS_QB.bind(State), data => State.allPlayers.push(...data));
+            await fetchTSV(`${DATA_DIR}/RB_CBS_${SEASON}.tsv`, State.parseCBS_RB.bind(State), data => State.allPlayers.push(...data));
+            await fetchTSV(`${DATA_DIR}/WR_CBS_${SEASON}.tsv`, State.parseCBS_WR.bind(State), data => State.allPlayers.push(...data));
+            await fetchTSV(`${DATA_DIR}/TE_CBS_${SEASON}.tsv`, State.parseCBS_TE.bind(State), data => State.allPlayers.push(...data));
             await fetchTSV(`${DATA_DIR}/def_proj_${SEASON}.tsv`, State.parseDefData.bind(State), data => State.allPlayers.push(...data));
             await fetchTSV(`${DATA_DIR}/k_proj_${SEASON}.tsv`, State.parseKickerData.bind(State), data => State.allPlayers.push(...data));
 
@@ -214,7 +219,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Load all advanced metrics concurrently (swapped to enrichPlayerData)
             await Promise.all([
                 enrichPlayerData(),
-                // Current Year Data (Projections, Schedule, ADP, Depth Charts)
+                // Current Year Data (2026)
                 fetchTSV(`${DATA_DIR}/Schedule_${SEASON}.tsv`, State.parseScheduleData.bind(State)),
                 fetchTSV(`${DATA_DIR}/SOS_${SEASON}.tsv`, State.parseSOSData.bind(State), State.mergeSOSData.bind(State)),
                 fetchTSV(`${DATA_DIR}/RB_Handcuffs_${SEASON}.tsv`, State.parseHandcuffData.bind(State), State.mergeHandcuffData.bind(State)),
@@ -228,7 +233,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (typeof UI.renderProfileAssignments === "function") UI.renderProfileAssignments();
                 }),
 
-                // Previous Year Data (Actual Stats, Advanced Metrics, Snap Counts, Boom/Bust)
+                // Previous Year Data (2025)
                 fetchTSV(`${PREV_DATA_DIR}/DST_Data.tsv`, State.parseDSTActualsData.bind(State), State.mergeDSTActualsData.bind(State)),
                 fetchTSV(`${PREV_DATA_DIR}/Snap_Count_${PREV_SEASON}.tsv`, State.parseSnapCountData.bind(State), State.mergeSnapCountData.bind(State)),
                 ...['QB', 'RB', 'WR', 'TE'].map(pos => fetchTSV(`${PREV_DATA_DIR}/${pos}_BB_${PREV_SEASON}.tsv`, State.parseAdvancedData.bind(State), State.mergeBoomBustData.bind(State))),
@@ -237,7 +242,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 fetchTSV(`${PREV_DATA_DIR}/Team_Adv_Rec_${PREV_SEASON}.tsv`, State.parseTeamAdvRecData.bind(State)),
                 fetchTSV(`${PREV_DATA_DIR}/Team_Target_Dist_Data.tsv`, State.parseTeamTargetDistData.bind(State), data => State.teamTargets = data),
                 ...['QB', 'RB', 'WR', 'TE'].map(pos => fetchTSV(`${PREV_DATA_DIR}/${pos}_Stats.tsv`, State.parseAdvancedData.bind(State), State.mergeActualStatsData.bind(State))),
-                ...['QB', 'RB', 'WR', 'TE'].map(pos => fetchTSV(`${PREV_DATA_DIR}/Advanced${pos}Data.tsv`, State.parseAdvancedData.bind(State), State.mergeAdvancedMetrics.bind(State)))
+                ...['QB', 'RB', 'WR', 'TE'].map(pos => fetchTSV(`${PREV_DATA_DIR}/Advanced${pos}Data.tsv`, State.parseAdvancedData.bind(State), State.mergeAdvancedMetrics.bind(State))),
+
+                // NEW: 2-Year Historical Actuals (2024)
+                ...['QB', 'RB', 'WR', 'TE'].map(pos => fetchTSV(`${HIST_DATA_DIR}/${pos}_Stats_${HIST_SEASON}.tsv`, State.parseHistoricalStatsData.bind(State), State.merge2024StatsData.bind(State)))
             ]);
 
             State.finalizeDepthCharts();

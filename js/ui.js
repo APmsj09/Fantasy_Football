@@ -1738,34 +1738,33 @@ const UI = {
         let pastStatsHTML = '';
         if (p.pastStats && p.pastPts !== undefined) {
             let ps = p.pastStats;
-            let volumeStr = '';
-            let tdCount = ps.totalTd || 0;
-
-            if (p.Pos === 'QB') {
-                volumeStr = `${ps.passYds || 0} Pass Yds (${ps.passTd || 0} TD / ${ps.int || 0} INT) • ${ps.rushYds || 0} Rush Yds (${ps.rushTd || 0} TD)`;
-            } else if (p.Pos === 'RB') {
-                volumeStr = `${ps.rushYds || 0} Rush Yds (${ps.rushTd || 0} TD) • ${ps.rec || 0}/${ps.targets || 0} Rec (${ps.recYds || 0} Yds, ${ps.recTd || 0} TD)`;
-            } else if (['WR', 'TE'].includes(p.Pos)) {
-                volumeStr = `${ps.rec || 0}/${ps.targets || 0} Rec (${ps.recYds || 0} Yds, ${ps.recTd || 0} TD)${ps.targetShare ? ` [${ps.targetShare}% Tgt Share]` : ''}`;
-                if (ps.rushYds && ps.rushYds > 0) volumeStr += ` • ${ps.rushYds} Rush Yds`;
-            } else if (p.Pos === 'DST') {
-                let turnovers = (ps.defInt || 0) + (ps.defFum || 0);
-                let tds = (ps.defTd || 0) + (ps.spcTd || 0);
-                volumeStr = `${ps.sack || 0} Sacks • ${turnovers} Turnovers Forced • ${tds} Def TDs`;
-            } else if (p.Pos === 'PK') {
-                volumeStr = `${ps.fgTotal || 0} FGs Made • ${ps.xp || 0} PATs Made`;
-            }
-
+            let s24 = p.stats2024;
             let ppgStr = p.pastPpg ? `${p.pastPpg.toFixed(1)} PPG` : 'N/A';
-            let bigPlayStr = ps.bigPlays ? `<span class="ml-2 text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full">💥 ${ps.bigPlays} Big Plays (20+)</span>` : '';
+            let bigPlayStr = ps.bigPlays ? `<span class="ml-2 text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full">💥 ${ps.bigPlays} Big Plays</span>` : '';
+
+            let multiYearBadge = '';
+            if (p._isProvenMultiYearAlpha) multiYearBadge = `<span class="ml-2 text-[10px] bg-indigo-100 text-indigo-800 font-bold px-2 py-0.5 rounded-full">⭐ 2-Yr Alpha Target</span>`;
+            else if (p._isAscendingCareerArc) multiYearBadge = `<span class="ml-2 text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">📈 3-Yr Ascending Arc</span>`;
+            else if (p._isInjuryBounceback) multiYearBadge = `<span class="ml-2 text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full">🔄 Health Bounceback Profile</span>`;
 
             pastStatsHTML = `
                 <div class="bg-indigo-50/60 border border-indigo-100 p-3.5 rounded-xl mb-4 shadow-sm">
-                    <div class="flex justify-between items-center mb-1">
-                        <span class="text-[10px] uppercase font-bold text-indigo-500 tracking-wider">2025 Actual Performance (${ps.gp || 17} Games)${bigPlayStr}</span>
-                        <span class="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">${ppgStr}</span>
+                    <div class="flex justify-between items-center mb-1.5">
+                        <span class="text-[10px] uppercase font-bold text-indigo-500 tracking-wider">Multi-Year Actuals${bigPlayStr}${multiYearBadge}</span>
+                        <span class="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">2025: ${ppgStr}</span>
                     </div>
-                    <div class="text-xs font-bold text-indigo-950">${volumeStr}</div>
+                    
+                    <div class="grid grid-cols-2 gap-2 text-xs pt-1 border-t border-indigo-100/60">
+                        <div>
+                            <span class="text-[10px] text-gray-500 block uppercase font-semibold">2025 (${ps.gp || 17}G)</span>
+                            <span class="font-bold text-gray-900">${ps.totalTd || 0} TD • ${ps.rushYds || ps.recYds || ps.passYds || 0} Total Yds</span>
+                        </div>
+                        ${s24 ? `
+                        <div>
+                            <span class="text-[10px] text-gray-500 block uppercase font-semibold">2024 (${s24.gp || 17}G)</span>
+                            <span class="font-bold text-gray-700">${s24.ppg.toFixed(1)} PPG • ${s24.totalTd || 0} TD • ${s24.rushYds || s24.recYds || s24.passYds || 0} Yds</span>
+                        </div>` : '<div class="text-gray-400 text-[11px] italic">No 2024 data (Rookie/Inactive)</div>'}
+                    </div>
                 </div>
             `;
         }
@@ -2314,37 +2313,22 @@ const UI = {
                 }
             }
 
-            // 2. Draft Capital, Survival Probability, & Reach Gravity (Opportunity Cost)
+            // 2. ADP Market Dynamics & Game-Theory Guideline (Mild Timing Tiebreaker Only)
             if (p.adp) {
-                let survivalProb = getSurvivalProb(p.adp); // Chance player is available at nextUserOverallPick
-                let urgency = 1 - survivalProb;
+                let survivalProb = getSurvivalProb(p.adp); // Probability of surviving to nextUserOverallPick
+                p._survivalProb = survivalProb;
 
-                // Reach Penalty: Strongly penalize drafting players significantly ahead of their ADP in early/mid rounds
-                let reachDiff = currentOverallPick - p.adp;
-                if (reachDiff < -12 && currentRound <= 10) {
-                    let reachPenalty = Math.min(15.0, Math.abs(reachDiff + 12) * 0.45);
-                    score -= reachPenalty;
-                }
-
-                // Extreme ADP Slider Boost: When top-tier talent slides far past ADP (e.g. Justin Jefferson sliding to Pick 25)
-                let slideDistance = currentOverallPick - p.adp;
-                if (slideDistance >= 8 && score > 0) {
-                    let slideBoost = Math.min(18.0, slideDistance * 1.25);
-                    score += slideBoost;
-                }
-
-                // Urgency Boost: Player will be GONE before your next pick
-                if (survivalProb < 0.25 && score > 0) {
-                    let urgencyBoost = Math.min(10.0, score * 0.15 * urgency);
-                    score += urgencyBoost;
-                }
-                // Next-Round Availability Discount: Player is almost guaranteed to survive to your next pick
-                // (Prevents bypassing current-round value for a player who will be there later)
-                else if (survivalProb > 0.65 && currentRound <= 8) {
-                    let picksPastNext = p.adp - nextUserOverallPick;
-                    if (picksPastNext > 0) {
-                        let waitDiscount = Math.min(14.0, picksPastNext * 0.40 * (survivalProb - 0.50));
-                        score -= waitDiscount;
+                // TACTICAL TIEBREAKER ONLY (Max +/- 3.0 pts to prevent overriding projected value)
+                if (score > 0) {
+                    // Urgent: Less than 20% chance to survive -> subtle bump to break ties over equal-tier players
+                    if (survivalProb < 0.20) {
+                        let urgencyTiebreaker = Math.min(3.0, (1 - survivalProb) * 3.0);
+                        score += urgencyTiebreaker;
+                    }
+                    // Safe to Wait: Over 75% chance to survive -> gentle discount to encourage grabbing scarce talent first
+                    else if (survivalProb > 0.75 && currentRound <= 9) {
+                        let waitTiebreaker = Math.min(3.0, (survivalProb - 0.70) * 4.0);
+                        score -= waitTiebreaker;
                     }
                 }
             }
@@ -2612,12 +2596,21 @@ const UI = {
             let hasPositiveValue = (p.AdvVBD || p.VBD) > 0;
 
             let highlight = '';
-            if (p._sleeperBadge) highlight = `<span class="text-emerald-300 font-bold">${p._sleeperBadge}</span>`;
-            else if (p._rosterContextBadge) highlight = `<span class="text-amber-300 font-bold">${p._rosterContextBadge}</span>`;
-            else if (survivalProb < 0.15 && (isStarterNeeded || hasPositiveValue)) highlight = `⚡ High Urgency`;
-            else if (p.adp && (p.adp < currentOverallPick)) highlight = `ADP Value (${p.adp.toFixed(0)})`;
-            else if (isStarterNeeded) highlight = `Team Need`;
-            else highlight = `Depth`;
+            if (p._sleeperBadge) {
+                highlight = `<span class="text-emerald-300 font-bold">${p._sleeperBadge}</span>`;
+            } else if (p._rosterContextBadge) {
+                highlight = `<span class="text-amber-300 font-bold">${p._rosterContextBadge}</span>`;
+            } else if (p.adp && p._survivalProb < 0.20 && (isStarterNeeded || hasPositiveValue)) {
+                highlight = `<span class="text-rose-300 font-bold">⚡ Last Chance (ADP ${p.adp.toFixed(0)})</span>`;
+            } else if (p.adp && p._survivalProb > 0.80 && currentRound <= 9) {
+                highlight = `<span class="text-slate-300 font-medium">⏳ Can Wait (ADP ${p.adp.toFixed(0)})</span>`;
+            } else if (p.adp && (currentOverallPick - p.adp >= 12)) {
+                highlight = `<span class="text-emerald-300 font-bold">🔥 Sliding vs ADP (${p.adp.toFixed(0)})</span>`;
+            } else if (isStarterNeeded) {
+                highlight = `<span class="text-amber-300">Positional Need</span>`;
+            } else {
+                highlight = `Depth / Value`;
+            }
 
             let ppwVal = '';
             if (p._addedPPW >= 1.0 || (p._addedPPW > 0 && !p._byeFillWeek)) {
