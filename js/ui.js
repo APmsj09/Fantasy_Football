@@ -560,11 +560,16 @@ const UI = {
         if (isOffense) {
             let specificStats = [];
             if (p.targetShare && p.targetShare >= 15) specificStats.push(`commands a massive <strong>${p.targetShare}% target share</strong>`);
-            if (p.hvo && p.hvo >= 40) specificStats.push(`dominates with <strong>${p.hvo} high-value opportunities</strong> (RZ carries + targets)`);
-            if (p.aDOT && p.aDOT >= 12.0) specificStats.push(`stretches the field with an elite <strong>${p.aDOT} aDOT</strong>`);
+            if (p.tps && p.tps >= 0.22) specificStats.push(`demands targets at an elite rate (<strong>${(p.tps * 100).toFixed(1)}% Targets Per Snap</strong>)`);
+            if (p._isIndependentYACCreator) specificStats.push(`creates massive yardage independently of his offensive scheme (<strong>${p.yacAtt.toFixed(1)} YAC/R</strong>)`);
+            if (p.hvo && p.hvo >= 40) specificStats.push(`dominates with <strong>${p.hvo} high-value opportunities</strong> (Targets + RZ carries)`);
+            if (p.aDOT && p.Pos === 'WR' && p.aDOT >= 12.0) specificStats.push(`stretches the field with an elite <strong>${p.aDOT} aDOT</strong>`);
+            if (p.aDOT && p.Pos === 'TE' && p.aDOT >= 8.5) specificStats.push(`stretches the seam with an elite <strong>${p.aDOT} TE aDOT</strong>`);
             if (p.pastStats && p.pastStats.bigPlays >= 8) specificStats.push(`generated <strong>${p.pastStats.bigPlays} explosive plays</strong> (20+ yards)`);
             if (p.wopr && p.wopr >= 0.55) specificStats.push(`boasts a dominant <strong>${p.wopr.toFixed(2)} WOPR</strong>`);
             if (p.Pos === 'QB' && p.stats && p.stats.rushAtt >= 50) specificStats.push(`adds crucial rushing floor with <strong>${p.stats.rushAtt} projected carries</strong>`);
+            if (p.p2s && p.p2s <= 14.0) specificStats.push(`boasts elite pocket escapability (converts pressure into plays instead of sacks)`);
+            if (p.err && p.err >= 4.5) specificStats.push(`breaks off massive chunk plays with an elite <strong>${p.err.toFixed(1)}% Explosive Run Rate</strong>`);
             if (p.snapShare && p.snapShare >= 75) specificStats.push(`rarely leaves the field (<strong>${p.snapShare.toFixed(0)}% snap share</strong>)`);
 
             if (specificStats.length > 0) {
@@ -686,27 +691,10 @@ const UI = {
                     pros.push(`<strong>High Ground Efficiency:</strong> Averaged a stellar <strong>${ps.rushYpa.toFixed(1)} YPC</strong> on ${ps.rushAtt} carries last season.`);
                 }
 
-                // Positive TD Regression (RB)
-                const touches = (ps.rushAtt || 0) + (ps.rec || 0);
-                if (pos === 'RB' && touches >= 100 && ps.totalTd !== undefined) {
-                    const tdRate = ps.totalTd / touches;
-                    if (tdRate <= 0.01) {
-                        pros.push(`<strong>Massive TD Regression Candidate:</strong> Scored only ${ps.totalTd} TDs on an absurd ${touches} touches last year. Scoring output is mathematically guaranteed to bounce back.`);
-                    } else if (tdRate <= 0.02) {
-                        pros.push(`<strong>Positive TD Regression Candidate:</strong> Scored just ${ps.totalTd} TDs on ${touches} touches last year. Expect better end-zone luck this season.`);
-                    }
-                }
-
-                // Positive TD Regression (WR/TE)
-                if (['WR', 'TE'].includes(pos) && (Number(ps.targets) || 0) >= 60) {
-                    const recTd = Number(ps.recTd) || 0;
-                    const targets = Number(ps.targets) || 1;
-                    const tdRate = recTd / targets;
-                    if (tdRate <= 0.01) {
-                        pros.push(`<strong>Massive TD Regression Candidate:</strong> Caught only ${recTd} TDs on ${targets} targets last year. Scoring output is mathematically guaranteed to positively regress.`);
-                    } else if (tdRate <= 0.03) {
-                        pros.push(`<strong>Positive TD Regression Candidate:</strong> Caught only ${recTd} TDs on ${targets} targets last year. Expect scoring output to bounce back toward league averages.`);
-                    }
+                // Scheme-Adjusted Expected TD (xTD) Positive Regression
+                if (p.xTD !== undefined && ps.totalTd !== undefined && p._positiveTdRegression) {
+                    let diff = p.xTD - ps.totalTd;
+                    pros.push(`<strong>Massive TD Regression Candidate:</strong> Scored only ${ps.totalTd} TDs last year. However, based on his specific red-zone touch volume and his team's offensive efficiency scheme, his Expected Touchdowns (xTD) was <strong>${p.xTD.toFixed(1)}</strong>. He is mathematically primed to score ~${Math.round(diff)} more touchdowns this season with neutral luck.`);
                 }
 
                 // Projected Leap
@@ -921,14 +909,18 @@ const UI = {
             }
 
             if (isRookieOrYoung && posRank <= 36) {
-                pros.push(`<strong>Fresh Legs & Youth Ceiling:</strong> At just ${pAge} years old, enters the season with high-end athletic potential and minimal NFL workload wear.`);
+                if (p.syntheticBoost && p.syntheticBoost >= 0.08) {
+                    pros.push(`<strong>Elite Scheme Inheritance:</strong> As a rookie/new starter, he inherits an incredibly lucrative offensive environment that mathematically places him on equal footing with elite volume veterans.`);
+                } else {
+                    pros.push(`<strong>Fresh Legs & Youth Ceiling:</strong> At just ${pAge} years old, enters the season with high-end athletic potential and minimal NFL workload wear.`);
+                }
             }
         }
 
         if (isDST && p.stats) {
             const ds = p.stats;
-            if (ds.sack && ds.sack >= 50) pros.push(`<strong>Fearsome Pass Rush:</strong> Generated a league-wrecking <strong>${ds.sack} sacks</strong> last season.`);
-            else if (ds.sack && ds.sack >= 40) pros.push(`<strong>Elite Pass Rush:</strong> Generated a massive <strong>${ds.sack} sacks</strong> last season.`);
+            if (p.havocPerGame && p.havocPerGame >= 6.5) pros.push(`<strong>Elite Havoc Rating:</strong> Created massive offensive disruption, generating <strong>${p.havocPerGame.toFixed(1)} havoc events</strong> (Sacks + Turnovers + TFLs) per game.`);
+            else if (ds.sack && ds.sack >= 45) pros.push(`<strong>Elite Pass Rush:</strong> Generated a massive <strong>${ds.sack} sacks</strong> last season.`);
 
             const to = (ds.defInt || 0) + (ds.defFum || 0);
             if (to >= 30) pros.push(`<strong>Elite Turnover Magnet:</strong> Forced a staggering <strong>${to} total turnovers</strong> (INTs & Fumbles) last season.`);
@@ -1045,34 +1037,11 @@ const UI = {
                     }
                 }
 
-                // 7. Tiered TD Regression Warning (RB)
-                if (pos === 'RB' && totalTouches >= 100) {
-                    const totalTd = Number(ps.totalTd) || 0;
-                    const tdRate = totalTd / totalTouches;
-                    const isTrueGoalLineWorkhorse = (p.rzAtt && p.rzAtt >= 25);
-
-                    if (tdRate >= 0.12 && !isTrueGoalLineWorkhorse) {
-                        cons.push(`<strong>Extreme TD Regression Warning:</strong> Scored ${totalTd} TDs on ${totalTouches} touches (${(tdRate * 100).toFixed(1)}% TD rate). This is mathematically unsustainable.`);
-                        riskScore += 2;
-                    } else if (tdRate >= 0.085 && !isTrueGoalLineWorkhorse) {
-                        cons.push(`<strong>TD Regression Warning:</strong> Scored ${totalTd} TDs on ${totalTouches} touches (${(tdRate * 100).toFixed(1)}% TD rate). Sustaining this TD efficiency without a massive red-zone role may be difficult.`);
-                        riskScore += 1;
-                    }
-                }
-
-                // 8. Tiered TD Regression Warning (WR/TE)
-                if (['WR', 'TE'].includes(pos) && (Number(ps.targets) || 0) >= 60) {
-                    const recTd = Number(ps.recTd) || 0;
-                    const targets = Number(ps.targets) || 1;
-                    const tdRate = recTd / targets;
-
-                    if (tdRate >= 0.15) {
-                        cons.push(`<strong>Extreme TD Regression:</strong> Caught ${recTd} TDs on just ${targets} targets (${(tdRate * 100).toFixed(1)}% rate). This scoring pace is practically impossible to sustain.`);
-                        riskScore += 2;
-                    } else if (tdRate >= 0.10) {
-                        cons.push(`<strong>Unsustainable TD Efficiency:</strong> Caught ${recTd} TDs on ${targets} targets (${(tdRate * 100).toFixed(1)}% TD/target rate). Expect TD output to regress toward league averages.`);
-                        riskScore += 1;
-                    }
+                // 7. Scheme-Adjusted Expected TD (xTD) Negative Regression
+                if (p.xTD !== undefined && ps.totalTd !== undefined && p._isFlukeTDScorer) {
+                    let diff = ps.totalTd - p.xTD;
+                    cons.push(`<strong>Extreme TD Regression Warning:</strong> Scored an unsustainable ${ps.totalTd} TDs last year. Based on his actual touch locations and his team's offensive efficiency scheme, his Expected Touchdowns (xTD) was only <strong>${p.xTD.toFixed(1)}</strong>. Unless his red-zone role significantly increases, expect a sharp drop in scoring.`);
+                    riskScore += 2;
                 }
             } // <<< CLOSE p.pastStats BLOCK HERE
 
@@ -1251,18 +1220,19 @@ const UI = {
                 riskScore += 1;
             }
 
+            if (p.p2s && p.p2s >= 24.0) {
+                cons.push(`<strong>Takes Drive-Killing Sacks:</strong> An alarming <strong>${p.p2s.toFixed(1)}% Pressure-to-Sack Rate</strong> means he fails to navigate the pocket and frequently takes negative plays when pressured.`);
+                riskScore += 2;
+            } else if (p.p2s && p.p2s >= 19.0) {
+                cons.push(`<strong>Poor Escapability:</strong> High Pressure-to-Sack Rate (${p.p2s.toFixed(1)}%) indicates he struggles to throw the ball away or escape when the pocket breaks down.`);
+                riskScore += 1;
+            }
+
             if (p.pressureRate && p.pressureRate > 27.0) {
                 if (p.olTier === 'S' || p.olTier === 'A') {
-                    cons.push(`<strong>Holds the Ball Too Long:</strong> Faced a catastrophic <strong>${p.pressureRate.toFixed(1)}% pressure rate</strong> despite elite O-Line play. He frequently creates his own pressure by failing to process quickly.`);
+                    cons.push(`<strong>Holds the Ball Too Long:</strong> Faced a catastrophic <strong>${p.pressureRate.toFixed(1)}% pressure rate</strong> despite elite O-Line play. He frequently creates his own pressure.`);
                 } else {
                     cons.push(`<strong>Under Constant Siege:</strong> Faced a catastrophic <strong>${p.pressureRate.toFixed(1)}% pressure rate</strong>. Offensive line play completely derails his timing.`);
-                }
-                riskScore += 2;
-            } else if (p.pressureRate && p.pressureRate > 22.0) {
-                if (p.olTier === 'S' || p.olTier === 'A') {
-                    cons.push(`<strong>Slow Processor:</strong> Faced a high <strong>${p.pressureRate.toFixed(1)}% pressure rate</strong> despite strong blocking, indicating he holds the ball too long.`);
-                } else {
-                    cons.push(`<strong>Pressure Vulnerability:</strong> Faced a high <strong>${p.pressureRate.toFixed(1)}% pressure rate</strong> in the pocket.`);
                 }
                 riskScore += 1;
             }
@@ -1555,6 +1525,12 @@ const UI = {
             if (passEnv && passEnv.playActionYds >= 950 && ['QB', 'WR', 'TE'].includes(p.Pos)) {
                 envBadges.push(`<span class="bg-indigo-100 text-indigo-800 text-xs font-bold px-2.5 py-1 rounded-full border border-indigo-200">🚀 Play-Action Heavy Scheme</span>`);
             }
+            if (passEnv && passEnv.rpoPlays >= 85 && ['QB', 'WR', 'RB'].includes(p.Pos)) {
+                envBadges.push(`<span class="bg-purple-100 text-purple-800 text-xs font-bold px-2.5 py-1 rounded-full border border-purple-200">🔄 RPO Heavy Offense</span>`);
+            }
+            if (recEnv && recEnv.yacPerRec >= 5.8 && ['WR', 'TE'].includes(p.Pos)) {
+                envBadges.push(`<span class="bg-blue-100 text-blue-800 text-xs font-bold px-2.5 py-1 rounded-full border border-blue-200">🏃 Scheme-Manufactured YAC</span>`);
+            }
             if (passEnv && passEnv.prssPct >= 25.0) {
                 envBadges.push(`<span class="bg-rose-100 text-rose-800 text-xs font-bold px-2.5 py-1 rounded-full border border-rose-200">⚠️ High Pass Pressure Env (${passEnv.prssPct}%)</span>`);
             }
@@ -1596,12 +1572,17 @@ const UI = {
             if (p.snapShare) barHTML += buildBar('Snap Share', p.snapShare, 100, '%', 'emerald');
             if (p.trueCatchRate) barHTML += buildBar('True Catch Rate', p.trueCatchRate.toFixed(1), 100, '%', 'blue');
             if (p.aDOT) barHTML += buildBar('Average Depth of Target', p.aDOT, 15, ' yds', 'amber');
+            if (p.tps) barHTML += buildBar('Targets Per Snap', (p.tps * 100).toFixed(1), 28, '%', 'purple');
             if (p.airYards) barHTML += buildBar('Total Air Yards', p.airYards, 2000, ' yds', 'amber');
             if (p.yacAtt) barHTML += buildBar('Yards After Contact', p.yacAtt, 4, ' yds', 'purple');
             if (p.brokenTackles) barHTML += buildBar('Broken Tackles', p.brokenTackles, 30, '', 'red');
-            if (p.hvo) barHTML += buildBar('High-Value Opps (Rec + RZ)', p.hvo, 130, '', 'emerald');
+            if (p.err) barHTML += buildBar('Explosive Run Rate', p.err.toFixed(1), 8, '%', 'amber');
+            if (p.hvo) barHTML += buildBar('High-Value Opps (Tgt + RZ)', p.hvo, 130, '', 'emerald');
             if (p.ypt) barHTML += buildBar('Yards Per Target', p.ypt.toFixed(1), 12, ' yds', 'blue');
+            if (p.xTD) barHTML += buildBar('Expected TDs (xTD)', p.xTD.toFixed(1), 12, '', 'emerald');
+            
             if (p.pressureRate) barHTML += buildBar('Pressure Rate Faced', p.pressureRate.toFixed(1), 30, '%', 'rose');
+            if (p.p2s) barHTML += buildBar('Pressure-to-Sack Rate', p.p2s.toFixed(1), 30, '%', 'rose');
 
             if (p.rzTgt || p.rzAtt) barHTML += buildBar('Red Zone Opps', (p.rzTgt || 0) + (p.rzAtt || 0), 60, '', 'slate');
             if (barHTML) {
@@ -2184,40 +2165,55 @@ const UI = {
                 score += (p._addedPPW * 0.75); // Rewards players who actively increase optimal starting score
             }
 
-            // 2. Draft Capital & Survival Probability (Opportunity Cost Optimization)
+            // 2. Draft Capital, Survival Probability, & Reach Gravity (Opportunity Cost)
             if (p.adp) {
                 let survivalProb = getSurvivalProb(p.adp); // Chance player is available at nextUserOverallPick
                 let urgency = 1 - survivalProb;
 
+                // Reach Penalty: Strongly penalize drafting players significantly ahead of their ADP in early/mid rounds
+                let reachDiff = currentOverallPick - p.adp;
+                if (reachDiff < -12 && currentRound <= 10) {
+                    let reachPenalty = Math.min(15.0, Math.abs(reachDiff + 12) * 0.45);
+                    score -= reachPenalty;
+                }
+
                 // Urgency Boost: Player will be GONE before your next pick
                 if (survivalProb < 0.25 && score > 0) {
-                    let urgencyBoost = Math.min(8.0, score * 0.12 * urgency);
+                    let urgencyBoost = Math.min(10.0, score * 0.15 * urgency);
                     score += urgencyBoost;
                 }
                 // Next-Round Availability Discount: Player is almost guaranteed to survive to your next pick
-                // (Prevents reaching 20+ picks early when you can get them in the next round)
+                // (Prevents bypassing current-round value for a player who will be there later)
                 else if (survivalProb > 0.65 && currentRound <= 8) {
                     let picksPastNext = p.adp - nextUserOverallPick;
                     if (picksPastNext > 0) {
-                        let waitDiscount = Math.min(12.0, picksPastNext * 0.35 * (survivalProb - 0.50));
+                        let waitDiscount = Math.min(14.0, picksPastNext * 0.40 * (survivalProb - 0.50));
                         score -= waitDiscount;
                     }
                 }
             }
 
-            // 3. Correlated Stacking (QB + Pass Catchers)
+            // 3. Dynamic Correlated Stacking (QB + Pass Catchers)
             let matchingQB = userQBs.find(qb => qb._cleanTeam === p._cleanTeam);
             let userReceivers = userRoster.filter(r => ['WR', 'TE'].includes(r.Pos));
             let matchingReceiver = userReceivers.find(r => r._cleanTeam === p._cleanTeam);
 
             if (matchingQB && ['WR', 'TE'].includes(p.Pos) && score > 0) {
-                let stackBoost = 1.05;
-                if (p.targetShare) stackBoost += (Math.min(30, p.targetShare) * 0.005);
-                else if (p.depthChart === 1) stackBoost += 0.10;
+                // Boost is stronger if the drafted QB is elite (high ProjPts)
+                let qbQualityMult = Math.min(1.10, Math.max(1.0, (matchingQB.ProjPts / 300))); 
+                let stackBoost = 1.02 * qbQualityMult;
+                
+                if (p.targetShare) stackBoost += (Math.min(30, p.targetShare) * 0.004);
+                else if (p.depthChart === 1) stackBoost += 0.08;
+                
                 score = applyFactor(score, stackBoost);
                 p._stackPartner = matchingQB.Player;
             } else if (matchingReceiver && p.Pos === 'QB' && score > 0) {
-                score = applyFactor(score, 1.10);
+                // Boost QB value more if you already have their alpha receiver
+                let isAlphaRec = matchingReceiver.targetShare >= 22 || matchingReceiver.depthChart === 1;
+                let recQualityMult = isAlphaRec ? 1.12 : 1.05;
+                
+                score = applyFactor(score, recQualityMult);
                 p._stackPartner = matchingReceiver.Player;
             } else {
                 p._stackPartner = null;
@@ -2308,17 +2304,32 @@ const UI = {
                 score = applyFactor(score, penalty);
             }
 
-            // 6. Handcuff Starter Bonus & Bye Week Penalty
+            // 6. Handcuff Starter Bonus, Starter Strength, & Bye Week Clustering
             let userOwnsStarter = p.starterName && userRoster.some(r => r._cleanName === State.normalizeName(p.starterName));
 
-            // REMOVE THIS LINE: if (userOwnsStarter) score += 5;
+            // Bye Week Clustering (Penalize if 3+ key players share the same bye week)
+            if (p.byeWeek !== 'N/A') {
+                let sharedByes = userRoster.filter(r => r.byeWeek === p.byeWeek).length;
+                if (sharedByes >= 2 && currentRound <= 10) {
+                    // Escalating penalty for drafting multiple players with the same bye week early/mid draft
+                    score = applyFactor(score, Math.pow(0.85, sharedByes - 1));
+                }
+            }
 
             if (['QB', 'TE', 'PK', 'DST'].includes(p.Pos) && userTeam.counts[p.Pos] >= 1) {
-                const starter = userRoster.find(r => r.Pos === p.Pos);
-                if (starter && starter.byeWeek === p.byeWeek && p.byeWeek !== 'N/A') {
+                const startersAtPos = userRoster.filter(r => r.Pos === p.Pos);
+                const bestStarter = startersAtPos.sort((a, b) => b.ProjPts - a.ProjPts)[0];
+                
+                // If sharing a bye with your specific starter at a onesie position
+                if (bestStarter && bestStarter.byeWeek === p.byeWeek && p.byeWeek !== 'N/A') {
                     let draftProgress = Math.min(1.0, currentRound / totalRounds);
                     let byePenalty = 0.50 + (draftProgress * 0.35);
                     score = applyFactor(score, byePenalty);
+                }
+
+                // Upside Insurance: If your starter is weak (Drafted late or low VBD), boost high-upside backups
+                if (bestStarter && (bestStarter.AdvVBD || bestStarter.VBD) < 20 && p.upsideScore > (p.AdvVBD || p.VBD) * 1.15) {
+                    score = applyFactor(score, 1.10); // Reward swinging for upside if starter is weak
                 }
             }
 

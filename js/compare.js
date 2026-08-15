@@ -131,6 +131,8 @@ window.Compare = {
         let prosForAlt = [];
         let consForAlt = [];
 
+        const currentPickNum = State.currentPick + 1;
+
         // 1. Raw Value vs Positional Need (With Tiebreaker Logic)
         let topVBD = topPick.AdvVBD || topPick.VBD || 0;
         let altVBD = alt.AdvVBD || alt.VBD || 0;
@@ -163,7 +165,6 @@ window.Compare = {
         }
 
         // 2. Draft Urgency & True ADP Value Comparison
-        const currentPickNum = State.currentPick + 1;
         if (alt.adp) {
             if (currentPickNum - alt.adp >= 8) {
                 prosForAlt.push(`<strong>Extreme ADP Value:</strong> ${alt.Player} is sliding past his ADP (${alt.adp.toFixed(1)}), presenting strong market value at Pick ${currentPickNum}.`);

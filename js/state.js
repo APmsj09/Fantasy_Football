@@ -526,6 +526,35 @@ const State = {
         });
     },
 
+    finalizeDepthCharts() {
+        // ⚡ Ensure Sleeper's tied designations (LWR1, RWR1, SWR1) and imported TSV data 
+        // are properly resolved into a clean, sequential depth chart hierarchy (1, 2, 3...)
+        const teams = [...new Set(this.allPlayers.map(p => this.normalizeTeam(p.Team)).filter(Boolean))];
+
+        ['QB', 'RB', 'WR', 'TE'].forEach(pos => {
+            teams.forEach(team => {
+                const teamPlayers = this.allPlayers.filter(p => this.normalizeTeam(p.Team) === team && p.Pos === pos);
+                if (!teamPlayers.length) return;
+
+                teamPlayers.sort((a, b) => {
+                    const depthA = (a.depthChart !== undefined && a.depthChart !== null) ? a.depthChart : 99;
+                    const depthB = (b.depthChart !== undefined && b.depthChart !== null) ? b.depthChart : 99;
+
+                    // 1. Group by raw extracted depth (e.g., all 1s before 2s)
+                    if (depthA !== depthB) return depthA - depthB;
+
+                    // 2. Tiebreaker: Projected Points (Higher projected points wins the higher rank in the hierarchy)
+                    return (b.ProjPts || 0) - (a.ProjPts || 0);
+                });
+
+                // Assign clean sequential hierarchy
+                teamPlayers.forEach((p, index) => {
+                    p.depthChart = index + 1; // 1, 2, 3, 4...
+                });
+            });
+        });
+    },
+
     parseSnapCountData(text) {
         const rows = text.split(/\r?\n/).filter(row => row.trim() !== '');
         if (rows.length < 2) return [];
@@ -1040,18 +1069,28 @@ const State = {
                 if (advPlayer['YDS'] && advPlayer['TGT']) p.ypt = advPlayer['YDS'] / advPlayer['TGT'];
                 if (advPlayer['AIR'] !== undefined) p.airYards = advPlayer['AIR'];
 
-                // 2. High-Value Opportunities (HVO) for RBs = Receptions + Red Zone Targets
-                if (p.Pos === 'RB' && advPlayer['REC'] !== undefined) {
+                // 2. High-Value Opportunities (HVO) for RBs = Targets + Red Zone Carries
+                // Targets are more predictive than Receptions because they represent earned volume, not QB accuracy.
+                if (p.Pos === 'RB' && advPlayer['TGT'] !== undefined) {
                     const rzCarries = advPlayer['RZ ATT'] ?? advPlayer['RZ Att'] ?? 0;
-                    p.hvo = advPlayer['REC'] + rzCarries;
+                    p.hvo = advPlayer['TGT'] + rzCarries;
                 }
-
-                // 3. True Pressure Rate for QBs = (Sacks + Knockdowns + Hurries) / Attempts
+                
+                // 3. Pressure to Sack Rate (P2S%) & True Pressure Rate
+                // Pressure Rate evaluates the O-Line. P2S% evaluates the *Quarterback's* escapability.
                 if (p.Pos === 'QB' && advPlayer['ATT'] > 0) {
                     let sacks = advPlayer['SACK'] || 0;
                     let hits = advPlayer['KNCK'] || 0;
                     let hurries = advPlayer['HRRY'] || 0;
-                    p.pressureRate = ((sacks + hits + hurries) / advPlayer['ATT']) * 100;
+                    
+                    let dropbacks = advPlayer['ATT'] + sacks;
+                    let totalPressures = sacks + hits + hurries;
+                    
+                    p.pressureRate = (totalPressures / dropbacks) * 100;
+                    
+                    if (totalPressures > 0) {
+                        p.p2s = (sacks / totalPressures) * 100;
+                    }
                 }
 
                 if (advPlayer['CATCHABLE'] && advPlayer['CATCHABLE'] > 0) {
@@ -1177,6 +1216,10 @@ const State = {
 
                 // Pure formula — matches your league's exact point scale!
                 p.ProjPts = sackPts + turnoverPts + tdPts + safetyPts + blkPts + (weeklyPaPts * gp);
+                
+                // FEATURE: Defensive Havoc Rating
+                // Measures a defense's ability to create negative plays independent of points allowed
+                p.havocPerGame = ((s.sack || 0) + (s.defInt || 0) + (s.defFum || 0) + (s.tfl || 0)) / gp;
             }
             else {
                 let recPoints = (s.rec || 0) * this.scoring.ppr;
@@ -1438,6 +1481,40 @@ const State = {
             const recEnv = this.teamAdvRec[tTeam];
             const teamDist = (this.teamTargets || []).find(t => this.normalizeTeam(t.Team) === tTeam);
 
+            // --- FEATURE: Scheme-Adjusted Expected Touchdowns (xTD) ---
+            if (p.pastStats && p.pastStats.gp > 0) {
+                let rzAtt = p.rzAtt || 0;
+                let rzTgt = p.rzTgt || 0;
+                let tgt = p.pastStats.targets || 0;
+                let att = p.pastStats.rushAtt || 0;
+
+                // Baseline League-Average TD Rates
+                let rzPassMult = 0.20;
+                let rzRushMult = 0.15;
+                
+                // Adjust based on Team Scheme (Play Action, RPO, & Blocking)
+                if (passEnv) {
+                    if (passEnv.playActionYds >= 900) rzPassMult += 0.03; // PA heavily boosts RZ passing efficiency
+                    if (passEnv.rpoPlays >= 70) rzPassMult += 0.02;       // RPOs freeze linebackers in the RZ
+                    if (passEnv.badPct >= 18.0) rzPassMult -= 0.04;       // Bad QB play ruins RZ targets
+                }
+                if (rushEnv) {
+                    if (rushEnv.ybcAtt >= 2.8) rzRushMult += 0.03;        // Great blocking makes goal-line rushing easier
+                    if (rushEnv.ybcAtt <= 2.2) rzRushMult -= 0.03;        // Poor blocking ruins RZ efficiency
+                }
+
+                if (p.Pos === 'RB') {
+                    let standardAtt = Math.max(0, att - rzAtt);
+                    let standardTgt = Math.max(0, tgt - rzTgt); // Isolates standard targets to prevent double-counting
+                    let rbXtd = (standardAtt * 0.015) + (rzAtt * rzRushMult) + (standardTgt * 0.035) + (rzTgt * rzPassMult);
+                    if (rbXtd > 0) p.xTD = rbXtd;
+                } else if (['WR', 'TE'].includes(p.Pos)) {
+                    let standardTgt = Math.max(0, tgt - rzTgt);
+                    let recXtd = (standardTgt * 0.03) + (rzTgt * rzPassMult);
+                    if (recXtd > 0) p.xTD = recXtd;
+                }
+            }
+
             let basePts = baselines[p.Pos] || 0;
             let rawVBD = p.ProjPts - basePts;
 
@@ -1486,34 +1563,43 @@ const State = {
             }
             adjMultiplier += olModifier;
 
-            // 4. Inherited Role Volume (Rookies / Team Changers)
+            // 4. Inherited Role Volume & Synthetic Imputation (Rookies / Team Changers)
             let lacksIndividualMetrics = false;
-            if (p.Pos === 'QB') {
-                lacksIndividualMetrics = (p.trueAccuracy === undefined) && (p.pktTime === undefined);
-            } else if (['RB', 'WR', 'TE'].includes(p.Pos)) {
-                lacksIndividualMetrics = (p.targetShare === undefined) && (p.brokenTackles === undefined) && (p.yacAtt === undefined);
-            }
+            if (p.Pos === 'QB') lacksIndividualMetrics = (p.trueAccuracy === undefined) && (p.p2s === undefined);
+            else if (['RB', 'WR', 'TE'].includes(p.Pos)) lacksIndividualMetrics = (p.targetShare === undefined) && (p.brokenTackles === undefined) && (p.yacAtt === undefined);
 
             if (lacksIndividualMetrics) {
                 p.isNewRole = true;
                 
+                // ⚡ SYNTHETIC IMPUTATION ENGINE 
+                // Places rookies/no-stat players on mathematical equal footing with veterans 
+                // by replacing missing individual stat bonuses (like target share or WOPR) with 
+                // their inferred scheme/depth chart value.
+                let syntheticBoost = 0;
 
-                // FIX: Apply to depthChart 1 AND 2, so rookies backing up veterans get credit for the scheme's upside
-                if (teamDist && (p.depthChart === 1 || p.depthChart === 2)) {
-                    let posPctKey = `${p.Pos} %`;
-                    let teamPosPct = teamDist[posPctKey] || 0;
-
-                    if (p.Pos === 'RB') {
-                        if (teamPosPct >= 24.0) adjMultiplier += 0.04;
-                        else if (teamPosPct >= 19.0) adjMultiplier += 0.02;
-                    } else if (p.Pos === 'WR') {
-                        if (teamPosPct >= 65.0) adjMultiplier += 0.04;
-                        else if (teamPosPct >= 58.0) adjMultiplier += 0.02;
+                if (p.depthChart === 1 || p.depthChart === 2) {
+                    if (p.Pos === 'WR') {
+                        syntheticBoost += p.depthChart === 1 ? 0.05 : 0.02; // Replaces Alpha Target Share bonus
+                        if (teamDist && teamDist['WR %'] >= 60.0) syntheticBoost += 0.03; // Replaces WOPR bonus
+                        if (passEnv && passEnv.onTgtPct >= 75.0) syntheticBoost += 0.02; // Replaces True Catch Rate bonus
+                        if (recEnv && recEnv.adot >= 8.5) syntheticBoost += 0.02; // Inherits deep-threat vertical scheme
+                        if (passEnv && passEnv.playActionYds >= 900) syntheticBoost += 0.02; // Inherits high-efficiency PA targets
+                    } else if (p.Pos === 'RB') {
+                        syntheticBoost += p.depthChart === 1 ? 0.06 : 0.03; // Replaces HVO / Touches bonus
+                        if (rushEnv && rushEnv.ybcAtt >= 2.6) syntheticBoost += 0.03; // Replaces Independent YAC bonus
+                        if (teamDist && teamDist['RB %'] >= 18.0) syntheticBoost += 0.02; // Replaces Satellite target bonus
                     } else if (p.Pos === 'TE') {
-                        if (teamPosPct >= 26.0) adjMultiplier += 0.04;
-                        else if (teamPosPct >= 20.0) adjMultiplier += 0.02;
+                        syntheticBoost += p.depthChart === 1 ? 0.04 : 0;
+                        if (teamDist && teamDist['TE %'] >= 22.0) syntheticBoost += 0.03;
+                    } else if (p.Pos === 'QB') {
+                        syntheticBoost += p.depthChart === 1 ? 0.04 : 0;
+                        if (passEnv && passEnv.pktTime >= 2.5) syntheticBoost += 0.03; // Replaces clean pocket / P2S bonus
+                        if (p.stats && p.stats.rushAtt >= 60) syntheticBoost += 0.05; // Replaces Konami Code history bonus
                     }
                 }
+                
+                adjMultiplier += syntheticBoost;
+                p.syntheticBoost = syntheticBoost; // Save for UI explanations
             }
 
             // 5. Multi-Tiered Sample Confidence & Volume Density Engine
@@ -1537,12 +1623,30 @@ const State = {
                 p._isSmallSampleAlpha = true;
             }
 
+            // --- FEATURE: Targets Per Snap (TPS) ---
+            // Isolates pure target-earning ability from raw playing time (identifies rookies/part-timers who dominated when on the field)
+            if (['WR', 'TE'].includes(p.Pos) && p.pastStats && p.pastStats.targets && p.snaps && p.snaps >= 100) {
+                p.tps = p.pastStats.targets / p.snaps;
+                if (p.tps >= 0.22) {
+                    adjMultiplier += (0.04 * sampleConfidence);
+                    p._isEliteTargetEarner = true;
+                }
+            }
+
             if (p.targetShare) {
                 if (p.targetShare >= 32) adjMultiplier += (0.08 * sampleConfidence);
                 else if (p.targetShare >= 28) adjMultiplier += (0.05 * sampleConfidence);
                 else if (p.targetShare >= 23) adjMultiplier += (0.025 * sampleConfidence);
 
-                if (p.targetShare >= 22 && p.aDOT >= 12.0) adjMultiplier += (0.03 * sampleConfidence);
+                // Adjusted for TE nuance (8.5 aDOT for TE is equivalent to 12.0 for WR)
+                let isEliteAdot = (p.Pos === 'WR' && p.aDOT >= 12.0) || (p.Pos === 'TE' && p.aDOT >= 8.5);
+                if (p.targetShare >= 22 && isEliteAdot) adjMultiplier += (0.03 * sampleConfidence);
+                
+                // RZ Target Density Bonus
+                if (p.rzTgt && p.pastStats && p.pastStats.targets) {
+                    let rzDensity = p.rzTgt / Math.max(1, p.pastStats.targets);
+                    if (rzDensity >= 0.20 && p.rzTgt >= 12) adjMultiplier += (0.03 * sampleConfidence);
+                }
 
                 // --- WOPR (Weighted Opportunity Rating) ENGINE ---
                 if (['WR', 'TE'].includes(p.Pos)) {
@@ -1589,21 +1693,44 @@ const State = {
                 }
             }
 
-            // 2nd/3rd-Level: Red Zone Opportunity vs. TD Regression Check
-            if (p.pastStats && p.pastStats.gp >= 4) {
-                let rzOpps = (p.rzAtt || 0) + (p.rzTgt || 0);
-                let actualTds = p.pastStats.totalTd || 0;
-                if (actualTds >= 7 && rzOpps < 8 && !p._isSmallSampleAlpha) {
-                    adjMultiplier -= 0.04;
+            // 2nd/3rd-Level: Expected Touchdowns (xTD) Regression Engine
+            if (p.pastStats && p.pastStats.gp >= 4 && p.xTD !== undefined && p.pastStats.totalTd !== undefined) {
+                let tdDiff = p.pastStats.totalTd - p.xTD;
+                
+                if (tdDiff >= 4.5 && !p._isSmallSampleAlpha) {
+                    // Scored 4.5+ TDs MORE than their volume dictated (Fluke / Unsustainable)
+                    adjMultiplier -= 0.05;
                     p._isFlukeTDScorer = true;
+                } else if (tdDiff <= -4.0) {
+                    // Scored 4.0+ TDs LESS than their volume dictated (Positive Regression Candidate)
+                    adjMultiplier += 0.05;
+                    p._positiveTdRegression = true;
                 }
             }
 
             if (['WR', 'TE'].includes(p.Pos)) {
+                // Independent YAC vs Scheme YAC
+                if (p.yacAtt !== undefined && recEnv && recEnv.yacPerRec) {
+                    if (p.yacAtt >= 5.5 && recEnv.yacPerRec <= 5.0) {
+                        // Elite Independent Creator
+                        adjMultiplier += (0.04 * sampleConfidence);
+                        p._isIndependentYACCreator = true;
+                    } else if (p.yacAtt >= 6.0 && recEnv.yacPerRec > 5.5) {
+                        // Good YAC, but aided significantly by offensive scheme (e.g., KC, SF)
+                        adjMultiplier += (0.02 * sampleConfidence);
+                        p._isSchemeYACBeneficiary = true;
+                    }
+                }
+
                 if (p.ypt && p.targetShare && p.targetShare >= 15) {
-                    if (p.ypt >= 10.5) adjMultiplier += (0.04 * sampleConfidence);
-                    else if (p.ypt >= 9.0) adjMultiplier += (0.02 * sampleConfidence);
-                    else if (p.ypt < 6.5) adjMultiplier -= 0.04;
+                    if (p.ypt >= 10.5) adjMultiplier += (0.05 * sampleConfidence);
+                    else if (p.ypt >= 9.0) adjMultiplier += (0.025 * sampleConfidence);
+                    else if (p.ypt < 6.5) adjMultiplier -= 0.05;
+                    
+                    // Alpha Synergy: High Volume + High Efficiency
+                    if (p.targetShare >= 25 && p.ypt >= 9.5) {
+                        adjMultiplier += (0.03 * sampleConfidence); 
+                    }
                 }
                 if (p.trueCatchRate) {
                     if (p.trueCatchRate >= 92) adjMultiplier += (0.03 * sampleConfidence);
@@ -1617,9 +1744,22 @@ const State = {
 
             if (p.Pos === 'QB') {
                 if (p.pressureRate) {
-                    if (p.pressureRate > 26.0) adjMultiplier -= 0.05;
-                    else if (p.pressureRate > 22.0) adjMultiplier -= 0.025;
-                    else if (p.pressureRate < 14.0) adjMultiplier += 0.03;
+                    if (p.pressureRate > 26.0) adjMultiplier -= 0.03;
+                    else if (p.pressureRate < 14.0) adjMultiplier += 0.02;
+                }
+                
+                // Pressure-to-Sack Rate (Evaluates QB processing/escapability independent of O-Line)
+                if (p.p2s !== undefined) {
+                    if (p.p2s <= 14.0) adjMultiplier += (0.04 * sampleConfidence); // Elite escapability (e.g. Mahomes)
+                    else if (p.p2s >= 24.0) adjMultiplier -= (0.05 * sampleConfidence); // Statue / Takes drive-killing sacks
+                }
+            }
+            
+            // Explosive Run Rate (ERR) - Built safely from merged past stats
+            if (p.Pos === 'RB' && p.pastStats && p.pastStats.rushAtt >= 40 && p.pastStats.bigRush !== undefined) {
+                p.err = (p.pastStats.bigRush / p.pastStats.rushAtt) * 100;
+                if (p.err >= 4.5) {
+                    adjMultiplier += (0.03 * sampleConfidence); // Elite explosive rush rate
                 }
             }
 
@@ -1962,13 +2102,18 @@ const State = {
             // ===========================================================
             // FINAL CALCULATIONS
             // ===========================================================
-            // Tightened bounds from 0.75-1.25 down to 0.80-1.20 for enhanced stability
-            adjMultiplier = Math.max(0.80, Math.min(1.20, adjMultiplier));
+            // Expanded bounds from 0.80-1.20 to 0.70-1.35. Professional engines allow 
+            // extreme separation for perfect environment combinations vs terrible ones.
+            adjMultiplier = Math.max(0.70, Math.min(1.35, adjMultiplier));
 
             if (p.VBD >= 0) {
-                // 2. Dampen the multiplier for elite players so they don't break the top of the draft board
-                // e.g. A 10% boost on 150 VBD is +15 pts. The dampener smoothly compresses the multiplier as VBD scales up.
-                let dampenedMultiplier = p.VBD > 50 ? 1 + ((adjMultiplier - 1) * (50 / p.VBD)) : adjMultiplier;
+                // 2. Logarithmic Dampener for Elite Players
+                // Reduces the extremes of the multiplier the higher VBD goes, preventing tier-jumping while maintaining gap integrity.
+                let dampenedMultiplier = adjMultiplier;
+                if (p.VBD > 50) {
+                    const dampeningFactor = Math.max(0.2, 50 / p.VBD);
+                    dampenedMultiplier = 1 + ((adjMultiplier - 1) * dampeningFactor);
+                }
                 p.AdvVBD = p.VBD * dampenedMultiplier;
             } else {
                 p.AdvVBD = p.VBD / adjMultiplier;

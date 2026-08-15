@@ -169,29 +169,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
 
-            // ⚡ Resolve LWR/RWR/SWR alignment into clean sequential team WR hierarchy (WR1, WR2, WR3, WR4...)
-            const teams = [...new Set(State.allPlayers.map(p => State.normalizeTeam(p.Team)).filter(Boolean))];
-            teams.forEach(team => {
-                const teamWRs = State.allPlayers.filter(p => State.normalizeTeam(p.Team) === team && p.Pos === 'WR');
-                if (!teamWRs.length) return;
-
-                teamWRs.sort((a, b) => {
-                    const depthA = (a.depthChart !== undefined && a.depthChart !== null) ? a.depthChart : 99;
-                    const depthB = (b.depthChart !== undefined && b.depthChart !== null) ? b.depthChart : 99;
-
-                    // 1. Group by Sleeper tier (all order 1 starters first, then order 2 backups, etc.)
-                    if (depthA !== depthB) return depthA - depthB;
-
-                    // 2. Tiebreaker within the same tier (e.g. LWR1 vs RWR1): Higher projected points wins WR1 rank
-                    return (b.ProjPts || 0) - (a.ProjPts || 0);
-                });
-
-                // Assign clean sequential hierarchy
-                teamWRs.forEach((wr, index) => {
-                    wr.depthChart = index + 1; // WR1, WR2, WR3, WR4...
-                });
-            });
-
             if (typeof UI.renderDatabase === 'function') UI.renderDatabase();
             if (typeof UI.renderDraftAvailablePlayers === 'function' && State.draftStarted) UI.renderDraftAvailablePlayers();
         } catch (err) {
@@ -262,6 +239,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 ...['QB', 'RB', 'WR', 'TE'].map(pos => fetchTSV(`${PREV_DATA_DIR}/${pos}_Stats.tsv`, State.parseAdvancedData.bind(State), State.mergeActualStatsData.bind(State))),
                 ...['QB', 'RB', 'WR', 'TE'].map(pos => fetchTSV(`${PREV_DATA_DIR}/Advanced${pos}Data.tsv`, State.parseAdvancedData.bind(State), State.mergeAdvancedMetrics.bind(State)))
             ]);
+
+            State.finalizeDepthCharts();
 
             State.calculateProjections();
             State.applyDynamicDSTSOS();
