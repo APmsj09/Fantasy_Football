@@ -632,6 +632,8 @@ const State = {
             let p = this.matchPlayerFast(player, team, '');
             if (!p) return;
 
+            if (team) p.pastTeam = this.normalizeTeam(team);
+
             if (!p.pastStats) p.pastStats = {};
             let ps = p.pastStats;
 
@@ -1562,6 +1564,73 @@ const State = {
                 else if (p.olTier === 'F') olModifier = -0.04;
             }
             adjMultiplier += olModifier;
+
+            // --- 3B. OFFSEASON MIGRATION & WORKLOAD TRAJECTORY (The Gibbs & Team-Changer Engine) ---
+            
+            // 1. Intra-Team Workload Trajectory (Ascending/Descending Roles)
+            // Explicitly limited to RB/WR/TE to prevent QB passing volume from skewing "touches"
+            if (['RB', 'WR', 'TE'].includes(p.Pos) && p.pastStats && p.pastStats.gp >= 6 && p.stats) {
+                // Apples-to-apples comparison: Receptions + Rush Attempts only (excluding targets to prevent data mismatch)
+                let pastTouchesPG = ((p.pastStats.rushAtt || 0) + (p.pastStats.rec || 0)) / p.pastStats.gp;
+                let projTouchesPG = ((p.stats.rushAtt || 0) + (p.stats.rec || 0)) / Math.max(1, (p.stats.gp || 17));
+                
+                if (pastTouchesPG >= 4.0) {
+                    let growthRatio = projTouchesPG / pastTouchesPG;
+                    p.touchGrowthRatio = growthRatio;
+
+                    if (growthRatio >= 1.25) {
+                        // Ascending Role (e.g. Gibbs entering Year 2/3 taking over backfield monopoly)
+                        let boost = Math.min(0.08, (growthRatio - 1.0) * 0.16);
+                        adjMultiplier += (boost * sampleConfidence);
+                        p._isAscendingRole = true;
+                        p._growthPct = Math.round((growthRatio - 1.0) * 100);
+                    } else if (growthRatio <= 0.75) {
+                        // Contracting Role (Aging veteran losing touches to incoming talent)
+                        let penalty = Math.min(0.08, (1.0 - growthRatio) * 0.16);
+                        adjMultiplier -= (penalty * sampleConfidence);
+                        p._isDecliningRole = true;
+                        p._declinePct = Math.round((1.0 - growthRatio) * 100);
+                    }
+                }
+            }
+
+            // 2. Inter-Team Environmental Migration (Free Agency / Trades)
+            if (p.pastTeam && p._cleanTeam && p.pastTeam !== p._cleanTeam) {
+                p.isTeamChanger = true;
+                let oldRushEnv = this.teamAdvRush[p.pastTeam];
+                let newRushEnv = this.teamAdvRush[p._cleanTeam];
+                let oldPassEnv = this.teamAdvPass[p.pastTeam];
+                let newPassEnv = this.teamAdvPass[p._cleanTeam];
+                let oldTgtMap = this.teamTargetsMap ? this.teamTargetsMap[p.pastTeam] : null;
+                let newTgtMap = this.teamTargetsMap ? this.teamTargetsMap[p._cleanTeam] : null;
+
+                let envDelta = 0;
+
+                if (p.Pos === 'RB' && oldRushEnv && newRushEnv) {
+                    // RB: Evaluated primarily on O-Line run blocking lane generation
+                    let ybcDiff = (newRushEnv.ybcAtt || 2.4) - (oldRushEnv.ybcAtt || 2.4);
+                    envDelta += Math.max(-0.06, Math.min(0.06, ybcDiff * 0.05));
+                } else if (['WR', 'TE'].includes(p.Pos) && oldPassEnv && newPassEnv) {
+                    // WR/TE: Evaluated on QB Accuracy & overall passing volume shock
+                    let accDiff = (newPassEnv.onTgtPct || 73.0) - (oldPassEnv.onTgtPct || 73.0);
+                    envDelta += Math.max(-0.04, Math.min(0.04, (accDiff / 100) * 0.35));
+                    
+                    if (oldTgtMap && newTgtMap) {
+                        let volDiff = (newTgtMap['Total Targets'] || 550) - (oldTgtMap['Total Targets'] || 550);
+                        envDelta += Math.max(-0.04, Math.min(0.04, (volDiff / 550) * 0.15)); // E.g., -100 tgt diff = ~ -2.7% downgrade
+                    }
+                } else if (p.Pos === 'QB' && oldPassEnv && newPassEnv) {
+                    // QB: Evaluated on Pocket Time protection and receiver reliability (drops)
+                    let pktDiff = (newPassEnv.pktTime || 2.4) - (oldPassEnv.pktTime || 2.4);
+                    envDelta += Math.max(-0.04, Math.min(0.04, pktDiff * 0.10)); 
+                    
+                    let dropDiff = (oldPassEnv.dropPct || 5.0) - (newPassEnv.dropPct || 5.0); // positive is good (fewer drops)
+                    envDelta += Math.max(-0.02, Math.min(0.02, dropDiff * 0.005));
+                }
+
+                adjMultiplier += envDelta;
+                p._envDelta = envDelta;
+            }
 
             // 4. Inherited Role Volume & Synthetic Imputation (Rookies / Team Changers)
             let lacksIndividualMetrics = false;

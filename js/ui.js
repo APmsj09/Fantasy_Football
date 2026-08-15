@@ -874,6 +874,15 @@ const UI = {
                 }
             }
 
+            if (p._isAscendingRole) {
+                pros.push(`<strong>📈 Ascending Workload Leap:</strong> Projected for a <strong>+${p._growthPct}% surge in touches per game</strong> compared to 2025 actuals, reflecting an expanding featured role rather than a restricted split.`);
+            }
+
+            if (p.isTeamChanger && p._envDelta && p._envDelta >= 0.015) {
+                let volNote = ['WR', 'TE'].includes(p.Pos) ? "passing volume and QB accuracy" : "run-blocking environment";
+                pros.push(`<strong>🔄 Lucrative Scheme Upgrade:</strong> Offseason move from <strong>${p.pastTeam} to ${p.Team}</strong> places him in a substantially more efficient ${volNote}.`);
+            }
+
             if (p._addedPPW && p._addedPPW >= 1.0) {
                 pros.push(`<strong>Elite Lineup Difference Maker:</strong> Adds a massive +${p._addedPPW.toFixed(1)} Points Per Week directly to your optimal starters.`);
             } else if (p._addedPPW && p._addedPPW >= 0.3 && !p._byeFillWeek) {
@@ -1264,6 +1273,17 @@ const UI = {
                 }
             }
 
+            if (p._isDecliningRole) {
+                cons.push(`<strong>📉 Contracting Workload:</strong> Projected for a <strong>-${p._declinePct}% drop in touches per game</strong> vs 2025, indicating lost volume to backfield competition or scheme changes.`);
+                riskScore += 1;
+            }
+
+            if (p.isTeamChanger && p._envDelta && p._envDelta <= -0.015) {
+                let volNote = ['WR', 'TE'].includes(p.Pos) ? "passing volume and QB accuracy" : "run-blocking environment";
+                cons.push(`<strong>🔄 Negative Scheme Migration:</strong> Offseason transition from <strong>${p.pastTeam} to ${p.Team}</strong> drops him into a substantially worse ${volNote}, capping his overall efficiency.`);
+                riskScore += 1;
+            }
+
             if (p.olTier === 'F') {
                 cons.push(`<strong>Disastrous O-Line Environment:</strong> Operating behind a bottom-tier (Tier ${p.olTier}) offensive line that routinely sabotages play development.`);
                 riskScore += 2;
@@ -1518,6 +1538,19 @@ const UI = {
 
         // Environmental Badges
         if (isOffense) {
+            if (p._isAscendingRole) {
+                envBadges.push(`<span class="bg-emerald-100 text-emerald-800 text-xs font-bold px-2.5 py-1 rounded-full border border-emerald-200">📈 Ascending Role (+${p._growthPct}% Touches)</span>`);
+            } else if (p._isDecliningRole) {
+                envBadges.push(`<span class="bg-rose-100 text-rose-800 text-xs font-bold px-2.5 py-1 rounded-full border border-rose-200">📉 Contracting Role (-${p._declinePct}% Touches)</span>`);
+            }
+
+            if (p.isTeamChanger && Math.abs(p._envDelta || 0) >= 0.015) {
+                // Only flag significant shifts (> 1.5% VBD shift) to prevent badge spam on neutral team changes
+                let deltaText = p._envDelta > 0 ? '(Scheme Upgrade)' : '(Scheme Downgrade)';
+                let deltaColor = p._envDelta > 0 ? 'bg-indigo-100 text-indigo-800 border-indigo-200' : 'bg-amber-100 text-amber-800 border-amber-200';
+                envBadges.push(`<span class="${deltaColor} text-xs font-bold px-2.5 py-1 rounded-full border">🔄 Team Change: ${p.pastTeam} ➔ ${p.Team} ${deltaText}</span>`);
+            }
+
             if (rushEnv && rushEnv.ybcAtt >= 2.8 && p.Pos === 'RB') {
                 envBadges.push(`<span class="bg-emerald-100 text-emerald-800 text-xs font-bold px-2.5 py-1 rounded-full border border-emerald-200">⚡ High YBC Scheme (${rushEnv.ybcAtt} YBC)</span>`);
             }
