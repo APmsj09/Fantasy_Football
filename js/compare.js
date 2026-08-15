@@ -154,7 +154,15 @@ window.Compare = {
                 if (altPosCount >= altPosLimit) {
                     consForAlt.push(`<strong>Roster Logjam:</strong> Your starting ${alt.Pos} slots are already filled (${altPosCount}/${altPosLimit}). Taking ${topPick.Player} (${topPick.Pos}) addresses an unfilled starting spot.`);
                 } else if (altPosCount > topPosCount && currentPickNum <= 48) {
-                    consForAlt.push(`<strong>Positional Balance:</strong> Having already secured a ${alt.Pos} in earlier rounds, drafting ${topPick.Player} (${topPick.Pos}) builds a more balanced starting foundation.`);
+                    // Positional Landscape Check: Count viable starting options remaining at both positions
+                    let remainingAlts = State.availablePlayers.filter(p => p.Pos === alt.Pos && (p.AdvVBD || p.VBD) >= 40).length;
+                    let remainingTops = State.availablePlayers.filter(p => p.Pos === topPick.Pos && (p.AdvVBD || p.VBD) >= 40).length;
+                    
+                    if (remainingAlts >= remainingTops + 3) {
+                        consForAlt.push(`<strong>Positional Scarcity:</strong> The ${alt.Pos} board has a deep plateau (${remainingAlts} quality options remaining), whereas ${topPick.Pos} faces an immediate cliff. Drafting ${topPick.Player} secures an elite ${topPick.Pos} before the tier evaporates.`);
+                    } else {
+                        consForAlt.push(`<strong>Positional Balance:</strong> Having already secured a ${alt.Pos} in earlier rounds, drafting ${topPick.Player} (${topPick.Pos}) builds a more balanced starting foundation.`);
+                    }
                 }
             }
         } else if (diff < 0) {
