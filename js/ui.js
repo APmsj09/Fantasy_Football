@@ -879,7 +879,7 @@ const UI = {
             }
 
             if (p.isTeamChanger && p._envDelta && p._envDelta >= 0.015) {
-                let volNote = ['WR', 'TE'].includes(p.Pos) ? "passing volume and QB accuracy" : "run-blocking environment";
+                let volNote = ['WR', 'TE'].includes(p.Pos) ? "passing efficiency and QB accuracy" : "run-blocking environment";
                 pros.push(`<strong>🔄 Lucrative Scheme Upgrade:</strong> Offseason move from <strong>${p.pastTeam} to ${p.Team}</strong> places him in a substantially more efficient ${volNote}.`);
             }
 
@@ -916,6 +916,10 @@ const UI = {
                 pros.push(`<strong>Elite YBC Scheme Boost:</strong> Elite run-blocking scheme generates ${rushEnv.ybcAtt} Yards Before Contact (YBC) per carry, giving him massive open space before taking a hit.`);
             } else if (pos === 'RB' && rushEnv && rushEnv.ybcAtt >= 2.6) {
                 pros.push(`<strong>YBC Scheme Boost:</strong> Run-blocking scheme generates ${rushEnv.ybcAtt} Yards Before Contact (YBC) per carry.`);
+            }
+
+            if (p._inEliteOffense) {
+                pros.push(`<strong>Elite Scoring Ecosystem:</strong> Plays in a top-tier NFL offense, guaranteeing high drive-sustainment, frequent red-zone trips, and elevated scoring opportunities across the board.`);
             }
 
             if (isRookieOrYoung && posRank <= 36) {
@@ -1279,8 +1283,13 @@ const UI = {
             }
 
             if (p.isTeamChanger && p._envDelta && p._envDelta <= -0.015) {
-                let volNote = ['WR', 'TE'].includes(p.Pos) ? "passing volume and QB accuracy" : "run-blocking environment";
+                let volNote = ['WR', 'TE'].includes(p.Pos) ? "passing efficiency and QB accuracy" : "run-blocking environment";
                 cons.push(`<strong>🔄 Negative Scheme Migration:</strong> Offseason transition from <strong>${p.pastTeam} to ${p.Team}</strong> drops him into a substantially worse ${volNote}, capping his overall efficiency.`);
+                riskScore += 1;
+            }
+
+            if (p._inAnemicOffense) {
+                cons.push(`<strong>Anemic Scoring Ecosystem:</strong> Trapped in a bottom-tier NFL offense. Frequent 3-and-outs and rare red-zone trips will severely suppress his touchdown ceiling.`);
                 riskScore += 1;
             }
 
@@ -1404,8 +1413,12 @@ const UI = {
             varianceSpread += Math.min(0.10, (p.stats.rushAtt / 100) * 0.07);
         }
 
-        // 6. Safe Floor Qualifier Adjustment
+        // 6. Safe Floor Qualifier Adjustment & Workload Trajectory
         if (p._isSafeFloor) varianceSpread -= 0.03;
+        
+        // Ascending roles solidify a player's floor, while contracting roles create massive weekly touch variance
+        if (p._isAscendingRole) varianceSpread -= 0.03;
+        if (p._isDecliningRole) varianceSpread += 0.06;
 
         // 7. Historical Boom / Bust Continuous Scaling
         if (p.boomBust && p.boomBust.games >= 4) {
@@ -1441,14 +1454,73 @@ const UI = {
 
         let ceilingPpg = (baselinePpg * maxMultiplier).toFixed(1);
 
+        // Algorithm Verdict Transparency Box
+        let algorithmVerdictHTML = "";
+        if (isOffense) {
+            let baseVBD = p.VBD || 0;
+            let advVBD = p.AdvVBD || 0;
+            let vbdShift = advVBD - baseVBD;
+            
+            // Only show if there's a meaningful mathematical shift (> 5% shift and > 1.0 VBD point)
+            if (Math.abs(vbdShift) >= 1.0 && baseVBD > 0 && Math.abs(vbdShift / baseVBD) >= 0.05) {
+                let shiftPct = ((vbdShift / baseVBD) * 100).toFixed(1);
+                
+                let drivers = [];
+                // Collect positive drivers
+                if (vbdShift > 0) {
+                    if (p.targetShare >= 23 || p.hvo >= 50) drivers.push("elite volume command");
+                    if (p.olTier === 'S' || p.olTier === 'A' || p._inEliteOffense) drivers.push("top-tier offensive environment");
+                    if (p._isIndependentYACCreator || (p.ypt && p.ypt >= 9.5)) drivers.push("premium per-touch efficiency");
+                    if (p._positiveTdRegression) drivers.push("strong positive touchdown regression indicators");
+                    if (p.syntheticBoost >= 0.05) drivers.push("highly favorable scheme fit/inherited role");
+                    if (p.p2s && p.p2s <= 15.0) drivers.push("elite pocket escapability");
+                } 
+                // Collect negative drivers
+                else {
+                    if (p.olTier === 'D' || p.olTier === 'F' || p._inAnemicOffense) drivers.push("a restrictive/anemic offensive environment");
+                    if (p._isDecliningRole || (p.targetShare && p.targetShare < 15)) drivers.push("poor volume/role trajectory");
+                    if (p.injuryStatus || (p.pastStats && p.pastStats.gp <= 10)) drivers.push("elevated durability/injury risk");
+                    if (p.dropRate >= 8.0 || p.pressureRate >= 25.0) drivers.push("concerning advanced inefficiency metrics");
+                    if (p._isFlukeTDScorer) drivers.push("heavy negative touchdown regression indicators");
+                }
+
+                // Format the drivers into a clean sentence
+                let driversText = drivers.length > 0 
+                    ? `driven primarily by ${drivers.slice(0, -1).join(', ')}${drivers.length > 1 ? ', and ' : ''}${drivers[drivers.length - 1]}` 
+                    : `driven by advanced scheme and situational modeling`;
+
+                if (vbdShift > 0) {
+                    algorithmVerdictHTML = `
+                        <div class="bg-indigo-50/80 border border-indigo-200 p-3 rounded-xl mb-3">
+                            <h5 class="font-extrabold text-indigo-900 text-[10px] uppercase tracking-wider mb-1 flex items-center">
+                                <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+                                Algorithm Verdict: UPGRADE (+${shiftPct}%)
+                            </h5>
+                            <p class="text-indigo-800 text-xs">Draft Pro upgraded his raw projection by <strong>+${vbdShift.toFixed(1)} VBD</strong>, ${driversText}.</p>
+                        </div>
+                    `;
+                } else {
+                    algorithmVerdictHTML = `
+                        <div class="bg-rose-50/80 border border-rose-200 p-3 rounded-xl mb-3">
+                            <h5 class="font-extrabold text-rose-900 text-[10px] uppercase tracking-wider mb-1 flex items-center">
+                                <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"></path></svg>
+                                Algorithm Verdict: DOWNGRADE (${shiftPct}%)
+                            </h5>
+                            <p class="text-rose-800 text-xs">Draft Pro penalized his raw projection by <strong>${vbdShift.toFixed(1)} VBD</strong>, ${driversText}.</p>
+                        </div>
+                    `;
+                }
+            }
+        }
+
         // Market Value Check
         let marketValueHTML = "";
         if (p.adp) {
             const diff = p.adp - overallRank;
             if (diff >= 12) {
-                marketValueHTML = `<div class="p-2.5 bg-emerald-950/60 border border-emerald-800 rounded-lg text-emerald-200">🔥 <strong>Market Value Steal:</strong> Ranked #<strong>${overallRank}</strong> overall in VBD, but drafted later at ADP #<strong>${p.adp.toFixed(0)}</strong> (+${diff.toFixed(0)} draft value).</div>`;
+                marketValueHTML = `<div class="p-2.5 bg-emerald-950/60 border border-emerald-800 rounded-lg text-emerald-200 mb-3 text-xs">🔥 <strong>Market Value Steal:</strong> Ranked #<strong>${overallRank}</strong> overall in VBD, but drafted later at ADP #<strong>${p.adp.toFixed(0)}</strong> (+${diff.toFixed(0)} draft value).</div>`;
             } else if (diff <= -12) {
-                marketValueHTML = `<div class="p-2.5 bg-rose-950/60 border border-rose-800 rounded-lg text-rose-200">⚠️ <strong>Market Premium / Reach:</strong> Current ADP (#<strong>${p.adp.toFixed(0)}</strong>) requires drafting him ahead of his #<strong>${overallRank}</strong> VBD Rank.</div>`;
+                marketValueHTML = `<div class="p-2.5 bg-rose-950/60 border border-rose-800 rounded-lg text-rose-200 mb-3 text-xs">⚠️ <strong>Market Premium / Reach:</strong> Current ADP (#<strong>${p.adp.toFixed(0)}</strong>) requires drafting him ahead of his #<strong>${overallRank}</strong> VBD Rank.</div>`;
             }
         }
 
@@ -1471,7 +1543,8 @@ const UI = {
                 <!-- Inherited Role & Scheme Analysis -->
                 ${inheritedContextHTML}
 
-                <!-- Market Value Check -->
+                <!-- Algorithm Verdict & Market Check -->
+                ${algorithmVerdictHTML}
                 ${marketValueHTML}
 
                 <!-- Pros & Cons Grid -->

@@ -1483,6 +1483,22 @@ const State = {
             const recEnv = this.teamAdvRec[tTeam];
             const teamDist = (this.teamTargets || []).find(t => this.normalizeTeam(t.Team) === tTeam);
 
+            // --- FEATURE: Offensive Ecosystem Gravity ---
+            // A rising tide lifts all boats. High-scoring offenses generate more red-zone trips, sustained drives, and overall fantasy points.
+            let matchupThreat = this.teamOffensiveThreats[tTeam];
+            if (matchupThreat && ['QB', 'RB', 'WR', 'TE'].includes(p.Pos)) {
+                // dstMatchupStars: 1.0 means ELITE offense (bad for DST), 5.0 means TERRIBLE offense
+                let offenseQuality = 6.0 - matchupThreat.dstMatchupStars; // Flips it: 5.0 = Elite Offense, 1.0 = Terrible Offense
+                
+                if (offenseQuality >= 4.5) {
+                    adjMultiplier += 0.04;
+                    p._inEliteOffense = true;
+                } else if (offenseQuality <= 2.0) {
+                    adjMultiplier -= 0.04;
+                    p._inAnemicOffense = true;
+                }
+            }
+
             // --- FEATURE: Scheme-Adjusted Expected Touchdowns (xTD) ---
             if (p.pastStats && p.pastStats.gp > 0) {
                 let rzAtt = p.rzAtt || 0;
@@ -1575,19 +1591,16 @@ const State = {
                 let projTouchesPG = ((p.stats.rushAtt || 0) + (p.stats.rec || 0)) / Math.max(1, (p.stats.gp || 17));
                 
                 if (pastTouchesPG >= 4.0) {
-                    let growthRatio = projTouchesPG / pastTouchesPG;
+                    let growthRatio = projTouchesPG / Math.max(1, pastTouchesPG);
                     p.touchGrowthRatio = growthRatio;
 
+                    // AVOID DOUBLE COUNTING: We DO NOT adjust the Adv VBD multiplier here because the baseline 
+                    // projection already bakes in the volume increase/decrease. We only flag the trajectory 
+                    // so we can properly evaluate their Upside/Variance bounds later.
                     if (growthRatio >= 1.25) {
-                        // Ascending Role (e.g. Gibbs entering Year 2/3 taking over backfield monopoly)
-                        let boost = Math.min(0.08, (growthRatio - 1.0) * 0.16);
-                        adjMultiplier += (boost * sampleConfidence);
                         p._isAscendingRole = true;
                         p._growthPct = Math.round((growthRatio - 1.0) * 100);
                     } else if (growthRatio <= 0.75) {
-                        // Contracting Role (Aging veteran losing touches to incoming talent)
-                        let penalty = Math.min(0.08, (1.0 - growthRatio) * 0.16);
-                        adjMultiplier -= (penalty * sampleConfidence);
                         p._isDecliningRole = true;
                         p._declinePct = Math.round((1.0 - growthRatio) * 100);
                     }
@@ -1601,24 +1614,20 @@ const State = {
                 let newRushEnv = this.teamAdvRush[p._cleanTeam];
                 let oldPassEnv = this.teamAdvPass[p.pastTeam];
                 let newPassEnv = this.teamAdvPass[p._cleanTeam];
-                let oldTgtMap = this.teamTargetsMap ? this.teamTargetsMap[p.pastTeam] : null;
-                let newTgtMap = this.teamTargetsMap ? this.teamTargetsMap[p._cleanTeam] : null;
 
                 let envDelta = 0;
 
+                // AVOID DOUBLE COUNTING: We DO NOT evaluate total target/carry volume shifts here, because 
+                // the baseline projection handles volume. We ONLY measure HIDDEN EFFICIENCY shifts 
+                // (O-Line blocking, QB Accuracy, Pocket Time) which projection algorithms frequently underestimate.
                 if (p.Pos === 'RB' && oldRushEnv && newRushEnv) {
                     // RB: Evaluated primarily on O-Line run blocking lane generation
                     let ybcDiff = (newRushEnv.ybcAtt || 2.4) - (oldRushEnv.ybcAtt || 2.4);
                     envDelta += Math.max(-0.06, Math.min(0.06, ybcDiff * 0.05));
                 } else if (['WR', 'TE'].includes(p.Pos) && oldPassEnv && newPassEnv) {
-                    // WR/TE: Evaluated on QB Accuracy & overall passing volume shock
+                    // WR/TE: Evaluated strictly on QB Accuracy
                     let accDiff = (newPassEnv.onTgtPct || 73.0) - (oldPassEnv.onTgtPct || 73.0);
                     envDelta += Math.max(-0.04, Math.min(0.04, (accDiff / 100) * 0.35));
-                    
-                    if (oldTgtMap && newTgtMap) {
-                        let volDiff = (newTgtMap['Total Targets'] || 550) - (oldTgtMap['Total Targets'] || 550);
-                        envDelta += Math.max(-0.04, Math.min(0.04, (volDiff / 550) * 0.15)); // E.g., -100 tgt diff = ~ -2.7% downgrade
-                    }
                 } else if (p.Pos === 'QB' && oldPassEnv && newPassEnv) {
                     // QB: Evaluated on Pocket Time protection and receiver reliability (drops)
                     let pktDiff = (newPassEnv.pktTime || 2.4) - (oldPassEnv.pktTime || 2.4);
@@ -2063,6 +2072,13 @@ const State = {
                     p._isSafeFloor = true;
                 }
 
+                if (p._isAscendingRole) {
+                    p._isFlyer = true;
+                    upsideMultiplier += 0.20;
+                    if (!ceilingTags.includes("Expanding Featured Role")) ceilingTags.push("Expanding Featured Role");
+                }
+                
+                if (p._isDecliningRole) upsideMultiplier -= 0.15;
                 if (pAge && pAge >= 28) upsideMultiplier -= 0.15;
             }
 
@@ -2128,6 +2144,13 @@ const State = {
                     p._isSafeFloor = true;
                 }
 
+                if (p._isAscendingRole) {
+                    p._isFlyer = true;
+                    upsideMultiplier += 0.15;
+                    if (!ceilingTags.includes("Ascending Target Share")) ceilingTags.push("Ascending Target Share");
+                }
+
+                if (p._isDecliningRole) upsideMultiplier -= 0.15;
                 if (pAge && pAge >= 31 && p.Pos === 'WR') upsideMultiplier -= 0.15;
             }
 
@@ -2157,6 +2180,12 @@ const State = {
                 if (hasCleanPocket && hasAccuracyFloor) {
                     p._isSafeFloor = true;
                 }
+            }
+
+            if (p.isTeamChanger && p._envDelta && p._envDelta >= 0.02) {
+                // Meaningful scheme upgrades naturally raise a player's ceiling
+                upsideMultiplier += 0.10;
+                if (!ceilingTags.includes("Scheme Upgrade Catalyst")) ceilingTags.push("Scheme Upgrade Catalyst");
             }
 
             p._ceilingTags = [...new Set(ceilingTags)]; // Remove duplicates
