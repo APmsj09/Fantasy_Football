@@ -755,9 +755,9 @@ const UI = {
             // Tiered HVO
             const hvoPerGame = p.hvo ? (p.hvo / activeGames) : 0;
             if (hvoPerGame >= 5.2) {
-                pros.push(`<strong>Elite High-Value Opportunities:</strong> Generates massive usage with <strong>${hvoPerGame.toFixed(1)} HVO per game</strong> (Receptions + RZ carries). This is the exact role that prints top-5 RB seasons.`);
+                pros.push(`<strong>Elite High-Value Opportunities:</strong> Generates massive usage with <strong>${hvoPerGame.toFixed(1)} HVO per game</strong> (Targets + RZ carries). This is the exact role that prints top-5 RB seasons.`);
             } else if (hvoPerGame >= 3.8) {
-                pros.push(`<strong>High-Value Opportunities:</strong> Secures highly profitable touches with <strong>${hvoPerGame.toFixed(1)} combined receptions & RZ carries per game</strong>.`);
+                pros.push(`<strong>High-Value Opportunities:</strong> Secures highly profitable touches with <strong>${hvoPerGame.toFixed(1)} combined targets & RZ carries per game</strong>.`);
             }
 
             // ADD THIS NEW SATELLITE BACK CHECK HERE:
@@ -1075,7 +1075,8 @@ const UI = {
 
             let teamTopTargetShare = Math.max(...State.allPlayers.filter(x => x._cleanTeam === tTeam).map(x => x.targetShare || 0));
 
-            if (['WR', 'TE'].includes(pos) && teamTopTargetShare > 0 && teamTopTargetShare < 20.0 && (!p.targetShare || p.targetShare < 20.0)) {
+            // Only flag Lack of Alpha Target Share if the player is NOT projected for high volume (≥ 110 targets)
+            if (['WR', 'TE'].includes(pos) && teamTopTargetShare > 0 && teamTopTargetShare < 20.0 && (!p.targetShare || p.targetShare < 20.0) && (!p.stats || p.stats.targets < 110)) {
                 cons.push(`<strong>Lack of Alpha Target Share:</strong> The offensive system spreads the ball evenly across multiple receivers (no player on the team commands a 20%+ target share). This lack of a concentrated alpha role creates volatile weekly floors.`);
                 riskScore += 1;
             }
@@ -1161,12 +1162,17 @@ const UI = {
                 riskScore += 2;
             }
 
-            if (['WR', 'TE'].includes(pos) && offensePace === 'run-heavy') {
-                cons.push(`<strong>Low-Volume Passing Attack:</strong> Playing in a <strong>run-heavy offense</strong> severely limits the overall passing pie, mathematically capping his week-to-week target ceiling.`);
+            // Suppress the Low-Volume Passing Attack penalty if the receiver is a projected Alpha target hog (≥23% Tgt Share or ≥125 Proj Targets)
+            let isAlphaVolumeWR = (p.targetShare && p.targetShare >= 23) || (p.stats && p.stats.targets >= 125);
+            if (['WR', 'TE'].includes(pos) && offensePace === 'run-heavy' && !isAlphaVolumeWR) {
+                cons.push(`<strong>Low-Volume Passing Attack:</strong> Playing in a <strong>run-heavy offense</strong> limits the overall passing pie, capping his week-to-week target ceiling.`);
                 riskScore += 1;
                 hasLowVolumeCon = true;
             }
-            if (pos === 'RB' && offensePace === 'pass-heavy' && (!p.targetShare || p.targetShare < 5)) {
+
+            // Suppress the RB receiving penalty if he has meaningful pass-game work in projections or past stats
+            let hasPassGameRole = (p.targetShare && p.targetShare >= 6.0) || (p.stats && p.stats.targets >= 35) || (p.pastStats && p.pastStats.targets >= 30);
+            if (pos === 'RB' && offensePace === 'pass-heavy' && !hasPassGameRole) {
                 cons.push(`<strong>Negative Scheme Fit:</strong> Operates in a <strong>pass-heavy offense</strong> but lacks receiving involvement, leaving him vulnerable to being scripted out of games if the team falls behind.`);
                 riskScore += 1;
                 hasScriptDependencyCon = true;
@@ -1322,9 +1328,9 @@ const UI = {
                         `<strong>Script Sensitivity:</strong> Production drops if negative game scripts force ${p.Team} to pass.`
                     ]));
                     riskScore += 1;
-                } else if (['WR', 'TE'].includes(pos) && (!p.targetShare || p.targetShare < 18)) {
+                } else if (['WR', 'TE'].includes(pos) && (!p.targetShare || p.targetShare < 18) && (!p.stats || p.stats.targets < 115)) {
                     let hasBuriedCon = p.depthChart && p.depthChart >= 3;
-                    if (!hasBuriedCon) {
+                    if (!hasBuriedCon && !hasLowVolumeCon) {
                         cons.push(pickVarShift([
                             `<strong>Target Volatility:</strong> Target share isn't bulletproof; weekly floor relies on TD efficiency.`,
                             `<strong>Volume Variance:</strong> Secondary target role leaves him susceptible to low-target games.`
@@ -1373,6 +1379,10 @@ const UI = {
         if (cons.length === 0) {
             cons.push(`<strong>Standard Game-Flow Variance:</strong> Subject to standard week-to-week game script fluctuations.`);
         }
+
+        // Buffer risk score for young players (under 25) and proven low-bust floor anchors
+        if (pAge && pAge <= 24) riskScore = Math.max(0, riskScore - 2);
+        if (p.boomBust && p.boomBust.bust <= 10) riskScore = Math.max(0, riskScore - 2);
 
         // 🛡️ RISK BADGE (DECLARED ONCE HERE)
         let riskBadge = `<span class="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2.5 py-0.5 rounded-full font-bold">🛡️ LOW RISK</span>`;
@@ -1636,8 +1646,10 @@ const UI = {
             if (passEnv && passEnv.rpoPlays >= 85 && ['QB', 'WR', 'RB'].includes(p.Pos)) {
                 envBadges.push(`<span class="bg-purple-100 text-purple-800 text-xs font-bold px-2.5 py-1 rounded-full border border-purple-200">🔄 RPO Heavy Offense</span>`);
             }
-            if (recEnv && recEnv.yacPerRec >= 5.8 && ['WR', 'TE'].includes(p.Pos)) {
+            if (p._isSchemeYACBeneficiary && ['WR', 'TE'].includes(p.Pos)) {
                 envBadges.push(`<span class="bg-blue-100 text-blue-800 text-xs font-bold px-2.5 py-1 rounded-full border border-blue-200">🏃 Scheme-Manufactured YAC</span>`);
+            } else if (p._isIndependentYACCreator && ['WR', 'TE'].includes(p.Pos)) {
+                envBadges.push(`<span class="bg-emerald-100 text-emerald-800 text-xs font-bold px-2.5 py-1 rounded-full border border-emerald-200">⚡ Independent YAC Creator</span>`);
             }
             if (passEnv && passEnv.prssPct >= 25.0) {
                 envBadges.push(`<span class="bg-rose-100 text-rose-800 text-xs font-bold px-2.5 py-1 rounded-full border border-rose-200">⚠️ High Pass Pressure Env (${passEnv.prssPct}%)</span>`);
@@ -1756,7 +1768,10 @@ const UI = {
 
         let statsDashboard = '';
         if (isOffense) {
-            let opps = (s.rushAtt || 0) + (s.targets || 0);
+            let isQB = p.Pos === 'QB';
+            let opps = isQB ? ((s.passAtt || 0) + (s.rushAtt || 0)) : ((s.rushAtt || 0) + (s.targets || 0));
+            let oppsLabel = isQB ? 'Pass Att + Rush Att' : 'Touches / Tgts';
+
             statsDashboard = `
                 <div class="bg-indigo-900 text-white p-4 rounded-xl border border-indigo-800 mb-4 shadow-sm text-xs grid grid-cols-2 md:grid-cols-4 gap-3">
                     <div class="p-2">
@@ -1767,7 +1782,7 @@ const UI = {
                     <div class="p-2 border-l border-indigo-700/50">
                         <span class="text-indigo-300 block text-[10px] font-bold uppercase tracking-wider">Total Volume</span>
                         <span class="text-lg font-extrabold text-white">${opps}</span>
-                        <span class="block text-[10px] text-indigo-200 mt-1">Touches / Tgts</span>
+                        <span class="block text-[10px] text-indigo-200 mt-1">${oppsLabel}</span>
                     </div>
                     <div class="p-2 border-l border-indigo-700/50">
                         <span class="text-indigo-300 block text-[10px] font-bold uppercase tracking-wider">Schedule Grade</span>

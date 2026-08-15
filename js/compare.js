@@ -336,7 +336,7 @@ window.Compare = {
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <!-- Why draft the alt -->
                     <div>
-                        <h6 class="text-[10px] font-extrabold uppercase tracking-wider text-emerald-600 mb-1">Why pick ${alt.Player.split(' ')[1] || alt.Player}?</h6>
+                        <h6 class="text-[10px] font-extrabold uppercase tracking-wider text-emerald-600 mb-1">Why pick ${alt.Player.split(' ').slice(1).join(' ') || alt.Player}?</h6>
                         <ul class="text-xs text-gray-700 space-y-1.5">
                             ${prosForAlt.map(p => `<li class="flex items-start"><span class="text-emerald-500 mr-1.5">•</span> <span>${p}</span></li>`).join('')}
                         </ul>
@@ -344,7 +344,7 @@ window.Compare = {
                     
                     <!-- Why we chose the top pick over them -->
                     <div>
-                        <h6 class="text-[10px] font-extrabold uppercase tracking-wider text-rose-600 mb-1">Why ${topPick.Player.split(' ')[1] || topPick.Player} wins</h6>
+                        <h6 class="text-[10px] font-extrabold uppercase tracking-wider text-rose-600 mb-1">Why ${topPick.Player.split(' ').slice(1).join(' ') || topPick.Player} wins</h6>
                         <ul class="text-xs text-gray-700 space-y-1.5">
                             ${consForAlt.map(c => `<li class="flex items-start"><span class="text-rose-500 mr-1.5">•</span> <span>${c}</span></li>`).join('')}
                         </ul>

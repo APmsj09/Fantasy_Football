@@ -1057,8 +1057,15 @@ const State = {
                 if (advPlayer['RZ ATT'] !== undefined) p.rzAtt = advPlayer['RZ ATT'];
                 if (advPlayer['% TM'] !== undefined) p.targetShare = advPlayer['% TM'];
 
-                if (advPlayer['AIR/R'] !== undefined) p.aDOT = advPlayer['AIR/R'];
-                if (advPlayer['AIR/A'] !== undefined) p.aDOT = advPlayer['AIR/A'];
+                // True aDOT = Total Air Yards / Targets
+                // Do NOT use AIR/R (Air Yards per Reception) as that heavily distorts depth of target!
+                if (advPlayer['ADOT'] !== undefined) {
+                    p.aDOT = advPlayer['ADOT'];
+                } else if (advPlayer['AIR/A'] !== undefined) {
+                    p.aDOT = advPlayer['AIR/A'];
+                } else if (advPlayer['AIR'] !== undefined && advPlayer['TGT'] && advPlayer['TGT'] > 0) {
+                    p.aDOT = parseFloat((advPlayer['AIR'] / advPlayer['TGT']).toFixed(1));
+                }
 
                 if (advPlayer['YACON/ATT'] !== undefined) p.yacAtt = advPlayer['YACON/ATT'];
                 if (advPlayer['YACON/R'] !== undefined) p.yacAtt = advPlayer['YACON/R'];
@@ -1068,7 +1075,12 @@ const State = {
 
                 // ⚡ SYNTHESIZED PRO METRICS ⚡
                 // 1. Yards Per Target (Efficiency) & Air Yards (Upside)
-                if (advPlayer['YDS'] && advPlayer['TGT']) p.ypt = advPlayer['YDS'] / advPlayer['TGT'];
+                // For RBs, the 'YDS' column in advanced files represents rushing yards; only calculate YPT for WR/TE or pull from recYds
+                if (['WR', 'TE'].includes(p.Pos) && advPlayer['YDS'] && advPlayer['TGT']) {
+                    p.ypt = advPlayer['YDS'] / advPlayer['TGT'];
+                } else if (p.Pos === 'RB' && p.pastStats && p.pastStats.recYds && p.pastStats.targets) {
+                    p.ypt = p.pastStats.recYds / p.pastStats.targets;
+                }
                 if (advPlayer['AIR'] !== undefined) p.airYards = advPlayer['AIR'];
 
                 // 2. High-Value Opportunities (HVO) for RBs = Targets + Red Zone Carries
