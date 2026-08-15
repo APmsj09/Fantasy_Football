@@ -4,7 +4,7 @@ window.Compare = {
         const tierNum = player.staticTier || 1;
         const tiers = State.getPositionalTiers(player.Pos);
         const availableInSameTier = State.availablePlayers.filter(p => p.Pos === player.Pos && (p.staticTier || 1) === tierNum);
-        
+
         const tierNames = {
             1: `Tier 1 (Elite ${player.Pos})`,
             2: `Tier 2 (High-End ${player.Pos} Starter)`,
@@ -92,7 +92,7 @@ window.Compare = {
         if (p._stackPartner) {
             highlights.push(`<li><strong class="text-purple-600">Stack Synergy:</strong> Pairs perfectly with your QB (${p._stackPartner}) for correlated ceiling upside.</li>`);
         }
-        
+
         let userOwnsStarter = p.starterName && team.roster.some(r => r._cleanName === State.normalizeName(p.starterName));
         if (userOwnsStarter) {
             highlights.push(`<li><strong class="text-blue-600">Premium Insurance:</strong> Protects your investment in ${p.starterName} by securing his direct handcuff.</li>`);
@@ -148,12 +148,14 @@ window.Compare = {
             } else {
                 prosForAlt.push(`<strong>Higher Absolute Value:</strong> In a vacuum, ${alt.Player} has a mathematically higher value (+${diff.toFixed(1)} VBD) regardless of roster needs.`);
             }
-            
-            // Only declare a Roster Logjam if starters at that position are fully saturated
-            if (altPosCount >= altPosLimit) {
-                consForAlt.push(`<strong>Roster Logjam:</strong> Your starting ${alt.Pos} slots are already filled (${altPosCount}/${altPosLimit}). Taking ${topPick.Player} (${topPick.Pos}) addresses an unfilled starting spot.`);
-            } else if (altPosCount > topPosCount && currentPickNum <= 36) {
-                consForAlt.push(`<strong>Positional Balance:</strong> Having already secured a ${alt.Pos} in earlier rounds, drafting ${topPick.Player} (${topPick.Pos}) builds a more balanced starting foundation.`);
+
+            // Only declare a Roster Logjam if the players are DIFFERENT positions and the alt's position is already full
+            if (topPick.Pos !== alt.Pos) {
+                if (altPosCount >= altPosLimit) {
+                    consForAlt.push(`<strong>Roster Logjam:</strong> Your starting ${alt.Pos} slots are already filled (${altPosCount}/${altPosLimit}). Taking ${topPick.Player} (${topPick.Pos}) addresses an unfilled starting spot.`);
+                } else if (altPosCount > topPosCount && currentPickNum <= 48) {
+                    consForAlt.push(`<strong>Positional Balance:</strong> Having already secured a ${alt.Pos} in earlier rounds, drafting ${topPick.Player} (${topPick.Pos}) builds a more balanced starting foundation.`);
+                }
             }
         } else if (diff < 0) {
             let absDiff = Math.abs(diff);
@@ -168,8 +170,9 @@ window.Compare = {
         if (alt.adp) {
             if (currentPickNum - alt.adp >= 8) {
                 prosForAlt.push(`<strong>Extreme ADP Value:</strong> ${alt.Player} is sliding past his ADP (${alt.adp.toFixed(1)}), presenting strong market value at Pick ${currentPickNum}.`);
-            } else if (alt.adp > currentPickNum + 15) {
-                consForAlt.push(`<strong>You Can Wait:</strong> ${alt.Player}'s ADP is ${alt.adp.toFixed(1)}. You have a high chance of drafting him in later rounds.`);
+            } else if (alt.adp > nextPick + 4) {
+                // Only advise waiting if the player's ADP is safely past your ACTUAL next pick in the draft order
+                consForAlt.push(`<strong>You Can Wait:</strong> ${alt.Player}'s ADP is ${alt.adp.toFixed(1)} (safely past your next pick at #${nextPick}), giving you a high chance of drafting him later.`);
             }
         }
 
@@ -280,14 +283,14 @@ window.Compare = {
                 // Determine how many of the alternative's tier-mates will survive to the next pick
                 const altTiers = State.getPositionalTiers(alt.Pos);
                 let altSurvivingCount = 0;
-                
+
                 if (altTiers.length >= altTier.tierNum) {
                     let actualAltTierGroup = altTiers[altTier.tierNum - 1];
                     altSurvivingCount = actualAltTierGroup.filter(p => (p.adp || 0) > nextPick).length;
                 }
-                
-                let survivalNote = altSurvivingCount > 0 
-                    ? `(with ~<strong>${altSurvivingCount}</strong> likely to reach your next pick at Pick ${nextPick})` 
+
+                let survivalNote = altSurvivingCount > 0
+                    ? `(with ~<strong>${altSurvivingCount}</strong> likely to reach your next pick at Pick ${nextPick})`
                     : `(though <strong>none</strong> are projected to survive to your next pick at Pick ${nextPick})`;
 
                 let scarcityLabel = currentRound <= 6 ? `in ${topTier.tierName}` : `in the ${topTier.tierName} pool`;

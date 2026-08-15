@@ -708,7 +708,7 @@ const UI = {
                         pros.push(`<strong>Expected Production Leap:</strong> 2026 projection (${projPpg.toFixed(1)} PPG) marks a significant improvement over last year's output (${p.pastPpg.toFixed(1)} PPG), reflecting a much better role or environment.`);
                     }
                 }
-            } 
+            }
 
             // 2. Archetype & Trait Badges (Runs for ALL players, including Rookies)
             if (p._isGoalLineHammer) {
@@ -1320,7 +1320,11 @@ const UI = {
 
             // Structural Flaws for Non-Elites
             if (!isUltraElite) {
-                let hasModerateReceiving = (p.targetShare && p.targetShare >= 5) || (p.pastStats && p.pastStats.rec >= 20);
+                // Account for rookies/projected roles in high RB target schemes
+                let hasModerateReceiving = (p.targetShare && p.targetShare >= 5) ||
+                    (p.pastStats && p.pastStats.rec >= 20) ||
+                    (p.stats && p.stats.rec >= 25) ||
+                    (teamDist && teamDist['RB %'] >= 16.0);
 
                 if (pos === 'RB' && (!p.hvo || p.hvo < 40) && !hasScriptDependencyCon && !hasModerateReceiving) {
                     cons.push(pickVar([
@@ -1425,7 +1429,7 @@ const UI = {
 
         // 6. Safe Floor Qualifier Adjustment & Workload Trajectory
         if (p._isSafeFloor) varianceSpread -= 0.03;
-        
+
         // Ascending roles solidify a player's floor, while contracting roles create massive weekly touch variance
         if (p._isAscendingRole) varianceSpread -= 0.03;
         if (p._isDecliningRole) varianceSpread += 0.06;
@@ -1470,11 +1474,11 @@ const UI = {
             let baseVBD = p.VBD || 0;
             let advVBD = p.AdvVBD || 0;
             let vbdShift = advVBD - baseVBD;
-            
+
             // Only show if there's a meaningful mathematical shift (> 5% shift and > 1.0 VBD point)
             if (Math.abs(vbdShift) >= 1.0 && baseVBD > 0 && Math.abs(vbdShift / baseVBD) >= 0.05) {
                 let shiftPct = ((vbdShift / baseVBD) * 100).toFixed(1);
-                
+
                 let drivers = [];
                 // Collect positive drivers
                 if (vbdShift > 0) {
@@ -1484,7 +1488,7 @@ const UI = {
                     if (p._positiveTdRegression) drivers.push("strong positive touchdown regression indicators");
                     if (p.syntheticBoost >= 0.05) drivers.push("highly favorable scheme fit/inherited role");
                     if (p.p2s && p.p2s <= 15.0) drivers.push("elite pocket escapability");
-                } 
+                }
                 // Collect negative drivers
                 else {
                     if (p.olTier === 'D' || p.olTier === 'F' || p._inAnemicOffense) drivers.push("a restrictive/anemic offensive environment");
@@ -1495,8 +1499,8 @@ const UI = {
                 }
 
                 // Format the drivers into a clean sentence
-                let driversText = drivers.length > 0 
-                    ? `driven primarily by ${drivers.slice(0, -1).join(', ')}${drivers.length > 1 ? ', and ' : ''}${drivers[drivers.length - 1]}` 
+                let driversText = drivers.length > 0
+                    ? `driven primarily by ${drivers.slice(0, -1).join(', ')}${drivers.length > 1 ? ', and ' : ''}${drivers[drivers.length - 1]}`
                     : `driven by advanced scheme and situational modeling`;
 
                 if (vbdShift > 0) {
@@ -1700,7 +1704,7 @@ const UI = {
             if (p.hvo) barHTML += buildBar('High-Value Opps (Tgt + RZ)', p.hvo, 130, '', 'emerald');
             if (p.ypt) barHTML += buildBar('Yards Per Target', p.ypt.toFixed(1), 12, ' yds', 'blue');
             if (p.xTD) barHTML += buildBar('Expected TDs (xTD)', p.xTD.toFixed(1), 12, '', 'emerald');
-            
+
             if (p.pressureRate) barHTML += buildBar('Pressure Rate Faced', p.pressureRate.toFixed(1), 30, '%', 'rose');
             if (p.p2s) barHTML += buildBar('Pressure-to-Sack Rate', p.p2s.toFixed(1), 30, '%', 'rose');
 
@@ -2240,7 +2244,7 @@ const UI = {
         // Filter valid players (Delay Kickers & non-elite DSTs)
         let viablePlayers = State.availablePlayers.filter(p => {
             let pos = p.Pos;
-            
+
             if (pos === 'PK' && currentRound <= totalRounds - 2) return false;
             if (pos === 'DST') {
                 let posRank = parseInt(p.posRank?.replace(/\D/g, '') || 99);
@@ -2270,22 +2274,44 @@ const UI = {
         viablePlayers.forEach(p => {
             let score = p.AdvVBD || p.VBD;
 
-            // Check if player fills an active STARTING or FLEX slot vs BENCH
+            // Check if player fills a PRIMARY starting slot vs a FLEX slot vs BENCH
             let posRoster = State.settings.roster[p.Pos];
             let starterMax = posRoster ? posRoster.max : 0;
             let currentCount = userTeam.counts[p.Pos] || 0;
             let totalPosCount = userRoster.filter(r => r.Pos === p.Pos).length;
 
-            let isStarterOpen = currentCount < starterMax;
+            let isPrimaryStarterOpen = currentCount < starterMax;
             let isFlexRBWROpen = ['RB', 'WR'].includes(p.Pos) && (userTeam.counts['FlexRBWR'] < (State.settings.roster.FlexRBWR?.max || 0));
             let isFlexOpen = ['RB', 'WR', 'TE'].includes(p.Pos) && (userTeam.counts['Flex'] < (State.settings.roster.Flex?.max || 0));
             let isSuperflexOpen = ['QB', 'RB', 'WR', 'TE'].includes(p.Pos) && (userTeam.counts['Superflex'] < (State.settings.roster.Superflex?.max || 0));
 
-            let isAnyStartingSlotOpen = isStarterOpen || isFlexRBWROpen || isFlexOpen || isSuperflexOpen;
+            let isAnyStartingSlotOpen = isPrimaryStarterOpen || isFlexRBWROpen || isFlexOpen || isSuperflexOpen;
 
-            // 1. Lineup Value (+PPW): Starting/Flex slots are weighted by true weekly addition
+            // 1. Primary Starter Priority (Subtle Tiebreaker)
+            // Gently favors filling core starting lineup spots (e.g. WR2, QB1, TE1) without burying elite Flex RBs
+            if (isPrimaryStarterOpen) {
+                score += 2.5;
+            }
+
+            // 2. Lineup Value (+PPW): Fully credit Flex slots with real weekly points added
             if (isAnyStartingSlotOpen && p._addedPPW && p._addedPPW >= 0.5) {
-                score += (p._addedPPW * 0.75); // Rewards players who actively increase optimal starting score
+                let ppwWeight = isPrimaryStarterOpen ? 0.85 : 0.75;
+                score += (p._addedPPW * ppwWeight);
+            }
+
+            // 3. Early-Round Anti-Bust / Volatility Shield (Rounds 1–5)
+            if (currentRound <= 5) {
+                // If a player is making a massive leap from backup to starter (Ascending Role ≥ +40% touches),
+                // their past backup bust rate and TD fluke metrics are down-weighted by 50% because their baseline volume has expanded.
+                let ascensionDampener = (p._isAscendingRole && p._growthPct >= 40) ? 0.50 : 1.0;
+
+                if (p.boomBust && p.boomBust.bust >= 45) {
+                    let bustPenalty = Math.min(10.0, (p.boomBust.bust - 40) * 0.4) * ascensionDampener;
+                    score -= bustPenalty;
+                }
+                if (p._isFlukeTDScorer) {
+                    score -= (6.0 * ascensionDampener);
+                }
             }
 
             // 2. Draft Capital, Survival Probability, & Reach Gravity (Opportunity Cost)
@@ -2298,6 +2324,13 @@ const UI = {
                 if (reachDiff < -12 && currentRound <= 10) {
                     let reachPenalty = Math.min(15.0, Math.abs(reachDiff + 12) * 0.45);
                     score -= reachPenalty;
+                }
+
+                // Extreme ADP Slider Boost: When top-tier talent slides far past ADP (e.g. Justin Jefferson sliding to Pick 25)
+                let slideDistance = currentOverallPick - p.adp;
+                if (slideDistance >= 8 && score > 0) {
+                    let slideBoost = Math.min(18.0, slideDistance * 1.25);
+                    score += slideBoost;
                 }
 
                 // Urgency Boost: Player will be GONE before your next pick
@@ -2323,19 +2356,19 @@ const UI = {
 
             if (matchingQB && ['WR', 'TE'].includes(p.Pos) && score > 0) {
                 // Boost is stronger if the drafted QB is elite (high ProjPts)
-                let qbQualityMult = Math.min(1.10, Math.max(1.0, (matchingQB.ProjPts / 300))); 
+                let qbQualityMult = Math.min(1.10, Math.max(1.0, (matchingQB.ProjPts / 300)));
                 let stackBoost = 1.02 * qbQualityMult;
-                
+
                 if (p.targetShare) stackBoost += (Math.min(30, p.targetShare) * 0.004);
                 else if (p.depthChart === 1) stackBoost += 0.08;
-                
+
                 score = applyFactor(score, stackBoost);
                 p._stackPartner = matchingQB.Player;
             } else if (matchingReceiver && p.Pos === 'QB' && score > 0) {
                 // Boost QB value more if you already have their alpha receiver
                 let isAlphaRec = matchingReceiver.targetShare >= 22 || matchingReceiver.depthChart === 1;
                 let recQualityMult = isAlphaRec ? 1.12 : 1.05;
-                
+
                 score = applyFactor(score, recQualityMult);
                 p._stackPartner = matchingReceiver.Player;
             } else {
@@ -2442,7 +2475,7 @@ const UI = {
             if (['QB', 'TE', 'PK', 'DST'].includes(p.Pos) && userTeam.counts[p.Pos] >= 1) {
                 const startersAtPos = userRoster.filter(r => r.Pos === p.Pos);
                 const bestStarter = startersAtPos.sort((a, b) => b.ProjPts - a.ProjPts)[0];
-                
+
                 // If sharing a bye with your specific starter at a onesie position
                 if (bestStarter && bestStarter.byeWeek === p.byeWeek && p.byeWeek !== 'N/A') {
                     let draftProgress = Math.min(1.0, currentRound / totalRounds);
@@ -2553,11 +2586,12 @@ const UI = {
             if (bestFit._rosterContextBadge) cliffBadge = ` • <span class="text-amber-200 font-bold">${bestFit._rosterContextBadge}</span>`;
             else if (bestFit._tierCliffTag) cliffBadge = ` • <span class="text-amber-200 font-bold">${bestFit._tierCliffTag}</span>`;
 
+            let recBadgeTitle = (bestFit._addedPPW && bestFit._addedPPW >= 14.0) ? "#1 Lineup Fit" : "#1 Recommended Pick";
             htmlStr += `
             <div class="p-2 bg-gradient-to-br from-emerald-800 to-teal-950 rounded-lg border border-emerald-500/50 flex justify-between items-center shadow-sm cursor-pointer hover:brightness-110 transition mb-1.5" onclick="UI.showPlayerCard('${bestFit._cleanName}')">
                 <div class="min-w-0 pr-2">
                     <div class="flex items-center gap-1.5 leading-none mb-0.5">
-                        <span class="text-[8px] font-extrabold uppercase tracking-wider text-emerald-300">#1 Lineup Fit</span>
+                        <span class="text-[8px] font-extrabold uppercase tracking-wider text-emerald-300">${recBadgeTitle}</span>
                         <span class="text-[9px] text-emerald-200 font-medium">(${bestFit.Pos})</span>
                     </div>
                     <h4 class="font-bold text-xs text-white truncate leading-tight">${bestFit.Player} <span class="text-[10px] font-normal text-emerald-200">(${bestFit.Team})</span></h4>
