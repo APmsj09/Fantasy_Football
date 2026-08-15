@@ -1241,7 +1241,11 @@ const UI = {
             }
 
             if (p.p2s && p.p2s >= 24.0) {
-                cons.push(`<strong>Takes Drive-Killing Sacks:</strong> An alarming <strong>${p.p2s.toFixed(1)}% Pressure-to-Sack Rate</strong> means he fails to navigate the pocket and frequently takes negative plays when pressured.`);
+                let isScrambler = (p.stats && p.stats.rushAtt >= 50) || (p.pastStats && p.pastStats.rushAtt >= 50);
+                let sackNote = isScrambler 
+                    ? `Frequent scrambling and extending broken plays leads to elevated negative sack yardage (<strong>${p.p2s.toFixed(1)}% Pressure-to-Sack Rate</strong>).`
+                    : `An alarming <strong>${p.p2s.toFixed(1)}% Pressure-to-Sack Rate</strong> indicates difficulty navigating collapsing pockets.`;
+                cons.push(`<strong>Takes Drive-Killing Sacks:</strong> ${sackNote}`);
                 riskScore += 2;
             } else if (p.p2s && p.p2s >= 19.0) {
                 cons.push(`<strong>Poor Escapability:</strong> High Pressure-to-Sack Rate (${p.p2s.toFixed(1)}%) indicates he struggles to throw the ball away or escape when the pocket breaks down.`);
@@ -1757,12 +1761,12 @@ const UI = {
                     <div class="grid grid-cols-2 gap-2 text-xs pt-1 border-t border-indigo-100/60">
                         <div>
                             <span class="text-[10px] text-gray-500 block uppercase font-semibold">2025 (${ps.gp || 17}G)</span>
-                            <span class="font-bold text-gray-900">${ps.totalTd || 0} TD • ${ps.rushYds || ps.recYds || ps.passYds || 0} Total Yds</span>
+                            <span class="font-bold text-gray-900">${ps.totalTd || 0} TD • ${((ps.passYds || 0) + (ps.rushYds || 0) + (ps.recYds || 0)).toLocaleString()} Total Yds</span>
                         </div>
                         ${s24 ? `
                         <div>
                             <span class="text-[10px] text-gray-500 block uppercase font-semibold">2024 (${s24.gp || 17}G)</span>
-                            <span class="font-bold text-gray-700">${s24.ppg.toFixed(1)} PPG • ${s24.totalTd || 0} TD • ${s24.rushYds || s24.recYds || s24.passYds || 0} Yds</span>
+                            <span class="font-bold text-gray-700">${s24.ppg ? s24.ppg.toFixed(1) + ' PPG • ' : ''}${s24.totalTd || 0} TD • ${((s24.passYds || 0) + (s24.rushYds || 0) + (s24.recYds || 0)).toLocaleString()} Total Yds</span>
                         </div>` : '<div class="text-gray-400 text-[11px] italic">No 2024 data (Rookie/Inactive)</div>'}
                     </div>
                 </div>

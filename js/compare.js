@@ -249,10 +249,14 @@ window.Compare = {
             }
         }
 
-        if (alt._isSafeFloor && !topPick._isSafeFloor) {
+        // Only trigger flyer/ceiling deduction if the alternative didn't already post a higher historical Boom rate
+        let altHasHigherBoom = alt.boomBust && topPick.boomBust && (alt.boomBust.boom > topPick.boomBust.boom + 5);
+        let altHasLowerBust = alt.boomBust && topPick.boomBust && (alt.boomBust.bust + 5 < topPick.boomBust.bust);
+
+        if (alt._isSafeFloor && !topPick._isSafeFloor && !altHasLowerBust) {
             prosForAlt.push(`<strong>Safer Floor:</strong> Provides more reliable week-to-week stability if you are looking to insulate a risky roster.`);
         }
-        if (topPick._isFlyer && !alt._isFlyer) {
+        if (topPick._isFlyer && !alt._isFlyer && !altHasHigherBoom) {
             consForAlt.push(`<strong>Lower Ceiling:</strong> Lacks the slate-breaking upside and advanced metrics that ${topPick.Player} possesses.`);
         }
 
