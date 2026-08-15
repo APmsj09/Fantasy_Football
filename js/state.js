@@ -1618,7 +1618,6 @@ const State = {
         };
 
         this.allPlayers.forEach(p => {
-            
             const tTeam = this.normalizeTeam(p.Team);
             const passEnv = this.teamAdvPass[tTeam];
             const rushEnv = this.teamAdvRush[tTeam];
@@ -1636,7 +1635,12 @@ const State = {
             }
             p.VBD = rawVBD;
 
+            // INITIALIZE ALL MULTIPLIERS EARLY TO PREVENT REFERENCE ERRORS
             let adjMultiplier = 1.0;
+            let upsideMultiplier = 1.0;
+            let ceilingTags = [];
+            p._isFlyer = false;
+            p._isSafeFloor = false;
 
             // --- FEATURE: Offensive Ecosystem Gravity ---
             // A rising tide lifts all boats. High-scoring offenses generate more red-zone trips, sustained drives, and overall fantasy points.
@@ -2182,11 +2186,7 @@ const State = {
             // ===========================================================
             // 10. DYNAMIC UPSIDE, CEILING & VOLATILITY CLASSIFICATIONS
             // ===========================================================
-            let upsideMultiplier = 1.0;
-            let ceilingTags = [];
-
-            p._isFlyer = false;
-            p._isSafeFloor = false;
+            // (Variables upsideMultiplier and ceilingTags are now safely declared at the top of the loop)
 
             // 🌟 INHERITED ROLE FLAG (For Rookies & Free Agents)
             let isInheritedStarter = p.isNewRole && p.depthChart === 1;
