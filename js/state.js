@@ -1483,6 +1483,19 @@ const State = {
             const recEnv = this.teamAdvRec[tTeam];
             const teamDist = (this.teamTargets || []).find(t => this.normalizeTeam(t.Team) === tTeam);
 
+            let basePts = baselines[p.Pos] || 0;
+            let rawVBD = p.ProjPts - basePts;
+
+            // Kicker and Defense VBD suppression
+            if (p.Pos === 'PK') {
+                rawVBD = (rawVBD * 0.05) - 30.0;
+            } else if (p.Pos === 'DST') {
+                rawVBD = (rawVBD * 0.10) - 20.0;
+            }
+            p.VBD = rawVBD;
+
+            let adjMultiplier = 1.0;
+
             // --- FEATURE: Offensive Ecosystem Gravity ---
             // A rising tide lifts all boats. High-scoring offenses generate more red-zone trips, sustained drives, and overall fantasy points.
             let matchupThreat = this.teamOffensiveThreats[tTeam];
@@ -1532,19 +1545,6 @@ const State = {
                     if (recXtd > 0) p.xTD = recXtd;
                 }
             }
-
-            let basePts = baselines[p.Pos] || 0;
-            let rawVBD = p.ProjPts - basePts;
-
-            // Kicker and Defense VBD suppression
-            if (p.Pos === 'PK') {
-                rawVBD = (rawVBD * 0.05) - 30.0;
-            } else if (p.Pos === 'DST') {
-                rawVBD = (rawVBD * 0.10) - 20.0;
-            }
-            p.VBD = rawVBD;
-
-            let adjMultiplier = 1.0;
 
             // 1. Tiered Role Security (Reduced double-counting of volume)
             if (p.snapShare) {
