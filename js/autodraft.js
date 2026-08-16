@@ -120,10 +120,11 @@ window.AutoDraft = {
                     if (p.Pos === 'RB') multiplier *= 1.25;
                 }
 
-                // Early Kicker / DST Reacher (Rounds 10-12)
-                if (round >= 10 && round <= 12) {
-                    if (p.Pos === 'PK' && profile.reachesForKicker) multiplier *= 1000.0;
-                    if (p.Pos === 'DST' && profile.reachesForDST) multiplier *= 1000.0;
+                // Early Kicker / DST Reacher (Rounds 10-12) - Flat explicit boost to overcome negative VBD floor
+                p._cpuReachBonus = 0;
+                if (round >= 10 && round <= 12 && isStarterOpen) {
+                    if (p.Pos === 'PK' && profile.reachesForKicker) p._cpuReachBonus = 50;
+                    if (p.Pos === 'DST' && profile.reachesForDST) p._cpuReachBonus = 50;
                 }
 
                 // Stacking Synergy Boost (Rounds 4-10)
@@ -207,25 +208,23 @@ window.AutoDraft = {
 
             // --- CPU Late-Round Upside, Handcuffs, & Sleeper Shift ---
             if (round >= 7) {
-                let upsideWeight = Math.min(1.0, (round - 6) * 0.15);
+                let upsideWeight = Math.min(0.65, (round - 6) * 0.10);
                 let floorWeight = 1.0 - upsideWeight;
                 let ceilingScore = p.upsideScore || rawVbd;
                 rawVbd = (rawVbd * floorWeight) + (ceilingScore * upsideWeight);
 
                 if (['RB', 'WR', 'TE', 'QB'].includes(p.Pos)) {
-                    let roundScale = Math.min(1.0, (round - 6) * 0.25);
+                    let roundScale = Math.min(1.0, (round - 6) * 0.20);
 
-                    // Draft Handcuffs to protect key investments or find league-winners
-                    if (userOwnsStarter && p.Pos === 'RB') rawVbd += (45.0 * roundScale);
-                    else if (p.isRBHandcuff) rawVbd += (30.0 * roundScale);
-                    
-                    // Breakout youth/stash potential based on situation and metrics
-                    else if (p.depthChart === 2 && p.isNewRole) rawVbd += (25.0 * roundScale);
-                    else if (p.age && p.age <= 23) rawVbd += (20.0 * roundScale);
-                    else if (p.targetShare && p.targetShare >= 15) rawVbd += (18.0 * roundScale);
-                    else if (p.aDOT && p.aDOT >= 12.0) rawVbd += (18.0 * roundScale);
-                    else if (p.brokenTackles && p.brokenTackles > 15) rawVbd += (15.0 * roundScale);
-                    else if (p.hvo && p.hvo >= 40) rawVbd += (15.0 * roundScale);
+                    // Draft Handcuffs and sleeper breakouts with realistic market-scaled value
+                    if (userOwnsStarter && p.Pos === 'RB') rawVbd += (14.0 * roundScale);
+                    else if (p.isRBHandcuff) rawVbd += (8.5 * roundScale);
+                    else if (p.depthChart === 2 && p.isNewRole) rawVbd += (7.5 * roundScale);
+                    else if (p.age && p.age <= 23) rawVbd += (6.5 * roundScale);
+                    else if (p.targetShare && p.targetShare >= 15) rawVbd += (6.0 * roundScale);
+                    else if (p.aDOT && p.aDOT >= 12.0) rawVbd += (5.5 * roundScale);
+                    else if (p.brokenTackles && p.brokenTackles > 15) rawVbd += (5.0 * roundScale);
+                    else if (p.hvo && p.hvo >= 40) rawVbd += (5.5 * roundScale);
                 }
             }
 
@@ -239,10 +238,9 @@ window.AutoDraft = {
                 else if (adpDiff < -12) adpBonus = Math.min(10, Math.abs(adpDiff + 12) * 0.3); // Catch sliding value
             }
 
-
             return {
                 player: p,
-                adjustedVBD: baseValue + starterBonus + scarcityBonus + adpBonus - adpPenalty
+                adjustedVBD: baseValue + starterBonus + scarcityBonus + adpBonus - adpPenalty + (p._cpuReachBonus || 0)
             };
         });
 

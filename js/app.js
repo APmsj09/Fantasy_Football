@@ -573,8 +573,10 @@ document.addEventListener('DOMContentLoaded', () => {
             let lastPick = State.draftHistory.pop();
             let team = State.teamsById[lastPick.teamId];
 
-            team.roster = team.roster.filter(p => p.Player !== lastPick.player.Player);
-            team.counts[lastPick.slot]--;
+            const rosterIdx = team.roster.findIndex(p => p._cleanName === lastPick.player._cleanName && p.Pos === lastPick.player.Pos);
+            if (rosterIdx !== -1) team.roster.splice(rosterIdx, 1);
+
+            team.counts[lastPick.slot] = Math.max(0, (team.counts[lastPick.slot] || 1) - 1);
 
             State.availablePlayers.push(lastPick.player);
             State.currentPick--;

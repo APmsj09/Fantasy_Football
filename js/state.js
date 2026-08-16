@@ -1003,7 +1003,8 @@ const State = {
         let baseWeeklyScores = {};
         let baseSeasonScore = 0;
         for (let w = startW; w <= endW; w++) {
-            let pts = this.calculateActualWeeklyScore(team.roster, w);
+            // Evaluates using optimal baselines so empty slots aren't treated as zero
+            let pts = this.calculateOptimalWeeklyScore(team.roster, w);
             baseWeeklyScores[w] = pts;
             baseSeasonScore += pts;
         }
@@ -1030,7 +1031,8 @@ const State = {
 
             team.roster.push(p);
             for (let w = startW; w <= endW; w++) {
-                let newScore = this.calculateActualWeeklyScore(team.roster, w);
+                // Now accurately tracks Value Over Replacement Player (VORP)
+                let newScore = this.calculateOptimalWeeklyScore(team.roster, w);
                 simSeasonScore += newScore;
 
                 let weekDiff = newScore - baseWeeklyScores[w];
@@ -1626,6 +1628,18 @@ const State = {
 
             let basePts = baselines[p.Pos] || 0;
             let rawVBD = p.ProjPts - basePts;
+
+            // Ensure derived per-touch metrics are synthesized regardless of concurrent TSV fetch order
+            if (p.Pos === 'RB') {
+                if (p.ypt === undefined && p.pastStats?.recYds && p.pastStats?.targets > 0) {
+                    p.ypt = p.pastStats.recYds / p.pastStats.targets;
+                }
+                if (p.hvo === undefined) {
+                    const rzCarries = p.rzAtt ?? p.pastStats?.rzAtt ?? 0;
+                    const tgts = p.pastStats?.targets ?? p.stats?.targets ?? 0;
+                    if (tgts > 0 || rzCarries > 0) p.hvo = tgts + rzCarries;
+                }
+            }
 
             // Kicker and Defense VBD suppression
             if (p.Pos === 'PK') {
@@ -2771,15 +2785,17 @@ const State = {
             if (isNaN(p.VBD)) p.VBD = 0;
             if (isNaN(p.AdvVBD)) p.AdvVBD = p.VBD;
 
-            // 11. INJURY PENALTIES & PHYSICAL ATTRIBUTES (BMI)
+            // 11. INJURY PENALTIES & PHYSICAL ATTRIBUTES (BMI) - Sign-Aware Adjustments
+            const applySignedFactor = (val, factor) => val >= 0 ? val * factor : (factor >= 1 ? val / factor : val * (1 / factor));
+
             if (p.injuryStatus) {
                 // Severe penalty for players slated to miss serious time
                 if (['Out', 'IR', 'PUP', 'COV'].includes(p.injuryStatus)) {
-                    p.AdvVBD *= 0.85;
+                    p.AdvVBD = applySignedFactor(p.AdvVBD, 0.85);
                 }
                 // Minor deduction for camp injuries/questionable tags
                 else if (p.injuryStatus === 'Doubtful') {
-                    p.AdvVBD *= 0.95;
+                    p.AdvVBD = applySignedFactor(p.AdvVBD, 0.95);
                 }
             }
 
@@ -2791,7 +2807,7 @@ const State = {
                 let weightLbs = parseInt(p.weight, 10);
                 if (inches > 0 && weightLbs > 0) {
                     p.bmi = (weightLbs / (inches * inches)) * 703;
-                    if (p.bmi >= 31.5) p.AdvVBD *= 1.02;
+                    if (p.bmi >= 31.5) p.AdvVBD = applySignedFactor(p.AdvVBD, 1.02);
                 }
             }
 

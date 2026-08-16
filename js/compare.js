@@ -223,6 +223,14 @@ window.Compare = {
         const altPosCount = team.counts[alt.Pos] || 0;
         const topPosCount = team.counts[topPick.Pos] || 0;
 
+        // Check if the alternative player is TRULY blocked from the starting lineup (including Flex)
+        let isAltBlocked = altPosCount >= altPosLimit;
+        if (isAltBlocked) {
+            if (['RB', 'WR'].includes(alt.Pos) && team.counts['FlexRBWR'] < (State.settings.roster.FlexRBWR?.max || 0)) isAltBlocked = false;
+            else if (['RB', 'WR', 'TE'].includes(alt.Pos) && team.counts['Flex'] < (State.settings.roster.Flex?.max || 0)) isAltBlocked = false;
+            else if (['QB', 'RB', 'WR', 'TE'].includes(alt.Pos) && team.counts['Superflex'] < (State.settings.roster.Superflex?.max || 0)) isAltBlocked = false;
+        }
+
         if (diff > 0) {
             if (diff <= 6.0) {
                 prosForAlt.push(`<strong>Slight Value Edge:</strong> Projects marginally higher (+${diff.toFixed(1)} VBD) in a vacuum, but the difference is small enough that roster needs dictate the pick.`);
@@ -232,8 +240,8 @@ window.Compare = {
 
             // Only declare a Roster Logjam if the players are DIFFERENT positions and the alt's position is already full
             if (topPick.Pos !== alt.Pos) {
-                if (altPosCount >= altPosLimit) {
-                    consForAlt.push(`<strong>Roster Logjam:</strong> Your starting ${alt.Pos} slots are already filled (${altPosCount}/${altPosLimit}). Taking ${topPick.Player} (${topPick.Pos}) addresses an unfilled starting spot.`);
+                if (isAltBlocked) {
+                    consForAlt.push(`<strong>Roster Logjam:</strong> Your starting ${alt.Pos} and Flex slots are already filled. Taking ${topPick.Player} (${topPick.Pos}) addresses an unfilled starting spot rather than adding a bench player.`);
                 } else if (altPosCount > topPosCount && currentPickNum <= 48) {
                     let remainingAlts = State.availablePlayers.filter(p => p.Pos === alt.Pos && (p.AdvVBD || p.VBD) >= 40).length;
                     let remainingTops = State.availablePlayers.filter(p => p.Pos === topPick.Pos && (p.AdvVBD || p.VBD) >= 40).length;
@@ -274,9 +282,7 @@ window.Compare = {
         if (altPPW > topPPW + 0.5) {
             prosForAlt.push(`<strong>Higher Immediate Lineup Boost:</strong> Adds +${altPPW.toFixed(1)} PPW to your weekly optimal score (vs. +${topPPW.toFixed(1)} PPW for ${topPick.Player}).`);
         } else if (topPPW > altPPW + 0.5) {
-            let altPosRoster = State.settings.roster[alt.Pos];
-            let isAltStarterFull = (team.counts[alt.Pos] || 0) >= (altPosRoster ? altPosRoster.max : 1);
-            let impactLabel = (topPick.Pos === alt.Pos) ? "Slightly Lower Lineup Boost" : (isAltStarterFull ? "Bench Warmer Risk" : "Lower Lineup Impact");
+            let impactLabel = (topPick.Pos === alt.Pos) ? "Slightly Lower Lineup Boost" : (isAltBlocked ? "Bench Warmer Risk" : "Lower Lineup Impact");
             consForAlt.push(`<strong>${impactLabel}:</strong> Adds +${altPPW.toFixed(1)} PPW to your starters compared to +${topPPW.toFixed(1)} PPW for ${topPick.Player}.`);
         }
 

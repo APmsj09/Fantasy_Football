@@ -2160,12 +2160,12 @@ const UI = {
 
             let ppwVal = (p._addedPPW !== undefined && p._addedPPW > 0) ? p._addedPPW : 0;
             let ppwStr = '';
-            if (ppwVal >= 1.0 || (ppwVal > 0 && !p._byeFillWeek)) {
-                ppwStr = `<span class="font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200/80">+${ppwVal.toFixed(2)}/wk</span>`;
+            if (ppwVal >= 0.5 || (ppwVal > 0 && !p._byeFillWeek)) {
+                ppwStr = `<span class="font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200/80">+${ppwVal.toFixed(1)}/wk</span>`;
             } else if (p._byeFillWeek) {
                 ppwStr = `<span class="font-extrabold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200/80">Wk ${p._byeFillWeek} Fill</span>`;
             } else {
-                ppwStr = `<span class="text-gray-300 text-[10px] font-mono">0.00</span>`;
+                ppwStr = `<span class="text-gray-300 text-[10px] font-mono">0.0</span>`;
             }
             let isOffense = !['DST', 'PK'].includes(p.Pos);
             let ageStr = p.age ? `<span class="text-[9px] font-semibold text-slate-400 ml-1">Age ${p.age}</span>` : '';
@@ -2214,10 +2214,30 @@ const UI = {
             if (State.draftSortKey === key) State.draftSortAsc = !State.draftSortAsc;
             else { State.draftSortKey = key; State.draftSortAsc = false; }
 
+            const getSortVal = (player, k) => {
+                if (k === 'AdvVBD') return Number(player.AdvVBD ?? player.VBD ?? 0);
+                if (k === 'ProjPts') return Number(player.ProjPts ?? 0);
+                if (k === 'adp' || k === 'depthChart' || k === 'byeWeek') {
+                    const raw = player[k];
+                    const num = Number(raw);
+                    return raw === undefined || raw === null || raw === '' || isNaN(num) ? Number.POSITIVE_INFINITY : num;
+                }
+                if (k === '_addedPPW') return Number(player._addedPPW ?? 0);
+                if (k === 'ovrRank') return Number(player.ovrRank ?? 9999);
+                return player[k] ?? '';
+            };
+
             State.availablePlayers.sort((a, b) => {
-                let valA = a[key] ?? (key === 'AdvVBD' ? (a.AdvVBD || a.VBD) : 0);
-                let valB = b[key] ?? (key === 'AdvVBD' ? (b.AdvVBD || b.VBD) : 0);
-                if (typeof valA === 'string') return State.draftSortAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+                let valA = getSortVal(a, key);
+                let valB = getSortVal(b, key);
+                
+                // If either value is a string (e.g. "N/A"), coerce both and use string comparison to avoid NaN
+                if (typeof valA === 'string' || typeof valB === 'string') {
+                    let strA = String(valA);
+                    let strB = String(valB);
+                    return State.draftSortAsc ? strA.localeCompare(strB) : strB.localeCompare(strA);
+                }
+                
                 return State.draftSortAsc ? valA - valB : valB - valA;
             });
             this.renderDraftAvailablePlayers();
@@ -2683,7 +2703,7 @@ const UI = {
             }
 
             let ppwVal = '';
-            if (p._addedPPW >= 1.0 || (p._addedPPW > 0 && !p._byeFillWeek)) {
+            if (p._addedPPW >= 0.5 || (p._addedPPW > 0 && !p._byeFillWeek)) {
                 ppwVal = `+${p._addedPPW.toFixed(1)}/wk`;
             } else if (p._byeFillWeek) {
                 ppwVal = `Wk ${p._byeFillWeek}`;
