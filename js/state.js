@@ -1764,16 +1764,24 @@ const State = {
                 p._vacatedTgts = vacatedTgts;
                 p._departedBackfieldNames = [...new Set(departedNames)];
 
-                // 2. Evaluate the Incoming Backup Threat
+                // 2. Evaluate the Incoming Backup Threat (Separating Starters vs. Backups)
+            if (p.depthChart > 1 || p.isRBHandcuff) {
+                // If player is a backup, describe their role behind the starter
+                p._backupThreatLevel = 'Rotational / Backup Role';
+                p._backupThreatNote = p.starterName 
+                    ? `Operates behind ${p.starterName}, serving as high-value contingent depth and rotational option.`
+                    : `Operates in a depth/rotational capacity on the ${p.Team} depth chart.`;
+            } else {
+                // If player is a starter, evaluate the backup behind them
                 let backup = null;
                 if (p.handcuffName) {
                     backup = this.matchPlayerFast(p.handcuffName, p.Team, 'RB');
                 }
                 if (!backup) {
-                    backup = this.allPlayers.find(x => this.normalizeTeam(x.Team) === teamKey && x.Pos === 'RB' && x.depthChart === 2);
+                    backup = this.allPlayers.find(x => this.normalizeTeam(x.Team) === teamKey && x.Pos === 'RB' && x.depthChart === 2 && x._cleanName !== p._cleanName);
                 }
 
-                if (backup) {
+                if (backup && backup._cleanName !== p._cleanName) {
                     p._backupName = backup.Player;
                     let backupPastRz = backup.rzAtt || backup.pastStats?.rzAtt || 0;
                     let backupPastTgtShare = backup.targetShare || backup.pastStats?.targetShare || 0;
@@ -1794,6 +1802,7 @@ const State = {
                     p._backupThreatLevel = 'Uncontested';
                     p._backupThreatNote = 'No established backup threat on the depth chart.';
                 }
+            }
 
                 // 3. Inherited Touchdown Validation (Fixes False TD Fluke on Ascending Backs)
                 if (p.depthChart === 1 && vacatedRzAtt >= 15 && p._backupThreatLevel !== 'Goal-Line Vulture Threat') {
