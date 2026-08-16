@@ -1642,19 +1642,28 @@ const State = {
             p._isFlyer = false;
             p._isSafeFloor = false;
 
-            // --- FEATURE: Offensive Ecosystem Gravity ---
-            // A rising tide lifts all boats. High-scoring offenses generate more red-zone trips, sustained drives, and overall fantasy points.
+            // --- FEATURE: Balanced Offensive Ecosystem & Garbage Time Insulation ---
             let matchupThreat = this.teamOffensiveThreats[tTeam];
             if (matchupThreat && ['QB', 'RB', 'WR', 'TE'].includes(p.Pos)) {
-                // dstMatchupStars: 1.0 means ELITE offense (bad for DST), 5.0 means TERRIBLE offense
-                let offenseQuality = 6.0 - matchupThreat.dstMatchupStars; // Flips it: 5.0 = Elite Offense, 1.0 = Terrible Offense
+                let offenseQuality = 6.0 - matchupThreat.dstMatchupStars; // 5.0 = Elite, 1.0 = Anemic
                 
                 if (offenseQuality >= 4.5) {
                     adjMultiplier += 0.04;
                     p._inEliteOffense = true;
                 } else if (offenseQuality <= 2.0) {
-                    adjMultiplier -= 0.04;
                     p._inAnemicOffense = true;
+                    let baseAnemicPenalty = -0.04; // Standard penalty for broken offenses
+
+                    // Cautiously mitigate penalty for high-volume PPR dump-off targets in trailing scripts
+                    const isTrailingPPRBack = (p.Pos === 'RB' && (p.targetShare >= 12 || p._isSatelliteBack) && this.scoring.ppr >= 0.5);
+                    const isCheckdownSlotWR = (['WR', 'TE'].includes(p.Pos) && p.aDOT && p.aDOT <= 8.5 && (p.trueCatchRate || 0) >= 88.0);
+
+                    if (isTrailingPPRBack || isCheckdownSlotWR) {
+                        baseAnemicPenalty += 0.025; // Softens penalty to -0.015 (cushions floor without boosting ceiling)
+                        p._garbageTimeInsulated = true;
+                    }
+
+                    adjMultiplier += baseAnemicPenalty;
                 }
             }
 
@@ -1865,6 +1874,33 @@ const State = {
                         p._isRookieLotteryStash = true;
                     }
                 }
+            if (p.depthChart === 1) {
+                    const teamQB = this.allPlayers.find(q => this.normalizeTeam(q.Team) === tTeam && q.Pos === 'QB' && q.depthChart === 1);
+                    
+                    if (teamQB && teamQB.stats?.rushTd >= 5) {
+                        const rbWeight = p.weight ? parseInt(p.weight, 10) : 210;
+                        const qbRushTds = teamQB.stats.rushTd;
+                        
+                        // Heavy backs (>= 218 lbs) keep goal-line touches; lighter backs lose more sneaks
+                        let rbSizeResistance = rbWeight >= 218 ? 0.10 : (rbWeight <= 202 ? 0.25 : 0.18);
+                        
+                        // Elite scoring offenses generate more total RZ trips, softening the blow
+                        if (matchupThreat && (6.0 - matchupThreat.dstMatchupStars) >= 4.0) {
+                            rbSizeResistance *= 0.65; // Cut penalty by 35% in high-scoring offenses
+                        }
+
+                        // Gentle Expected TD adjustment (typically only -0.5 to -1.0 TD over 17 games)
+                        const stolenTds = (qbRushTds - 4) * rbSizeResistance;
+                        if (p.xTD) p.xTD = Math.max(2.0, p.xTD - stolenTds);
+
+                        // Gentle multiplier drag (maximum -1.5% drag to avoid tanking studs like Saquon/Henry)
+                        const mildDrag = Math.min(0.015, stolenTds * 0.012);
+                        adjMultiplier -= mildDrag;
+
+                        p._qbSneakContext = `${teamQB.Player} handles situational sneaks (${qbRushTds} Proj Rush TDs), but offensive gravity creates cutback lanes.`;
+                    }
+                }
+
             }
 
             // 4. Multi-Position Vacated Opportunity & Competition Engine (WR, TE, QB, RB)
@@ -2188,14 +2224,40 @@ const State = {
             }
 
             if (['WR', 'TE'].includes(p.Pos)) {
-                // Independent YAC vs Scheme YAC
+                // 1. RACR & Unrealized Air Yards Regression Engine
+                if (p.airYards && p.airYards > 400 && p.pastStats?.recYds) {
+                    p.racr = p.pastStats.recYds / p.airYards;
+                    p.unrealizedAirYards = Math.max(0, p.airYards - p.pastStats.recYds);
+
+                    // High opportunity + low conversion = Prime Positive Regression Buy
+                    if (p.wopr && p.wopr >= 0.55 && p.racr < 0.65) {
+                        adjMultiplier += (0.035 * sampleConfidence);
+                        p._positiveRacrRegression = true;
+                        ceilingTags.push("High Unrealized Air Yards (RACR Buy)");
+                    } 
+                    // High conversion on low air share = Efficiency Regression Warning
+                    else if (p.racr > 1.15 && p.wopr && p.wopr < 0.40) {
+                        adjMultiplier -= (0.025 * sampleConfidence);
+                    }
+                }
+
+                // 2. Pocket Protection vs. Deep-Route aDOT Clashing
+                if (p.aDOT && passEnv?.pktTime) {
+                    if (p.aDOT >= 12.5 && passEnv.pktTime < 2.30) {
+                        adjMultiplier -= (0.03 * sampleConfidence); // Deep routes won't have time to develop
+                        p._deepRoutePocketRisk = true;
+                    } else if (p.aDOT >= 12.5 && passEnv.pktTime >= 2.55) {
+                        adjMultiplier += (0.03 * sampleConfidence); // Synergy: Deep routes get elite pocket protection
+                        p._deepRoutePocketSynergy = true;
+                    }
+                }
+
+                // 3. Independent YAC vs Scheme YAC
                 if (p.yacAtt !== undefined && recEnv && recEnv.yacPerRec) {
                     if (p.yacAtt >= 5.5 && recEnv.yacPerRec <= 5.0) {
-                        // Elite Independent Creator
                         adjMultiplier += (0.04 * sampleConfidence);
                         p._isIndependentYACCreator = true;
                     } else if (p.yacAtt >= 6.0 && recEnv.yacPerRec > 5.5) {
-                        // Good YAC, but aided significantly by offensive scheme (e.g., KC, SF)
                         adjMultiplier += (0.02 * sampleConfidence);
                         p._isSchemeYACBeneficiary = true;
                     }
@@ -2602,11 +2664,11 @@ const State = {
             adjMultiplier = Math.max(0.70, Math.min(1.35, adjMultiplier));
 
             if (p.VBD >= 0) {
-                // 2. Logarithmic Dampener for Elite Players
-                // Reduces the extremes of the multiplier the higher VBD goes, preventing tier-jumping while maintaining gap integrity.
+                // 2. Logarithmic Dampener for Elite Players (Threshold shifted to 75.0 VBD)
+                // Allows mid-tier superstars to fully capture their analytical upgrades without being muted
                 let dampenedMultiplier = adjMultiplier;
-                if (p.VBD > 50) {
-                    const dampeningFactor = Math.max(0.2, 50 / p.VBD);
+                if (p.VBD > 75.0) {
+                    const dampeningFactor = Math.max(0.25, 75.0 / p.VBD);
                     dampenedMultiplier = 1 + ((adjMultiplier - 1) * dampeningFactor);
                 }
                 p.AdvVBD = p.VBD * dampenedMultiplier;
