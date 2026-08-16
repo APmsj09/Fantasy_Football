@@ -2239,13 +2239,43 @@ const UI = {
         const totalRounds = State.settings.roster.totalSize;
         const currentOverallPick = State.currentPick + 1;
 
-        let nextPickIdx = State.draftOrder.findIndex((teamId, idx) => idx > State.currentPick && teamId === State.userTeamId);
-        let nextUserOverallPick = nextPickIdx !== -1 ? (nextPickIdx + 1) : (currentOverallPick + 2);
+        // =========================================================================
+        // UNIVERSAL MULTI-WINDOW DRAFT LOOKAHEAD ENGINE
+        // =========================================================================
+        // 1. Collect all remaining overall pick numbers for the user
+        let userRemainingPicks = [];
+        State.draftOrder.forEach((teamId, idx) => {
+            if (idx >= State.currentPick && teamId === State.userTeamId) {
+                userRemainingPicks.push(idx + 1);
+            }
+        });
 
+        // 2. Group user picks into sequential Decision Windows (Picks within <= 2 slots of each other)
+        let currentWindow = [];
+        let nextWindow = [];
+
+        for (let i = 0; i < userRemainingPicks.length; i++) {
+            let pick = userRemainingPicks[i];
+            if (currentWindow.length === 0 || (pick - currentWindow[currentWindow.length - 1]) <= 2) {
+                currentWindow.push(pick);
+            } else if (nextWindow.length === 0 || (pick - nextWindow[nextWindow.length - 1]) <= 2) {
+                nextWindow.push(pick);
+            } else {
+                break; // Window 1 (Current Turn) and Window 2 (Next Active Turn) identified
+            }
+        }
+
+        // 3. Target the start of Window 2 as the true survival horizon
+        // If no future window exists (final rounds), fall back to draft conclusion
+        const nextActiveWindowPick = nextWindow.length > 0 
+            ? nextWindow[0] 
+            : (currentOverallPick + (State.settings.numTeams * 2));
+
+        // 4. Generalized Survival Probability to Next Active Window (W2)
         const getSurvivalProb = (adp) => {
             if (!adp) return 1.0;
-            let diff = adp - nextUserOverallPick;
-            let slope = Math.max(0.04, 0.30 - (currentRound * 0.015));
+            let diff = adp - nextActiveWindowPick;
+            let slope = Math.max(0.04, 0.28 - (currentRound * 0.015));
             return 1 / (1 + Math.exp(-slope * diff));
         };
 
@@ -2328,10 +2358,10 @@ const UI = {
 
             let isAnyStartingSlotOpen = isPrimaryStarterOpen || isFlexRBWROpen || isFlexOpen || isSuperflexOpen;
 
-            // 1. Primary Starter Priority (Subtle Tiebreaker)
-            // Gently favors filling core starting lineup spots (e.g. WR2, QB1, TE1) without burying elite Flex RBs
+            // 1. Primary Starter Need (Scales higher when starting slots are empty)
             if (isPrimaryStarterOpen) {
-                score += 2.5;
+                // Stronger urgency (+5.5 pts) if the user has 0 starters at this position (e.g. Empty WR2)
+                score += (currentCount === 0 ? 5.5 : 3.5);
             }
 
             // 2. Lineup Value (+PPW): Fully credit Flex slots with real weekly points added
@@ -2342,8 +2372,6 @@ const UI = {
 
             // 3. Early-Round Anti-Bust / Volatility Shield (Rounds 1–5)
             if (currentRound <= 5) {
-                // If a player is making a massive leap from backup to starter (Ascending Role ≥ +40% touches),
-                // their past backup bust rate and TD fluke metrics are down-weighted by 50% because their baseline volume has expanded.
                 let ascensionDampener = (p._isAscendingRole && p._growthPct >= 40) ? 0.50 : 1.0;
 
                 if (p.boomBust && p.boomBust.bust >= 45) {
@@ -2355,22 +2383,22 @@ const UI = {
                 }
             }
 
-            // 2. ADP Market Dynamics & Game-Theory Guideline (Mild Timing Tiebreaker Only)
+            // 4. Value Over Next Available (VONA) & Dynamic Market Reach Penalty
             if (p.adp) {
-                let survivalProb = getSurvivalProb(p.adp); // Probability of surviving to nextUserOverallPick
+                let survivalProb = getSurvivalProb(p.adp);
                 p._survivalProb = survivalProb;
 
-                // TACTICAL TIEBREAKER ONLY (Max +/- 3.0 pts to prevent overriding projected value)
                 if (score > 0) {
-                    // Urgent: Less than 20% chance to survive -> subtle bump to break ties over equal-tier players
-                    if (survivalProb < 0.20) {
-                        let urgencyTiebreaker = Math.min(3.0, (1 - survivalProb) * 3.0);
-                        score += urgencyTiebreaker;
+                    // Urgent Pick: Less than 25% chance to reach next round turn (Pick 72)
+                    if (survivalProb < 0.25) {
+                        let urgencyBonus = Math.min(6.0, (1 - survivalProb) * 6.0);
+                        score += urgencyBonus;
                     }
-                    // Safe to Wait: Over 75% chance to survive -> gentle discount to encourage grabbing scarce talent first
-                    else if (survivalProb > 0.75 && currentRound <= 9) {
-                        let waitTiebreaker = Math.min(3.0, (survivalProb - 0.70) * 4.0);
-                        score -= waitTiebreaker;
+                    // Reach Penalty: Player has high survival chance AND their ADP is far later than current pick
+                    else if (survivalProb > 0.65 && (p.adp - currentOverallPick) >= 16) {
+                        let reachDistance = p.adp - currentOverallPick; // e.g. 80.4 - 48 = 32.4 picks
+                        let reachPenalty = Math.min(10.0, (reachDistance - 14) * 0.35);
+                        score -= reachPenalty; // Docks points from Harvey for being a 30+ pick reach
                     }
                 }
             }
