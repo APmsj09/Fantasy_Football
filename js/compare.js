@@ -656,7 +656,31 @@ window.Compare = {
         }
 
         // Fallbacks
-        if (prosForAlt.length === 0) prosForAlt.push(`Offers elite, foundational baseline production as a top-tier ${alt.Pos}.`);
+        if (prosForAlt.length === 0) {
+            // Surface standalone baseline metrics if the alternative has zero relative edges over topPick
+            const pAge = alt.age || alt.Age;
+
+            if (alt.Pos === 'RB' && alt.stats?.rushAtt >= 130) {
+                prosForAlt.push(`<strong>Lead Workload Baseline:</strong> Projected for <strong>${alt.stats.rushAtt} carries</strong> (${alt.ProjPts.toFixed(1)} total points) as a primary backfield contributor.`);
+            } else if (['WR', 'TE'].includes(alt.Pos) && alt.stats?.targets >= 70) {
+                prosForAlt.push(`<strong>Established Target Volume:</strong> Projected for <strong>${alt.stats.targets} targets</strong> (${alt.ProjPts.toFixed(1)} total points) in the ${alt.Team} passing attack.`);
+            } else if (alt.Pos === 'QB' && alt.ProjPts >= 300) {
+                prosForAlt.push(`<strong>Starting QB Baseline:</strong> Projected for <strong>${alt.ProjPts.toFixed(1)} fantasy points</strong> (${(alt.ProjPts / 17).toFixed(1)} PPG) directing the ${alt.Team} offense.`);
+            }
+
+            if (pAge && pAge <= 23) {
+                prosForAlt.push(`<strong>Youth & Durability Runway:</strong> Enters at age ${pAge} with fresh legs and low career workload wear.`);
+            }
+
+            if (alt.depthChart === 1) {
+                prosForAlt.push(`<strong>Starting Depth Chart Role:</strong> Listed as the designated ${alt.Pos}1 on the ${alt.Team} depth chart.`);
+            }
+
+            if (prosForAlt.length === 0) {
+                prosForAlt.push(`Offers functional ${alt.Pos} starting baseline capacity and depth.`);
+            }
+        }
+
         if (consForAlt.length === 0) {
             if (topPick.Pos === alt.Pos) {
                 let vbdGap = ((topPick.AdvVBD || topPick.VBD) - (alt.AdvVBD || alt.VBD)).toFixed(1);
