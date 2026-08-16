@@ -2697,12 +2697,12 @@ const UI = {
 
         if (bestFit) {
             let ppwText = '';
-            if (bestFit._addedPPW >= 1.0 || (bestFit._addedPPW > 0 && !bestFit._byeFillWeek)) {
+            if (bestFit._addedPPW >= 0.5 || (bestFit._addedPPW > 0 && !bestFit._byeFillWeek)) {
                 ppwText = `+${bestFit._addedPPW.toFixed(1)} PPW`;
             } else if (bestFit._byeFillWeek) {
                 ppwText = `Wk ${bestFit._byeFillWeek} Fill`;
             } else {
-                ppwText = `Flex`;
+                ppwText = `Bench Stash / Upside`;
             }
             let stackBadge = bestFit._stackPartner ? ` • ⚡ Stack w/ ${bestFit._stackPartner}` : '';
 
