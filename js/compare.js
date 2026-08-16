@@ -382,7 +382,9 @@ window.Compare = {
             }
         }
 
+        // -------------------------------------------------------------
         // Wide Receiver / Tight End Air Share, Vacated Targets & Tree Dynamics
+        // -------------------------------------------------------------
         if (['WR', 'TE'].includes(topPick.Pos) && ['WR', 'TE'].includes(alt.Pos)) {
             // Vacated Air Yards & Target Consolidation
             if (alt._inheritsAlphaAirShare && !topPick._inheritsAlphaAirShare) {
@@ -430,6 +432,74 @@ window.Compare = {
             }
             if (alt._isCardioKing) {
                 consForAlt.push(`<strong>'Cardio King' Profile:</strong> High snap share is deceptive; runs decoy routes and blocks rather than earning targeted opportunities.`);
+            }
+        }
+
+        // -------------------------------------------------------------
+        // CROSS-POSITIONAL ADVANCED TRAIT CLASHES (RB vs WR, RB vs TE)
+        // -------------------------------------------------------------
+        if (topPick.Pos === 'RB' && ['WR', 'TE'].includes(alt.Pos)) {
+            // WR Target Command & WOPR vs RB Ground Dependency
+            if (alt.targetShare && alt.targetShare >= 23.0) {
+                prosForAlt.push(`<strong>Script-Proof Target Priority:</strong> Commands a massive <strong>${alt.targetShare}% target share</strong>, establishing a bulletproof PPR floor that cannot be neutralized by negative game scripts.`);
+            } else if (alt.wopr && alt.wopr >= 0.58) {
+                prosForAlt.push(`<strong>Elite Downfield Opportunity (WOPR):</strong> Commands a dominant <strong>${alt.wopr.toFixed(2)} WOPR</strong> with massive air yards share, giving him multi-touchdown spike week upside.`);
+            }
+
+            // Targets Per Snap (Route Dominance)
+            if (alt.tps && alt.tps >= 0.21) {
+                prosForAlt.push(`<strong>Elite Route Separation:</strong> Demands targets on <strong>${(alt.tps * 100).toFixed(1)}% of routes run</strong> (TPS), proving elite individual separation skills.`);
+            }
+
+            // Passing Tree Concentration & Vacated Air Yards
+            if (alt._passingTreeType === 'Concentrated 2-Man Funnel') {
+                prosForAlt.push(`<strong>Concentrated Passing Funnel:</strong> Operates in a 2-man target funnel in ${alt.Team}, locking in reliable high-volume weekly pass attempts.`);
+            }
+            if (alt._inheritsAlphaAirShare) {
+                let depList = alt._departedReceiverNames?.length > 0 ? ` (${alt._departedReceiverNames.join(', ')})` : '';
+                prosForAlt.push(`<strong>Inherited Alpha Air Yards:</strong> Inherits <strong>+${alt._vacatedAirYards} deep air yards</strong>${depList}, raising his ceiling.`);
+            }
+
+            // Hands / Catch Rate
+            if (alt.trueCatchRate && alt.trueCatchRate >= 88.0) {
+                prosForAlt.push(`<strong>Reliable Hands & Quality Targets:</strong> Converted <strong>${alt.trueCatchRate.toFixed(1)}% of catchable passes</strong> into receptions.`);
+            }
+
+            // Schedule Advantage
+            if (alt.avgStars && topPick.avgStars && alt.avgStars >= topPick.avgStars + 0.20) {
+                prosForAlt.push(`<strong>Softer Matchup Schedule:</strong> Faces a more favorable matchup slate (⭐<strong>${alt.avgStars.toFixed(2)}</strong> vs. ⭐${topPick.avgStars.toFixed(2)}).`);
+            }
+
+            // Workload Longevity & Structural Safety
+            let topTouches = (topPick.pastStats?.rushAtt || 0) + (topPick.pastStats?.rec || 0);
+            if (topTouches >= 300) {
+                prosForAlt.push(`<strong>Workload Durability Advantage:</strong> Avoids the severe injury and efficiency cliff that running backs historically face following a 300+ touch season (${topPick.Player} had ${topTouches} touches).`);
+            }
+
+            // Big-Play Strikes
+            let altBig = alt.pastStats?.bigPlays || 0;
+            let topBig = topPick.pastStats?.bigPlays || 0;
+            if (altBig >= topBig + 2) {
+                prosForAlt.push(`<strong>Explosive Playmaking:</strong> Generated <strong>${altBig} big plays (20+ yds)</strong> vs. ${topPick.Player}'s ${topBig}.`);
+            }
+
+            // Why RB wins over WR
+            if (topPick.hvo && topPick.hvo >= 70) {
+                consForAlt.push(`<strong>Positional Bellcow Scarcity:</strong> True three-down workhorse running backs commanding ${topPick.hvo} High-Value Opportunities are far more scarce than high-volume wide receivers.`);
+            }
+            if (topPick.isRBStarter && topPick.handcuffName) {
+                consForAlt.push(`<strong>Uncontested Backfield Role:</strong> ${topPick.Player} commands uncontested goal-line and rushing volume in ${topPick.Team}, giving him unmatched weekly touchdown equity.`);
+            }
+        } else if (['WR', 'TE'].includes(topPick.Pos) && alt.Pos === 'RB') {
+            // When Top Pick is WR and Alternative is RB
+            if (alt.hvo && alt.hvo >= 65) {
+                prosForAlt.push(`<strong>High-Value Touch Scarcity:</strong> Commands <strong>${alt.hvo} High-Value Opportunities</strong> (Targets + RZ carries) in an elite bellcow backfield role.`);
+            }
+            if (alt.isRBStarter && alt.handcuffName) {
+                prosForAlt.push(`<strong>Uncontested Goal-Line Lead:</strong> Monopolizes high-leverage rushing and goal-line work with designated handcuff protection.`);
+            }
+            if (topPick.targetShare && topPick.targetShare >= 24.0) {
+                consForAlt.push(`<strong>Alpha WR Opportunity Cost:</strong> Passing on ${topPick.Player} sacrifices an elite ${topPick.targetShare}% target share in a position where elite volume is foundational.`);
             }
         }
 
