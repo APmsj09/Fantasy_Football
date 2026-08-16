@@ -267,10 +267,10 @@ window.Compare = {
         // -------------------------------------------------------------
         if (alt.adp) {
             if (currentPickNum - alt.adp >= 8) {
-                prosForAlt.push(`<strong>Extreme ADP Value:</strong> ${alt.Player} is sliding past his ADP (${alt.adp.toFixed(1)}), presenting strong market value at Pick ${currentPickNum}.`);
+                prosForAlt.push(`<strong>Extreme Market Value:</strong> The public let ${alt.Player} slide past his ADP (${alt.adp.toFixed(1)}). Capitalizing on this drop presents massive draft value at Pick ${currentPickNum}.`);
             } else if (alt.adp > nextPick + 4) {
                 // Only advise waiting if the player's ADP is safely past your ACTUAL next pick in the draft order
-                consForAlt.push(`<strong>You Can Wait:</strong> ${alt.Player}'s ADP is ${alt.adp.toFixed(1)} (safely past your next pick at #${nextPick}), giving you a high chance of drafting him later.`);
+                consForAlt.push(`<strong>Exploit Public ADP:</strong> The public values ${alt.Player} at pick ${alt.adp.toFixed(1)} (safely past your next pick at #${nextPick}), giving you a high chance of drafting him later.`);
             }
         }
 

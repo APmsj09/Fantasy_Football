@@ -2409,16 +2409,17 @@ const UI = {
                 p._survivalProb = survivalProb;
 
                 if (score > 0) {
-                    // Urgent Pick: Less than 25% chance to reach next round turn (Pick 72)
+                    // Urgent Pick: Less than 25% chance to reach next round turn
                     if (survivalProb < 0.25) {
                         let urgencyBonus = Math.min(6.0, (1 - survivalProb) * 6.0);
                         score += urgencyBonus;
                     }
                     // Reach Penalty: Player has high survival chance AND their ADP is far later than current pick
-                    else if (survivalProb > 0.65 && (p.adp - currentOverallPick) >= 16) {
-                        let reachDistance = p.adp - currentOverallPick; // e.g. 80.4 - 48 = 32.4 picks
-                        let reachPenalty = Math.min(10.0, (reachDistance - 14) * 0.35);
-                        score -= reachPenalty; // Docks points from Harvey for being a 30+ pick reach
+                    else if (survivalProb > 0.65 && (p.adp - currentOverallPick) >= 12) {
+                        let reachDistance = p.adp - currentOverallPick; 
+                        // STEEPER PENALTY: Docks up to 18 points for massive reaches to force the AI to respect ADP
+                        let reachPenalty = Math.min(18.0, (reachDistance - 10) * 0.65);
+                        score -= reachPenalty; 
                     }
                 }
             }
@@ -2642,6 +2643,9 @@ const UI = {
 
         let bestFit = finalRecs[0];
         let vbdRecs = finalRecs.slice(1, 10);
+        
+        // Identify the Best Player Available (BPA) based PURELY on raw math, ignoring ADP/Roster needs
+        let bpaPlayer = [...viablePlayers].sort((a, b) => (b.AdvVBD || b.VBD) - (a.AdvVBD || a.VBD))[0];
 
         let htmlStr = strategyBanner;
 
@@ -2686,16 +2690,19 @@ const UI = {
             let hasPositiveValue = (p.AdvVBD || p.VBD) > 0;
 
             let highlight = '';
-            if (p._sleeperBadge) {
+            // NEW: Highlight the absolute highest VBD player on the board if they aren't the #1 recommendation
+            if (p === bpaPlayer) {
+                highlight = `<span class="text-fuchsia-300 font-extrabold tracking-wide">💎 Highest Actual Value (BPA)</span>`;
+            } else if (p._sleeperBadge) {
                 highlight = `<span class="text-emerald-300 font-bold">${p._sleeperBadge}</span>`;
             } else if (p._rosterContextBadge) {
                 highlight = `<span class="text-amber-300 font-bold">${p._rosterContextBadge}</span>`;
             } else if (p.adp && p._survivalProb < 0.20 && (isStarterNeeded || hasPositiveValue)) {
                 highlight = `<span class="text-rose-300 font-bold">⚡ Last Chance (ADP ${p.adp.toFixed(0)})</span>`;
             } else if (p.adp && p._survivalProb > 0.80 && currentRound <= 9) {
-                highlight = `<span class="text-slate-300 font-medium">⏳ Can Wait (ADP ${p.adp.toFixed(0)})</span>`;
+                highlight = `<span class="text-slate-400 font-medium">⏳ Exploit Public ADP (${p.adp.toFixed(0)})</span>`;
             } else if (p.adp && (currentOverallPick - p.adp >= 12)) {
-                highlight = `<span class="text-emerald-300 font-bold">🔥 Sliding vs ADP (${p.adp.toFixed(0)})</span>`;
+                highlight = `<span class="text-emerald-300 font-bold">🔥 Public Sliding vs ADP (${p.adp.toFixed(0)})</span>`;
             } else if (isStarterNeeded) {
                 highlight = `<span class="text-amber-300">Positional Need</span>`;
             } else {

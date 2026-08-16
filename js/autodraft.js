@@ -228,19 +228,41 @@ window.AutoDraft = {
                 }
             }
 
-            let baseValue = rawVbd >= 0 ? (rawVbd * multiplier) : (rawVbd / multiplier);
+            let baseValue = rawVbd >= 0 
+                ? (rawVbd * multiplier) 
+                : (multiplier >= 1 ? rawVbd / multiplier : rawVbd * (1 / multiplier));
 
             let adpPenalty = 0;
             let adpBonus = 0;
+            let isFanTarget = profile && profile.teamBias && profile.teamBias !== 'None' && profile.teamBias === State.normalizeTeam(p.Team);
+
             if (p.adp) {
                 let adpDiff = p.adp - currentOverallPick;
-                if (adpDiff > 18) adpPenalty = Math.min(15, (adpDiff - 18) * 0.25);
-                else if (adpDiff < -12) adpBonus = Math.min(10, Math.abs(adpDiff + 12) * 0.3); // Catch sliding value
+                
+                if (adpDiff > 12) {
+                    adpPenalty = Math.min(18.0, (adpDiff - 10) * 0.65);
+                    
+                    // ⚡ CPU Personality Override: Managers will ignore ADP reach penalties for "their guys"
+                    if (isFanTarget) {
+                        adpPenalty = 0; // The "Homer" pick: Completely ignores the ADP reach cap
+                    } else if (p.Pos === 'RB' && profile?.strategy === 'Robust-RB' && round <= 5) {
+                        adpPenalty *= 0.25; // Robust-RB managers will happily reach for early RBs
+                    } else if (['WR', 'TE'].includes(p.Pos) && profile?.strategy === 'Zero-RB' && round <= 5) {
+                        adpPenalty *= 0.25; // Zero-RB managers will happily reach for early WRs/TEs
+                    } else if (p.Pos === 'RB' && p.isRBHandcuff && profile?.likesHandcuffs && round >= 7) {
+                        adpPenalty = 0; // Handcuff hoarders will reach heavily for lotto tickets
+                    }
+                } else if (adpDiff < -12) {
+                    adpBonus = Math.min(10, Math.abs(adpDiff + 12) * 0.3); // Catch sliding value
+                }
             }
+
+            // Give a raw VBD boost to Fan Targets so the CPU actually drafts players from their favorite team
+            let fanBonus = isFanTarget ? 10.0 : 0;
 
             return {
                 player: p,
-                adjustedVBD: baseValue + starterBonus + scarcityBonus + adpBonus - adpPenalty + (p._cpuReachBonus || 0)
+                adjustedVBD: baseValue + starterBonus + scarcityBonus + adpBonus - adpPenalty + (p._cpuReachBonus || 0) + fanBonus
             };
         });
 
