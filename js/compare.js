@@ -296,16 +296,34 @@ window.Compare = {
         // -------------------------------------------------------------
         // 4B. ADVANCED ENGINE FEATURES (HVO, xTD, SCHEME SHIFTS, WOPR)
         // -------------------------------------------------------------
-        // Running Back High-Value Opportunities (HVO) & Role Clashes
+        // Running Back High-Value Opportunities (HVO) & Vacated Touch Dynamics
         if (topPick.Pos === 'RB' && alt.Pos === 'RB') {
+            // Vacated Opportunity & Role Consolidation
+            if (alt._inheritsGoalLineWork && !topPick._inheritsGoalLineWork) {
+                let depStr = alt._departedBackfieldNames?.length > 0 ? ` (${alt._departedBackfieldNames.join(', ')})` : '';
+                prosForAlt.push(`<strong>Vacated Goal-Line Work:</strong> Enters 2026 with <strong>+${alt._vacatedRzAtt} vacated Red-Zone carries</strong> opening up from departed personnel${depStr}. His touchdown expectation rises significantly.`);
+            } else if (topPick._inheritsGoalLineWork && !alt._inheritsGoalLineWork) {
+                let depStr = topPick._departedBackfieldNames?.length > 0 ? ` (${topPick._departedBackfieldNames.join(', ')})` : '';
+                consForAlt.push(`<strong>Backfield Consolidation Advantage:</strong> ${topPick.Player} inherits <strong>+${topPick._vacatedRzAtt} vacated Red-Zone carries</strong>${depStr}, locking in an elite touchdown ceiling that ${alt.Player} lacks.`);
+            }
+
+            // Backup Threat Assessment
+            if (alt._backupThreatLevel === 'Low Standalone Threat' && topPick._backupThreatLevel === 'Goal-Line Vulture Threat') {
+                prosForAlt.push(`<strong>Clean Backfield Monopoly:</strong> His backup (${alt._backupName || 'depth'}) poses minimal standalone threat, whereas ${topPick.Player} faces goal-line competition from ${topPick._backupName}.`);
+            } else if (topPick._backupThreatLevel === 'Low Standalone Threat' && alt._backupThreatLevel === 'Goal-Line Vulture Threat') {
+                consForAlt.push(`<strong>Goal-Line Vulture Risk:</strong> ${alt.Player} faces short-yardage touchdown competition from ${alt._backupName}, whereas ${topPick.Player} has full three-down control.`);
+            }
+
+            // High-Value Opportunities (HVO)
             if (topPick.hvo && alt.hvo) {
-                if (topPick.hvo >= alt.hvo + 15) {
-                    consForAlt.push(`<strong>Inferior Touch Quality:</strong> ${topPick.Player} commands significantly more High-Value Opportunities (<strong>${topPick.hvo} vs ${alt.hvo} HVO</strong>). He monopolizes targets and goal-line touches, whereas ${alt.Player} relies on low-value between-the-20s carries.`);
-                } else if (alt.hvo >= topPick.hvo + 15) {
+                if (topPick.hvo >= alt.hvo + 12) {
+                    consForAlt.push(`<strong>Inferior Touch Quality:</strong> ${topPick.Player} commands significantly more High-Value Opportunities (<strong>${topPick.hvo} vs ${alt.hvo} HVO</strong>). He controls targets and inside-the-10 looks, while ${alt.Player} relies more on low-value between-the-20s carries.`);
+                } else if (alt.hvo >= topPick.hvo + 12) {
                     prosForAlt.push(`<strong>Superior Touch Quality:</strong> Commands more High-Value Opportunities (<strong>${alt.hvo} vs ${topPick.hvo} HVO</strong>), giving him the profitable red-zone and receiving volume that wins matchups.`);
                 }
             }
 
+            // PPR Role Clashes
             if (State.scoring.ppr >= 0.5) {
                 if (topPick._isSatelliteBack && alt._isGoalLineHammer) {
                     consForAlt.push(`<strong>PPR Scoring Deficit:</strong> ${alt.Player} is a goal-line hammer with virtually zero pass-catching floor. In this PPR format, ${topPick.Player}'s target volume establishes a far safer weekly baseline.`);
@@ -314,29 +332,87 @@ window.Compare = {
                 }
             }
 
+            // Explosive Run Rate
             if (topPick.err && alt.err) {
-                if (topPick.err >= alt.err + 1.5) {
+                if (topPick.err >= alt.err + 1.0) {
                     consForAlt.push(`<strong>Lower Explosive Burst:</strong> Posts a ${alt.err.toFixed(1)}% Explosive Run Rate compared to ${topPick.Player}'s slate-breaking <strong>${topPick.err.toFixed(1)}% ERR</strong>.`);
-                } else if (alt.err >= topPick.err + 1.5) {
+                } else if (alt.err >= topPick.err + 1.0) {
                     prosForAlt.push(`<strong>Higher Explosive Run Rate:</strong> Generates chunk runs at a superior rate (<strong>${alt.err.toFixed(1)}% vs ${topPick.err.toFixed(1)}% ERR</strong>).`);
                 }
             }
+        
+
+            // Big Plays Comparison
+            let topBig = topPick.pastStats?.bigPlays || 0;
+            let altBig = alt.pastStats?.bigPlays || 0;
+            if (altBig >= topBig + 2) {
+                prosForAlt.push(`<strong>More Big-Play Strikes:</strong> Logged <strong>${altBig} explosive plays (20+ yds)</strong> last season vs. ${topPick.Player}'s ${topBig}.`);
+            } else if (topBig >= altBig + 2) {
+                consForAlt.push(`<strong>Fewer Explosive Plays:</strong> Logged ${altBig} big plays (20+ yds) vs. ${topPick.Player}'s <strong>${topBig}</strong>.`);
+            }
+
+            // Offensive Line Run-Blocking (YBC/Att) Edge
+            let topTeam = State.normalizeTeam(topPick.Team);
+            let altTeam = State.normalizeTeam(alt.Team);
+            let topRushEnv = State.teamAdvRush ? State.teamAdvRush[topTeam] : null;
+            let altRushEnv = State.teamAdvRush ? State.teamAdvRush[altTeam] : null;
+
+            if (topRushEnv && altRushEnv) {
+                let topYbc = topRushEnv.ybcAtt || 0;
+                let altYbc = altRushEnv.ybcAtt || 0;
+                if (altYbc >= topYbc + 0.25) {
+                    prosForAlt.push(`<strong>Superior Blocking Environment:</strong> Runs behind an offensive line creating <strong>${altYbc.toFixed(1)} Yards Before Contact/Att</strong> vs. ${topPick.Player}'s ${topYbc.toFixed(1)} YBC.`);
+                } else if (topYbc >= altYbc + 0.25) {
+                    consForAlt.push(`<strong>Worse Blocking Environment:</strong> Offense generates only ${altYbc.toFixed(1)} YBC/Att vs. ${topPick.Player}'s <strong>${topYbc.toFixed(1)} YBC</strong>.`);
+                }
+            }
+
+            // Schedule Strength Edge
+            if (alt.avgStars && topPick.avgStars) {
+                if (alt.avgStars >= topPick.avgStars + 0.25) {
+                    prosForAlt.push(`<strong>Softer Schedule:</strong> Enjoys a more favorable matchup schedule (⭐<strong>${alt.avgStars.toFixed(2)}</strong> vs. ⭐${topPick.avgStars.toFixed(2)}).`);
+                } else if (topPick.avgStars >= alt.avgStars + 0.25) {
+                    consForAlt.push(`<strong>Tougher Matchup Schedule:</strong> Faces a more difficult SOS (⭐${alt.avgStars.toFixed(2)} vs. ⭐<strong>${topPick.avgStars.toFixed(2)}</strong>).`);
+                }
+            }
+
+            // Ascending Workload Trajectory
+            if (alt._isAscendingRole && !topPick._isAscendingRole) {
+                prosForAlt.push(`<strong>Expanding Featured Role:</strong> Enters 2026 with an ascending workload trajectory (+${alt._growthPct}% touches/g) due to vacated backfield touches.`);
+            }
         }
 
-        // Wide Receiver / Tight End Air Share & Efficiency
+        // Wide Receiver / Tight End Air Share, Vacated Targets & Tree Dynamics
         if (['WR', 'TE'].includes(topPick.Pos) && ['WR', 'TE'].includes(alt.Pos)) {
+            // Vacated Air Yards & Target Consolidation
+            if (alt._inheritsAlphaAirShare && !topPick._inheritsAlphaAirShare) {
+                let depList = alt._departedReceiverNames?.length > 0 ? ` (${alt._departedReceiverNames.join(', ')})` : '';
+                prosForAlt.push(`<strong>Vacated Deep Air Yards:</strong> Enters 2026 inheriting <strong>+${alt._vacatedAirYards} deep air yards</strong> and <strong>+${alt._vacatedTgts} vacated targets</strong>${depList}, accelerating his breakout ceiling.`);
+            } else if (topPick._inheritsAlphaAirShare && !alt._inheritsAlphaAirShare) {
+                let depList = topPick._departedReceiverNames?.length > 0 ? ` (${topPick._departedReceiverNames.join(', ')})` : '';
+                consForAlt.push(`<strong>Air Share Consolidation:</strong> ${topPick.Player} inherits <strong>+${topPick._vacatedAirYards} vacated air yards</strong>${depList}, securing an alpha downfield role that ${alt.Player} lacks.`);
+            }
+
+            // Passing Tree Concentration Clashes
+            if (alt._passingTreeType === 'Concentrated 2-Man Funnel' && topPick._passingTreeType === 'Crowded Committee Spread') {
+                prosForAlt.push(`<strong>Concentrated Passing Tree:</strong> Plays in a 2-man target funnel (${alt.Team}), giving him a script-proof floor vs. ${topPick.Player}'s crowded receiver room.`);
+            } else if (topPick._passingTreeType === 'Concentrated 2-Man Funnel' && alt._passingTreeType === 'Crowded Committee Spread') {
+                consForAlt.push(`<strong>Crowded Target Hierarchy:</strong> ${alt.Player} must compete with 3+ viable pass-catchers in ${alt.Team}, whereas ${topPick.Player} commands a concentrated 2-man passing tree.`);
+            }
+
+            // WOPR & Target Share
             if (topPick.wopr && alt.wopr) {
-                if (topPick.wopr >= alt.wopr + 0.12) {
-                    consForAlt.push(`<strong>Lower Opportunity Command (WOPR):</strong> Commands a <strong>${alt.wopr.toFixed(2)} WOPR</strong> vs ${topPick.Player}'s elite <strong>${topPick.wopr.toFixed(2)} WOPR</strong>.`);
-                } else if (alt.wopr >= topPick.wopr + 0.12) {
-                    prosForAlt.push(`<strong>Higher Opportunity Command (WOPR):</strong> Commands a superior Weighted Opportunity Rating (<strong>${alt.wopr.toFixed(2)} vs ${topPick.wopr.toFixed(2)} WOPR</strong>).`);
+                if (topPick.wopr >= alt.wopr + 0.10) {
+                    consForAlt.push(`<strong>Lower Opportunity Command:</strong> Commands a <strong>${alt.wopr.toFixed(2)} WOPR</strong> vs ${topPick.Player}'s alpha <strong>${topPick.wopr.toFixed(2)} WOPR</strong>.`);
+                } else if (alt.wopr >= topPick.wopr + 0.10) {
+                    prosForAlt.push(`<strong>Higher Opportunity Command:</strong> Commands a superior Weighted Opportunity Rating (<strong>${alt.wopr.toFixed(2)} vs ${topPick.wopr.toFixed(2)} WOPR</strong>).`);
                 }
             }
 
             if (topPick.targetShare && alt.targetShare) {
-                if (topPick.targetShare >= alt.targetShare + 5.0) {
-                    consForAlt.push(`<strong>Lower Target Command:</strong> ${alt.Player} (${alt.targetShare}% Tgt Share) commands less passing volume than ${topPick.Player} (${topPick.targetShare}%).`);
-                } else if (alt.targetShare >= topPick.targetShare + 5.0) {
+                if (topPick.targetShare >= alt.targetShare + 4.0) {
+                    consForAlt.push(`<strong>Lower Target Command:</strong> Commands ${alt.targetShare}% target share vs. ${topPick.Player}'s dominant <strong>${topPick.targetShare}%</strong>.`);
+                } else if (alt.targetShare >= topPick.targetShare + 4.0) {
                     prosForAlt.push(`<strong>Higher Target Share:</strong> Commands a higher percentage of team pass attempts (<strong>${alt.targetShare}% vs ${topPick.targetShare}%</strong>).`);
                 }
             }
@@ -357,21 +433,36 @@ window.Compare = {
             }
         }
 
-        // Quarterback Dual-Threat & Pressure Escapability
+        // Quarterback Dual-Threat, Weapon Room & Escapability Clashes
         if (topPick.Pos === 'QB' && alt.Pos === 'QB') {
+            // Surrounding Weapon Quality
+            if (alt._eliteWeaponCount && topPick._eliteWeaponCount) {
+                if (alt._eliteWeaponCount > topPick._eliteWeaponCount) {
+                    prosForAlt.push(`<strong>Superior Weapon Ecosystem:</strong> Surrounded by ${alt._eliteWeaponCount} elite pass-catchers (${alt._avgWeaponCatchRate}% team catch rate) vs. ${topPick.Player}'s ${topPick._eliteWeaponCount}.`);
+                } else if (topPick._eliteWeaponCount > alt._eliteWeaponCount) {
+                    consForAlt.push(`<strong>Weaker Pass-Catcher Arsenal:</strong> Operates with fewer elite separators (${alt._avgWeaponCatchRate}% team catch rate) compared to ${topPick.Player}'s supporting cast.`);
+                }
+            }
+
+            // Dual-Threat & Goal-Line Rushing Equity
             let topRush = topPick.stats?.rushYds || 0;
             let altRush = alt.stats?.rushYds || 0;
-            if (topRush >= altRush + 200) {
+            if (topRush >= altRush + 180) {
                 consForAlt.push(`<strong>Lacks Dual-Threat Floor:</strong> Projected for only ${altRush} rushing yards vs ${topPick.Player}'s massive <strong>${topRush} rushing yards</strong>.`);
-            } else if (altRush >= topRush + 200) {
+            } else if (altRush >= topRush + 180) {
                 prosForAlt.push(`<strong>Superior Dual-Threat Floor:</strong> Generates a rushing floor (<strong>${altRush} vs ${topRush} rush yds</strong>) that pure pocket passers cannot match.`);
             }
 
+            if (alt._hasGoalLineRushingEquity && !topPick._hasGoalLineRushingEquity) {
+                prosForAlt.push(`<strong>Goal-Line Rushing Equity:</strong> Directs designed goal-line sneaks/keeper plays, providing immense rushing touchdown upside.`);
+            }
+
+            // Pocket Escapability
             if (topPick.p2s && alt.p2s) {
-                if (alt.p2s >= topPick.p2s + 6.0) {
+                if (alt.p2s >= topPick.p2s + 5.0) {
                     consForAlt.push(`<strong>Takes Drive-Killing Sacks:</strong> High <strong>${alt.p2s.toFixed(1)}% Pressure-to-Sack rate</strong> indicates difficulty escaping collapsing pockets.`);
-                } else if (topPick.p2s >= alt.p2s + 6.0) {
-                    prosForAlt.push(`<strong>Elite Pocket Escapability:</strong> Lower Pressure-to-Sack rate (<strong>${alt.p2s.toFixed(1)}% vs ${topPick.p2s.toFixed(1)}%</strong>) proves he avoids negative sack yardage.`);
+                } else if (topPick.p2s >= alt.p2s + 5.0) {
+                    prosForAlt.push(`<strong>Elite Pocket Escapability:</strong> Lower Pressure-to-Sack rate (<strong>${alt.p2s.toFixed(1)}% vs ${topPick.p2s.toFixed(1)}%</strong>) avoids negative plays.`);
                 }
             }
         }

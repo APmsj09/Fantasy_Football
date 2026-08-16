@@ -230,12 +230,12 @@ const UI = {
         if (passVolume > 580) offensePace = "pass-heavy";
         else if (passVolume < 520) offensePace = "run-heavy";
 
-        // Find starting QB 
+        // Find starting QB matching the player's exact team
         let qbName = "their starting QB";
         if (pos !== 'QB') {
-            let teamQB = State.allPlayers.find(q => q._cleanTeam === tTeam && q._cleanPos === 'QB' && q.depthChart === 1);
-            if (!teamQB) teamQB = State.allPlayers.filter(q => q._cleanTeam === tTeam && q._cleanPos === 'QB').sort((a, b) => (b.ProjPts || 0) - (a.ProjPts || 0))[0];
-            if (teamQB) qbName = teamQB.Player;
+            let teamQBs = State.allPlayers.filter(q => State.normalizeTeam(q.Team) === tTeam && q.Pos === 'QB');
+            let teamQB = teamQBs.find(q => q.depthChart === 1) || teamQBs.sort((a, b) => (b.ProjPts || 0) - (a.ProjPts || 0))[0];
+            if (teamQB && teamQB.Player) qbName = teamQB.Player;
         }
 
         const pAge = p.age || p.Age;
@@ -277,8 +277,19 @@ const UI = {
                 }
             }
 
-            // 2. Reference Team Positional Usage with Scaled Raw Volume + Target %
+            // 2. Reference Team Positional Usage & Vacated Opportunity Context
             if (pos === 'RB') {
+                // Vacated Touches & Backup Context
+                if (p._vacatedRzAtt && p._vacatedRzAtt >= 12) {
+                    let depList = p._departedBackfieldNames?.length > 0 ? ` (${p._departedBackfieldNames.join(', ')})` : '';
+                    opportunityBullets.push(`<strong>Vacated Red-Zone Touches:</strong> Offseason departures${depList} vacated <strong>${p._vacatedRzAtt} Red-Zone carries</strong> and <strong>${p._vacatedCarries} total carries</strong>, opening up prime goal-line opportunities <span class="text-emerald-800 font-bold">[HIGH TD EXPANSION]</span>.`);
+                }
+
+                if (p._backupThreatLevel) {
+                    let badgeColor = p._backupThreatLevel === 'Low Standalone Threat' ? 'text-emerald-800' : 'text-amber-800';
+                    opportunityBullets.push(`<strong>Backfield Competition:</strong> Backup ${p._backupName || 'depth'} graded as <strong>${p._backupThreatLevel}</strong>. ${p._backupThreatNote || ''} <span class="${badgeColor} font-bold">[${p._backupThreatLevel.toUpperCase()}]</span>.`);
+                }
+
                 if (teamDist && teamDist['RB %']) {
                     let rbPct = teamDist['RB %'];
                     let rbTgts = teamDist['RB Targets'] || Math.round((passVolume * rbPct) / 100);
@@ -301,6 +312,17 @@ const UI = {
                     opportunityBullets.push(`<strong>Inherited Workload:</strong> ${p.Player} enters the ${p.Team} backfield as a primary workload candidate.`);
                 }
             } else if (['WR', 'TE'].includes(pos)) {
+                // Vacated Air Yards & Target Opportunity
+                if (p._vacatedAirYards && p._vacatedAirYards >= 600) {
+                    let depList = p._departedReceiverNames?.length > 0 ? ` (${p._departedReceiverNames.join(', ')})` : '';
+                    opportunityBullets.push(`<strong>Vacated Deep Air Yards:</strong> Departures${depList} left behind <strong>+${p._vacatedAirYards} air yards</strong> and <strong>+${p._vacatedTgts} targets</strong>, unlocking high-leverage route volume <span class="text-emerald-800 font-bold">[ALPHA AIR SHARE CATALYST]</span>.`);
+                }
+
+                if (p._passingTreeType) {
+                    let treeColor = p._passingTreeType === 'Concentrated 2-Man Funnel' ? 'text-emerald-800' : (p._passingTreeType === 'Crowded Committee Spread' ? 'text-amber-800' : 'text-indigo-800');
+                    opportunityBullets.push(`<strong>Passing Tree Structure:</strong> Graded as a <strong>${p._passingTreeType}</strong>. ${p._treeDescription || ''} <span class="${treeColor} font-bold">[${p._passingTreeType.toUpperCase()}]</span>.`);
+                }
+
                 if (teamDist && teamDist[`${pos} %`]) {
                     let posPct = teamDist[`${pos} %`];
                     let posTgts = teamDist[`${pos} Targets`] || Math.round((passVolume * posPct) / 100);
@@ -318,7 +340,6 @@ const UI = {
                         else grade = "[LOW TE FOCUS]";
                     }
                     opportunityBullets.push(`<strong>Positional Target Funnel:</strong> ${p.Team}'s offense funneled <strong>${posPct}% of team targets</strong> (${posTgts}/${totalTgts} targets) to ${pos}s <span class="text-indigo-800 font-bold">${grade}</span>.`);
-
                     if (pos === 'WR' && p.depthChart === 3) {
                         opportunityBullets.push(`<strong>WR3 / 11-Personnel Role:</strong> In this ${offensePace} attack (${totalTgts} total targets), the WR3 position sees elevated route participation due to heavy 3-receiver sets.`);
                     }
@@ -337,6 +358,12 @@ const UI = {
                     opportunityBullets.push(`<strong>Target Opportunity:</strong> ${p.Player} enters the ${p.Team} passing attack with starting route potential.`);
                 }
             } else if (pos === 'QB') {
+                if (p._avgWeaponCatchRate) {
+                    opportunityBullets.push(`<strong>Pass-Catcher Quality:</strong> Top targets boast an average <strong>${p._avgWeaponCatchRate}% True Catch Rate</strong> with ${p._eliteWeaponCount || 0} elite separator(s) <span class="text-indigo-800 font-bold">[WEAPON ENVIRONMENT]</span>.`);
+                }
+                if (p._hasGoalLineRushingEquity) {
+                    opportunityBullets.push(`<strong>Goal-Line Rushing Equity:</strong> Commands designed goal-line sneaks/keeper plays (${p.stats?.rushTd || 0} proj rush TDs), providing a significant rushing floor boost <span class="text-emerald-800 font-bold">[KONAMI CODE BOOST]</span>.`);
+                }
                 if (passEnv && passEnv.pktTime) {
                     let pkt = passEnv.pktTime;
                     let grade = pkt >= 2.5 ? "[GREAT POCKET PROTECTION]" : (pkt >= 2.3 ? "[AVERAGE PROTECTION]" : "[POOR PROTECTION - High Pressure]");

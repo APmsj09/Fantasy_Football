@@ -1727,26 +1727,182 @@ const State = {
             }
             adjMultiplier += olModifier;
 
-            // --- 3B. OFFSEASON MIGRATION & WORKLOAD TRAJECTORY (The Gibbs & Team-Changer Engine) ---
+            // --- 3B. VACATED OPPORTUNITY, BACKFIELD COMPETITION & WORKLOAD TRAJECTORY ---
             
-            // 1. Intra-Team Workload Trajectory (Ascending/Descending Roles)
-            // Explicitly limited to RB/WR/TE to prevent QB passing volume from skewing "touches"
-            if (['RB', 'WR', 'TE'].includes(p.Pos) && p.pastStats && p.pastStats.gp >= 6 && p.stats) {
-                // Apples-to-apples comparison: Receptions + Rush Attempts only (excluding targets to prevent data mismatch)
-                let pastTouchesPG = ((p.pastStats.rushAtt || 0) + (p.pastStats.rec || 0)) / p.pastStats.gp;
-                let projTouchesPG = ((p.stats.rushAtt || 0) + (p.stats.rec || 0)) / Math.max(1, (p.stats.gp || 17));
+            // 1. Vacated Opportunity & Incoming Backup Profiler (Running Backs)
+            if (p.Pos === 'RB') {
+                const teamKey = this.normalizeTeam(p.Team);
                 
-                if (pastTouchesPG >= 4.0) {
-                    let growthRatio = projTouchesPG / Math.max(1, pastTouchesPG);
+                // Find all historical running backs from this team in 2025
+                const pastTeamRBs = this.allPlayers.filter(x => 
+                    x.Pos === 'RB' && 
+                    (x.pastTeam === teamKey || (this.normalizeTeam(x.Team) === teamKey && !x.pastTeam)) &&
+                    x._cleanName !== p._cleanName
+                );
+
+                // Identify departing backfield volume (players who left or are no longer starting)
+                let vacatedCarries = 0;
+                let vacatedRzAtt = 0;
+                let vacatedTgts = 0;
+                let departedNames = [];
+
+                pastTeamRBs.forEach(dep => {
+                    // If the player moved to another team, or saw their projected touches slashed by >= 60%
+                    let isDeparted = (dep._cleanTeam && dep._cleanTeam !== teamKey);
+                    let isDemoted = (dep.stats && dep.pastStats && dep.stats.rushAtt < dep.pastStats.rushAtt * 0.4);
+                    
+                    if (isDeparted || isDemoted) {
+                        vacatedCarries += (dep.pastStats?.rushAtt || 0);
+                        vacatedRzAtt += (dep.rzAtt || dep.pastStats?.rzAtt || 0);
+                        vacatedTgts += (dep.pastStats?.targets || 0);
+                        departedNames.push(dep.Player);
+                    }
+                });
+
+                p._vacatedCarries = vacatedCarries;
+                p._vacatedRzAtt = vacatedRzAtt;
+                p._vacatedTgts = vacatedTgts;
+                p._departedBackfieldNames = [...new Set(departedNames)];
+
+                // 2. Evaluate the Incoming Backup Threat
+                let backup = null;
+                if (p.handcuffName) {
+                    backup = this.matchPlayerFast(p.handcuffName, p.Team, 'RB');
+                }
+                if (!backup) {
+                    backup = this.allPlayers.find(x => this.normalizeTeam(x.Team) === teamKey && x.Pos === 'RB' && x.depthChart === 2);
+                }
+
+                if (backup) {
+                    p._backupName = backup.Player;
+                    let backupPastRz = backup.rzAtt || backup.pastStats?.rzAtt || 0;
+                    let backupPastTgtShare = backup.targetShare || backup.pastStats?.targetShare || 0;
+                    let backupPastTouches = (backup.pastStats?.rushAtt || 0) + (backup.pastStats?.rec || 0);
+
+                    // Classify Backup Archetype
+                    if (backupPastRz >= 18 || (backup.weight && backup.weight >= 220 && backupPastTouches >= 100)) {
+                        p._backupThreatLevel = 'Goal-Line Vulture Threat';
+                        p._backupThreatNote = `${backup.Player} has proven short-yardage gravity and may cap goal-line monopoly.`;
+                    } else if (backupPastTgtShare >= 12.0) {
+                        p._backupThreatLevel = 'Passing Down Threat';
+                        p._backupThreatNote = `${backup.Player} commands high pass-catching volume, potentially capping 3rd-down snaps.`;
+                    } else {
+                        p._backupThreatLevel = 'Low Standalone Threat';
+                        p._backupThreatNote = `${backup.Player} operates as a pure contingent backup, giving ${p.Player} an uncontested three-down ceiling.`;
+                    }
+                } else {
+                    p._backupThreatLevel = 'Uncontested';
+                    p._backupThreatNote = 'No established backup threat on the depth chart.';
+                }
+
+                // 3. Inherited Touchdown Validation (Fixes False TD Fluke on Ascending Backs)
+                if (p.depthChart === 1 && vacatedRzAtt >= 15 && p._backupThreatLevel !== 'Goal-Line Vulture Threat') {
+                    p._inheritsGoalLineWork = true;
+                    p._inheritedRzAttShare = Math.round(vacatedRzAtt * 0.55); // Projects lead back absorbing 55%+ of vacated RZ carries
+                    
+                    // Adjust Expected Touchdowns (xTD) upward to reflect the newly inherited red-zone role
+                    if (p.xTD) {
+                        p.xTD += (p._inheritedRzAttShare * 0.15); // Add calculated TD expectation
+                    }
+                }
+            }
+
+            // 4. Multi-Position Vacated Opportunity & Competition Engine (WR, TE, QB, RB)
+            const teamKey = this.normalizeTeam(p.Team);
+
+            // --- WR & TE VACATED AIR YARDS & TARGET FUNNEL ENGINE ---
+            if (['WR', 'TE'].includes(p.Pos)) {
+                const pastTeamReceivers = this.allPlayers.filter(x => 
+                    ['WR', 'TE'].includes(x.Pos) && 
+                    (x.pastTeam === teamKey || (this.normalizeTeam(x.Team) === teamKey && !x.pastTeam)) &&
+                    x._cleanName !== p._cleanName
+                );
+
+                let vacatedTgts = 0;
+                let vacatedAirYards = 0;
+                let vacatedRzTgts = 0;
+                let departedRecNames = [];
+
+                pastTeamReceivers.forEach(dep => {
+                    let isDeparted = (dep._cleanTeam && dep._cleanTeam !== teamKey);
+                    let isDemoted = (dep.stats && dep.pastStats && dep.stats.targets < dep.pastStats.targets * 0.4);
+                    
+                    if (isDeparted || isDemoted) {
+                        vacatedTgts += (dep.pastStats?.targets || 0);
+                        vacatedAirYards += (dep.airYards || dep.pastStats?.airYards || (dep.pastStats?.targets || 0) * 10.5);
+                        vacatedRzTgts += (dep.rzTgt || dep.pastStats?.rzTgt || 0);
+                        departedRecNames.push(dep.Player);
+                    }
+                });
+
+                p._vacatedTgts = vacatedTgts;
+                p._vacatedAirYards = Math.round(vacatedAirYards);
+                p._vacatedRzTgts = vacatedRzTgts;
+                p._departedReceiverNames = [...new Set(departedRecNames)];
+
+                // Receiver Room Concentration / Tree Type
+                const currentTeamReceivers = this.allPlayers.filter(x => 
+                    this.normalizeTeam(x.Team) === teamKey && ['WR', 'TE'].includes(x.Pos)
+                ).sort((a, b) => (b.ProjPts || 0) - (a.ProjPts || 0));
+
+                let top2ProjectedShare = (currentTeamReceivers.slice(0, 2).reduce((sum, r) => sum + (r.targetShare || 18), 0));
+                
+                if (top2ProjectedShare >= 44.0) {
+                    p._passingTreeType = 'Concentrated 2-Man Funnel';
+                    p._treeDescription = 'High-volume concentrated passing tree guaranteeing elite weekly target safety.';
+                } else if (currentTeamReceivers.filter(r => (r.targetShare || 0) >= 14).length >= 4) {
+                    p._passingTreeType = 'Crowded Committee Spread';
+                    p._treeDescription = 'Ball distributed across 4+ receivers, leading to volatile weekly target floors.';
+                } else {
+                    p._passingTreeType = 'Standard Target Hierarchy';
+                    p._treeDescription = 'Balanced positional target distribution.';
+                }
+
+                // Inherited Alpha Volume Check
+                if (p.depthChart === 1 && vacatedAirYards >= 800) {
+                    p._inheritsAlphaAirShare = true;
+                    if (p.wopr && p.wopr < 0.55) p.wopr += 0.08; // Adjust WOPR upward to reflect inherited downfield route priority
+                }
+            }
+
+            // --- QB SURROUNDING WEAPON ROOM & PROTECTION DELTA ---
+            if (p.Pos === 'QB') {
+                const teamPassCatchers = this.allPlayers.filter(x => 
+                    this.normalizeTeam(x.Team) === teamKey && ['WR', 'TE', 'RB'].includes(x.Pos) && (x.depthChart <= 2)
+                );
+
+                let avgCatchRate = 0;
+                let eliteWeapons = 0;
+                teamPassCatchers.forEach(w => {
+                    if (w.trueCatchRate && w.trueCatchRate >= 88.0) eliteWeapons++;
+                    avgCatchRate += (w.trueCatchRate || 80.0);
+                });
+                p._avgWeaponCatchRate = teamPassCatchers.length > 0 ? (avgCatchRate / teamPassCatchers.length).toFixed(1) : 80.0;
+                p._eliteWeaponCount = eliteWeapons;
+
+                // Konami Code / Goal-Line Rushing Equity
+                if (p.stats && p.stats.rushTd >= 5) {
+                    p._hasGoalLineRushingEquity = true;
+                }
+            }
+
+            // --- WORKLOAD TRAJECTORY (ALL POSITIONS) ---
+            if (['RB', 'WR', 'TE'].includes(p.Pos) && p.pastStats && p.pastStats.gp >= 6 && p.stats) {
+                let pastOppsPG = ((p.pastStats.rushAtt || 0) + (p.pastStats.targets || p.pastStats.rec || 0)) / p.pastStats.gp;
+                let projOppsPG = ((p.stats.rushAtt || 0) + (p.stats.targets || p.stats.rec || 0)) / Math.max(1, (p.stats.gp || 17));
+                
+                if (pastOppsPG >= 4.0) {
+                    let growthRatio = projOppsPG / Math.max(1, pastOppsPG);
                     p.touchGrowthRatio = growthRatio;
 
-                    // AVOID DOUBLE COUNTING: We DO NOT adjust the Adv VBD multiplier here because the baseline 
-                    // projection already bakes in the volume increase/decrease. We only flag the trajectory 
-                    // so we can properly evaluate their Upside/Variance bounds later.
-                    if (growthRatio >= 1.25) {
+                    let isAscending = (growthRatio >= 1.08 && pastOppsPG >= 12.0) || (growthRatio >= 1.16) || (p._inheritsGoalLineWork) || (p._inheritsAlphaAirShare);
+                    let isDeclining = (growthRatio <= 0.90 && pastOppsPG >= 12.0) || (growthRatio <= 0.84);
+
+                    if (isAscending) {
                         p._isAscendingRole = true;
-                        p._growthPct = Math.round((growthRatio - 1.0) * 100);
-                    } else if (growthRatio <= 0.75) {
+                        p._growthPct = Math.round((Math.max(growthRatio, 1.0) - 1.0) * 100);
+                        if (p._growthPct < 10) p._growthPct = 14;
+                    } else if (isDeclining) {
                         p._isDecliningRole = true;
                         p._declinePct = Math.round((1.0 - growthRatio) * 100);
                     }
@@ -1959,13 +2115,13 @@ const State = {
             // 2nd/3rd-Level: Expected Touchdowns (xTD) Regression Engine
             if (p.pastStats && p.pastStats.gp >= 4 && p.xTD !== undefined && p.pastStats.totalTd !== undefined) {
                 let tdDiff = p.pastStats.totalTd - p.xTD;
+                let isExplosivePlaymaker = (p.pastStats.bigPlays >= 8) || (p.err && p.err >= 3.5);
                 
-                if (tdDiff >= 4.5 && !p._isSmallSampleAlpha) {
-                    // Scored 4.5+ TDs MORE than their volume dictated (Fluke / Unsustainable)
+                // Do not penalize explosive playmakers who score from outside the red zone, or players with expanding roles
+                if (tdDiff >= 4.5 && !p._isSmallSampleAlpha && !isExplosivePlaymaker && !p._isAscendingRole) {
                     adjMultiplier -= 0.05;
                     p._isFlukeTDScorer = true;
                 } else if (tdDiff <= -4.0) {
-                    // Scored 4.0+ TDs LESS than their volume dictated (Positive Regression Candidate)
                     adjMultiplier += 0.05;
                     p._positiveTdRegression = true;
                 }
