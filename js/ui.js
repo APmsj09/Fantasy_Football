@@ -464,6 +464,13 @@ const UI = {
         } else if (pos === 'RB') {
             let effTargetShare = p.targetShare || 0;
 
+            // Calculate Target-to-Carry Ratio & Receiving Efficiency
+            const projCarries = p.stats?.rushAtt || p.pastStats?.rushAtt || 0;
+            const projTargets = p.stats?.targets || p.pastStats?.targets || 0;
+            const tgtToCarryRatio = projCarries > 0 ? (projTargets / projCarries) : 0;
+            const ypr = p.stats?.recAvg || (p.stats?.recYds && p.stats?.rec ? p.stats.recYds / p.stats.rec : 0);
+            const rbWeight = p.weight ? parseInt(p.weight, 10) : 210;
+
             // THE RB ARCHETYPE LOGIC:
             if (p.hvo && p.hvo >= 70) {
                 archetypeNote = pickVar([
@@ -471,6 +478,10 @@ const UI = {
                     "His monopoly over money touches—receptions and inside-the-10 carries—makes him a usage monster.",
                     "He captures the coveted dual-threat RB role, taking pass-game targets alongside goal-line work."
                 ]);
+            } else if (tgtToCarryRatio >= 0.20 && (rbWeight >= 225 || ypr >= 9.0)) {
+                // ⚡ NEW: Identifies Power-Hybrid / H-Back pass-catching weapons (e.g. Adam Randall)
+                archetypeNote = `A unique 'Power-Hybrid / H-Back' weapon: Combining a massive ${rbWeight} lb frame with legitimate downfield receiving chops (${ypr.toFixed(1)} YPR), he creates mismatch nightmares against linebackers in the passing game.`;
+                p._isHybridReceiver = true;
             } else if (p._isGoalLineHammer) {
                 archetypeNote = "A pure 'Goal-Line Hammer': He monopolizes inside-the-5 carries for massive touchdown upside, but offers virtually zero receiving floor in PPR formats.";
             } else if (p._isHandcuffPlus) {
@@ -1357,7 +1368,7 @@ const UI = {
                     (p.stats && p.stats.rec >= 25) ||
                     (teamDist && teamDist['RB %'] >= 16.0);
 
-                if (pos === 'RB' && (!p.hvo || p.hvo < 40) && !hasScriptDependencyCon && !hasModerateReceiving) {
+                if (pos === 'RB' && (!p.hvo || p.hvo < 40) && !hasScriptDependencyCon && !hasModerateReceiving && !p._isHybridReceiver) {
                     cons.push(pickVar([
                         `<strong>Game-Script Dependency:</strong> Lacks pass-game work; vulnerable if ${p.Team} falls behind.`,
                         `<strong>Script Sensitivity:</strong> Production drops if negative game scripts force ${p.Team} to pass.`
