@@ -2291,12 +2291,58 @@ const UI = {
             ? nextWindow[0] 
             : (currentOverallPick + (State.settings.numTeams * 2));
 
-        // 4. Generalized Survival Probability to Next Active Window (W2)
-        const getSurvivalProb = (adp) => {
+        // 4. Draft Board Geometry: Identify teams picking between now and our next turn
+        let interveningTeamIds = [];
+        let nextPickIndex = nextActiveWindowPick - 1; 
+        for (let i = State.currentPick + 1; i < nextPickIndex; i++) {
+            if (State.draftOrder[i] && State.draftOrder[i] !== State.userTeamId) {
+                interveningTeamIds.push(State.draftOrder[i]);
+            }
+        }
+        interveningTeamIds = [...new Set(interveningTeamIds)]; // Remove duplicates for turn wraps
+
+        // 5. Generalized Survival Probability to Next Active Window (W2)
+        const getSurvivalProb = (player) => {
+            let adp = player.adp;
             if (!adp) return 1.0;
+            
+            // Base Mathematical ADP Survival
             let diff = adp - nextActiveWindowPick;
             let slope = Math.max(0.04, 0.28 - (currentRound * 0.015));
-            return 1 / (1 + Math.exp(-slope * diff));
+            let baseProb = 1 / (1 + Math.exp(-slope * diff));
+
+            // ⚡ "Read the Board" Roster Geometry
+            let threatCount = 0;
+            let safetyCount = 0;
+
+            let posRoster = State.settings.roster[player.Pos];
+            let starterMax = posRoster ? posRoster.max : 1;
+
+            interveningTeamIds.forEach(teamId => {
+                let t = State.teamsById[teamId];
+                if (!t) return;
+                let count = t.counts[player.Pos] || 0;
+                
+                if (count >= starterMax) safetyCount++; // They already have their starters
+                else if (count === 0) threatCount++;    // They are desperate for this position
+            });
+
+            // Adjust base probability based on the opponents behind you
+            if (['QB', 'TE', 'PK', 'DST'].includes(player.Pos)) {
+                // Onesie positions: If the teams behind you already have one, the player is extremely safe.
+                if (safetyCount === interveningTeamIds.length && interveningTeamIds.length > 0) {
+                    baseProb = Math.min(0.95, baseProb + 0.35); // Huge safety boost
+                } else if (threatCount > 0) {
+                    baseProb = Math.max(0.05, baseProb - (0.15 * threatCount)); // Increased danger
+                }
+            } else {
+                // RB/WR: Rosters are deeper, but extreme needs still drive runs
+                if (threatCount >= 2 && currentRound <= 6) {
+                    baseProb = Math.max(0.05, baseProb - 0.20); // Impending positional run
+                }
+            }
+
+            return Math.max(0.0, Math.min(1.0, baseProb));
         };
 
         // ===========================================================
@@ -2405,7 +2451,7 @@ const UI = {
 
             // 4. Value Over Next Available (VONA) & Dynamic Market Reach Penalty
             if (p.adp) {
-                let survivalProb = getSurvivalProb(p.adp);
+                let survivalProb = getSurvivalProb(p); // Now passes the whole player object
                 p._survivalProb = survivalProb;
 
                 if (score > 0) {
@@ -2683,7 +2729,7 @@ const UI = {
 
         htmlStr += vbdRecs.map((p, i) => {
             let stackBadge = p._stackPartner ? ` • ⚡ ${p._stackPartner}` : '';
-            let survivalProb = getSurvivalProb(p.adp);
+            let survivalProb = p._survivalProb !== undefined ? p._survivalProb : getSurvivalProb(p);
             let posRoster = State.settings.roster[p.Pos];
             let starterMax = posRoster ? posRoster.max : 1;
             let isStarterNeeded = userTeam.counts[p.Pos] < starterMax;
