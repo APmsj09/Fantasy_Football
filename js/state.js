@@ -1814,6 +1814,57 @@ const State = {
                         p.xTD += (p._inheritedRzAttShare * 0.15); // Add calculated TD expectation
                     }
                 }
+
+                // 4. 3-Back Committee & Rookie RB3 Allocation Engine
+                const teamRBs = this.allPlayers
+                    .filter(x => this.normalizeTeam(x.Team) === teamKey && x.Pos === 'RB')
+                    .sort((a, b) => (a.depthChart || 99) - (b.depthChart || 99));
+
+                const rb1 = teamRBs.find(x => x.depthChart === 1);
+                const rb2 = teamRBs.find(x => x.depthChart === 2);
+                const rb3 = teamRBs.find(x => x.depthChart === 3);
+
+                // If an active RB3 exists on the team depth chart
+                if (rb3 && rb1 && rb2) {
+                    const rb3Weight = rb3.weight ? parseInt(rb3.weight, 10) : 205;
+                    const rb3Bmi = rb3.bmi || 30.0;
+                    const isPowerRookie = rb3Weight >= 218 || rb3Bmi >= 31.5;
+                    const isSpeedRookie = rb3Weight <= 202;
+
+                    // A. Adjust Multipliers for RB1 based on RB3 profile
+                    if (p._cleanName === rb1._cleanName) {
+                        if (isPowerRookie) {
+                            adjMultiplier -= 0.04; // Siphons early-down & short-yardage work
+                            p._rb3ThreatNote = `Rookie ${rb3.Player} (${rb3Weight} lbs) introduces short-yardage & carry competition.`;
+                        } else {
+                            adjMultiplier -= 0.02; // General committee drag
+                        }
+                    }
+
+                    // B. Adjust Multipliers for RB2 based on RB3 profile
+                    if (p._cleanName === rb2._cleanName) {
+                        if (isSpeedRookie) {
+                            adjMultiplier -= 0.04; // Siphons passing-down / space touches
+                            p._rb3ThreatNote = `Rookie ${rb3.Player} introduces pass-catching / change-of-pace competition.`;
+                        } else {
+                            adjMultiplier -= 0.015; // Power rookie barely affects pass-catching role
+                        }
+                    }
+
+                    // C. Standalone & Contingent Valuation for the Rookie RB3
+                    if (p._cleanName === rb3._cleanName) {
+                        let starterInjuryRisk = (rb1.pastStats?.gp && rb1.pastStats.gp < 14) ? 0.30 : 0.18;
+                        if ((rb1.age || 25) >= 27) starterInjuryRisk += 0.08;
+
+                        // Behind an S/A tier line, an RB3's contingent value jumps dramatically
+                        let lineLeverage = (p.olTier === 'S' || p.olTier === 'A') ? 1.25 : 1.0;
+                        p.contingentLotteryScore = (rb1.ProjPts * 0.55 * lineLeverage) * starterInjuryRisk;
+
+                        // Boost RB3's upside score in double-digit rounds
+                        upsideMultiplier += Math.min(0.35, p.contingentLotteryScore / 50.0);
+                        p._isRookieLotteryStash = true;
+                    }
+                }
             }
 
             // 4. Multi-Position Vacated Opportunity & Competition Engine (WR, TE, QB, RB)
