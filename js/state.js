@@ -2039,6 +2039,98 @@ const State = {
                 p._envDelta = envDelta;
             }
 
+            // =========================================================================
+            // 3. ENHANCED INCOMING COMPETITION & TACTICAL THREAT MATRIX
+            // =========================================================================
+            if (['RB', 'WR', 'TE'].includes(p.Pos)) {
+                const teamKey = this.normalizeTeam(p.Team);
+                
+                // Scan for newly acquired teammates (Free Agents, Rookies, High-Investment Trades)
+                const incomingTeammates = this.allPlayers.filter(x => 
+                    this.normalizeTeam(x.Team) === teamKey && 
+                    x._cleanName !== p._cleanName &&
+                    (x.isTeamChanger || x.isNewRole || (x.age && x.age <= 23 && x.depthChart <= 2))
+                );
+
+                if (incomingTeammates.length > 0) {
+                    incomingTeammates.forEach(inc => {
+                        const incEcr = inc.ecr || inc.adp || 150;
+                        const incIsHighInvestment = incEcr <= 75; // Day 1/2 draft pick or high-tier FA
+
+                        // --- A. RUNNING BACK COMPETITION TIERS ---
+                        if (p.Pos === 'RB' && inc.Pos === 'RB') {
+                            const incWeight = inc.weight ? parseInt(inc.weight, 10) : 205;
+                            const incCarries = inc.stats?.rushAtt || inc.pastStats?.rushAtt || 0;
+                            const incTargets = inc.stats?.targets || inc.pastStats?.targets || 0;
+                            const incTgtRatio = incCarries > 0 ? (incTargets / incCarries) : 0;
+                            const incYpr = inc.stats?.recAvg || (inc.stats?.recYds && inc.stats?.rec ? inc.stats.recYds / inc.stats.rec : 0);
+
+                            const incIsPower = incWeight >= 218 || (inc.bmi && inc.bmi >= 31.5);
+                            const incIsPassCatcher = (inc.targetShare && inc.targetShare >= 12) || (inc.stats?.targets >= 35) || incTgtRatio >= 0.20;
+                            const incIsPowerHybrid = incIsPower && (incTgtRatio >= 0.20 || incYpr >= 9.0);
+
+                            // 1. Impact on Incumbent Lead Back (Depth 1)
+                            if (p.depthChart === 1) {
+                                if (incIsHighInvestment && inc.depthChart <= 2) {
+                                    adjMultiplier -= 0.050; // Day 1/2 Draft Pick 55/45 split
+                                    p._incomingCompetitionNote = `High-investment addition ${inc.Player} forces a 55/45 split rotation.`;
+                                } else if (incIsPowerHybrid) {
+                                    adjMultiplier -= 0.040; // Threatens BOTH goal line & checkdowns
+                                    if (p.xTD) p.xTD = Math.max(2.0, p.xTD - 1.2);
+                                    p._incomingCompetitionNote = `Incoming power-hybrid ${inc.Player} (${incWeight} lbs, ${incYpr.toFixed(1)} YPR) threatens both goal-line and receiving snaps.`;
+                                } else if (incIsPower) {
+                                    adjMultiplier -= 0.035;
+                                    if (p.xTD) p.xTD = Math.max(2.0, p.xTD - 1.2);
+                                    p._incomingCompetitionNote = `Incoming power back ${inc.Player} (${incWeight} lbs) siphons goal-line touches.`;
+                                } else if (incIsPassCatcher) {
+                                    adjMultiplier -= 0.030;
+                                    p._incomingCompetitionNote = `Incoming pass-catcher ${inc.Player} caps 3rd-down receiving floor.`;
+                                }
+                            }
+
+                            // 2. Impact on Incumbent Pass-Catching Specialist (Depth 2)
+                            if (p.depthChart === 2 && (p.targetShare >= 10 || p._isSatelliteBack)) {
+                                if (incIsPowerHybrid || incIsPassCatcher) {
+                                    adjMultiplier -= 0.035; // Siphons passing-down space
+                                    p._incomingCompetitionNote = `Incoming pass-catcher ${inc.Player} threatens 3rd-down passing routes.`;
+                                }
+                            }
+                        }
+
+                        // --- B. WIDE RECEIVER & TIGHT END COMPETITION TIERS ---
+                        if (p.Pos === 'WR') {
+                            // 1. Direct Alignment Collision (Slot vs. Slot or Deep vs. Deep)
+                            if (inc.Pos === 'WR' && p.aDOT && inc.aDOT) {
+                                const isBothSlot = (p.aDOT <= 8.5 && inc.aDOT <= 8.5);
+                                const isBothDeep = (p.aDOT >= 12.0 && inc.aDOT >= 12.0);
+
+                                if (isBothSlot) {
+                                    adjMultiplier -= 0.035; // Direct collision for underneath targets
+                                    p._incomingCompetitionNote = `Direct slot route collision with incoming receiver ${inc.Player}.`;
+                                } else if (isBothDeep) {
+                                    adjMultiplier -= 0.030; // Splitting deep air yards
+                                    p._incomingCompetitionNote = `Splits downfield vertical routes with incoming deep-threat ${inc.Player}.`;
+                                }
+                                // Complementary route trees (one slot, one deep) receive NO penalty!
+                            }
+
+                            // 2. Franchise Alpha Arrival (e.g. DJ Moore + Rome Odunze)
+                            if (inc.Pos === 'WR' && (inc.targetShare >= 20.0 || incEcr <= 45) && p.pastStats?.targetShare >= 24.0) {
+                                adjMultiplier -= 0.045; // Compresses target tree from 28% to 21%
+                                p._targetCompressionRisk = true;
+                                p._incomingCompetitionNote = `Alpha target hierarchy compressed by the arrival of ${inc.Player}.`;
+                            }
+
+                            // 3. Elite Pass-Catching TE Arrival (Siphons intermediate looks from Slot WR)
+                            if (inc.Pos === 'TE' && incEcr <= 70 && p.aDOT && p.aDOT <= 9.0) {
+                                adjMultiplier -= 0.025;
+                                p._incomingCompetitionNote = `Intermediate middle-of-field targets siphoned by incoming TE ${inc.Player}.`;
+                            }
+                        }
+                    });
+                }
+            }
+
             // 4. Inherited Role Volume & Synthetic Imputation (Rookies / Team Changers)
             let lacksIndividualMetrics = false;
             if (p.Pos === 'QB') lacksIndividualMetrics = (p.trueAccuracy === undefined) && (p.p2s === undefined);
