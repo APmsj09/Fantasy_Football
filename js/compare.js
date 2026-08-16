@@ -30,9 +30,21 @@ window.Compare = {
         const userTeam = State.teamsById[State.userTeamId];
 
         const currentPickNum = State.currentPick + 1;
-        let nextPickIdx = State.draftOrder.findIndex((teamId, idx) => idx > State.currentPick && teamId === State.userTeamId);
-        let nextUserOverallPick = nextPickIdx !== -1 ? (nextPickIdx + 1) : (currentPickNum + (State.settings.numTeams * 2) - 1);
+        
+        // Multi-Window Lookahead for the Comparison Modal
+        let userFuturePicks = [];
+        State.draftOrder.forEach((teamId, idx) => {
+            if (idx >= State.currentPick && teamId === State.userTeamId) userFuturePicks.push(idx + 1);
+        });
 
+        let nextWindowPicks = [];
+        for (let i = 0; i < userFuturePicks.length; i++) {
+            let pick = userFuturePicks[i];
+            if ((pick - currentPickNum) > 2) {
+                nextWindowPicks.push(pick);
+            }
+        }
+        let nextUserOverallPick = nextWindowPicks.length > 0 ? nextWindowPicks[0] : (currentPickNum + State.settings.numTeams);
         let html = `
             <div class="space-y-6">
                 <!-- Top Recommendation Highlight Card -->
@@ -314,12 +326,16 @@ window.Compare = {
                 consForAlt.push(`<strong>Goal-Line Vulture Risk:</strong> ${alt.Player} faces short-yardage touchdown competition from ${alt._backupName}, whereas ${topPick.Player} has full three-down control.`);
             }
 
-            // High-Value Opportunities (HVO)
-            if (topPick.hvo && alt.hvo) {
+            // High-Value Opportunities (Normalized for Ascending Backs)
+            const topTouches = (topPick.pastStats?.rushAtt || 0) + (topPick.pastStats?.rec || 0);
+            const altTouches = (alt.pastStats?.rushAtt || 0) + (alt.pastStats?.rec || 0);
+            const isTouchMismatch = Math.abs(topTouches - altTouches) >= 80;
+
+            if (topPick.hvo && alt.hvo && !isTouchMismatch) {
                 if (topPick.hvo >= alt.hvo + 12) {
-                    consForAlt.push(`<strong>Inferior Touch Quality:</strong> ${topPick.Player} commands significantly more High-Value Opportunities (<strong>${topPick.hvo} vs ${alt.hvo} HVO</strong>). He controls targets and inside-the-10 looks, while ${alt.Player} relies more on low-value between-the-20s carries.`);
+                    consForAlt.push(`<strong>Inferior Touch Quality:</strong> ${topPick.Player} commands significantly more High-Value Opportunities (<strong>${topPick.hvo} vs ${alt.hvo} HVO</strong>).`);
                 } else if (alt.hvo >= topPick.hvo + 12) {
-                    prosForAlt.push(`<strong>Superior Touch Quality:</strong> Commands more High-Value Opportunities (<strong>${alt.hvo} vs ${topPick.hvo} HVO</strong>), giving him the profitable red-zone and receiving volume that wins matchups.`);
+                    prosForAlt.push(`<strong>Superior Touch Quality:</strong> Commands more High-Value Opportunities (<strong>${alt.hvo} vs ${topPick.hvo} HVO</strong>).`);
                 }
             }
 
@@ -342,13 +358,21 @@ window.Compare = {
             }
         
 
-            // Big Plays Comparison
+            // Big Plays Comparison (Suppressed on Backup Sample Size Mismatches)
             let topBig = topPick.pastStats?.bigPlays || 0;
             let altBig = alt.pastStats?.bigPlays || 0;
-            if (altBig >= topBig + 2) {
-                prosForAlt.push(`<strong>More Big-Play Strikes:</strong> Logged <strong>${altBig} explosive plays (20+ yds)</strong> last season vs. ${topPick.Player}'s ${topBig}.`);
-            } else if (topBig >= altBig + 2) {
-                consForAlt.push(`<strong>Fewer Explosive Plays:</strong> Logged ${altBig} big plays (20+ yds) vs. ${topPick.Player}'s <strong>${topBig}</strong>.`);
+            if (!isTouchMismatch) {
+                if (altBig >= topBig + 2) {
+                    prosForAlt.push(`<strong>More Big-Play Strikes:</strong> Logged <strong>${altBig} explosive plays (20+ yds)</strong> last season vs. ${topPick.Player}'s ${topBig}.`);
+                } else if (topBig >= altBig + 2) {
+                    consForAlt.push(`<strong>Fewer Explosive Plays:</strong> Logged ${altBig} big plays (20+ yds) vs. ${topPick.Player}'s <strong>${topBig}</strong>.`);
+                }
+            }
+            // Suppress Backup Bust Rate Penalty if Player is Ascending to a Starting Role
+            if (alt.boomBust && topPick.boomBust && !alt._isAscendingRole) {
+                if (alt.boomBust.bust > topPick.boomBust.bust + 8) {
+                    consForAlt.push(`<strong>Volatile Bust Risk:</strong> Busted in <strong>${alt.boomBust.bust}%</strong> of games last year compared to ${topPick.Player}'s clean <strong>${topPick.boomBust.bust}%</strong> bust rate.`);
+                }
             }
 
             // Offensive Line Run-Blocking (YBC/Att) Edge
