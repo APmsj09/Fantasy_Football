@@ -629,13 +629,30 @@
             </div>
         </div>
 
-        <div id="summary-screen" class="screen max-w-3xl mx-auto mt-10 hidden">
-            <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+        <div id="summary-screen" class="screen max-w-6xl mx-auto mt-10 hidden pb-10">
+            <!-- Projected Standings -->
+            <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 mb-8">
                 <div class="text-center mb-8">
                     <h2 class="text-3xl font-extrabold text-gray-900">Projected Final Standings</h2>
-                    <p class="text-gray-500 mt-2">Based on drafted rosters and full season VBD projections.</p>
+                    <p class="text-gray-500 mt-2">Based on drafted rosters and optimal weekly lineup simulations.</p>
                 </div>
-                <div id="standings-list" class="space-y-3"></div>
+                <div id="standings-list" class="space-y-3 max-w-3xl mx-auto"></div>
+            </div>
+
+            <!-- Team-by-Team Season Previews & Draft Recaps -->
+            <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+                <div class="text-center mb-8">
+                    <h2 class="text-3xl font-extrabold text-gray-900">Post-Draft Team Recaps & Season Previews</h2>
+                    <p class="text-gray-500 mt-2">Comprehensive analysis, grades, and 3-tier projections for every roster.</p>
+                </div>
+                <!-- Dropdown to select which team to view -->
+                <div class="flex justify-center mb-6">
+                    <select id="recap-team-select" class="w-full max-w-md border-gray-300 border p-3 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-gray-800 shadow-sm text-center text-lg">
+                        <!-- Options injected dynamically -->
+                    </select>
+                </div>
+                <!-- Dynamic Content Container -->
+                <div id="recap-content-container" class="mt-4"></div>
             </div>
         </div>
 
