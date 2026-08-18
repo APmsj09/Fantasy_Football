@@ -94,44 +94,51 @@ window.AutoDraft = {
             }
 
             // Manager Personality Strategy Multipliers
+            // Manager Personality Strategy Multipliers (Matches Draft History Profiles)
             if (profile) {
-                // Early-Round Strategy Multipliers (Rounds 1-6)
                 if (round <= 6) {
                     if (profile.strategy === 'Hero-RB') {
-                        if (team.counts['RB'] >= 1 && p.Pos === 'WR' && round <= 4) multiplier *= 1.35;
-                        if (team.counts['RB'] >= 1 && p.Pos === 'RB' && round <= 4) multiplier *= 0.60;
+                        // Secure exactly 1 RB early, then aggressively target WRs
+                        if (team.counts['RB'] >= 1 && p.Pos === 'WR' && round <= 5) multiplier *= 1.45;
+                        if (team.counts['RB'] >= 1 && p.Pos === 'RB' && round <= 5) multiplier *= 0.35;
                     }
                     else if (profile.strategy === 'Zero-RB' && round <= 5) {
-                        if (['WR', 'TE'].includes(p.Pos) && team.counts['RB'] === 0) multiplier *= 1.35;
-                        if (p.Pos === 'RB' && round <= 4 && team.counts['WR'] < 3) multiplier *= 0.35;
+                        // Completely avoid RBs in the early rounds; hammer WR/TE
+                        if (['WR', 'TE'].includes(p.Pos)) multiplier *= 1.40;
+                        if (p.Pos === 'RB') multiplier *= 0.15; 
                     }
                     else if (profile.strategy === 'Robust-RB') {
-                        if (p.Pos === 'RB' && round <= 3) multiplier *= 1.35;
-                        if (['WR', 'TE'].includes(p.Pos) && round >= 4 && team.counts['RB'] >= 3) multiplier *= 1.30;
+                        // Aggressively target RBs early
+                        if (p.Pos === 'RB' && round <= 4) multiplier *= 1.45;
+                        if (['WR', 'TE'].includes(p.Pos) && round <= 4 && team.counts['RB'] >= 3) multiplier *= 1.30;
                     }
-                    else if (profile.strategy === 'Double-Elite' && round <= 4) {
-                        if (p.Pos === 'QB' && team.counts['QB'] === 0) multiplier *= 1.30;
-                        if (p.Pos === 'TE' && team.counts['TE'] === 0) multiplier *= 1.30;
+                    else if (profile.strategy === 'Double-Elite' && round <= 5) {
+                        // Reach for elite QB and TE advantages
+                        if (p.Pos === 'QB' && team.counts['QB'] === 0) multiplier *= 1.50;
+                        if (p.Pos === 'TE' && team.counts['TE'] === 0) multiplier *= 1.50;
                     }
                 }
 
-                // Mid-Round Handcuff / RB Collector Tendency (Rounds 7-11)
-                if (round >= 7 && round <= 11 && profile.likesHandcuffs) {
-                    if (p.Pos === 'RB') multiplier *= 1.25;
+                // Mid-Round Tendencies
+                if (round >= 7 && round <= 11 && profile.likesHandcuffs && p.Pos === 'RB') {
+                    multiplier *= 1.35; // Handcuff hoarders will reach heavily for RBs here
                 }
 
-                // Early Kicker / DST Reacher (Rounds 10-12) - Flat explicit boost to overcome negative VBD floor
                 p._cpuReachBonus = 0;
-                if (round >= 10 && round <= 12 && isStarterOpen) {
-                    if (p.Pos === 'PK' && profile.reachesForKicker) p._cpuReachBonus = 50;
-                    if (p.Pos === 'DST' && profile.reachesForDST) p._cpuReachBonus = 50;
+                if (round >= 8 && round <= 14 && isStarterOpen) {
+                    // Match historical reach tendencies for K and DST using their actual Avg Round
+                    if (p.Pos === 'PK' && profile.reachesForKicker && round >= Math.floor(profile.pkAvgRound) - 1) {
+                        p._cpuReachBonus = 45;
+                    }
+                    if (p.Pos === 'DST' && profile.reachesForDST && round >= Math.floor(profile.dstAvgRound) - 1) {
+                        p._cpuReachBonus = 45;
+                    }
                 }
 
-                // Stacking Synergy Boost (Rounds 4-10)
+                // Correlated Stacking
                 let draftedQBs = team.roster.filter(r => r.Pos === 'QB');
-                if (draftedQBs.length > 0 && ['WR', 'TE'].includes(p.Pos)) {
-                    let matchesQB = draftedQBs.some(qb => qb._cleanTeam === p._cleanTeam);
-                    if (matchesQB) multiplier *= 1.20;
+                if (draftedQBs.length > 0 && ['WR', 'TE'].includes(p.Pos) && draftedQBs.some(qb => qb._cleanTeam === p._cleanTeam)) {
+                    multiplier *= 1.25;
                 }
             }
 
@@ -175,7 +182,7 @@ window.AutoDraft = {
                         }
                     }
                 } else {
-                    // PK and DST
+                    // PK and DST overage penalties (Ensures CPUs don't hoard kickers/defenses)
                     multiplier *= (overage === 0 ? 0.15 : 0.05); 
                 }
             }
