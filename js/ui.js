@@ -1806,6 +1806,24 @@ const UI = {
             else if (p._isAscendingCareerArc) multiYearBadge = `<span class="ml-2 text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">📈 3-Yr Ascending Arc</span>`;
             else if (p._isInjuryBounceback) multiYearBadge = `<span class="ml-2 text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full">🔄 Health Bounceback Profile</span>`;
 
+            let stats2025Text = '';
+            let stats2024Text = '';
+            let no2024Text = '<div class="text-gray-400 text-[11px] italic">No 2024 data (Rookie/Inactive)</div>';
+
+            // Branch text formatting based on position
+            if (p.Pos === 'DST') {
+                stats2025Text = `${(ps.defTd || 0) + (ps.spcTd || 0)} TD • ${ps.sack || 0} Sacks • ${(ps.defInt || 0) + (ps.defFum || 0)} TOs`;
+                no2024Text = ''; // Hide 2024 warning for defenses
+            } else if (p.Pos === 'PK') {
+                stats2025Text = `${ps.fgTotal || 0} FGM • ${ps.xp || 0} PATs`;
+                no2024Text = ''; // Hide 2024 warning for kickers
+            } else {
+                stats2025Text = `${ps.totalTd || 0} TD • ${((ps.passYds || 0) + (ps.rushYds || 0) + (ps.recYds || 0)).toLocaleString()} Total Yds`;
+                if (s24) {
+                    stats2024Text = `${s24.ppg ? s24.ppg.toFixed(1) + ' PPG • ' : ''}${s24.totalTd || 0} TD • ${((s24.passYds || 0) + (s24.rushYds || 0) + (s24.recYds || 0)).toLocaleString()} Total Yds`;
+                }
+            }
+
             pastStatsHTML = `
                 <div class="bg-indigo-50/60 border border-indigo-100 p-3.5 rounded-xl mb-4 shadow-sm">
                     <div class="flex justify-between items-center mb-1.5">
@@ -1816,18 +1834,17 @@ const UI = {
                     <div class="grid grid-cols-2 gap-2 text-xs pt-1 border-t border-indigo-100/60">
                         <div>
                             <span class="text-[10px] text-gray-500 block uppercase font-semibold">2025 (${ps.gp || 17}G)</span>
-                            <span class="font-bold text-gray-900">${ps.totalTd || 0} TD • ${((ps.passYds || 0) + (ps.rushYds || 0) + (ps.recYds || 0)).toLocaleString()} Total Yds</span>
+                            <span class="font-bold text-gray-900">${stats2025Text}</span>
                         </div>
                         ${s24 ? `
                         <div>
                             <span class="text-[10px] text-gray-500 block uppercase font-semibold">2024 (${s24.gp || 17}G)</span>
-                            <span class="font-bold text-gray-700">${s24.ppg ? s24.ppg.toFixed(1) + ' PPG • ' : ''}${s24.totalTd || 0} TD • ${((s24.passYds || 0) + (s24.rushYds || 0) + (s24.recYds || 0)).toLocaleString()} Total Yds</span>
-                        </div>` : '<div class="text-gray-400 text-[11px] italic">No 2024 data (Rookie/Inactive)</div>'}
+                            <span class="font-bold text-gray-700">${stats2024Text}</span>
+                        </div>` : no2024Text}
                     </div>
                 </div>
             `;
         }
-
         let statsDashboard = '';
         if (isOffense) {
             let isQB = p.Pos === 'QB';
