@@ -312,10 +312,27 @@ const UI = {
                     opportunityBullets.push(`<strong>Inherited Workload:</strong> ${p.Player} enters the ${p.Team} backfield as a primary workload candidate.`);
                 }
             } else if (['WR', 'TE'].includes(pos)) {
-                // Vacated Air Yards & Target Opportunity
-                if (p._vacatedAirYards && p._vacatedAirYards >= 600) {
+                // Tactical Vacated Target, Air-Yard, and Red-Zone Analysis
+                if ((p._vacatedTgts && p._vacatedTgts >= 45) || (p._vacatedAirYards && p._vacatedAirYards >= 500)) {
                     let depList = p._departedReceiverNames?.length > 0 ? ` (${p._departedReceiverNames.join(', ')})` : '';
-                    opportunityBullets.push(`<strong>Vacated Deep Air Yards:</strong> Departures${depList} left behind <strong>+${p._vacatedAirYards} air yards</strong> and <strong>+${p._vacatedTgts} targets</strong>, unlocking high-leverage route volume <span class="text-emerald-800 font-bold">[ALPHA AIR SHARE CATALYST]</span>.`);
+                    
+                    if (pos === 'TE') {
+                        if (p._vacatedRoleType === 'Detached Hybrid Deep Seam') {
+                            opportunityBullets.push(`<strong>Vertical Seam Vacancy:</strong> Departures${depList} vacated <strong>+${p._vacatedAirYards} deep air yards</strong>, unlocking high-aDOT seam opportunities for him in detached move alignments <span class="text-purple-800 font-bold">[HYBRID TE CEILING]</span>.`);
+                        } else if (p._vacatedRoleType === 'Short-Yardage Safety Valve') {
+                            opportunityBullets.push(`<strong>Underneath Outlet Volume:</strong> Offseason departures${depList} vacated <strong>+${p._vacatedTgts} targets</strong>. He absorbs high-percentage short-yardage and checkdown targets <span class="text-indigo-800 font-bold">[PPR FLOOR]</span>.`);
+                        } else {
+                            opportunityBullets.push(`<strong>Vacated Red-Zone & MOF Funnel:</strong> Offseason departures${depList} vacated <strong>+${p._vacatedTgts} targets</strong> and <strong>+${p._vacatedRzTgts || 0} Red-Zone targets</strong>. As an inline/intermediate weapon (aDOT ${p.aDOT || 7.2} yds), he absorbs high-percentage 3rd-down and goal-line targets rather than boundary deep shots <span class="text-emerald-800 font-bold">[TOUCHDOWN & MOF RE-ALLOCATION]</span>.`);
+                        }
+                    } else {
+                        if (p._vacatedRoleType === 'Perimeter Alpha Air Yards') {
+                            opportunityBullets.push(`<strong>Vacated Perimeter Air Yards:</strong> Departures${depList} left behind <strong>+${p._vacatedAirYards} deep air yards</strong> and <strong>+${p._vacatedTgts} targets</strong>, unlocking uncontested boundary X/Z route dominance <span class="text-emerald-800 font-bold">[ALPHA AIR SHARE CATALYST]</span>.`);
+                        } else if (p._vacatedRoleType === 'Intermediate Chain-Mover') {
+                            opportunityBullets.push(`<strong>Vacated Intermediate Targets:</strong> Departures${depList} opened up <strong>+${p._vacatedTgts} targets</strong>, consolidating highly efficient medium-depth routes <span class="text-indigo-800 font-bold">[PPR VOLUME STABILITY]</span>.`);
+                        } else {
+                            opportunityBullets.push(`<strong>Vacated Underneath Volume:</strong> Departures${depList} opened up <strong>+${p._vacatedTgts} targets</strong> for slot and underneath alignments <span class="text-indigo-800 font-bold">[HIGH CATCH-RATE OUTLET]</span>.`);
+                        }
+                    }
                 }
 
                 if (p._passingTreeType) {
