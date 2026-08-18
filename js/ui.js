@@ -2474,9 +2474,9 @@ const UI = {
             let isAnyStartingSlotOpen = isPrimaryStarterOpen || isFlexRBWROpen || isFlexOpen || isSuperflexOpen;
 
             if (isPrimaryStarterOpen) {
-                // Rounds 1-4: Gentle tiebreaker (+3.0). Rounds 5+: Urgency steadily climbs but caps at +5.0
-                let roundPanic = Math.min(3.0, Math.max(0, currentRound - 4) * 0.5);
-                score += 2.0 + roundPanic;
+                // Aggressively boost open primary starting slots (WR2, QB1, TE1) in mid-rounds
+                let roundPanic = Math.max(0, currentRound - 3) * 1.8;
+                score += 4.0 + roundPanic;
             }
 
             // 2. Lineup Value (+PPW)
@@ -2592,10 +2592,20 @@ const UI = {
                 let overage = totalPosCount - starterMax;
                 let penalty;
 
+                // Check if other primary starting spots (QB/WR/TE) are still empty
+                let emptyStarterHoles = 0;
+                ['QB', 'WR', 'TE'].forEach(k => {
+                    if ((userTeam.counts[k] || 0) < (State.settings.roster[k]?.max || 1)) emptyStarterHoles++;
+                });
+
                 let draftedAtPos = userRoster.filter(r => r.Pos === p.Pos);
                 let bestStarterRank = draftedAtPos.length > 0 ? Math.min(...draftedAtPos.map(r => parseInt(r.posRank?.replace(/\D/g, '') || 99))) : 99;
 
-                if (['RB', 'WR'].includes(p.Pos)) penalty = Math.pow(0.85, overage + 1);
+                // If starters and flex are full and you have open starting holes elsewhere, heavily discount 5th RBs
+                if (['RB', 'WR'].includes(p.Pos)) {
+                    let decayBase = emptyStarterHoles > 0 ? 0.60 : 0.82;
+                    penalty = Math.pow(decayBase, overage + 1);
+                }
                 else if (p.Pos === 'TE') {
                     if (overage === 0) penalty = bestStarterRank <= 5 ? 0.05 : (bestStarterRank <= 10 ? 0.25 : 0.60);
                     else penalty = 0.05;
