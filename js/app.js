@@ -74,6 +74,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (target === 'insights-screen' && State.teamTargets.length > 0) {
                 renderTeamInsightsChart();
             }
+
+            if (target === 'research-screen' && window.TeamResearch) {
+            TeamResearch.render();
+            }
+            
         });
     });
 
@@ -253,6 +258,10 @@ document.addEventListener('DOMContentLoaded', () => {
             State.calculateProjections();
             State.applyDynamicDSTSOS();
             State.calculateVBD();
+
+            if (window.TeamResearch) {
+                TeamResearch.init();
+            }
 
             if (loadBtn) {
                 loadBtn.textContent = `✓ Auto-Loaded ${State.allPlayers.length} Players + Advanced Stats!`;
