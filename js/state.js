@@ -140,6 +140,67 @@ const State = {
         });
     },
 
+    async fetchSleeperProjections(season) {
+        try {
+            // Fetch Kicker & DST Projections directly from Sleeper API
+            const projRes = await fetch(`https://api.sleeper.app/projections/nfl/20${season}?season_type=regular&position[]=K&position[]=DEF`);
+            if (!projRes.ok) return;
+            const projData = await projRes.json();
+            
+            const projList = Array.isArray(projData) ? projData : Object.values(projData);
+            
+            projList.forEach(entry => {
+                let pos = entry.position === 'K' ? 'PK' : 'DST';
+                let team = entry.team || "";
+                let pName = "";
+
+                if (pos === 'DST') {
+                    team = this.normalizeTeam(entry.player_id);
+                    pName = team + " Defense"; 
+                } else {
+                    // Extract name from the payload, fallback to formatting
+                    if (entry.player && entry.player.first_name) {
+                        pName = `${entry.player.first_name} ${entry.player.last_name}`;
+                    } else {
+                        return; // Ignore empty player records
+                    }
+                }
+
+                let p = {
+                    Player: pName,
+                    Pos: pos,
+                    Team: this.normalizeTeam(team),
+                    stats: {},
+                    ProjPts: 0, VBD: 0, AdvVBD: 0
+                };
+
+                let st = entry.stats || {};
+
+                if (pos === 'PK') {
+                    p.stats.fgm_0_19 = st.fgm_0_19 || 0;
+                    p.stats.fgm_20_29 = st.fgm_20_29 || 0;
+                    p.stats.fgm_30_39 = st.fgm_30_39 || 0;
+                    p.stats.fgm_40_49 = st.fgm_40_49 || 0;
+                    p.stats.fgm_50p = st.fgm_50p || 0;
+                    p.stats.xp = st.xpm || 0;
+                    p.stats.fgTotal = (st.fgm_0_19||0) + (st.fgm_20_29||0) + (st.fgm_30_39||0) + (st.fgm_40_49||0) + (st.fgm_50p||0);
+                } else if (pos === 'DST') {
+                    p.stats.sack = st.sack || 0;
+                    p.stats.defInt = st.int || 0;
+                    p.stats.defFum = st.fum_rec || 0;
+                    p.stats.defTd = st.def_td || 0;
+                    p.stats.safety = st.safe || 0;
+                    p.stats.ptsAllowed = st.pts_allow || 300;
+                    p.stats.papg = p.stats.ptsAllowed / 17.0;
+                }
+
+                this.allPlayers.push(p);
+            });
+        } catch (e) {
+            console.warn("Failed to load Sleeper K/DST projections", e);
+        }
+    },
+
     matchPlayerFast(name, team, pos) {
         let cleanName = this.normalizeName(name);
         let noSpaceName = cleanName.replace(/\s/g, '');
@@ -1330,28 +1391,44 @@ const State = {
     },
 
     scoring: {
-        passYds: 0.04, passTd: 6, int: -2,
-        rushYds: 0.1, rushTd: 6, recYds: 0.1, recTd: 6, ppr: 1, fumLost: -2,
-        fg: 3, xp: 1, sack: 1, turnover: 2, defTd: 6, safety: 2
+        passYds: 0.04, passTd: 6, int: -2, pass2pt: 2,
+        pass300Bonus: 1, pass400Bonus: 3,
+        rushYds: 0.1, rushTd: 6, rush2pt: 2,
+        rush100Bonus: 1, rush200Bonus: 3,
+        recYds: 0.1, recTd: 6, rec2pt: 2, ppr: 1,
+        rec100Bonus: 1, rec200Bonus: 3,
+        fumLost: -2,
+        // Kicker Decimal Approximations (Using bracket averages, e.g., 30-39yd avg is 35yds = 3.5pts)
+        fg0_29: 3, fg30_39: 3.5, fg40_49: 4.5, fg50_plus: 5.3, xp: 1,
+        // DST Scoring
+        sack: 1, turnover: 2, defTd: 6, safety: 2, def2ptRet: 2
     },
 
     calculateProjections() {
         this.allPlayers.forEach(p => {
-            let s = p.stats;
+            let s = p.stats || {};
             let gp = s.gp || 17;
 
             if (p.Pos === 'PK') {
-                p.ProjPts = ((s.fgTotal || 0) * (this.scoring.fg || 3)) + ((s.xp || 0) * (this.scoring.xp || 1));
+                p.ProjPts = 
+                    ((s.fgm_0_19 || 0) * this.scoring.fg0_29) +
+                    ((s.fgm_20_29 || 0) * this.scoring.fg0_29) +
+                    ((s.fgm_30_39 || 0) * this.scoring.fg30_39) +
+                    ((s.fgm_40_49 || 0) * this.scoring.fg40_49) +
+                    ((s.fgm_50p || 0) * this.scoring.fg50_plus) +
+                    ((s.xp || 0) * this.scoring.xp);
             }
             else if (p.Pos === 'DST') {
                 let turnoverPts = ((s.defInt || 0) + (s.defFum || 0)) * (this.scoring.turnover || 2);
                 let sackPts = (s.sack || 0) * (this.scoring.sack || 1);
                 let tdPts = (s.defTd || 0) * (this.scoring.defTd || 6);
                 let safetyPts = (s.safety || 0) * (this.scoring.safety || 2);
-                let blkPts = (s.blk || 0) * 2;
+                let convRetPts = (s.def2ptRet || 0) * (this.scoring.def2ptRet || 2);
 
                 let papg = s.papg || 18.0;
                 let weeklyPaPts = 0;
+                
+                // Matches your exact requested brackets
                 if (papg === 0) weeklyPaPts = 10;
                 else if (papg <= 6) weeklyPaPts = 7;
                 else if (papg <= 13) weeklyPaPts = 4;
@@ -1360,11 +1437,7 @@ const State = {
                 else if (papg <= 35) weeklyPaPts = -1;
                 else weeklyPaPts = -4;
 
-                // Pure formula — matches your league's exact point scale!
-                p.ProjPts = sackPts + turnoverPts + tdPts + safetyPts + blkPts + (weeklyPaPts * gp);
-                
-                // FEATURE: Defensive Havoc Rating
-                // Measures a defense's ability to create negative plays independent of points allowed
+                p.ProjPts = sackPts + turnoverPts + tdPts + safetyPts + convRetPts + (weeklyPaPts * gp);
                 p.havocPerGame = ((s.sack || 0) + (s.defInt || 0) + (s.defFum || 0) + (s.tfl || 0)) / gp;
             }
             else {
@@ -1377,28 +1450,31 @@ const State = {
                     ((s.passYds || 0) * this.scoring.passYds) +
                     ((s.passTd || 0) * this.scoring.passTd) +
                     ((s.int || 0) * this.scoring.int) +
+                    ((s.pass2pt || 0) * this.scoring.pass2pt) +
                     ((s.rushYds || 0) * this.scoring.rushYds) +
                     ((s.rushTd || 0) * this.scoring.rushTd) +
+                    ((s.rush2pt || 0) * this.scoring.rush2pt) +
                     ((s.recYds || 0) * this.scoring.recYds) +
                     ((s.recTd || 0) * this.scoring.recTd) +
+                    ((s.rec2pt || 0) * this.scoring.rec2pt) +
                     recPoints +
                     ((s.fum || 0) * this.scoring.fumLost);
 
-                let passYpg = s.passYds / gp;
-                let rushYpg = s.rushYds / gp;
-                let recYpg = s.recYds / gp;
+                let passYpg = (s.passYds || 0) / gp;
+                let rushYpg = (s.rushYds || 0) / gp;
+                let recYpg = (s.recYds || 0) / gp;
 
-                let passBonus = 0;
-                if (passYpg >= 220) passBonus += Math.min(gp, (passYpg - 200) / 15) * 1;
-                if (passYpg >= 300) passBonus += Math.min(gp, (passYpg - 280) / 25) * 3;
+                // Probability-based milestone algorithms
+                let pass300Games = passYpg >= 260 ? gp * ((passYpg - 240) / 100) : 0;
+                let pass400Games = passYpg >= 320 ? gp * ((passYpg - 300) / 150) : 0;
+                let rush100Games = rushYpg >= 75 ? gp * ((rushYpg - 60) / 60) : 0;
+                let rush200Games = rushYpg >= 130 ? gp * ((rushYpg - 110) / 100) : 0;
+                let rec100Games = recYpg >= 75 ? gp * ((recYpg - 60) / 60) : 0;
+                let rec200Games = recYpg >= 130 ? gp * ((recYpg - 110) / 100) : 0;
 
-                let rushBonus = 0;
-                if (rushYpg >= 50) rushBonus += Math.min(gp, (rushYpg - 45) / 10) * 1;
-                if (rushYpg >= 130) rushBonus += Math.min(gp, (rushYpg - 120) / 20) * 3;
-
-                let recBonus = 0;
-                if (recYpg >= 50) recBonus += Math.min(gp, (recYpg - 45) / 10) * 1;
-                if (recYpg >= 130) recBonus += Math.min(gp, (recYpg - 120) / 20) * 3;
+                let passBonus = (Math.max(0, pass300Games) * this.scoring.pass300Bonus) + (Math.max(0, pass400Games) * this.scoring.pass400Bonus);
+                let rushBonus = (Math.max(0, rush100Games) * this.scoring.rush100Bonus) + (Math.max(0, rush200Games) * this.scoring.rush200Bonus);
+                let recBonus = (Math.max(0, rec100Games) * this.scoring.rec100Bonus) + (Math.max(0, rec200Games) * this.scoring.rec200Bonus);
 
                 p.ProjPts = basePts + passBonus + rushBonus + recBonus;
             }
