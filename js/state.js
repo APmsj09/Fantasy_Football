@@ -1391,17 +1391,25 @@ const State = {
     },
 
     scoring: {
-        passYds: 0.04, passTd: 6, int: -2, pass2pt: 2,
+        // Base Settings
+        passYds: 0.04, passTd: 6, int: -2,
+        rushYds: 0.1, rushTd: 6, recYds: 0.1, recTd: 6, ppr: 1, fumLost: -2,
+        xp: 1, sack: 1, turnover: 2, defTd: 6, safety: 2,
+
+        // 🎛️ NEW: UI Toggles
+        useMilestones: true,
+        use2pt: true,
+        useDecimalKicking: true,
+
+        // Extra Points Settings (Only applied if toggles are true)
+        pass2pt: 2, rush2pt: 2, rec2pt: 2, def2ptRet: 2,
         pass300Bonus: 1, pass400Bonus: 3,
-        rushYds: 0.1, rushTd: 6, rush2pt: 2,
         rush100Bonus: 1, rush200Bonus: 3,
-        recYds: 0.1, recTd: 6, rec2pt: 2, ppr: 1,
         rec100Bonus: 1, rec200Bonus: 3,
-        fumLost: -2,
-        // Kicker Decimal Approximations (Using bracket averages, e.g., 30-39yd avg is 35yds = 3.5pts)
-        fg0_29: 3, fg30_39: 3.5, fg40_49: 4.5, fg50_plus: 5.3, xp: 1,
-        // DST Scoring
-        sack: 1, turnover: 2, defTd: 6, safety: 2, def2ptRet: 2
+
+        // Kicker Brackets: Decimal Approximations vs Standard Rules
+        fg0_29: 3, fg30_39: 3.5, fg40_49: 4.5, fg50_plus: 5.3,
+        std_fg0_29: 3, std_fg30_39: 3, std_fg40_49: 4, std_fg50_plus: 5
     },
 
     calculateProjections() {
@@ -1410,12 +1418,18 @@ const State = {
             let gp = s.gp || 17;
 
             if (p.Pos === 'PK') {
+                // Apply decimal kicking logic OR standard 3/4/5 point logic based on toggle
+                let b0 = this.scoring.useDecimalKicking ? this.scoring.fg0_29 : this.scoring.std_fg0_29;
+                let b30 = this.scoring.useDecimalKicking ? this.scoring.fg30_39 : this.scoring.std_fg30_39;
+                let b40 = this.scoring.useDecimalKicking ? this.scoring.fg40_49 : this.scoring.std_fg40_49;
+                let b50 = this.scoring.useDecimalKicking ? this.scoring.fg50_plus : this.scoring.std_fg50_plus;
+
                 p.ProjPts = 
-                    ((s.fgm_0_19 || 0) * this.scoring.fg0_29) +
-                    ((s.fgm_20_29 || 0) * this.scoring.fg0_29) +
-                    ((s.fgm_30_39 || 0) * this.scoring.fg30_39) +
-                    ((s.fgm_40_49 || 0) * this.scoring.fg40_49) +
-                    ((s.fgm_50p || 0) * this.scoring.fg50_plus) +
+                    ((s.fgm_0_19 || 0) * b0) +
+                    ((s.fgm_20_29 || 0) * b0) +
+                    ((s.fgm_30_39 || 0) * b30) +
+                    ((s.fgm_40_49 || 0) * b40) +
+                    ((s.fgm_50p || 0) * b50) +
                     ((s.xp || 0) * this.scoring.xp);
             }
             else if (p.Pos === 'DST') {
@@ -1423,12 +1437,13 @@ const State = {
                 let sackPts = (s.sack || 0) * (this.scoring.sack || 1);
                 let tdPts = (s.defTd || 0) * (this.scoring.defTd || 6);
                 let safetyPts = (s.safety || 0) * (this.scoring.safety || 2);
-                let convRetPts = (s.def2ptRet || 0) * (this.scoring.def2ptRet || 2);
+                
+                // Only count defensive 2-point returns if the setting is toggled on
+                let convRetPts = this.scoring.use2pt ? ((s.def2ptRet || 0) * (this.scoring.def2ptRet || 2)) : 0;
 
                 let papg = s.papg || 18.0;
                 let weeklyPaPts = 0;
                 
-                // Matches your exact requested brackets
                 if (papg === 0) weeklyPaPts = 10;
                 else if (papg <= 6) weeklyPaPts = 7;
                 else if (papg <= 13) weeklyPaPts = 4;
@@ -1446,17 +1461,22 @@ const State = {
                     recPoints += (s.rec || 0) * this.scoring.tePremium;
                 }
 
+                // 2-point conversions zeroed out if the setting is toggled off
+                let pass2ptPts = this.scoring.use2pt ? ((s.pass2pt || 0) * this.scoring.pass2pt) : 0;
+                let rush2ptPts = this.scoring.use2pt ? ((s.rush2pt || 0) * this.scoring.rush2pt) : 0;
+                let rec2ptPts = this.scoring.use2pt ? ((s.rec2pt || 0) * this.scoring.rec2pt) : 0;
+
                 let basePts =
                     ((s.passYds || 0) * this.scoring.passYds) +
                     ((s.passTd || 0) * this.scoring.passTd) +
                     ((s.int || 0) * this.scoring.int) +
-                    ((s.pass2pt || 0) * this.scoring.pass2pt) +
+                    pass2ptPts +
                     ((s.rushYds || 0) * this.scoring.rushYds) +
                     ((s.rushTd || 0) * this.scoring.rushTd) +
-                    ((s.rush2pt || 0) * this.scoring.rush2pt) +
+                    rush2ptPts +
                     ((s.recYds || 0) * this.scoring.recYds) +
                     ((s.recTd || 0) * this.scoring.recTd) +
-                    ((s.rec2pt || 0) * this.scoring.rec2pt) +
+                    rec2ptPts +
                     recPoints +
                     ((s.fum || 0) * this.scoring.fumLost);
 
@@ -1464,17 +1484,21 @@ const State = {
                 let rushYpg = (s.rushYds || 0) / gp;
                 let recYpg = (s.recYds || 0) / gp;
 
-                // Probability-based milestone algorithms
-                let pass300Games = passYpg >= 260 ? gp * ((passYpg - 240) / 100) : 0;
-                let pass400Games = passYpg >= 320 ? gp * ((passYpg - 300) / 150) : 0;
-                let rush100Games = rushYpg >= 75 ? gp * ((rushYpg - 60) / 60) : 0;
-                let rush200Games = rushYpg >= 130 ? gp * ((rushYpg - 110) / 100) : 0;
-                let rec100Games = recYpg >= 75 ? gp * ((recYpg - 60) / 60) : 0;
-                let rec200Games = recYpg >= 130 ? gp * ((recYpg - 110) / 100) : 0;
+                let passBonus = 0, rushBonus = 0, recBonus = 0;
 
-                let passBonus = (Math.max(0, pass300Games) * this.scoring.pass300Bonus) + (Math.max(0, pass400Games) * this.scoring.pass400Bonus);
-                let rushBonus = (Math.max(0, rush100Games) * this.scoring.rush100Bonus) + (Math.max(0, rush200Games) * this.scoring.rush200Bonus);
-                let recBonus = (Math.max(0, rec100Games) * this.scoring.rec100Bonus) + (Math.max(0, rec200Games) * this.scoring.rec200Bonus);
+                // Milestone algorithms only run if the setting is toggled on
+                if (this.scoring.useMilestones) {
+                    let pass300Games = passYpg >= 260 ? Math.min(gp, gp * ((passYpg - 240) / 100)) : 0;
+                    let pass400Games = passYpg >= 320 ? Math.min(gp, gp * ((passYpg - 300) / 150)) : 0;
+                    let rush100Games = rushYpg >= 75 ? Math.min(gp, gp * ((rushYpg - 60) / 60)) : 0;
+                    let rush200Games = rushYpg >= 130 ? Math.min(gp, gp * ((rushYpg - 110) / 100)) : 0;
+                    let rec100Games = recYpg >= 75 ? Math.min(gp, gp * ((recYpg - 60) / 60)) : 0;
+                    let rec200Games = recYpg >= 130 ? Math.min(gp, gp * ((recYpg - 110) / 100)) : 0;
+
+                    passBonus = (Math.max(0, pass300Games) * this.scoring.pass300Bonus) + (Math.max(0, pass400Games) * this.scoring.pass400Bonus);
+                    rushBonus = (Math.max(0, rush100Games) * this.scoring.rush100Bonus) + (Math.max(0, rush200Games) * this.scoring.rush200Bonus);
+                    recBonus = (Math.max(0, rec100Games) * this.scoring.rec100Bonus) + (Math.max(0, rec200Games) * this.scoring.rec200Bonus);
+                }
 
                 p.ProjPts = basePts + passBonus + rushBonus + recBonus;
             }
