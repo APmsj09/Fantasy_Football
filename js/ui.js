@@ -2379,6 +2379,7 @@ const UI = {
         });
 
         // Filter valid players (Delay Kickers & non-elite DSTs)
+        // Filter valid players (Delay Kickers & non-elite DSTs)
         let viablePlayers = State.availablePlayers.filter(p => {
             let pos = p.Pos;
 
@@ -2411,7 +2412,7 @@ const UI = {
         viablePlayers.forEach(p => {
             let score = p.AdvVBD || p.VBD;
 
-            // Check if player fills a PRIMARY starting slot vs a FLEX slot vs BENCH
+            // 1. Lineup Need & Starter Openings
             let posRoster = State.settings.roster[p.Pos];
             let starterMax = posRoster ? posRoster.max : 0;
             let currentCount = userTeam.counts[p.Pos] || 0;
@@ -2421,129 +2422,105 @@ const UI = {
             let isFlexRBWROpen = ['RB', 'WR'].includes(p.Pos) && (userTeam.counts['FlexRBWR'] < (State.settings.roster.FlexRBWR?.max || 0));
             let isFlexOpen = ['RB', 'WR', 'TE'].includes(p.Pos) && (userTeam.counts['Flex'] < (State.settings.roster.Flex?.max || 0));
             let isSuperflexOpen = ['QB', 'RB', 'WR', 'TE'].includes(p.Pos) && (userTeam.counts['Superflex'] < (State.settings.roster.Superflex?.max || 0));
-
             let isAnyStartingSlotOpen = isPrimaryStarterOpen || isFlexRBWROpen || isFlexOpen || isSuperflexOpen;
 
-            // 1. Primary Starter Need (Scales higher when starting slots are empty)
-            if (isPrimaryStarterOpen) {
-                // Stronger urgency (+5.5 pts) if the user has 0 starters at this position (e.g. Empty WR2)
-                score += (currentCount === 0 ? 5.5 : 3.5);
-            }
+            if (isPrimaryStarterOpen) score += (currentCount === 0 ? 6.0 : 4.0);
 
-            // 2. Lineup Value (+PPW): Fully credit Flex slots with real weekly points added
+            // 2. Lineup Value (+PPW)
             if (isAnyStartingSlotOpen && p._addedPPW && p._addedPPW >= 0.5) {
-                let ppwWeight = isPrimaryStarterOpen ? 0.85 : 0.75;
+                let ppwWeight = isPrimaryStarterOpen ? 0.90 : 0.75;
                 score += (p._addedPPW * ppwWeight);
             }
 
-            // 3. Early-Round Anti-Bust / Volatility Shield (Rounds 1–5)
+            // 3. Early-Round Anti-Bust Shield (Rounds 1-5)
             if (currentRound <= 5) {
                 let ascensionDampener = (p._isAscendingRole && p._growthPct >= 40) ? 0.50 : 1.0;
-
                 if (p.boomBust && p.boomBust.bust >= 45) {
-                    let bustPenalty = Math.min(10.0, (p.boomBust.bust - 40) * 0.4) * ascensionDampener;
-                    score -= bustPenalty;
+                    score -= Math.min(10.0, (p.boomBust.bust - 40) * 0.4) * ascensionDampener;
                 }
-                if (p._isFlukeTDScorer) {
-                    score -= (6.0 * ascensionDampener);
-                }
+                if (p._isFlukeTDScorer) score -= (6.0 * ascensionDampener);
             }
 
-            // 4. Value Over Next Available (VONA) & Dynamic Market Reach Penalty
-            if (p.adp) {
-                let survivalProb = getSurvivalProb(p); // Now passes the whole player object
-                p._survivalProb = survivalProb;
-
-                if (score > 0) {
-                    // Urgent Pick: Less than 25% chance to reach next round turn
-                    if (survivalProb < 0.25) {
-                        let urgencyBonus = Math.min(6.0, (1 - survivalProb) * 6.0);
-                        score += urgencyBonus;
-                    }
-                    // Reach Penalty: Player has high survival chance AND their ADP is far later than current pick
-                    else if (survivalProb > 0.65 && (p.adp - currentOverallPick) >= 12) {
-                        let reachDistance = p.adp - currentOverallPick; 
-                        // STEEPER PENALTY: Docks up to 18 points for massive reaches to force the AI to respect ADP
-                        let reachPenalty = Math.min(18.0, (reachDistance - 10) * 0.65);
-                        score -= reachPenalty; 
-                    }
-                }
-            }
-
-            // 3. Dynamic Correlated Stacking (QB + Pass Catchers)
+            // 4. Correlated Stacking
             let matchingQB = userQBs.find(qb => qb._cleanTeam === p._cleanTeam);
             let userReceivers = userRoster.filter(r => ['WR', 'TE'].includes(r.Pos));
             let matchingReceiver = userReceivers.find(r => r._cleanTeam === p._cleanTeam);
 
             if (matchingQB && ['WR', 'TE'].includes(p.Pos) && score > 0) {
-                // Boost is stronger if the drafted QB is elite (high ProjPts)
                 let qbQualityMult = Math.min(1.10, Math.max(1.0, (matchingQB.ProjPts / 300)));
                 let stackBoost = 1.02 * qbQualityMult;
-
                 if (p.targetShare) stackBoost += (Math.min(30, p.targetShare) * 0.004);
                 else if (p.depthChart === 1) stackBoost += 0.08;
 
                 score = applyFactor(score, stackBoost);
                 p._stackPartner = matchingQB.Player;
             } else if (matchingReceiver && p.Pos === 'QB' && score > 0) {
-                // Boost QB value more if you already have their alpha receiver
                 let isAlphaRec = matchingReceiver.targetShare >= 22 || matchingReceiver.depthChart === 1;
-                let recQualityMult = isAlphaRec ? 1.12 : 1.05;
-
-                score = applyFactor(score, recQualityMult);
+                score = applyFactor(score, isAlphaRec ? 1.12 : 1.05);
                 p._stackPartner = matchingReceiver.Player;
             } else {
                 p._stackPartner = null;
             }
 
-            // 4. Late-Round Upside Shift & Archetype Bonuses (Rounds 7+)
+            // 5. Late-Round Upside Shift & Archetype Accumulation (Rounds 7+)
             p._sleeperBadge = null;
+            let stashBonus = 0;
+            let roundScale = Math.min(1.0, Math.max(0, currentRound - 6) * 0.15);
+
             if (currentRound >= 7) {
-                let upsideWeight = Math.min(1.0, (currentRound - 6) * 0.15);
+                let upsideWeight = Math.min(0.80, (currentRound - 6) * 0.15);
                 let floorWeight = 1.0 - upsideWeight;
-
-                let floorScore = score;
                 let ceilingScore = p.upsideScore || score;
-                score = (floorScore * floorWeight) + (ceilingScore * upsideWeight);
+                score = (score * floorWeight) + (ceilingScore * upsideWeight);
 
-                // ⚡ Inject massive archetype bonuses to bury generic low-upside backups
                 if (['RB', 'WR', 'TE', 'QB'].includes(p.Pos)) {
-                    let roundScale = Math.min(1.0, (currentRound - 6) * 0.25);
                     let playerAge = p.age || p.Age;
                     let userOwnsStarter = p.starterName && userRoster.some(r => r._cleanName === State.normalizeName(p.starterName));
 
+                    // Changed from massive else/ifs to an accumulator (stashBonus)
                     if (userOwnsStarter && p.Pos === 'RB') {
-                        score += (45.0 * roundScale); // Massive boost to secure the direct handcuff
-                        p._sleeperBadge = `🔒 Direct Handcuff for ${p.starterName}`;
+                        stashBonus += 16.0;
+                        p._sleeperBadge = `🔒 Handcuff for ${p.starterName}`;
                     } else if (p.isRBHandcuff) {
-                        score += (30.0 * roundScale); // High boost for lottery ticket RBs
+                        stashBonus += 8.0;
                         p._sleeperBadge = `🎲 Lottery Ticket (${p.starterName}'s Backup)`;
-                    } else if (p.depthChart === 2 && p.isNewRole) {
-                        score += (25.0 * roundScale);
-                        p._sleeperBadge = `📈 Breakout Stash (1 Injury Away)`;
-                    } else if (playerAge && playerAge <= 23) {
-                        score += (20.0 * roundScale);
-                        p._sleeperBadge = `🌱 Youth Breakout (Age ${playerAge})`;
-                    } else if (p.targetShare && p.targetShare >= 15.0) {
-                        score += (18.0 * roundScale);
-                        p._sleeperBadge = `🎯 ${p.targetShare}% Tgt Share Sleeper`;
-                    } else if (p.aDOT && p.aDOT >= 12.0) {
-                        score += (18.0 * roundScale);
-                        p._sleeperBadge = `🚀 Deep Threat (${p.aDOT} aDOT)`;
-                    } else if (p.brokenTackles && p.brokenTackles > 15) {
-                        score += (15.0 * roundScale);
-                        p._sleeperBadge = `🏃 Elusive (${p.brokenTackles} Broken Tackles)`;
-                    } else if (p.hvo && p.hvo >= 40) {
-                        score += (15.0 * roundScale);
-                        p._sleeperBadge = `💎 High Value Touch Profile`;
                     }
+
+                    if (p.depthChart === 2 && p.isNewRole) {
+                        stashBonus += 5.0;
+                        if (!p._sleeperBadge) p._sleeperBadge = `📈 Breakout Stash (1 Injury Away)`;
+                    }
+                    if (playerAge && playerAge <= 23) {
+                        stashBonus += 5.0;
+                        if (!p._sleeperBadge) p._sleeperBadge = `🌱 Youth Breakout (Age ${playerAge})`;
+                    }
+                    if (p.targetShare && p.targetShare >= 15.0) {
+                        stashBonus += 4.0;
+                        if (!p._sleeperBadge) p._sleeperBadge = `🎯 ${p.targetShare}% Tgt Share Sleeper`;
+                    }
+                    if (p.aDOT && p.aDOT >= 12.0) {
+                        stashBonus += 4.0;
+                        if (!p._sleeperBadge) p._sleeperBadge = `🚀 Deep Threat (${p.aDOT} aDOT)`;
+                    }
+                    if (p.brokenTackles && p.brokenTackles > 15) {
+                        stashBonus += 4.0;
+                        if (!p._sleeperBadge) p._sleeperBadge = `🏃 Elusive (${p.brokenTackles} Broken Tackles)`;
+                    }
+                    if (p.hvo && p.hvo >= 40) {
+                        stashBonus += 4.0;
+                        if (!p._sleeperBadge) p._sleeperBadge = `💎 High Value Touch Profile`;
+                    }
+
+                    // Max accumulator cap prevents it from overpowering legitimate starters
+                    stashBonus = Math.min(24.0, stashBonus);
+                    score += (stashBonus * roundScale);
                 }
             } else if (p.upsideScore && (p.AdvVBD || p.VBD) > 0) {
                 let ceilingGain = (p.upsideScore - (p.AdvVBD || p.VBD)) * 0.25;
                 score += Math.max(0, ceilingGain);
             }
 
-            // 5. Bench vs. Starter Threshold (Overage Penalties only apply when starting/flex slots are FULL)
+            // 6. Bench vs. Starter Threshold Penalties
             if (!isAnyStartingSlotOpen) {
                 let overage = totalPosCount - starterMax;
                 let penalty;
@@ -2551,111 +2528,74 @@ const UI = {
                 let draftedAtPos = userRoster.filter(r => r.Pos === p.Pos);
                 let bestStarterRank = draftedAtPos.length > 0 ? Math.min(...draftedAtPos.map(r => parseInt(r.posRank?.replace(/\D/g, '') || 99))) : 99;
 
-                if (['RB', 'WR'].includes(p.Pos)) {
-                    // Soft penalty to encourage hoarding RB/WR bench upside
-                    penalty = Math.pow(0.85, overage + 1);
-                } else if (p.Pos === 'TE') {
-                    if (overage === 0) {
-                        if (bestStarterRank <= 5) penalty = 0.05;       // Elite TE -> Hard penalty
-                        else if (bestStarterRank <= 10) penalty = 0.25; // Mid TE -> Moderate penalty
-                        else penalty = 0.60;                            // Weak TE -> Soft penalty (Encourage upside backup)
-                    } else {
-                        penalty = 0.05;
-                    }
+                if (['RB', 'WR'].includes(p.Pos)) penalty = Math.pow(0.85, overage + 1);
+                else if (p.Pos === 'TE') {
+                    if (overage === 0) penalty = bestStarterRank <= 5 ? 0.05 : (bestStarterRank <= 10 ? 0.25 : 0.60);
+                    else penalty = 0.05;
                 } else if (p.Pos === 'QB') {
-                    if ((State.settings.roster.Superflex?.max || 0) > 0) {
-                        penalty = Math.pow(0.70, overage + 1);
-                    } else {
-                        if (overage === 0) {
-                            if (bestStarterRank <= 6) penalty = 0.05;       // Elite QB -> Hard penalty
-                            else if (bestStarterRank <= 12) penalty = 0.15; // Mid QB -> Moderate penalty
-                            else penalty = 0.45;                            // Weak QB -> Soft penalty
-                        } else {
-                            penalty = 0.05;
-                        }
+                    if ((State.settings.roster.Superflex?.max || 0) > 0) penalty = Math.pow(0.70, overage + 1);
+                    else {
+                        if (overage === 0) penalty = bestStarterRank <= 6 ? 0.05 : (bestStarterRank <= 12 ? 0.15 : 0.45);
+                        else penalty = 0.05;
                     }
-                } else {
-                    penalty = overage === 0 ? 0.05 : 0.01;
-                }
-
+                } else penalty = overage === 0 ? 0.05 : 0.01;
+                
                 score = applyFactor(score, penalty);
             }
 
-            // 6. Handcuff Starter Bonus, Starter Strength, & Bye Week Clustering
-            let userOwnsStarter = p.starterName && userRoster.some(r => r._cleanName === State.normalizeName(p.starterName));
-
-            // Bye Week Clustering (Penalize if 3+ key players share the same bye week)
+            // 7. Bye Week Clustering & Onesie Upside
             if (p.byeWeek !== 'N/A') {
                 let sharedByes = userRoster.filter(r => r.byeWeek === p.byeWeek).length;
-                if (sharedByes >= 2 && currentRound <= 10) {
-                    // Escalating penalty for drafting multiple players with the same bye week early/mid draft
-                    score = applyFactor(score, Math.pow(0.85, sharedByes - 1));
-                }
+                if (sharedByes >= 2 && currentRound <= 10) score = applyFactor(score, Math.pow(0.85, sharedByes - 1));
             }
-
             if (['QB', 'TE', 'PK', 'DST'].includes(p.Pos) && userTeam.counts[p.Pos] >= 1) {
                 const startersAtPos = userRoster.filter(r => r.Pos === p.Pos);
                 const bestStarter = startersAtPos.sort((a, b) => b.ProjPts - a.ProjPts)[0];
 
-                // If sharing a bye with your specific starter at a onesie position
                 if (bestStarter && bestStarter.byeWeek === p.byeWeek && p.byeWeek !== 'N/A') {
-                    let draftProgress = Math.min(1.0, currentRound / totalRounds);
-                    let byePenalty = 0.50 + (draftProgress * 0.35);
+                    let byePenalty = 0.50 + (Math.min(1.0, currentRound / totalRounds) * 0.35);
                     score = applyFactor(score, byePenalty);
                 }
 
-                // Upside Insurance: If your starter is weak (Drafted late or low VBD), boost high-upside backups
                 if (bestStarter && (bestStarter.AdvVBD || bestStarter.VBD) < 20 && p.upsideScore > (p.AdvVBD || p.VBD) * 1.15) {
-                    score = applyFactor(score, 1.10); // Reward swinging for upside if starter is weak
+                    score = applyFactor(score, 1.10);
                 }
             }
 
-            // 7. Late-Round Sleeper & Breakout Badges (Rounds 7+, Scaled by Round)
-            p._sleeperBadge = null;
-            if (currentRound >= 7 && ['RB', 'WR', 'TE', 'QB'].includes(p.Pos)) {
-                let roundScale = Math.min(1.0, (currentRound - 6) * 0.25);
-                let playerAge = p.age || p.Age;
+            // 8. Value Over Next Available (VONA) & Softened ADP Reach Penalty
+            if (p.adp) {
+                let survivalProb = getSurvivalProb(p);
+                p._survivalProb = survivalProb;
 
-                if (userOwnsStarter && p.Pos === 'RB') {
-                    score += (15.0 * roundScale);
-                    p._sleeperBadge = `🔒 Handcuff for ${p.starterName}`;
-                } else if (p.isRBHandcuff) {
-                    score += (10.0 * roundScale);
-                    p._sleeperBadge = `🎲 Lottery Ticket (${p.starterName}'s Backup)`;
-                } else if (p.depthChart === 2 && p.isNewRole) {
-                    score += (9.0 * roundScale);
-                    p._sleeperBadge = `📈 Breakout Stash (1 Injury Away)`;
-                } else if (playerAge && playerAge <= 23) {
-                    score += (8.0 * roundScale);
-                    p._sleeperBadge = `🌱 Youth Breakout (Age ${playerAge})`;
-                } else if (p.targetShare && p.targetShare >= 15.0) {
-                    score += (8.0 * roundScale);
-                    p._sleeperBadge = `🎯 ${p.targetShare}% Tgt Share Sleeper`;
-                } else if (p.aDOT && p.aDOT >= 12.0) {
-                    score += (8.0 * roundScale);
-                    p._sleeperBadge = `🚀 Deep Threat (${p.aDOT} aDOT)`;
-                } else if (p.brokenTackles && p.brokenTackles > 15) {
-                    score += (7.0 * roundScale);
-                    p._sleeperBadge = `🏃 Elusive (${p.brokenTackles} Broken Tackles)`;
-                } else if (p.hvo && p.hvo >= 40) {
-                    score += (7.0 * roundScale);
-                    p._sleeperBadge = `💎 High Value Touch Profile`;
+                if (score > 0) {
+                    if (survivalProb < 0.25) {
+                        let urgencyBonus = Math.min(6.0, (1 - survivalProb) * 6.0);
+                        score += urgencyBonus;
+                    } else if (survivalProb > 0.65 && (p.adp - currentOverallPick) >= 12) {
+                        let reachDistance = p.adp - currentOverallPick; 
+                        let reachPenalty = Math.min(18.0, (reachDistance - 10) * 0.65);
+                        
+                        // ⚡ THE SLEEPER EXEMPTION: Reduce the reach penalty if the player has strong sleeper/stash traits
+                        if (stashBonus > 0 && currentRound >= 7) {
+                            reachPenalty = Math.max(0, reachPenalty - (stashBonus * roundScale * 0.85));
+                        }
+                        
+                        score -= reachPenalty; 
+                    }
                 }
             }
 
-            // --- NEW: PLAYOFF MATCHUP TIEBREAKER (WEEKS 15-17) ---
+            // 9. Playoff Matchup Tiebreaker (Weeks 15-17)
             if (p.playoffSOS && p.playoffSOS >= 4.0) {
                 score += 4.5;
-                if (!p._sleeperBadge && currentRound >= 8) {
-                    p._sleeperBadge = `🏆 Soft Playoff Schedule (⭐${p.playoffSOS.toFixed(1)})`;
-                }
+                if (!p._sleeperBadge && currentRound >= 8) p._sleeperBadge = `🏆 Soft Playoff Schedule (⭐${p.playoffSOS.toFixed(1)})`;
             } else if (p.playoffSOS && p.playoffSOS <= 2.0) {
                 score -= 3.0;
             }
 
             p._recScore = score;
         });
-
+        
         // ===========================================================
         // POST-LOOP: SORT AND DEDICATE UP TO 10 SLOTS (COMPACT LAYOUT)
         // ===========================================================
