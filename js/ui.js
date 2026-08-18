@@ -2333,17 +2333,15 @@ const UI = {
         }
         interveningTeamIds = [...new Set(interveningTeamIds)]; // Remove duplicates for turn wraps
 
-        // 5. Generalized Survival Probability to Next Active Window (W2)
+        // 5. Generalized Survival Probability with Dynamic Reach Elasticity
         const getSurvivalProb = (player) => {
             let adp = player.adp;
             if (!adp) return 1.0;
             
-            // Base Mathematical ADP Survival
             let diff = adp - nextActiveWindowPick;
             let slope = Math.max(0.04, 0.28 - (currentRound * 0.015));
             let baseProb = 1 / (1 + Math.exp(-slope * diff));
 
-            // ⚡ "Read the Board" Roster Geometry
             let threatCount = 0;
             let safetyCount = 0;
 
@@ -2355,22 +2353,24 @@ const UI = {
                 if (!t) return;
                 let count = t.counts[player.Pos] || 0;
                 
-                if (count >= starterMax) safetyCount++; // They already have their starters
-                else if (count === 0) threatCount++;    // They are desperate for this position
+                if (count >= starterMax) safetyCount++;
+                else if (count === 0) threatCount++;
             });
 
-            // Adjust base probability based on the opponents behind you
+            // ⚡ ELASTIC THREAT WINDOW: Scales with the draft round + turn gap
+            let turnGap = nextActiveWindowPick - currentOverallPick;
+            let elasticWindow = 8 + (currentRound * 1.5) + (turnGap >= 18 ? 5 : 0);
+            let isAdpInDanger = adp <= (nextActiveWindowPick + elasticWindow);
+
             if (['QB', 'TE', 'PK', 'DST'].includes(player.Pos)) {
-                // Onesie positions: If the teams behind you already have one, the player is extremely safe.
                 if (safetyCount === interveningTeamIds.length && interveningTeamIds.length > 0) {
-                    baseProb = Math.min(0.95, baseProb + 0.35); // Huge safety boost
-                } else if (threatCount > 0) {
-                    baseProb = Math.max(0.05, baseProb - (0.15 * threatCount)); // Increased danger
+                    baseProb = Math.min(0.95, baseProb + 0.35);
+                } else if (threatCount > 0 && isAdpInDanger) {
+                    baseProb = Math.max(0.05, baseProb - (0.10 * Math.min(5, threatCount)));
                 }
             } else {
-                // RB/WR: Rosters are deeper, but extreme needs still drive runs
-                if (threatCount >= 2 && currentRound <= 6) {
-                    baseProb = Math.max(0.05, baseProb - 0.20); // Impending positional run
+                if (threatCount >= 2 && isAdpInDanger) {
+                    baseProb = Math.max(0.05, baseProb - 0.18);
                 }
             }
 
@@ -2458,8 +2458,8 @@ const UI = {
 
             if (isPrimaryStarterOpen) {
                 // Rounds 1-4: Gentle tiebreaker (+3.0). Rounds 5+: Urgency steadily climbs but caps at +5.0
-                let roundPanic = Math.min(5.0, Math.max(0, currentRound - 4) * 0.6);
-                score += 3.0 + roundPanic;
+                let roundPanic = Math.min(3.0, Math.max(0, currentRound - 4) * 0.5);
+                score += 2.0 + roundPanic;
             }
 
             // 2. Lineup Value (+PPW)
@@ -2612,37 +2612,38 @@ const UI = {
                 }
             }
 
-            // 8. Value Over Next Available (VONA) & Softened ADP Reach Penalty
+            // 8. Value Over Next Available (VONA) & Elastic Reach Penalty
             if (p.adp) {
                 let survivalProb = getSurvivalProb(p);
                 p._survivalProb = survivalProb;
+                let reachDistance = p.adp - currentOverallPick;
+
+                // Dynamic Elastic Allowance: R2 = 11 picks, R6 = 17-21 picks, R10 = 23-27 picks
+                let turnGap = nextActiveWindowPick - currentOverallPick;
+                let allowedReach = 8 + (currentRound * 1.5) + (turnGap >= 18 ? 4 : 0);
 
                 if (score > 0) {
-                    if (survivalProb < 0.25) {
+                    // 1. URGENCY BONUS: Only allowed if in real danger AND within the allowed reach window
+                    if (survivalProb < 0.25 && reachDistance <= allowedReach) {
                         let urgencyBonus = Math.min(6.0, (1 - survivalProb) * 6.0);
                         score += urgencyBonus;
-                    } else if (survivalProb > 0.65 && (p.adp - currentOverallPick) >= 12) {
-                        let reachDistance = p.adp - currentOverallPick; 
-                        let reachPenalty = 0;
-                        
-                        // Uncap the penalty for egregious reaches (>24 picks / 2 full rounds)
-                        if (reachDistance > 24) {
-                            reachPenalty = 18.0 + ((reachDistance - 24) * 1.2); // Scales aggressively to prevent 40+ pick reaches
-                        } else {
-                            reachPenalty = (reachDistance - 10) * 0.90;
-                        }
-                        
-                        // ⚡ THE SLEEPER EXEMPTION: Reduce the reach penalty if the player has strong sleeper/stash traits
+                    } 
+                    // 2. REACH PENALTY: Applied if the pick exceeds the round's natural elasticity
+                    else if (reachDistance > allowedReach || (survivalProb > 0.65 && reachDistance >= 12)) {
+                        let excessReach = Math.max(0, reachDistance - allowedReach);
+                        let reachPenalty = excessReach * 1.1; // Linear scaling past the allowed boundary
+
+                        // ⚡ The Sleeper Exemption: High-upside stashes soften the reach penalty
                         if (stashBonus > 0 && currentRound >= 7) {
                             reachPenalty = Math.max(0, reachPenalty - (stashBonus * roundScale * 0.85));
                         }
-                        
-                        // Onesie Position Trap: Heavily punish reaching for QBs/TEs just because the starting slot is empty
-                        if (['QB', 'TE', 'PK', 'DST'].includes(p.Pos) && isPrimaryStarterOpen && reachDistance > 18) {
-                            reachPenalty *= 1.5;
+
+                        // 🛡️ Onesie Position Trap: Extra friction if reaching on QB/TE/PK/DST to fill a hole
+                        if (['QB', 'TE', 'PK', 'DST'].includes(p.Pos) && isPrimaryStarterOpen && reachDistance > 16) {
+                            reachPenalty *= 1.4;
                         }
-                        
-                        score -= reachPenalty; 
+
+                        score -= reachPenalty;
                     }
                 }
             }
