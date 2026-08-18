@@ -60,6 +60,17 @@
                 </svg>
                 <span class="nav-label">Player Database</span>
             </button>
+            
+            <button class="nav-btn w-full flex items-center space-x-3 px-3 py-3 rounded-lg"
+                data-target="research-screen">
+                <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4">
+                    </path>
+                </svg>
+                <span class="nav-label">Team Research</span>
+            </button>
+            
             <button class="nav-btn w-full flex items-center space-x-3 px-3 py-3 rounded-lg"
                 data-target="drafting-screen" id="nav-draft-board">
                 <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -629,6 +640,26 @@
             </div>
         </div>
 
+        <!-- NFL Team Research & Fantasy Breakdown Screen -->
+        <div id="research-screen" class="screen max-w-6xl mx-auto mt-6 hidden pb-12">
+            <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-gray-100 mb-6">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-gray-100">
+                    <div>
+                        <h2 class="text-3xl font-extrabold text-gray-900">NFL Team Fantasy Outlook</h2>
+                        <p class="text-gray-500 text-sm mt-1">Deep tactical analysis, trench ratings, scheme funnels, and target round windows for all 32 teams.</p>
+                    </div>
+                    <div class="w-full md:w-72">
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Select NFL Team</label>
+                        <select id="research-team-select" class="w-full border-gray-300 border p-2.5 rounded-xl font-bold text-gray-800 focus:ring-2 focus:ring-indigo-500 outline-none shadow-sm bg-slate-50">
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Dynamic Team Research Content Container -->
+                <div id="research-content-container" class="mt-6"></div>
+            </div>
+        </div>
+
         <div id="summary-screen" class="screen max-w-6xl mx-auto mt-10 hidden pb-10">
             <!-- Projected Standings -->
             <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 mb-8">
@@ -678,6 +709,7 @@
     <script src="js/autodraft.js"></script>
     <script src="js/compare.js"></script>
     <script src="js/recap.js"></script>
+    <script src="js/research.js"></script>
     <script src="js/ui.js"></script>
     <script src="js/app.js"></script>
 </body>
