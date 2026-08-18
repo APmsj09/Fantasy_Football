@@ -2675,11 +2675,25 @@ const UI = {
                 }
             }
 
-            // 9. Continuous Playoff Matchup Tiebreaker (Weeks 15-17)
-            if (p.playoffSOS) {
-                // Neutral 3.0 SOS = 0.
-                // Easy 4.5 SOS = +4.5. 
-                // Brutal 2.0 SOS = -3.0.
+            // 9. Continuous Playoff Matchup Tiebreaker vs. Week 1 Streaming Mode
+            if (p.Pos === 'DST' || p.Pos === 'PK') {
+                let isLateStreamingRound = currentRound >= totalRounds - 2;
+                let w1Rating = typeof p.sosWeeks?.W1 === 'number' ? p.sosWeeks.W1 : (p.avgStars || 3.0);
+
+                if (isLateStreamingRound) {
+                    // 🎯 LATE-ROUND STREAMING ENGINE: Prioritize Week 1 Matchup Rating
+                    let w1Shift = (w1Rating - 3.0) * 6.0;
+                    score += w1Shift;
+
+                    if (w1Rating >= 2.8) {
+                        p._sleeperBadge = `🎯 Top Week 1 Streamer (⭐${w1Rating.toFixed(1)} Wk 1 Matchup)`;
+                    }
+                } else if (p.playoffSOS) {
+                    // Early/Mid-round elite units value playoff schedule
+                    score += (p.playoffSOS - 3.0) * 2.5;
+                }
+            } else if (p.playoffSOS) {
+                // Skill positions always value playoff weeks 15-17
                 let playoffShift = (p.playoffSOS - 3.0) * 3.0; 
                 score += playoffShift;
                 if (!p._sleeperBadge && p.playoffSOS >= 4.0 && currentRound >= 8) {
@@ -2710,9 +2724,17 @@ const UI = {
             if (!finalRecs.includes(p)) finalRecs.push(p);
         }
 
-        // 2. Add 1 K/DST slot in position #10 if in late rounds (R13+) and needed
-        if ((needsPK || needsDST) && kDstPlayers.length > 0 && currentRound >= totalRounds - 3) {
-            if (!finalRecs.includes(kDstPlayers[0])) finalRecs.push(kDstPlayers[0]);
+        // 2. In final 2 rounds, promote needed DST and PK straight to the top of your list
+        if (currentRound >= totalRounds - 2) {
+            let bestDST = kDstPlayers.find(p => p.Pos === 'DST');
+            let bestPK = kDstPlayers.find(p => p.Pos === 'PK');
+
+            if (needsDST && bestDST && !finalRecs.includes(bestDST)) {
+                finalRecs.unshift(bestDST); // Put best Week 1 DST at #1
+            }
+            if (needsPK && bestPK && !finalRecs.includes(bestPK)) {
+                finalRecs.splice(1, 0, bestPK); // Put best PK right behind it
+            }
         }
 
         // 3. Fill remaining slots up to 10 recommendations
@@ -2730,11 +2752,14 @@ const UI = {
         let htmlStr = strategyBanner;
 
         if (bestFit) {
+            let isStarterNeeded = userTeam.counts[bestFit.Pos] < (State.settings.roster[bestFit.Pos]?.max || 1);
             let ppwText = '';
             if (bestFit._addedPPW >= 0.5 || (bestFit._addedPPW > 0 && !bestFit._byeFillWeek)) {
                 ppwText = `+${bestFit._addedPPW.toFixed(1)} PPW`;
             } else if (bestFit._byeFillWeek) {
                 ppwText = `Wk ${bestFit._byeFillWeek} Fill`;
+            } else if (isStarterNeeded) {
+                ppwText = `Core Starter Need (${bestFit.Pos})`; // 🛑 Correctly labels open DST/PK slots!
             } else {
                 ppwText = `Bench Stash / Upside`;
             }
