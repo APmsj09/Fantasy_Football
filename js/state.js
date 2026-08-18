@@ -1456,29 +1456,30 @@ const State = {
                 p.havocPerGame = ((s.sack || 0) + (s.defInt || 0) + (s.defFum || 0) + (s.tfl || 0)) / gp;
             }
             else {
-                let recPoints = (s.rec || 0) * this.scoring.ppr;
+                let pprVal = (this.scoring.ppr !== undefined && !isNaN(this.scoring.ppr)) ? this.scoring.ppr : 1;
+                let recPoints = (s.rec || 0) * pprVal;
                 if (p.Pos === 'TE' && (this.scoring.tePremium || 0) > 0) {
                     recPoints += (s.rec || 0) * this.scoring.tePremium;
                 }
 
-                // 2-point conversions zeroed out if the setting is toggled off
-                let pass2ptPts = this.scoring.use2pt ? ((s.pass2pt || 0) * this.scoring.pass2pt) : 0;
-                let rush2ptPts = this.scoring.use2pt ? ((s.rush2pt || 0) * this.scoring.rush2pt) : 0;
-                let rec2ptPts = this.scoring.use2pt ? ((s.rec2pt || 0) * this.scoring.rec2pt) : 0;
+                // 2-point conversions
+                let pass2ptPts = this.scoring.use2pt ? ((s.pass2pt || 0) * (this.scoring.pass2pt || 2)) : 0;
+                let rush2ptPts = this.scoring.use2pt ? ((s.rush2pt || 0) * (this.scoring.rush2pt || 2)) : 0;
+                let rec2ptPts = this.scoring.use2pt ? ((s.rec2pt || 0) * (this.scoring.rec2pt || 2)) : 0;
 
                 let basePts =
-                    ((s.passYds || 0) * this.scoring.passYds) +
-                    ((s.passTd || 0) * this.scoring.passTd) +
-                    ((s.int || 0) * this.scoring.int) +
+                    ((s.passYds || 0) * (this.scoring.passYds || 0.04)) +
+                    ((s.passTd || 0) * (this.scoring.passTd || 6)) +
+                    ((s.int || 0) * (this.scoring.int || -2)) +
                     pass2ptPts +
-                    ((s.rushYds || 0) * this.scoring.rushYds) +
-                    ((s.rushTd || 0) * this.scoring.rushTd) +
+                    ((s.rushYds || 0) * (this.scoring.rushYds || 0.1)) +
+                    ((s.rushTd || 0) * (this.scoring.rushTd || 6)) +
                     rush2ptPts +
-                    ((s.recYds || 0) * this.scoring.recYds) +
-                    ((s.recTd || 0) * this.scoring.recTd) +
+                    ((s.recYds || 0) * (this.scoring.recYds || 0.1)) +
+                    ((s.recTd || 0) * (this.scoring.recTd || 6)) +
                     rec2ptPts +
                     recPoints +
-                    ((s.fum || 0) * this.scoring.fumLost);
+                    ((s.fum || 0) * (this.scoring.fumLost || -2));
 
                 let passYpg = (s.passYds || 0) / gp;
                 let rushYpg = (s.rushYds || 0) / gp;
@@ -1486,7 +1487,6 @@ const State = {
 
                 let passBonus = 0, rushBonus = 0, recBonus = 0;
 
-                // Milestone algorithms only run if the setting is toggled on
                 if (this.scoring.useMilestones) {
                     let pass300Games = passYpg >= 260 ? Math.min(gp, gp * ((passYpg - 240) / 100)) : 0;
                     let pass400Games = passYpg >= 320 ? Math.min(gp, gp * ((passYpg - 300) / 150)) : 0;
@@ -1495,12 +1495,20 @@ const State = {
                     let rec100Games = recYpg >= 75 ? Math.min(gp, gp * ((recYpg - 60) / 60)) : 0;
                     let rec200Games = recYpg >= 130 ? Math.min(gp, gp * ((recYpg - 110) / 100)) : 0;
 
-                    passBonus = (Math.max(0, pass300Games) * this.scoring.pass300Bonus) + (Math.max(0, pass400Games) * this.scoring.pass400Bonus);
-                    rushBonus = (Math.max(0, rush100Games) * this.scoring.rush100Bonus) + (Math.max(0, rush200Games) * this.scoring.rush200Bonus);
-                    recBonus = (Math.max(0, rec100Games) * this.scoring.rec100Bonus) + (Math.max(0, rec200Games) * this.scoring.rec200Bonus);
+                    let p300B = (this.scoring.pass300Bonus !== undefined && !isNaN(this.scoring.pass300Bonus)) ? this.scoring.pass300Bonus : 1;
+                    let p400B = (this.scoring.pass400Bonus !== undefined && !isNaN(this.scoring.pass400Bonus)) ? this.scoring.pass400Bonus : 3;
+                    let r100B = (this.scoring.rush100Bonus !== undefined && !isNaN(this.scoring.rush100Bonus)) ? this.scoring.rush100Bonus : 1;
+                    let r200B = (this.scoring.rush200Bonus !== undefined && !isNaN(this.scoring.rush200Bonus)) ? this.scoring.rush200Bonus : 3;
+                    let rc100B = (this.scoring.rec100Bonus !== undefined && !isNaN(this.scoring.rec100Bonus)) ? this.scoring.rec100Bonus : 1;
+                    let rc200B = (this.scoring.rec200Bonus !== undefined && !isNaN(this.scoring.rec200Bonus)) ? this.scoring.rec200Bonus : 3;
+
+                    passBonus = (Math.max(0, pass300Games) * p300B) + (Math.max(0, pass400Games) * p400B);
+                    rushBonus = (Math.max(0, rush100Games) * r100B) + (Math.max(0, rush200Games) * r200B);
+                    recBonus = (Math.max(0, rec100Games) * rc100B) + (Math.max(0, rec200Games) * rc200B);
                 }
 
-                p.ProjPts = basePts + passBonus + rushBonus + recBonus;
+                let totalProj = basePts + passBonus + rushBonus + recBonus;
+                p.ProjPts = isNaN(totalProj) ? 0 : totalProj;
             }
 
             if (p.pastStats) {
