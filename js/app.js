@@ -501,48 +501,55 @@ document.addEventListener('DOMContentLoaded', () => {
 
         r.totalSize = r.QB.max + r.RB.max + r.WR.max + r.TE.max + r.FlexRBWR.max + r.Flex.max + r.Superflex.max + r.PK.max + r.DST.max + r.Bench.max;
 
+        const getNum = (id, fallback) => {
+            const el = document.getElementById(id);
+            if (!el || el.value === '' || el.value === undefined) return fallback;
+            const val = parseFloat(el.value);
+            return isNaN(val) ? fallback : val;
+        };
+
         // Primary Scoring Rules
-        State.scoring.tePremium = parseFloat(document.getElementById('score-te-prem')?.value) ?? 0;
-        State.scoring.passYds = parseFloat(document.getElementById('score-pass-yds')?.value) ?? 0.04;
-        State.scoring.passTd = parseFloat(document.getElementById('score-pass-td')?.value) ?? 6;
-        State.scoring.int = parseFloat(document.getElementById('score-int')?.value) ?? -2;
-        State.scoring.ppr = parseFloat(document.getElementById('score-ppr')?.value) ?? 1;
-        State.scoring.rushYds = parseFloat(document.getElementById('score-rush-yds')?.value) ?? 0.1;
-        State.scoring.rushTd = parseFloat(document.getElementById('score-rush-td')?.value) ?? 6;
-        State.scoring.recYds = parseFloat(document.getElementById('score-rec-yds')?.value) ?? 0.1;
-        State.scoring.recTd = parseFloat(document.getElementById('score-rec-td')?.value) ?? 6;
-        State.scoring.fumLost = parseFloat(document.getElementById('score-fum')?.value) ?? -2;
+        State.scoring.tePremium = getNum('score-te-prem', 0);
+        State.scoring.passYds = getNum('score-pass-yds', 0.04);
+        State.scoring.passTd = getNum('score-pass-td', 6);
+        State.scoring.int = getNum('score-int', -2);
+        State.scoring.ppr = getNum('score-ppr', 1);
+        State.scoring.rushYds = getNum('score-rush-yds', 0.1);
+        State.scoring.rushTd = getNum('score-rush-td', 6);
+        State.scoring.recYds = getNum('score-rec-yds', 0.1);
+        State.scoring.recTd = getNum('score-rec-td', 6);
+        State.scoring.fumLost = getNum('score-fum', -2);
 
         // 🎛️ League Customization Toggles
-        State.scoring.useMilestones = document.getElementById('toggle-milestones')?.checked ?? true;
-        State.scoring.use2pt = document.getElementById('toggle-2pt')?.checked ?? true;
-        State.scoring.useDecimalKicking = document.getElementById('toggle-decimal-kicking')?.checked ?? true;
+        State.scoring.useMilestones = document.getElementById('toggle-milestones') ? document.getElementById('toggle-milestones').checked : true;
+        State.scoring.use2pt = document.getElementById('toggle-2pt') ? document.getElementById('toggle-2pt').checked : true;
+        State.scoring.useDecimalKicking = document.getElementById('toggle-decimal-kicking') ? document.getElementById('toggle-decimal-kicking').checked : true;
 
-        // 2-Point Conversions & Milestone Bonuses (Used if toggles are true)
-        State.scoring.pass2pt = parseFloat(document.getElementById('score-pass-2pt')?.value) ?? 2;
-        State.scoring.rush2pt = parseFloat(document.getElementById('score-rush-2pt')?.value) ?? 2;
-        State.scoring.rec2pt = parseFloat(document.getElementById('score-rec-2pt')?.value) ?? 2;
-        State.scoring.def2ptRet = parseFloat(document.getElementById('score-def-2pt')?.value) ?? 2;
+        // 2-Point Conversions & Milestone Bonuses (Safely falls back if inputs don't exist)
+        State.scoring.pass2pt = getNum('score-pass-2pt', 2);
+        State.scoring.rush2pt = getNum('score-rush-2pt', 2);
+        State.scoring.rec2pt = getNum('score-rec-2pt', 2);
+        State.scoring.def2ptRet = getNum('score-def-2pt', 2);
         
-        State.scoring.pass300Bonus = parseFloat(document.getElementById('score-pass-300')?.value) ?? 1;
-        State.scoring.pass400Bonus = parseFloat(document.getElementById('score-pass-400')?.value) ?? 3;
-        State.scoring.rush100Bonus = parseFloat(document.getElementById('score-rush-100')?.value) ?? 1;
-        State.scoring.rush200Bonus = parseFloat(document.getElementById('score-rush-200')?.value) ?? 3;
-        State.scoring.rec100Bonus = parseFloat(document.getElementById('score-rec-100')?.value) ?? 1;
-        State.scoring.rec200Bonus = parseFloat(document.getElementById('score-rec-200')?.value) ?? 3;
+        State.scoring.pass300Bonus = getNum('score-pass-300', 1);
+        State.scoring.pass400Bonus = getNum('score-pass-400', 3);
+        State.scoring.rush100Bonus = getNum('score-rush-100', 1);
+        State.scoring.rush200Bonus = getNum('score-rush-200', 3);
+        State.scoring.rec100Bonus = getNum('score-rec-100', 1);
+        State.scoring.rec200Bonus = getNum('score-rec-200', 3);
 
         // Kicker Brackets & DST
-        State.scoring.fg0_29 = parseFloat(document.getElementById('score-fg-0-29')?.value) ?? 3;
-        State.scoring.fg30_39 = parseFloat(document.getElementById('score-fg-30-39')?.value) ?? 3.5;
-        State.scoring.fg40_49 = parseFloat(document.getElementById('score-fg-40-49')?.value) ?? 4.5;
-        State.scoring.fg50_plus = parseFloat(document.getElementById('score-fg-50')?.value) ?? 5.3;
-        State.scoring.xp = parseFloat(document.getElementById('score-xp')?.value) ?? 1;
+        State.scoring.fg0_29 = getNum('score-fg', 3);
+        State.scoring.fg30_39 = getNum('score-fg-30-39', 3.5);
+        State.scoring.fg40_49 = getNum('score-fg-40-49', 4.5);
+        State.scoring.fg50_plus = getNum('score-fg-50', 5.3);
+        State.scoring.xp = getNum('score-xp', 1);
 
-        State.scoring.sack = parseFloat(document.getElementById('score-sack')?.value) ?? 1;
-        State.scoring.turnover = parseFloat(document.getElementById('score-turnover')?.value) ?? 2;
-        State.scoring.defTd = parseFloat(document.getElementById('score-deftd')?.value) ?? 6;
-        State.scoring.safety = parseFloat(document.getElementById('score-safety')?.value) ?? 2;
-
+        State.scoring.sack = getNum('score-sack', 1);
+        State.scoring.turnover = getNum('score-turnover', 2);
+        State.scoring.defTd = getNum('score-deftd', 6);
+        State.scoring.safety = getNum('score-safety', 2);
+        
         State.calculateProjections();
         State.applyDynamicDSTSOS();
         State.calculateVBD();
