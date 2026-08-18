@@ -2619,11 +2619,23 @@ const UI = {
                         score += urgencyBonus;
                     } else if (survivalProb > 0.65 && (p.adp - currentOverallPick) >= 12) {
                         let reachDistance = p.adp - currentOverallPick; 
-                        let reachPenalty = Math.min(18.0, (reachDistance - 10) * 0.65);
+                        let reachPenalty = 0;
+                        
+                        // Uncap the penalty for egregious reaches (>24 picks / 2 full rounds)
+                        if (reachDistance > 24) {
+                            reachPenalty = 18.0 + ((reachDistance - 24) * 1.2); // Scales aggressively to prevent 40+ pick reaches
+                        } else {
+                            reachPenalty = (reachDistance - 10) * 0.90;
+                        }
                         
                         // ⚡ THE SLEEPER EXEMPTION: Reduce the reach penalty if the player has strong sleeper/stash traits
                         if (stashBonus > 0 && currentRound >= 7) {
                             reachPenalty = Math.max(0, reachPenalty - (stashBonus * roundScale * 0.85));
+                        }
+                        
+                        // Onesie Position Trap: Heavily punish reaching for QBs/TEs just because the starting slot is empty
+                        if (['QB', 'TE', 'PK', 'DST'].includes(p.Pos) && isPrimaryStarterOpen && reachDistance > 18) {
+                            reachPenalty *= 1.5;
                         }
                         
                         score -= reachPenalty; 
