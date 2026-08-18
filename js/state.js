@@ -228,7 +228,6 @@ const State = {
                     p.stats.fgm_50p = st.fgm_50p || 0;
                     p.stats.xp = totalXPs;
                     p.stats.fgTotal = totalFGs;
-                }
                 } else if (pos === 'DST') {
                     p.stats.sack = st.sack || 0;
                     p.stats.defInt = st.int || 0;
