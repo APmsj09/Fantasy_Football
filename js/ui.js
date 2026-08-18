@@ -2423,7 +2423,7 @@ const UI = {
         viablePlayers.forEach(p => {
             let score = p.AdvVBD || p.VBD;
 
-            // 1. Lineup Need & Starter Openings
+            // 1. Lineup Need & Starter Openings (Calibrated: Panic only ramps after Round 4)
             let posRoster = State.settings.roster[p.Pos];
             let starterMax = posRoster ? posRoster.max : 0;
             let currentCount = userTeam.counts[p.Pos] || 0;
@@ -2435,7 +2435,11 @@ const UI = {
             let isSuperflexOpen = ['QB', 'RB', 'WR', 'TE'].includes(p.Pos) && (userTeam.counts['Superflex'] < (State.settings.roster.Superflex?.max || 0));
             let isAnyStartingSlotOpen = isPrimaryStarterOpen || isFlexRBWROpen || isFlexOpen || isSuperflexOpen;
 
-            if (isPrimaryStarterOpen) score += (currentCount === 0 ? 6.0 : 4.0);
+            if (isPrimaryStarterOpen) {
+                // Rounds 1-4: Gentle tiebreaker (+3.0). Rounds 5+: Urgency steadily climbs but caps at +5.0
+                let roundPanic = Math.min(5.0, Math.max(0, currentRound - 4) * 0.6);
+                score += 3.0 + roundPanic;
+            }
 
             // 2. Lineup Value (+PPW)
             if (isAnyStartingSlotOpen && p._addedPPW && p._addedPPW >= 0.5) {
@@ -2489,41 +2493,55 @@ const UI = {
                     let userOwnsStarter = p.starterName && userRoster.some(r => r._cleanName === State.normalizeName(p.starterName));
 
                     // Changed from massive else/ifs to an accumulator (stashBonus)
+                    let baseSleeperBadge = null;
+
                     if (userOwnsStarter && p.Pos === 'RB') {
-                        stashBonus += 16.0;
-                        p._sleeperBadge = `🔒 Handcuff for ${p.starterName}`;
+                        let starter = userRoster.find(r => r._cleanName === State.normalizeName(p.starterName));
+                        // 350-pt stud gives +14.0; 180-pt RB2 gives +7.2
+                        let starterQuality = starter ? (starter.ProjPts * 0.04) : 10.0;
+                        // Award extra value if the handcuff has standalone Flex touches (Handcuff Plus)
+                        let standaloneTouchBonus = (p.ProjPts && p.ProjPts >= 110) ? 4.0 : 0;
+                        
+                        stashBonus += starterQuality + standaloneTouchBonus;
+                        baseSleeperBadge = `🔒 Handcuff for ${p.starterName}`;
                     } else if (p.isRBHandcuff) {
-                        stashBonus += 8.0;
-                        p._sleeperBadge = `🎲 Lottery Ticket (${p.starterName}'s Backup)`;
+                        let standaloneTouchBonus = (p.ProjPts && p.ProjPts >= 110) ? 3.0 : 0;
+                        stashBonus += 6.0 + standaloneTouchBonus;
+                        baseSleeperBadge = `🎲 Lottery Ticket (${p.starterName}'s Backup)`;
                     }
 
                     if (p.depthChart === 2 && p.isNewRole) {
                         stashBonus += 5.0;
-                        if (!p._sleeperBadge) p._sleeperBadge = `📈 Breakout Stash (1 Injury Away)`;
+                        if (!baseSleeperBadge) baseSleeperBadge = `📈 Breakout Stash (1 Injury Away)`;
                     }
-                    if (playerAge && playerAge <= 23) {
-                        stashBonus += 5.0;
-                        if (!p._sleeperBadge) p._sleeperBadge = `🌱 Youth Breakout (Age ${playerAge})`;
+                    if (playerAge && playerAge <= 24) {
+                        // Smooth scale: 21yo = +7.5, 22yo = +5.0, 23yo = +2.5
+                        stashBonus += Math.max(0, (24 - playerAge) * 2.5);
+                        if (!baseSleeperBadge && playerAge <= 23) baseSleeperBadge = `🌱 Youth Breakout (Age ${playerAge})`;
                     }
-                    if (p.targetShare && p.targetShare >= 15.0) {
-                        stashBonus += 4.0;
-                        if (!p._sleeperBadge) p._sleeperBadge = `🎯 ${p.targetShare}% Tgt Share Sleeper`;
+                    if (p.targetShare && p.targetShare >= 12.0) {
+                        // Smooth scale: 15% = +1.2, 25% = +5.2
+                        stashBonus += (p.targetShare - 12.0) * 0.4;
+                        if (!baseSleeperBadge && p.targetShare >= 15.0) baseSleeperBadge = `🎯 ${p.targetShare}% Tgt Share Sleeper`;
                     }
-                    if (p.aDOT && p.aDOT >= 12.0) {
-                        stashBonus += 4.0;
-                        if (!p._sleeperBadge) p._sleeperBadge = `🚀 Deep Threat (${p.aDOT} aDOT)`;
+                    if (p.aDOT && p.aDOT >= 10.0) {
+                        // Smooth scale: 12 aDOT = +2.0, 16 aDOT = +6.0
+                        stashBonus += (p.aDOT - 10.0) * 1.0;
+                        if (!baseSleeperBadge && p.aDOT >= 12.0) baseSleeperBadge = `🚀 Deep Threat (${p.aDOT} aDOT)`;
                     }
-                    if (p.brokenTackles && p.brokenTackles > 15) {
-                        stashBonus += 4.0;
-                        if (!p._sleeperBadge) p._sleeperBadge = `🏃 Elusive (${p.brokenTackles} Broken Tackles)`;
+                    if (p.brokenTackles && p.brokenTackles > 10) {
+                        stashBonus += (p.brokenTackles - 10) * 0.3;
+                        if (!baseSleeperBadge && p.brokenTackles >= 15) baseSleeperBadge = `🏃 Elusive (${p.brokenTackles} Broken Tackles)`;
                     }
-                    if (p.hvo && p.hvo >= 40) {
-                        stashBonus += 4.0;
-                        if (!p._sleeperBadge) p._sleeperBadge = `💎 High Value Touch Profile`;
+                    if (p.hvo && p.hvo >= 30) {
+                        stashBonus += (p.hvo - 30) * 0.15;
+                        if (!baseSleeperBadge && p.hvo >= 40) baseSleeperBadge = `💎 High Value Touch Profile`;
                     }
 
-                    // Max accumulator cap prevents it from overpowering legitimate starters
-                    stashBonus = Math.min(24.0, stashBonus);
+                    p._sleeperBadge = baseSleeperBadge;
+
+                    // Max accumulator cap prevents stashes from overtaking elite starters
+                    stashBonus = Math.min(26.0, stashBonus);
                     score += (stashBonus * roundScale);
                 }
             } else if (p.upsideScore && (p.AdvVBD || p.VBD) > 0) {
@@ -2596,12 +2614,16 @@ const UI = {
                 }
             }
 
-            // 9. Playoff Matchup Tiebreaker (Weeks 15-17)
-            if (p.playoffSOS && p.playoffSOS >= 4.0) {
-                score += 4.5;
-                if (!p._sleeperBadge && currentRound >= 8) p._sleeperBadge = `🏆 Soft Playoff Schedule (⭐${p.playoffSOS.toFixed(1)})`;
-            } else if (p.playoffSOS && p.playoffSOS <= 2.0) {
-                score -= 3.0;
+            // 9. Continuous Playoff Matchup Tiebreaker (Weeks 15-17)
+            if (p.playoffSOS) {
+                // Neutral 3.0 SOS = 0.
+                // Easy 4.5 SOS = +4.5. 
+                // Brutal 2.0 SOS = -3.0.
+                let playoffShift = (p.playoffSOS - 3.0) * 3.0; 
+                score += playoffShift;
+                if (!p._sleeperBadge && p.playoffSOS >= 4.0 && currentRound >= 8) {
+                    p._sleeperBadge = `🏆 Soft Playoff Schedule (⭐${p.playoffSOS.toFixed(1)})`;
+                }
             }
 
             p._recScore = score;
