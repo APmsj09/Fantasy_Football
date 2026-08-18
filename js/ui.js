@@ -1912,7 +1912,7 @@ const UI = {
                     <div class="p-2 border-l border-indigo-700/50">
                         <span class="text-indigo-300 block text-[10px] font-bold uppercase tracking-wider">Defensive Profile</span>
                         <span class="text-lg font-extrabold text-white">${s.sack || 0} Sacks</span>
-                        <span class="block text-[10px] text-indigo-200 mt-1">${(s.defInt || 0) + (s.defFum || 0)} Turnovers | ${s.papg || 18.0} PAPG</span>
+                        <span class="block text-[10px] text-indigo-200 mt-1">${(s.defInt || 0) + (s.defFum || 0)} Turnovers | ${typeof s.papg === 'number' ? s.papg.toFixed(1) : '18.0'} PAPG</span>
                     </div>
                 </div>
             `;
