@@ -2115,7 +2115,6 @@ const UI = {
         let previousVBD = null;
 
         displayList.forEach(p => {
-            // Tier Drop-off Logic (Only show when sorting by VBD and no search filters applied)
             let currentVBD = p.AdvVBD || p.VBD;
             let isTierDrop = previousVBD !== null && (previousVBD - currentVBD >= 18.0);
             previousVBD = currentVBD;
@@ -2157,7 +2156,6 @@ const UI = {
 
             let tagHTML = advTags.length > 0 ? `<div class="flex gap-1 mt-1 text-[9px] font-bold">${advTags.join('')}</div>` : '';
 
-
             let ppwVal = (p._addedPPW !== undefined && p._addedPPW > 0) ? p._addedPPW : 0;
             let ppwStr = '';
             if (ppwVal >= 0.5 || (ppwVal > 0 && !p._byeFillWeek)) {
@@ -2167,18 +2165,30 @@ const UI = {
             } else {
                 ppwStr = `<span class="text-gray-300 text-[10px] font-mono">0.0</span>`;
             }
+
             let isOffense = !['DST', 'PK'].includes(p.Pos);
             let ageStr = p.age ? `<span class="text-[9px] font-semibold text-slate-400 ml-1">Age ${p.age}</span>` : '';
             let olBadge = (isOffense && p.olTier) ? `<span class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-100 text-slate-600">OL ${p.olTier}</span>` : '';
             let sosBadge = p.avgStars ? `<span class="ml-1 inline-flex items-center text-[10px] font-bold text-amber-500">⭐ ${p.avgStars.toFixed(1)}</span>` : '';
 
-            // --- ADD INJURY BADGE ---
             let injBadge = '';
             if (p.injuryStatus) {
                 let abbr = p.injuryStatus === 'Questionable' ? 'Q' : (p.injuryStatus === 'Doubtful' ? 'D' : p.injuryStatus);
-                let color = ['Out', 'IR', 'PUP'].includes(p.injuryStatus) ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700';
+                let color = ['Out', 'IR', 'PUP', 'SUS'].includes(p.injuryStatus) ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700';
                 injBadge = `<span class="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold ${color}">${abbr}</span>`;
             }
+
+            // --- KEY STATS LINE WITH ATTEMPTS & TARGETS ---
+            let keyStatsHTML = '';
+            if (p.stats) {
+                let st = p.stats;
+                if (p.Pos === 'QB') keyStatsHTML = `<span class="text-slate-500">${st.passAtt || 0} Pass Att • ${st.passYds || 0} Pass Yds • ${st.rushAtt || 0} Rush Att • ${st.rushYds || 0} Rush Yds</span>`;
+                else if (p.Pos === 'RB') keyStatsHTML = `<span class="text-slate-500">${st.rushAtt || 0} Rush Att • ${st.rushYds || 0} Rush Yds • ${st.targets || 0} Tgt • ${st.rec || 0} Rec</span>`;
+                else if (['WR', 'TE'].includes(p.Pos)) keyStatsHTML = `<span class="text-slate-500">${st.targets || 0} Tgt • ${st.rec || 0} Rec • ${st.recYds || 0} Rec Yds • ${st.recTd || 0} TD</span>`;
+                else if (p.Pos === 'DST') keyStatsHTML = `<span class="text-slate-500">${st.sack || 0} Sacks • ${(st.defInt || 0) + (st.defFum || 0)} Turnovers • ${st.papg || 18.0} PAPG</span>`;
+                else if (p.Pos === 'PK') keyStatsHTML = `<span class="text-slate-500">${st.fgTotal || 0} FGs • ${st.xp || 0} PATs</span>`;
+            }
+            let statsDiv = keyStatsHTML ? `<div class="text-[10px] font-medium mt-0.5 tracking-tight">${keyStatsHTML}</div>` : '';
 
             htmlStr += `
                 <tr class="hover:bg-slate-50 border-b border-gray-100 transition-colors cursor-pointer" onclick="if (!event.target.closest('.draft-btn')) UI.showPlayerCard('${p._cleanName}')">
@@ -2190,8 +2200,9 @@ const UI = {
                         <div class="flex items-center">
                             <span>${p.Player}</span>
                             <span class="font-normal text-gray-400 ml-1.5">${p.Team}</span>
-                            ${ageStr} ${olBadge} ${sosBadge}
+                            ${ageStr} ${olBadge} ${sosBadge} ${injBadge}
                         </div>
+                        ${statsDiv}
                         ${tagHTML}
                     </td>
                     <td class="px-2 py-2 text-center text-[11px] text-gray-600 font-medium">${p.Pos}</td>
