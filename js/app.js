@@ -212,13 +212,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Base projections MUST load sequentially first to build the base array
             State.allPlayers = [];
-            await fetchTSV(`${DATA_DIR}/QB_CBS_${SEASON}.tsv`, State.parseCBS_QB.bind(State), data => State.allPlayers.push(...data));
-            await fetchTSV(`${DATA_DIR}/RB_CBS_${SEASON}.tsv`, State.parseCBS_RB.bind(State), data => State.allPlayers.push(...data));
-            await fetchTSV(`${DATA_DIR}/WR_CBS_${SEASON}.tsv`, State.parseCBS_WR.bind(State), data => State.allPlayers.push(...data));
-            await fetchTSV(`${DATA_DIR}/TE_CBS_${SEASON}.tsv`, State.parseCBS_TE.bind(State), data => State.allPlayers.push(...data));
-            await fetchTSV(`${DATA_DIR}/def_proj_${SEASON}.tsv`, State.parseDefData.bind(State), data => State.allPlayers.push(...data));
-            await fetchTSV(`${DATA_DIR}/k_proj_${SEASON}.tsv`, State.parseKickerData.bind(State), data => State.allPlayers.push(...data));
-
+            await Promise.all([
+                fetchTSV(`${DATA_DIR}/QB_CBS_${SEASON}.tsv`, State.parseCBS_QB.bind(State), data => State.allPlayers.push(...data)),
+                fetchTSV(`${DATA_DIR}/RB_CBS_${SEASON}.tsv`, State.parseCBS_RB.bind(State), data => State.allPlayers.push(...data)),
+                fetchTSV(`${DATA_DIR}/WR_CBS_${SEASON}.tsv`, State.parseCBS_WR.bind(State), data => State.allPlayers.push(...data)),
+                fetchTSV(`${DATA_DIR}/TE_CBS_${SEASON}.tsv`, State.parseCBS_TE.bind(State), data => State.allPlayers.push(...data)),
+                State.fetchSleeperProjections(SEASON) // <-- PULLS DIRECTLY FROM SLEEPER API
+            ]);
             State.enrichPlayerMap();
 
             // Load all advanced metrics concurrently (swapped to enrichPlayerData)
