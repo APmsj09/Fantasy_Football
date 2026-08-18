@@ -1810,16 +1810,25 @@ const State = {
                     let backupPastTgtShare = backup.targetShare || backup.pastStats?.targetShare || 0;
                     let backupPastTouches = (backup.pastStats?.rushAtt || 0) + (backup.pastStats?.rec || 0);
 
-                    // Classify Backup Archetype
+                    // Classify backup Archetype
+                    let backupProjTgts = backup.stats?.targets || 0;
+                    let backupProjCarries = backup.stats?.rushAtt || 0;
+                    let backupProjPts = backup.ProjPts || 0;
+                    let isHeavyStandalone = backupProjPts >= 175 || (backupProjCarries >= 120 && backupProjTgts >= 30) || (backupProjTgts >= 45);
+
+                    // Classify Backup Archetype accurately
                     if (backupPastRz >= 18 || (backup.weight && backup.weight >= 220 && backupPastTouches >= 100)) {
                         p._backupThreatLevel = 'Goal-Line Vulture Threat';
                         p._backupThreatNote = `${backup.Player} has proven short-yardage gravity and may cap goal-line monopoly.`;
-                    } else if (backupPastTgtShare >= 12.0) {
+                    } else if (backupPastTgtShare >= 12.0 || backupProjTgts >= 40) {
                         p._backupThreatLevel = 'Passing Down Threat';
-                        p._backupThreatNote = `${backup.Player} commands high pass-catching volume, potentially capping 3rd-down snaps.`;
+                        p._backupThreatNote = `${backup.Player} commands high pass-catching volume (${backupProjTgts} proj targets), capping 3rd-down snaps.`;
+                    } else if (isHeavyStandalone) {
+                        p._backupThreatLevel = '1B Committee Threat';
+                        p._backupThreatNote = `${backup.Player} commands significant standalone volume (${backupProjCarries} carries / ${backupProjTgts} targets), forming a split rotation.`;
                     } else {
                         p._backupThreatLevel = 'Low Standalone Threat';
-                        p._backupThreatNote = `${backup.Player} operates as a pure contingent backup, giving ${p.Player} an uncontested three-down ceiling.`;
+                        p._backupThreatNote = `${backup.Player} operates as a pure contingent backup, giving ${p.Player} an uncontested early-down lead.`;
                     }
                 } else {
                     p._backupThreatLevel = 'Uncontested';
@@ -2192,6 +2201,43 @@ const State = {
                 }
             }
 
+            // 1. WR: Co-Alpha 1B vs. Capped Beta WR2 Tiering
+            if (p.Pos === 'WR' && p.depthChart === 2) {
+                const teamPassVolume = teamDist ? (teamDist['Total Targets'] || 540) : 540;
+                const teamWrShare = teamDist ? (parseFloat(teamDist['WR %']) || 58.0) : 58.0;
+                const isHighVolumePie = teamPassVolume >= 560 && teamWrShare >= 59.0;
+
+                if (isHighVolumePie) {
+                    p._wr2Category = 'Co-Alpha WR1B';
+                    p._wr2Note = `Plays in a high-volume passing funnel (${teamPassVolume} total targets) capable of sustaining two top-24 fantasy WRs.`;
+                    adjMultiplier += 0.025; // Boosts high-end WR2s in pass-heavy systems
+                } else if (teamPassVolume < 515 || teamWrShare < 52.0) {
+                    p._wr2Category = 'Capped Beta WR2';
+                    p._wr2Note = `Trapped in a run-heavy/low-volume passing attack; weekly ceiling is capped behind the WR1.`;
+                    adjMultiplier -= 0.040; // Penalizes WR2s in run-first offenses
+                }
+            }
+
+            // 2. TE: 12-Personnel / 2-TE Timeshare Drag
+            if (p.Pos === 'TE' && p.depthChart === 1) {
+                const teamTE2 = this.allPlayers.find(x => this.normalizeTeam(x.Team) === tTeam && x.Pos === 'TE' && x.depthChart === 2 && x._cleanName !== p._cleanName);
+                if (teamTE2 && (teamTE2.stats?.targets >= 40 || (teamTE2.targetShare && teamTE2.targetShare >= 12.0))) {
+                    p._teCommitteeThreat = true;
+                    p._teCommitteeNote = `Faces route competition from ${teamTE2.Player} (${teamTE2.stats?.targets || 40}+ proj targets), capping 12-personnel target ceiling.`;
+                    adjMultiplier -= 0.035;
+                }
+            }
+
+            // 3. QB: Bridge Veteran / Short-Leash Rookie Threat
+            if (p.Pos === 'QB' && p.depthChart === 1) {
+                const rookieBackup = this.allPlayers.find(x => this.normalizeTeam(x.Team) === tTeam && x.Pos === 'QB' && x.depthChart === 2 && (x.age && x.age <= 23) && (x.ecr || x.adp || 150) <= 120);
+                if (rookieBackup && p.age && p.age >= 28) {
+                    p._shortLeashRisk = true;
+                    p._shortLeashNote = `Bridge starter risk: High probability of losing starting snaps to rookie ${rookieBackup.Player} if the team struggles.`;
+                    adjMultiplier -= 0.050; // Docks full-season expectation for benching risk
+                }
+            }
+
             // 4. Inherited Role Volume & Synthetic Imputation (Rookies / Team Changers)
             let lacksIndividualMetrics = false;
             if (p.Pos === 'QB') lacksIndividualMetrics = (p.trueAccuracy === undefined) && (p.p2s === undefined);
@@ -2491,6 +2537,36 @@ const State = {
             if (['WR', 'TE'].includes(p.Pos) && p.snapShare >= 75 && p.targetShare && p.targetShare <= 11.5) {
                 adjMultiplier -= 0.07;
                 p._isCardioKing = true;
+            }
+
+            if (p.Pos === 'RB') {
+                const isLowPassingUsage = (p.targetShare && p.targetShare < 8.5) || (p.stats && p.stats.targets <= 30);
+                const isHighTdEarner = (p.rzAtt && p.rzAtt >= 20) || (p.stats && p.stats.rushTd >= 7) || (p.pastStats && p.pastStats.rushTd >= 7);
+                const isPowerFrame = (p.weight && p.weight >= 214) || (p.bmi && p.bmi >= 30.5);
+
+                // 1. Identify Pure Goal-Line Hammer Archetype
+                if (isLowPassingUsage && isHighTdEarner && isPowerFrame) {
+                    p._isGoalLineHammer = true;
+
+                    let matchupThreat = this.teamOffensiveThreats[tTeam];
+                    if (matchupThreat) {
+                        let offenseQuality = 6.0 - matchupThreat.dstMatchupStars; // 5.0 = Elite, 1.0 = Anemic
+
+                        // 2. Elite Offense Synergy (Frequent Goal-Line Trips)
+                        if (offenseQuality >= 4.0) {
+                            adjMultiplier += 0.035; // Boosts TD equity in high-scoring offenses
+                            if (p.xTD) p.xTD += 1.2;
+                            p._goalLineContext = `Elite Red-Zone Synergy: Operates as the primary goal-line hammer in a high-scoring offense with frequent inside-the-5 opportunities.`;
+                        } 
+                        // 3. The "Zero-Yard TD Trap" (Anemic Offense Neutralization)
+                        else if (offenseQuality <= 2.2) {
+                            adjMultiplier -= 0.055; // Heavy penalty: Lack of RZ trips kills TD-dependent backs
+                            if (p.xTD) p.xTD = Math.max(1.5, p.xTD - 2.2); // Slashes Expected TDs
+                            p._isZeroYardTDTrap = true;
+                            p._goalLineContext = `Zero-Yard TD Trap: Touchdown dependency is severely neutralized by an anemic offense that rarely reaches the red zone.`;
+                        }
+                    }
+                }
             }
 
             // Satellite Back
