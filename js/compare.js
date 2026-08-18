@@ -418,19 +418,20 @@ window.Compare = {
         if (['WR', 'TE'].includes(topPick.Pos) && ['WR', 'TE'].includes(alt.Pos)) {
             // Multi-Currency Vacated Volume & Role Inheritance
             const formatVacatedNote = (player, depList) => {
-                if (player._vacatedRoleType === 'Intermediate MOF & Red-Zone Funnel' || (player.Pos === 'TE' && player._inheritsRzFunnel)) {
+                if (player._vacatedRoleType === 'Intermediate MOF & Red-Zone Funnel' || player._inheritsRzFunnel) {
                     return `inheriting high-leverage <strong>Middle-of-the-Field targets and +${player._vacatedRzTgts || 0} Red-Zone looks</strong>${depList}, expanding his weekly touchdown equity`;
                 } else if (player._vacatedRoleType === 'Detached Hybrid Deep Seam') {
                     return `inheriting <strong>+${player._vacatedAirYards} deep seam air yards</strong> in a hybrid detached receiver role${depList}`;
-                } else if (player._vacatedRoleType === 'High-Volume Slot Outlet') {
+                } else if (player._vacatedRoleType === 'High-Volume Slot Outlet' || player._vacatedRoleType === 'Short-Yardage Safety Valve') {
                     return `inheriting <strong>+${player._vacatedTgts} underneath targets</strong>${depList} with heavy PPR chain-moving volume`;
                 } else {
                     return `inheriting <strong>+${player._vacatedAirYards} deep air yards</strong> and <strong>+${player._vacatedTgts} vacated targets</strong>${depList}, securing an alpha downfield role`;
                 }
             };
 
-            let altHasVacated = alt._inheritsAlphaAirShare || alt._inheritsRzFunnel || alt._inheritsIntermediateVolume;
-            let topHasVacated = topPick._inheritsAlphaAirShare || topPick._inheritsRzFunnel || topPick._inheritsIntermediateVolume;
+            // Added _inheritsUnderneathShare to properly trigger for Slot WRs and short TEs
+            let altHasVacated = alt._inheritsAlphaAirShare || alt._inheritsRzFunnel || alt._inheritsIntermediateVolume || alt._inheritsUnderneathShare;
+            let topHasVacated = topPick._inheritsAlphaAirShare || topPick._inheritsRzFunnel || topPick._inheritsIntermediateVolume || topPick._inheritsUnderneathShare;
 
             if (altHasVacated && !topHasVacated) {
                 let depList = alt._departedReceiverNames?.length > 0 ? ` (${alt._departedReceiverNames.join(', ')})` : '';
