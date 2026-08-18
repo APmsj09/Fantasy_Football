@@ -142,34 +142,72 @@ const State = {
 
     async fetchSleeperProjections(season) {
         try {
-            // Fetch Kicker & DST Projections directly from Sleeper API
-            const projRes = await fetch(`https://api.sleeper.app/projections/nfl/20${season}?season_type=regular&position[]=K&position[]=DEF`);
-            if (!projRes.ok) return;
+            // ⚡ Fetch Kicker Metadata and Projections concurrently for speed
+            const [playersRes, projRes] = await Promise.all([
+                fetch('https://api.sleeper.app/v1/players/nfl').catch(() => null),
+                fetch(`https://api.sleeper.app/projections/nfl/20${season}?season_type=regular&position[]=K&position[]=DEF`).catch(() => null)
+            ]);
+
+            let kMap = {};
+            if (playersRes && playersRes.ok) {
+                const pData = await playersRes.json();
+                for (let pid in pData) {
+                    if (pData[pid].position === 'K') {
+                        kMap[pid] = pData[pid];
+                    }
+                }
+            }
+
+            if (!projRes || !projRes.ok) return;
             const projData = await projRes.json();
-            
             const projList = Array.isArray(projData) ? projData : Object.values(projData);
-            
+
+            // Valid 32 NFL Teams
+            const validNFLTeams = new Set([
+                'ARI', 'ATL', 'BAL', 'BUF', 'CAR', 'CHI', 'CIN', 'CLE',
+                'DAL', 'DEN', 'DET', 'GB', 'HOU', 'IND', 'JAX', 'KC',
+                'LA', 'LAC', 'LV', 'MIA', 'MIN', 'NE', 'NO', 'NYG',
+                'NYJ', 'PHI', 'PIT', 'SEA', 'SF', 'TB', 'TEN', 'WAS'
+            ]);
+
             projList.forEach(entry => {
-                let pos = entry.position === 'K' ? 'PK' : 'DST';
-                let team = entry.team || "";
+                let pid = String(entry.player_id || '').trim();
+                let rawPos = entry.position;
+                let isKicker = rawPos === 'K' || kMap[pid]?.position === 'K';
+                
+                // 🛑 FILTER OUT IDPs (Individual Defensive Players):
+                // Team Defenses have letter IDs ("SF", "BAL"). IDPs have numeric IDs ("10858").
+                if (!isKicker) {
+                    if (!isNaN(Number(pid))) return; // Skip numeric IDs (IDP players)
+                    let nTeam = this.normalizeTeam(pid);
+                    if (!validNFLTeams.has(nTeam)) return; // Only accept the 32 real NFL teams
+                }
+
+                let pos = isKicker ? 'PK' : 'DST';
+                let team = "";
                 let pName = "";
 
                 if (pos === 'DST') {
-                    team = this.normalizeTeam(entry.player_id);
-                    pName = team + " Defense"; 
-                } else {
-                    // Extract name from the payload, fallback to formatting
-                    if (entry.player && entry.player.first_name) {
+                    team = this.normalizeTeam(pid);
+                    pName = team + " Defense";
+                } else if (pos === 'PK') {
+                    // Resolve Kicker Name from metadata
+                    let sp = kMap[pid];
+                    if (sp && sp.full_name) {
+                        pName = sp.full_name;
+                        team = this.normalizeTeam(sp.team || entry.team);
+                    } else if (entry.player && entry.player.first_name) {
                         pName = `${entry.player.first_name} ${entry.player.last_name}`;
+                        team = this.normalizeTeam(entry.team);
                     } else {
-                        return; // Ignore empty player records
+                        return; // Skip unnamed records
                     }
                 }
 
                 let p = {
                     Player: pName,
                     Pos: pos,
-                    Team: this.normalizeTeam(team),
+                    Team: team,
                     stats: {},
                     ProjPts: 0, VBD: 0, AdvVBD: 0
                 };
@@ -183,7 +221,7 @@ const State = {
                     p.stats.fgm_40_49 = st.fgm_40_49 || 0;
                     p.stats.fgm_50p = st.fgm_50p || 0;
                     p.stats.xp = st.xpm || 0;
-                    p.stats.fgTotal = (st.fgm_0_19||0) + (st.fgm_20_29||0) + (st.fgm_30_39||0) + (st.fgm_40_49||0) + (st.fgm_50p||0);
+                    p.stats.fgTotal = (st.fgm_0_19 || 0) + (st.fgm_20_29 || 0) + (st.fgm_30_39 || 0) + (st.fgm_40_49 || 0) + (st.fgm_50p || 0);
                 } else if (pos === 'DST') {
                     p.stats.sack = st.sack || 0;
                     p.stats.defInt = st.int || 0;
