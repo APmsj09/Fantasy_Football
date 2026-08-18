@@ -2789,13 +2789,21 @@ const State = {
             const applySignedFactor = (val, factor) => val >= 0 ? val * factor : (factor >= 1 ? val / factor : val * (1 / factor));
 
             if (p.injuryStatus) {
-                // Severe penalty for players slated to miss serious time
-                if (['Out', 'IR', 'PUP', 'COV'].includes(p.injuryStatus)) {
+                // Tier 1: Multi-week/Long-term absence (IR, PUP, Suspended). Heaviest penalty (~30% drop in total value)
+                if (['IR', 'PUP', 'SUS', 'NA', 'COV'].includes(p.injuryStatus.toUpperCase()) || ['IR', 'PUP', 'SUS'].includes(p.injuryStatus)) {
+                    p.AdvVBD = applySignedFactor(p.AdvVBD, 0.70); 
+                }
+                // Tier 2: Short-term definitive absence (Out). Noticeable penalty (~15% drop)
+                else if (p.injuryStatus === 'Out') {
                     p.AdvVBD = applySignedFactor(p.AdvVBD, 0.85);
                 }
-                // Minor deduction for camp injuries/questionable tags
+                // Tier 3: Doubtful (Likely misses Week 1). Moderate penalty (~8% drop)
                 else if (p.injuryStatus === 'Doubtful') {
-                    p.AdvVBD = applySignedFactor(p.AdvVBD, 0.95);
+                    p.AdvVBD = applySignedFactor(p.AdvVBD, 0.92);
+                }
+                // Tier 4: Questionable (Camp dings, limited reps). Slight penalty (~4% drop to account for risk)
+                else if (p.injuryStatus === 'Questionable') {
+                    p.AdvVBD = applySignedFactor(p.AdvVBD, 0.96);
                 }
             }
 
