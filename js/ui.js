@@ -2095,6 +2095,10 @@ const UI = {
             document.getElementById('on-the-clock').textContent = "Complete";
             document.getElementById('drafting-for-badge').textContent = "Draft Complete";
             this.renderStandings();
+            
+            // ⚡ Trigger the Season Preview & Draft Recap Engine
+            if (window.DraftRecap) window.DraftRecap.generateRecaps();
+            
             this.switchTab('summary-screen');
         }
 
