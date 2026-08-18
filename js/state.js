@@ -191,7 +191,7 @@ const State = {
                     p.stats.defTd = st.def_td || 0;
                     p.stats.safety = st.safe || 0;
                     p.stats.ptsAllowed = st.pts_allow || 300;
-                    p.stats.papg = p.stats.ptsAllowed / 17.0;
+                    p.stats.papg = parseFloat((p.stats.ptsAllowed / 17.0).toFixed(1));
                 }
 
                 this.allPlayers.push(p);
