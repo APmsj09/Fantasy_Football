@@ -215,13 +215,20 @@ const State = {
                 let st = entry.stats || {};
 
                 if (pos === 'PK') {
+                    let totalFGs = (st.fgm_0_19 || 0) + (st.fgm_20_29 || 0) + (st.fgm_30_39 || 0) + (st.fgm_40_49 || 0) + (st.fgm_50p || 0);
+                    let totalXPs = st.xpm || 0;
+                    
+                    // 🛑 IGNORE RETIRED / 0-PROJECTION KICKERS (Vinatieri, Matt Bryant, etc.)
+                    if (totalFGs === 0 && totalXPs === 0) return;
+
                     p.stats.fgm_0_19 = st.fgm_0_19 || 0;
                     p.stats.fgm_20_29 = st.fgm_20_29 || 0;
                     p.stats.fgm_30_39 = st.fgm_30_39 || 0;
                     p.stats.fgm_40_49 = st.fgm_40_49 || 0;
                     p.stats.fgm_50p = st.fgm_50p || 0;
-                    p.stats.xp = st.xpm || 0;
-                    p.stats.fgTotal = (st.fgm_0_19 || 0) + (st.fgm_20_29 || 0) + (st.fgm_30_39 || 0) + (st.fgm_40_49 || 0) + (st.fgm_50p || 0);
+                    p.stats.xp = totalXPs;
+                    p.stats.fgTotal = totalFGs;
+                }
                 } else if (pos === 'DST') {
                     p.stats.sack = st.sack || 0;
                     p.stats.defInt = st.int || 0;
@@ -248,17 +255,28 @@ const State = {
         if (!this.allPlayers || !this.allPlayers.length) return null;
 
         if (nPos === 'DST') {
-            return this.allPlayers.find(p => p._cleanPos === 'DST' &&
-                (p._cleanTeam === nTeam || p._cleanName.includes(cleanName))
-            );
+            return this.allPlayers.find(p => {
+                if (p._cleanPos !== 'DST') return false;
+                if (nTeam && p._cleanTeam === nTeam) return true;
+                if (p._cleanTeam && cleanName.includes(p._cleanTeam.toLowerCase())) return true;
+                let pNameClean = p._cleanName;
+                if (pNameClean.includes(cleanName) || cleanName.includes(pNameClean)) return true;
+                let cleanParts = cleanName.split(' ');
+                for (let part of cleanParts) {
+                    if (part.length >= 4 && pNameClean.includes(part)) return true;
+                }
+                return false;
+            });
         }
 
-        let exact = this.allPlayers.find(p => p._cleanName === cleanName);
+        // Exact match
+        let exact = this.allPlayers.find(p => p._cleanName === cleanName && (!nPos || p._cleanPos === nPos));
         if (exact) return exact;
 
-        let exactNoSpace = this.allPlayers.find(p => p._noSpaceName === noSpaceName);
+        let exactNoSpace = this.allPlayers.find(p => p._noSpaceName === noSpaceName && (!nPos || p._cleanPos === nPos));
         if (exactNoSpace) return exactNoSpace;
 
+        // Prevent initial collisions (e.g., DeAndre Hopkins WR matching Dustin Hopkins PK)
         let nameParts = cleanName.split(' ');
         if (nameParts.length >= 2) {
             let firstInitial = nameParts[0][0];
@@ -266,10 +284,9 @@ const State = {
 
             let sameTeamPosMatch = this.allPlayers.find(p => {
                 const sameTeam = (p._cleanTeam === nTeam) || !nTeam || !p.Team;
-                const samePos = (p._cleanPos === nPos) || !nPos || !p.Pos;
+                const samePos = (p._cleanPos === nPos) || (!nPos && !['PK', 'DST'].includes(p._cleanPos)); // 🛑 Never match offensive players to PK/DST!
                 if (!sameTeam || !samePos) return false;
 
-                // Require at least first initial + last name match to prevent name collisions
                 const sameInitialLastName = p._firstInitial === firstInitial && p._lastName === lastName;
                 const nameContains = p._cleanName.includes(cleanName) || cleanName.includes(p._cleanName);
                 return sameInitialLastName || nameContains;
