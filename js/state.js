@@ -1920,7 +1920,7 @@ const State = {
             // 4. Multi-Position Vacated Opportunity & Competition Engine (WR, TE, QB, RB)
             const teamKey = this.normalizeTeam(p.Team);
 
-            // --- WR & TE VACATED AIR YARDS & TARGET FUNNEL ENGINE ---
+            // --- ENHANCED WR & TE MULTI-CURRENCY VACATED OPPORTUNITY ENGINE ---
             if (['WR', 'TE'].includes(p.Pos)) {
                 const pastTeamReceivers = this.allPlayers.filter(x => 
                     ['WR', 'TE'].includes(x.Pos) && 
@@ -1938,8 +1938,9 @@ const State = {
                     let isDemoted = (dep.stats && dep.pastStats && dep.stats.targets < dep.pastStats.targets * 0.4);
                     
                     if (isDeparted || isDemoted) {
-                        vacatedTgts += (dep.pastStats?.targets || 0);
-                        vacatedAirYards += (dep.airYards || dep.pastStats?.airYards || (dep.pastStats?.targets || 0) * 10.5);
+                        let depTgts = dep.pastStats?.targets || 0;
+                        vacatedTgts += depTgts;
+                        vacatedAirYards += (dep.airYards || dep.pastStats?.airYards || depTgts * 10.5);
                         vacatedRzTgts += (dep.rzTgt || dep.pastStats?.rzTgt || 0);
                         departedRecNames.push(dep.Player);
                     }
@@ -1950,7 +1951,59 @@ const State = {
                 p._vacatedRzTgts = vacatedRzTgts;
                 p._departedReceiverNames = [...new Set(departedRecNames)];
 
-                // Receiver Room Concentration / Tree Type
+                // 1. Team Scheme Distribution Capacity Caps
+                const teamPosRate = teamDist ? (parseFloat(teamDist[`${p.Pos} %`]) || (p.Pos === 'WR' ? 58.0 : 18.0)) : (p.Pos === 'WR' ? 58.0 : 18.0);
+                const isHighVolumePosScheme = (p.Pos === 'TE' && teamPosRate >= 21.0) || (p.Pos === 'WR' && teamPosRate >= 60.0);
+
+                // 2. Alignment & Route Profile Classification
+                const pAdot = p.aDOT || (p.Pos === 'WR' ? 10.5 : 7.0);
+                const isVerticalWeapon = (p.Pos === 'WR' && pAdot >= 11.5) || (p.Pos === 'TE' && pAdot >= 9.0);
+                const isIntermediateMofWeapon = (p.Pos === 'TE' && pAdot >= 6.5 && pAdot < 9.0) || (p.Pos === 'WR' && pAdot >= 7.5 && pAdot < 11.5);
+                const isShortUnderneathOutlet = pAdot < 7.0;
+
+                // 3. Assign Role Types (Applies to all depth charts for accurate UI descriptions)
+                if (p.Pos === 'WR') {
+                    if (isVerticalWeapon) p._vacatedRoleType = 'Perimeter Alpha Air Yards';
+                    else if (isIntermediateMofWeapon) p._vacatedRoleType = 'Intermediate Chain-Mover';
+                    else p._vacatedRoleType = 'High-Volume Slot Outlet';
+                } else if (p.Pos === 'TE') {
+                    if (isVerticalWeapon) p._vacatedRoleType = 'Detached Hybrid Deep Seam';
+                    else if (isShortUnderneathOutlet && !p._isCardioKing) p._vacatedRoleType = 'Short-Yardage Safety Valve';
+                    else p._vacatedRoleType = 'Intermediate MOF & Red-Zone Funnel';
+                }
+
+                // 4. Nuanced Target vs. Air-Yard Mathematical Partitioning
+                if (p.depthChart <= 2 && vacatedTgts >= 45) {
+                    if (p.Pos === 'WR') {
+                        if (p._vacatedRoleType === 'Perimeter Alpha Air Yards' && vacatedAirYards >= 700) {
+                            p._inheritsAlphaAirShare = true;
+                            if (p.depthChart === 1 && p.wopr && p.wopr < 0.55) p.wopr += 0.08;
+                            adjMultiplier += p.depthChart === 1 ? 0.035 : 0.015;
+                        } else if (p._vacatedRoleType === 'Intermediate Chain-Mover') {
+                            p._inheritsIntermediateVolume = true;
+                            adjMultiplier += p.depthChart === 1 ? 0.025 : 0.010;
+                        } else {
+                            p._inheritsUnderneathShare = true;
+                            if (this.scoring.ppr >= 0.5) adjMultiplier += p.depthChart === 1 ? 0.020 : 0.010;
+                        }
+                    } else if (p.Pos === 'TE') {
+                        if (p._vacatedRoleType === 'Detached Hybrid Deep Seam' && vacatedAirYards >= 700 && isHighVolumePosScheme) {
+                            p._inheritsAlphaAirShare = true;
+                            if (p.depthChart === 1 && p.wopr) p.wopr += 0.06;
+                            adjMultiplier += p.depthChart === 1 ? 0.040 : 0.015;
+                        } else if (p._vacatedRoleType === 'Intermediate MOF & Red-Zone Funnel' && (vacatedRzTgts >= 8 || vacatedTgts >= 60)) {
+                            p._inheritsRzFunnel = true;
+                            p._inheritsIntermediateVolume = true;
+                            if (p.depthChart === 1 && p.xTD) p.xTD += Math.min(3.5, vacatedRzTgts * 0.25);
+                            adjMultiplier += p.depthChart === 1 ? 0.035 : 0.015;
+                        } else if (p._vacatedRoleType === 'Short-Yardage Safety Valve') {
+                            p._inheritsUnderneathShare = true;
+                            if (this.scoring.ppr >= 0.5) adjMultiplier += p.depthChart === 1 ? 0.015 : 0.005;
+                        }
+                    }
+                }
+
+                // 5. Passing Tree Concentration Hierarchy
                 const currentTeamReceivers = this.allPlayers.filter(x => 
                     this.normalizeTeam(x.Team) === teamKey && ['WR', 'TE'].includes(x.Pos)
                 ).sort((a, b) => (b.ProjPts || 0) - (a.ProjPts || 0));
@@ -1966,12 +2019,6 @@ const State = {
                 } else {
                     p._passingTreeType = 'Standard Target Hierarchy';
                     p._treeDescription = 'Balanced positional target distribution.';
-                }
-
-                // Inherited Alpha Volume Check
-                if (p.depthChart === 1 && vacatedAirYards >= 800) {
-                    p._inheritsAlphaAirShare = true;
-                    if (p.wopr && p.wopr < 0.55) p.wopr += 0.08; // Adjust WOPR upward to reflect inherited downfield route priority
                 }
             }
 
