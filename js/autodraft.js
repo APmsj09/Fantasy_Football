@@ -126,12 +126,14 @@ window.AutoDraft = {
 
                 p._cpuReachBonus = 0;
                 if (round >= 8 && round <= 14 && isStarterOpen) {
-                    // Match historical reach tendencies for K and DST using their actual Avg Round
-                    if (p.Pos === 'PK' && profile.reachesForKicker && round >= Math.floor(profile.pkAvgRound) - 1) {
-                        p._cpuReachBonus = 45;
+                    // Scales reach panic: Reaches harder if the position is drying up, or if they are past their historical average round
+                    if (p.Pos === 'PK' && profile.reachesForKicker) {
+                        let pkRoundDiff = round - (Math.floor(profile.pkAvgRound) - 1);
+                        if (pkRoundDiff >= 0) p._cpuReachBonus = 25.0 + (pkRoundDiff * 12.0); // Continually increases each round
                     }
-                    if (p.Pos === 'DST' && profile.reachesForDST && round >= Math.floor(profile.dstAvgRound) - 1) {
-                        p._cpuReachBonus = 45;
+                    if (p.Pos === 'DST' && profile.reachesForDST) {
+                        let dstRoundDiff = round - (Math.floor(profile.dstAvgRound) - 1);
+                        if (dstRoundDiff >= 0) p._cpuReachBonus = 25.0 + (dstRoundDiff * 12.0);
                     }
                 }
 
@@ -264,8 +266,8 @@ window.AutoDraft = {
                 }
             }
 
-            // Give a raw VBD boost to Fan Targets so the CPU actually drafts players from their favorite team
-            let fanBonus = isFanTarget ? 10.0 : 0;
+            // Fan bonus scales with the raw baseline of the player (so they don't overdraft a horrible depth player just because of team bias)
+            let fanBonus = isFanTarget ? Math.max(5.0, (p.AdvVBD || p.VBD) * 0.15) : 0;
 
             return {
                 player: p,
