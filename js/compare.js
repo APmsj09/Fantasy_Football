@@ -416,13 +416,28 @@ window.Compare = {
         // Wide Receiver / Tight End Air Share, Vacated Targets & Tree Dynamics
         // -------------------------------------------------------------
         if (['WR', 'TE'].includes(topPick.Pos) && ['WR', 'TE'].includes(alt.Pos)) {
-            // Vacated Air Yards & Target Consolidation
-            if (alt._inheritsAlphaAirShare && !topPick._inheritsAlphaAirShare) {
+            // Multi-Currency Vacated Volume & Role Inheritance
+            const formatVacatedNote = (player, depList) => {
+                if (player._vacatedRoleType === 'Intermediate MOF & Red-Zone Funnel' || (player.Pos === 'TE' && player._inheritsRzFunnel)) {
+                    return `inheriting high-leverage <strong>Middle-of-the-Field targets and +${player._vacatedRzTgts || 0} Red-Zone looks</strong>${depList}, expanding his weekly touchdown equity`;
+                } else if (player._vacatedRoleType === 'Detached Hybrid Deep Seam') {
+                    return `inheriting <strong>+${player._vacatedAirYards} deep seam air yards</strong> in a hybrid detached receiver role${depList}`;
+                } else if (player._vacatedRoleType === 'High-Volume Slot Outlet') {
+                    return `inheriting <strong>+${player._vacatedTgts} underneath targets</strong>${depList} with heavy PPR chain-moving volume`;
+                } else {
+                    return `inheriting <strong>+${player._vacatedAirYards} deep air yards</strong> and <strong>+${player._vacatedTgts} vacated targets</strong>${depList}, securing an alpha downfield role`;
+                }
+            };
+
+            let altHasVacated = alt._inheritsAlphaAirShare || alt._inheritsRzFunnel || alt._inheritsIntermediateVolume;
+            let topHasVacated = topPick._inheritsAlphaAirShare || topPick._inheritsRzFunnel || topPick._inheritsIntermediateVolume;
+
+            if (altHasVacated && !topHasVacated) {
                 let depList = alt._departedReceiverNames?.length > 0 ? ` (${alt._departedReceiverNames.join(', ')})` : '';
-                prosForAlt.push(`<strong>Vacated Deep Air Yards:</strong> Enters 2026 inheriting <strong>+${alt._vacatedAirYards} deep air yards</strong> and <strong>+${alt._vacatedTgts} vacated targets</strong>${depList}, accelerating his breakout ceiling.`);
-            } else if (topPick._inheritsAlphaAirShare && !alt._inheritsAlphaAirShare) {
+                prosForAlt.push(`<strong>Vacated Opportunity Surge:</strong> Enters 2026 ${formatVacatedNote(alt, depList)}.`);
+            } else if (topHasVacated && !altHasVacated) {
                 let depList = topPick._departedReceiverNames?.length > 0 ? ` (${topPick._departedReceiverNames.join(', ')})` : '';
-                consForAlt.push(`<strong>Air Share Consolidation:</strong> ${topPick.Player} inherits <strong>+${topPick._vacatedAirYards} vacated air yards</strong>${depList}, securing an alpha downfield role that ${alt.Player} lacks.`);
+                consForAlt.push(`<strong>Role Consolidation Advantage:</strong> ${topPick.Player} enters 2026 ${formatVacatedNote(topPick, depList)}, locking in a level of opportunity command that ${alt.Player} lacks.`);
             }
 
             // Passing Tree Concentration Clashes
