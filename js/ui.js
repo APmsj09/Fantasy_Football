@@ -1334,7 +1334,18 @@ const UI = {
                 }
             }
             if (p.boomBust && p.boomBust.games >= 4) {
-                let bustTolerance = p.Pos === 'WR' ? 28 : (p.Pos === 'QB' ? 18 : 22);
+                let bustTolerance = pos === 'WR' ? 28 : (pos === 'QB' ? 18 : 22);
+                
+                let pastTouches = (p.pastStats?.rushAtt || 0) + (p.pastStats?.rec || 0);
+                let pastTargets = p.pastStats?.targets || 0;
+                let pastPassAtt = p.pastStats?.passAtt || 0;
+                let hasSignificantPastVolume = (pos === 'RB' && pastTouches >= 100) || (['WR', 'TE'].includes(pos) && pastTargets >= 60) || (pos === 'QB' && pastPassAtt >= 200);
+
+                let isRoleExpansion = (p._isAscendingRole || p.isNewRole || (p._vacatedTgts >= 30) || (p._vacatedCarries >= 60) || p._inheritsGoalLineWork) && !hasSignificantPastVolume;
+                if (isRoleExpansion) {
+                    bustTolerance += 20; // Soften the UI penalty threshold for players taking on bigger roles
+                }
+
                 if (p.boomBust.bust > bustTolerance) {
                     let excessBust = p.boomBust.bust - bustTolerance;
                     cons.push(`<strong>🚨 High Bust Volatility:</strong> Busted in <strong>${p.boomBust.bust}%</strong> of games last season (exceeds ${p.Pos} baseline tolerance of ${bustTolerance}%).`);
@@ -1499,6 +1510,17 @@ const UI = {
             let sampleWeight = Math.min(1.0, bb.games / 12);
             let bustTolerance = pos === 'WR' ? 28 : (pos === 'QB' ? 18 : 22);
             let top12Baseline = pos === 'QB' ? 58 : (pos === 'TE' ? 42 : 48);
+
+            let pastTouches = (p.pastStats?.rushAtt || 0) + (p.pastStats?.rec || 0);
+            let pastTargets = p.pastStats?.targets || 0;
+            let pastPassAtt = p.pastStats?.passAtt || 0;
+            let hasSignificantPastVolume = (pos === 'RB' && pastTouches >= 100) || (['WR', 'TE'].includes(pos) && pastTargets >= 60) || (pos === 'QB' && pastPassAtt >= 200);
+
+            let isRoleExpansion = (p._isAscendingRole || p.isNewRole || (p._vacatedTgts >= 30) || (p._vacatedCarries >= 60) || p._inheritsGoalLineWork) && !hasSignificantPastVolume;
+            if (isRoleExpansion) {
+                bustTolerance += 20;
+                sampleWeight *= 0.5;
+            }
 
             // High bust rate widens the spread (lowers floor)
             if (bb.bust > bustTolerance) {
