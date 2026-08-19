@@ -538,7 +538,11 @@ window.Compare = {
                 consForAlt.push(`<strong>Positional Bellcow Scarcity:</strong> True three-down workhorse running backs commanding ${topPick.hvo} High-Value Opportunities are far more scarce than high-volume wide receivers.`);
             }
             if (topPick.isRBStarter && topPick.handcuffName) {
-                consForAlt.push(`<strong>Uncontested Backfield Role:</strong> ${topPick.Player} commands uncontested goal-line and rushing volume in ${topPick.Team}, giving him unmatched weekly touchdown equity.`);
+                if (topPick._backupThreatLevel === '1B Committee Threat' || topPick._backupThreatLevel === 'Passing Down Threat') {
+                    consForAlt.push(`<strong>Designated Starter:</strong> ${topPick.Player} holds the primary starting role over ${topPick.handcuffName}, securing the high-leverage early-down volume.`);
+                } else {
+                    consForAlt.push(`<strong>Uncontested Backfield Role:</strong> ${topPick.Player} commands uncontested goal-line and rushing volume in ${topPick.Team}, giving him unmatched weekly touchdown equity.`);
+                }
             }
         } else if (['WR', 'TE'].includes(topPick.Pos) && alt.Pos === 'RB') {
             // When Top Pick is WR and Alternative is RB
@@ -546,7 +550,11 @@ window.Compare = {
                 prosForAlt.push(`<strong>High-Value Touch Scarcity:</strong> Commands <strong>${alt.hvo} High-Value Opportunities</strong> (Targets + RZ carries) in an elite bellcow backfield role.`);
             }
             if (alt.isRBStarter && alt.handcuffName) {
-                prosForAlt.push(`<strong>Uncontested Goal-Line Lead:</strong> Monopolizes high-leverage rushing and goal-line work with designated handcuff protection.`);
+                if (alt._backupThreatLevel === '1B Committee Threat' || alt._backupThreatLevel === 'Passing Down Threat') {
+                    prosForAlt.push(`<strong>Designated Starter:</strong> Holds the primary starting role over ${alt.handcuffName}, securing the high-leverage early-down volume.`);
+                } else {
+                    prosForAlt.push(`<strong>Uncontested Goal-Line Lead:</strong> Monopolizes high-leverage rushing and goal-line work with designated handcuff protection.`);
+                }
             }
             if (topPick.targetShare && topPick.targetShare >= 24.0) {
                 consForAlt.push(`<strong>Alpha WR Opportunity Cost:</strong> Passing on ${topPick.Player} sacrifices an elite ${topPick.targetShare}% target share in a position where elite volume is foundational.`);
