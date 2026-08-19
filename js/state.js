@@ -971,7 +971,7 @@ const State = {
             pts24 += (row.rushTd || 0) * (this.scoring.rushTd || 6);
             pts24 += (row.recYds || 0) * (this.scoring.recYds || 0.1);
             let pastPpr = (this.scoring.ppr || 1) + (p.Pos === 'TE' ? (this.scoring.tePremium || 0) : 0);
-            pastPts += rec * pastPpr;
+            pts24 += (row.rec || 0) * pastPpr;
 
             pts24 += (row.recTd || 0) * (this.scoring.recTd || 6);
             pts24 += (row.fum || 0) * (this.scoring.fumLost || -2);
@@ -1632,7 +1632,7 @@ const State = {
                     pastPts += rushYds * (this.scoring.rushYds || 0.1);
                     pastPts += recYds * (this.scoring.recYds || 0.1);
                     let pprVal = (this.scoring.ppr || 1) + (p.Pos === 'TE' ? (this.scoring.tePremium || 0) : 0);
-                    pts24 += (row.rec || 0) * pprVal;
+                    pastPts += rec * pprVal;
                     pastPts += int * (this.scoring.int || -2);
                     pastPts += fum * (this.scoring.fumLost || -2);
                     pastPts += passTd * (this.scoring.passTd || 6);
