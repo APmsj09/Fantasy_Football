@@ -98,8 +98,9 @@ window.DraftRecap = {
                 }
 
                 let roundDrafted = Math.floor((pickNum - 1) / numTeams) + 1;
-                if (roundDrafted >= 8 && (p.upsideScore || 0) > maxStash) {
-                    maxStash = p.upsideScore;
+                let pUpside = p.upsideScore || 0;
+                if (roundDrafted >= 8 && pUpside > 10 && pUpside > maxStash && p._cleanName !== worstReach?._cleanName) {
+                    maxStash = pUpside;
                     topSleeper = p;
                 }
             });
@@ -342,6 +343,21 @@ window.DraftRecap = {
             let diffStr = diff > 0 ? `<span class="text-emerald-600 font-bold">+${diff.toFixed(0)} Value</span>` : `<span class="text-rose-600 font-bold">${diff.toFixed(0)} Reach</span>`;
             if (label === 'Top Stash / Sleeper') diffStr = `<span class="text-amber-600 font-bold">Upside: ${(p.upsideScore || 0).toFixed(0)}</span>`;
 
+            let statSummary = '';
+            if (p.stats) {
+                if (p.Pos === 'QB') {
+                    statSummary = `${p.stats.passYds || 0} Yds • ${p.stats.passTd || 0} TD`;
+                } else if (p.Pos === 'DST') {
+                    statSummary = `${p.stats.sack || 0} Sacks • ${(p.stats.defInt || 0) + (p.stats.defFum || 0)} TO`;
+                } else if (p.Pos === 'PK') {
+                    statSummary = `${p.stats.fgTotal || 0} FGM • ${p.stats.xp || 0} PAT`;
+                } else {
+                    let totalYds = (p.stats.rushYds || 0) + (p.stats.recYds || 0);
+                    let totalTD = (p.stats.rushTd || 0) + (p.stats.recTd || 0);
+                    statSummary = `${totalYds.toLocaleString()} Yds • ${totalTD} TD`;
+                }
+            }
+
             return `
             <div class="bg-white border border-gray-200 p-4 rounded-xl shadow-sm hover:shadow-md transition-all relative overflow-hidden cursor-pointer" onclick="UI.showPlayerCard('${p._cleanName}')">
                 <div class="absolute top-0 left-0 w-1.5 h-full ${colorCls}"></div>
@@ -350,7 +366,9 @@ window.DraftRecap = {
                     <span class="text-[10px] font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-200">${p.Pos} • ${p.Team}</span>
                 </div>
                 <h4 class="font-extrabold text-gray-900 leading-tight text-base">${p.Player}</h4>
-                <p class="text-[11px] text-gray-500 my-1">${p.stats ? (p.Pos === 'QB' ? `${p.stats.passYds} Yds • ${p.stats.passTd} TD` : `${p.stats.rushYds || p.stats.recYds || 0} Yds • ${(p.stats.rushTd || 0) + (p.stats.recTd || 0)} TD`) : ''}</p>
+                
+                <p class="text-[11px] text-gray-500 my-1">${statSummary}</p>
+                
                 <div class="flex justify-between text-[11px] bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-100 mt-2">
                     <span class="font-semibold text-gray-600">Pick: ${round}.${pick} (Ovr: #${pickNum})</span>
                     <span>${diffStr}</span>
