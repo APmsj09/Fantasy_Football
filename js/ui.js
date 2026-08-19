@@ -9,7 +9,7 @@ const UI = {
     },
 
     normalizeSearchText(value) {
-        return String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        return String(value || '').toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
     },
 
     sortDatabase(key) {
@@ -1997,9 +1997,8 @@ const UI = {
                 window.playerChartInst = null;
             }
 
-            if (!p.weeklyProjections || Object.keys(p.weeklyProjections).length === 0) {
-                ctx.innerHTML = '<div class="flex h-full items-center justify-center text-sm text-gray-500">No weekly projection data available.</div>';
-                return;
+            if (ctx.parentElement) {
+                ctx.parentElement.innerHTML = '<div class="flex h-full items-center justify-center text-sm text-gray-500">No weekly projection data available.</div>';
             }
 
             if (typeof window.Chart !== 'function') {
