@@ -963,19 +963,20 @@ const State = {
             p.stats2024 = row;
 
             // Calculate 2024 Fantasy PPG using custom scoring rules
+            let sc = (val, def) => typeof val === 'number' ? val : def;
             let pts24 = 0;
-            pts24 += (row.passYds || 0) * (this.scoring.passYds || 0.04);
-            pts24 += (row.passTd || 0) * (this.scoring.passTd || 6);
-            pts24 += (row.int || 0) * (this.scoring.int || -2);
-            pts24 += (row.rushYds || 0) * (this.scoring.rushYds || 0.1);
-            pts24 += (row.rushTd || 0) * (this.scoring.rushTd || 6);
-            pts24 += (row.recYds || 0) * (this.scoring.recYds || 0.1);
-            let pastPpr = (this.scoring.ppr || 1) + (p.Pos === 'TE' ? (this.scoring.tePremium || 0) : 0);
+            pts24 += (row.passYds || 0) * sc(this.scoring.passYds, 0.04);
+            pts24 += (row.passTd || 0) * sc(this.scoring.passTd, 6);
+            pts24 += (row.int || 0) * sc(this.scoring.int, -2);
+            pts24 += (row.rushYds || 0) * sc(this.scoring.rushYds, 0.1);
+            pts24 += (row.rushTd || 0) * sc(this.scoring.rushTd, 6);
+            pts24 += (row.recYds || 0) * sc(this.scoring.recYds, 0.1);
+            let pastPpr = sc(this.scoring.ppr, 1) + (p.Pos === 'TE' ? sc(this.scoring.tePremium, 0) : 0);
             pts24 += (row.rec || 0) * pastPpr;
 
-            pts24 += (row.recTd || 0) * (this.scoring.recTd || 6);
-            pts24 += (row.fum || 0) * (this.scoring.fumLost || -2);
-
+            pts24 += (row.recTd || 0) * sc(this.scoring.recTd, 6);
+            pts24 += (row.fum || 0) * sc(this.scoring.fumLost, -2);
+            
             p.stats2024.totalPts = pts24;
             p.stats2024.ppg = (row.gp > 0) ? (pts24 / row.gp) : 0;
         });
@@ -1367,14 +1368,6 @@ const State = {
                 }
 
                 if (advPlayer['INT']) p.pastStats.int = advPlayer['INT'];
-                if (totalTd !== undefined) {
-                    p.pastStats.totalTd = totalTd;
-                } else if (passTd !== undefined || rushTd !== undefined || recTd !== undefined) {
-                    const fallbackTotal = [passTd, rushTd, recTd]
-                        .filter(val => val !== undefined && val !== null && val !== '')
-                        .reduce((sum, val) => sum + Number(val), 0);
-                    p.pastStats.totalTd = fallbackTotal;
-                }
                 if (passTd !== undefined) p.pastStats.passTd = passTd;
                 if (rushTd !== undefined) p.pastStats.rushTd = rushTd;
                 if (recTd !== undefined) p.pastStats.recTd = recTd;
@@ -1519,13 +1512,13 @@ const State = {
                 p.ProjPts = bracketFGPts + ((s.xp || 0) * this.scoring.xp);
             }
             else if (p.Pos === 'DST') {
-                let turnoverPts = ((s.defInt || 0) + (s.defFum || 0)) * (this.scoring.turnover || 2);
-                let sackPts = (s.sack || 0) * (this.scoring.sack || 1);
-                let tdPts = (s.defTd || 0) * (this.scoring.defTd || 6);
-                let safetyPts = (s.safety || 0) * (this.scoring.safety || 2);
+                let sc = (val, def) => typeof val === 'number' ? val : def;
+                let turnoverPts = ((s.defInt || 0) + (s.defFum || 0)) * sc(this.scoring.turnover, 2);
+                let sackPts = (s.sack || 0) * sc(this.scoring.sack, 1);
+                let tdPts = (s.defTd || 0) * sc(this.scoring.defTd, 6);
+                let safetyPts = (s.safety || 0) * sc(this.scoring.safety, 2);
                 
-                // Only count defensive 2-point returns if the setting is toggled on
-                let convRetPts = this.scoring.use2pt ? ((s.def2ptRet || 0) * (this.scoring.def2ptRet || 2)) : 0;
+                let convRetPts = this.scoring.use2pt ? ((s.def2ptRet || 0) * sc(this.scoring.def2ptRet, 2)) : 0;
 
                 let papg = s.papg || 18.0;
                 let weeklyPaPts = 0;
@@ -1542,31 +1535,33 @@ const State = {
                 p.havocPerGame = ((s.sack || 0) + (s.defInt || 0) + (s.defFum || 0) + (s.tfl || 0)) / gp;
             }
             else {
-                let pprVal = (this.scoring.ppr !== undefined && !isNaN(this.scoring.ppr)) ? this.scoring.ppr : 1;
+                let sc = (val, def) => typeof val === 'number' ? val : def;
+                let pprVal = sc(this.scoring.ppr, 1);
+                let tePrem = sc(this.scoring.tePremium, 0);
+
                 let recPoints = (s.rec || 0) * pprVal;
-                if (p.Pos === 'TE' && (this.scoring.tePremium || 0) > 0) {
-                    recPoints += (s.rec || 0) * this.scoring.tePremium;
+                if (p.Pos === 'TE' && tePrem > 0) {
+                    recPoints += (s.rec || 0) * tePrem;
                 }
 
-                // 2-point conversions
-                let pass2ptPts = this.scoring.use2pt ? ((s.pass2pt || 0) * (this.scoring.pass2pt || 2)) : 0;
-                let rush2ptPts = this.scoring.use2pt ? ((s.rush2pt || 0) * (this.scoring.rush2pt || 2)) : 0;
-                let rec2ptPts = this.scoring.use2pt ? ((s.rec2pt || 0) * (this.scoring.rec2pt || 2)) : 0;
+                let pass2ptPts = this.scoring.use2pt ? ((s.pass2pt || 0) * sc(this.scoring.pass2pt, 2)) : 0;
+                let rush2ptPts = this.scoring.use2pt ? ((s.rush2pt || 0) * sc(this.scoring.rush2pt, 2)) : 0;
+                let rec2ptPts = this.scoring.use2pt ? ((s.rec2pt || 0) * sc(this.scoring.rec2pt, 2)) : 0;
 
                 let basePts =
-                    ((s.passYds || 0) * (this.scoring.passYds || 0.04)) +
-                    ((s.passTd || 0) * (this.scoring.passTd || 6)) +
-                    ((s.int || 0) * (this.scoring.int || -2)) +
+                    ((s.passYds || 0) * sc(this.scoring.passYds, 0.04)) +
+                    ((s.passTd || 0) * sc(this.scoring.passTd, 6)) +
+                    ((s.int || 0) * sc(this.scoring.int, -2)) +
                     pass2ptPts +
-                    ((s.rushYds || 0) * (this.scoring.rushYds || 0.1)) +
-                    ((s.rushTd || 0) * (this.scoring.rushTd || 6)) +
+                    ((s.rushYds || 0) * sc(this.scoring.rushYds, 0.1)) +
+                    ((s.rushTd || 0) * sc(this.scoring.rushTd, 6)) +
                     rush2ptPts +
-                    ((s.recYds || 0) * (this.scoring.recYds || 0.1)) +
-                    ((s.recTd || 0) * (this.scoring.recTd || 6)) +
+                    ((s.recYds || 0) * sc(this.scoring.recYds, 0.1)) +
+                    ((s.recTd || 0) * sc(this.scoring.recTd, 6)) +
                     rec2ptPts +
                     recPoints +
-                    ((s.fum || 0) * (this.scoring.fumLost || -2));
-
+                    ((s.fum || 0) * sc(this.scoring.fumLost, -2));
+                
                 let passYpg = (s.passYds || 0) / gp;
                 let rushYpg = (s.rushYds || 0) / gp;
                 let recYpg = (s.recYds || 0) / gp;
@@ -1601,6 +1596,7 @@ const State = {
                 let ps = p.pastStats;
                 let pastPts = 0;
 
+                let sc = (val, def) => typeof val === 'number' ? val : def;
                 if (p.Pos === 'DST') {
                     let sack = ps.sack || 0;
                     let defInt = ps.defInt || 0;
@@ -1609,14 +1605,14 @@ const State = {
                     let spcTd = ps.spcTd || 0;
                     let safety = ps.safety || 0;
 
-                    pastPts += sack * (this.scoring.sack || 1);
-                    pastPts += (defInt + defFum) * (this.scoring.turnover || 2);
-                    pastPts += (defTd + spcTd) * (this.scoring.defTd || 6);
-                    pastPts += safety * (this.scoring.safety || 2);
+                    pastPts += sack * sc(this.scoring.sack, 1);
+                    pastPts += (defInt + defFum) * sc(this.scoring.turnover, 2);
+                    pastPts += (defTd + spcTd) * sc(this.scoring.defTd, 6);
+                    pastPts += safety * sc(this.scoring.safety, 2);
 
                     pastPts += (ps.gp || 17) * 4;
                 } else if (p.Pos === 'PK') {
-                    // PK past points fallback if added
+                    // PK past points calculation if available
                 } else {
                     let passYds = ps.passYds || 0;
                     let rushYds = ps.rushYds || 0;
@@ -1628,16 +1624,16 @@ const State = {
                     let rushTd = ps.rushTd || 0;
                     let recTd = ps.recTd || 0;
 
-                    pastPts += passYds * (this.scoring.passYds || 0.04);
-                    pastPts += rushYds * (this.scoring.rushYds || 0.1);
-                    pastPts += recYds * (this.scoring.recYds || 0.1);
-                    let pprVal = (this.scoring.ppr || 1) + (p.Pos === 'TE' ? (this.scoring.tePremium || 0) : 0);
-                    pastPts += rec * pprVal;
-                    pastPts += int * (this.scoring.int || -2);
-                    pastPts += fum * (this.scoring.fumLost || -2);
-                    pastPts += passTd * (this.scoring.passTd || 6);
-                    pastPts += rushTd * (this.scoring.rushTd || 6);
-                    pastPts += recTd * (this.scoring.recTd || 6);
+                    pastPts += passYds * sc(this.scoring.passYds, 0.04);
+                    pastPts += rushYds * sc(this.scoring.rushYds, 0.1);
+                    pastPts += recYds * sc(this.scoring.recYds, 0.1);
+                    let pprValPast = sc(this.scoring.ppr, 1) + (p.Pos === 'TE' ? sc(this.scoring.tePremium, 0) : 0);
+                    pastPts += rec * pprValPast;
+                    pastPts += int * sc(this.scoring.int, -2);
+                    pastPts += fum * sc(this.scoring.fumLost, -2);
+                    pastPts += passTd * sc(this.scoring.passTd, 6);
+                    pastPts += rushTd * sc(this.scoring.rushTd, 6);
+                    pastPts += recTd * sc(this.scoring.recTd, 6);
                 }
 
                 p.pastPts = isNaN(pastPts) ? 0 : pastPts;
@@ -1776,10 +1772,12 @@ const State = {
         const positions = ['QB', 'RB', 'WR', 'TE', 'PK', 'DST'];
 
         positions.forEach(pos => {
-            let maxPos = this.settings.roster[pos]?.max || 1;
+            let maxPos = this.settings.roster[pos]?.max !== undefined ? this.settings.roster[pos].max : 1;
             let starters = numTeams * maxPos;
 
-            if (pos === 'QB') {
+            if (maxPos === 0) {
+                starters = 0;
+            } else if (pos === 'QB') {
                 const isSuperflex = (this.settings.roster.Superflex?.max || 0) > 0;
                 if (isSuperflex) {
                     starters = Math.floor(numTeams * 1.8);
@@ -1843,6 +1841,14 @@ const State = {
                 rawVBD = (rawVBD * 0.10) - 20.0;
             }
             p.VBD = rawVBD;
+
+            // RESET WOPR TO RAW BEFORE APPLYING SCHEME BONUSES
+            if (['WR', 'TE'].includes(p.Pos)) {
+                const teamAirYards = 3500;
+                const tgtShare = Number(p.targetShare) || 0;
+                const airYardsShare = p.airYards ? ((Number(p.airYards) / teamAirYards) * 100) : tgtShare;
+                p.wopr = (1.5 * (tgtShare / 100)) + (0.7 * (airYardsShare / 100));
+            }
 
             // INITIALIZE ALL MULTIPLIERS EARLY TO PREVENT REFERENCE ERRORS
             let adjMultiplier = 1.0;
@@ -2558,18 +2564,11 @@ const State = {
                 }
 
                 // --- WOPR (Weighted Opportunity Rating) ENGINE ---
-                if (['WR', 'TE'].includes(p.Pos)) {
-                    const teamAirYards = 3500;
-                    const tgtShare = Number(p.targetShare) || 0;
-                    const airYardsShare = p.airYards ? ((Number(p.airYards) / teamAirYards) * 100) : tgtShare;
-
-                    p.wopr = (1.5 * (tgtShare / 100)) + (0.7 * (airYardsShare / 100));
-
+                if (['WR', 'TE'].includes(p.Pos) && p.wopr) {
                     if (p.wopr >= 0.65) adjMultiplier += 0.05;
                     else if (p.wopr >= 0.55) adjMultiplier += 0.025;
                     else if (p.wopr <= 0.32 && (p.ProjPts || 0) > 110) adjMultiplier -= 0.04;
                 }
-
                 // Fraud Penalty - High projected points but low target share means highly TD dependent
                 if (['WR', 'TE'].includes(p.Pos) && p.ProjPts > 120) {
                     if (p.targetShare < 12.0) adjMultiplier -= 0.06;
@@ -3071,9 +3070,9 @@ const State = {
                 if (!ceilingTags.includes("Scheme Upgrade Catalyst")) ceilingTags.push("Scheme Upgrade Catalyst");
             }
 
-            p._ceilingTags = [...new Set(ceilingTags)]; // Remove duplicates
+            p._ceilingTags = [...new Set(ceilingTags)];
 
-            let baseVbd = p.AdvVBD || p.VBD;
+            let baseVbd = p.VBD;
             if (baseVbd > 0) {
                 p.upsideScore = baseVbd * upsideMultiplier;
             } else {
