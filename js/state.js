@@ -3155,6 +3155,18 @@ const State = {
                 let boomBaseline = p.Pos === 'TE' ? 12 : (p.Pos === 'QB' ? 22 : 16);
                 let bustTolerance = p.Pos === 'WR' ? 28 : (p.Pos === 'QB' ? 18 : 22);
 
+                // 🌟 NEW: Bust Exception for Role Expansion (Only if they didn't have significant volume)
+                let pastTouches = (p.pastStats?.rushAtt || 0) + (p.pastStats?.rec || 0);
+                let pastTargets = p.pastStats?.targets || 0;
+                let pastPassAtt = p.pastStats?.passAtt || 0;
+                let hasSignificantPastVolume = (p.Pos === 'RB' && pastTouches >= 100) || (['WR', 'TE'].includes(p.Pos) && pastTargets >= 60) || (p.Pos === 'QB' && pastPassAtt >= 200);
+
+                let isRoleExpansion = (p._isAscendingRole || p.isNewRole || (p._vacatedTgts >= 30) || (p._vacatedCarries >= 60) || p._inheritsGoalLineWork) && !hasSignificantPastVolume;
+                if (isRoleExpansion) {
+                    bustTolerance += 20; // Raise the tolerance significantly
+                    sampleWeight *= 0.5; // Halve the penalty impact (old sample belongs to a smaller role)
+                }
+
                 // 1. Continuous Consistency Floor Bonus
                 if (bb.top12 > top12Baseline) {
                     adjMultiplier += ((bb.top12 - top12Baseline) * 0.0012) * sampleWeight;
