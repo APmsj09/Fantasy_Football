@@ -970,7 +970,9 @@ const State = {
             pts24 += (row.rushYds || 0) * (this.scoring.rushYds || 0.1);
             pts24 += (row.rushTd || 0) * (this.scoring.rushTd || 6);
             pts24 += (row.recYds || 0) * (this.scoring.recYds || 0.1);
-            pts24 += (row.rec || 0) * (this.scoring.ppr || 1);
+            let pastPpr = (this.scoring.ppr || 1) + (p.Pos === 'TE' ? (this.scoring.tePremium || 0) : 0);
+            pastPts += rec * pastPpr;
+
             pts24 += (row.recTd || 0) * (this.scoring.recTd || 6);
             pts24 += (row.fum || 0) * (this.scoring.fumLost || -2);
 
@@ -1350,11 +1352,19 @@ const State = {
                 if (['WR', 'TE'].includes(p.Pos) && advPlayer['YDS']) p.pastStats.recYds = advPlayer['YDS'];
 
                 // TDs & INTs
-                const statsSource = p.stats || {};
-                const passTd = advPlayer['PASS TD'] ?? advPlayer['Pass TD'] ?? statsSource.passTd;
-                const rushTd = advPlayer['RUSH TD'] ?? advPlayer['Rush TD'] ?? statsSource.rushTd;
-                const recTd = advPlayer['REC TD'] ?? advPlayer['Rec TD'] ?? statsSource.recTd;
+                const passTd = advPlayer['PASS TD'] ?? advPlayer['Pass TD'];
+                const rushTd = advPlayer['RUSH TD'] ?? advPlayer['Rush TD'];
+                const recTd = advPlayer['REC TD'] ?? advPlayer['Rec TD'];
                 const totalTd = advPlayer['TD'] ?? advPlayer['TDs'] ?? advPlayer['Total TD'];
+
+                if (totalTd !== undefined) {
+                    p.pastStats.totalTd = totalTd;
+                } else if (passTd !== undefined || rushTd !== undefined || recTd !== undefined) {
+                    const fallbackTotal = [passTd, rushTd, recTd]
+                        .filter(val => val !== undefined && val !== null && val !== '')
+                        .reduce((sum, val) => sum + Number(val), 0);
+                    p.pastStats.totalTd = fallbackTotal;
+                }
 
                 if (advPlayer['INT']) p.pastStats.int = advPlayer['INT'];
                 if (totalTd !== undefined) {
@@ -1495,13 +1505,18 @@ const State = {
                 let b40 = this.scoring.useDecimalKicking ? this.scoring.fg40_49 : this.scoring.std_fg40_49;
                 let b50 = this.scoring.useDecimalKicking ? this.scoring.fg50_plus : this.scoring.std_fg50_plus;
 
-                p.ProjPts = 
+                let bracketFGPts = 
                     ((s.fgm_0_19 || 0) * b0) +
                     ((s.fgm_20_29 || 0) * b0) +
                     ((s.fgm_30_39 || 0) * b30) +
                     ((s.fgm_40_49 || 0) * b40) +
-                    ((s.fgm_50p || 0) * b50) +
-                    ((s.xp || 0) * this.scoring.xp);
+                    ((s.fgm_50p || 0) * b50);
+
+                if (bracketFGPts === 0 && (s.fgTotal || 0) > 0) {
+                    bracketFGPts = s.fgTotal * 3.5; // Baseline league-average FG value
+                }
+
+                p.ProjPts = bracketFGPts + ((s.xp || 0) * this.scoring.xp);
             }
             else if (p.Pos === 'DST') {
                 let turnoverPts = ((s.defInt || 0) + (s.defFum || 0)) * (this.scoring.turnover || 2);
@@ -1616,7 +1631,8 @@ const State = {
                     pastPts += passYds * (this.scoring.passYds || 0.04);
                     pastPts += rushYds * (this.scoring.rushYds || 0.1);
                     pastPts += recYds * (this.scoring.recYds || 0.1);
-                    pastPts += rec * (this.scoring.ppr || 1);
+                    let pprVal = (this.scoring.ppr || 1) + (p.Pos === 'TE' ? (this.scoring.tePremium || 0) : 0);
+                    pts24 += (row.rec || 0) * pprVal;
                     pastPts += int * (this.scoring.int || -2);
                     pastPts += fum * (this.scoring.fumLost || -2);
                     pastPts += passTd * (this.scoring.passTd || 6);
