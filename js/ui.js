@@ -945,7 +945,11 @@ const UI = {
             }
 
             if (p.isRBStarter && p.handcuffName) {
-                pros.push(`<strong>Clear Backfield Lead:</strong> Uncontested RB1 status with a designated handcuff (${p.handcuffName}).`);
+                if (p._backupThreatLevel === '1B Committee Threat' || p._backupThreatLevel === 'Passing Down Threat') {
+                    pros.push(`<strong>Primary Early-Down Back:</strong> Holds the designated starting role ahead of ${p.handcuffName}.`);
+                } else {
+                    pros.push(`<strong>Clear Backfield Lead:</strong> Uncontested RB1 status with a designated handcuff (${p.handcuffName}).`);
+                }
             }
 
             // Depth Chart Pros
