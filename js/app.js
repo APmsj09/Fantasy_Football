@@ -253,9 +253,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 ...['QB', 'RB', 'WR', 'TE'].map(pos => fetchTSV(`${HIST_DATA_DIR}/${pos}_Stats_${HIST_SEASON}.tsv`, State.parseHistoricalStatsData.bind(State), State.merge2024StatsData.bind(State)))
             ]);
 
-            State.finalizeDepthCharts();
-
             State.calculateProjections();
+            State.finalizeDepthCharts();
             State.applyDynamicDSTSOS();
             State.calculateVBD();
 
