@@ -2705,21 +2705,28 @@ const UI = {
                 let w1Rating = typeof p.sosWeeks?.W1 === 'number' ? p.sosWeeks.W1 : (p.avgStars || 3.0);
 
                 if (isLateStreamingRound) {
-                    // 🎯 LATE-ROUND STREAMING ENGINE: Prioritize Week 1 Matchup Rating
-                    let w1Shift = (w1Rating - 3.0) * 6.0;
+                    // 🎯 LATE-ROUND STREAMING ENGINE: Prioritize Actual Week 1 Points over blind ratings
+                    let w1Proj = p.weeklyProjections?.W1 || (p.ProjPts / 17) || 0;
+        
+                    // Translate the Week 1 points into a VBD-equivalent boost
+                    // This ensures a bad defense with a 5-star matchup doesn't overtake a great defense
+                    let w1Shift = (w1Proj * 3.5); 
                     score += w1Shift;
 
-                    if (w1Rating >= 2.8) {
-                        p._sleeperBadge = `🎯 Top Week 1 Streamer (⭐${w1Rating.toFixed(1)} Wk 1 Matchup)`;
+                    // Only give the streamer badge if they ACTUALLY project well for Week 1
+                    if (w1Rating >= 3.5 && w1Proj >= 6.5) {
+                        p._sleeperBadge = `🎯 Top Week 1 Streamer (⭐${w1Rating.toFixed(1)} Matchup)`;
                     }
                 } else if (p.playoffSOS) {
                     // Early/Mid-round elite units value playoff schedule
                     score += (p.playoffSOS - 3.0) * 2.5;
                 }
             } else if (p.playoffSOS) {
-                // Skill positions always value playoff weeks 15-17
+                // 🏆 Skill positions always value playoff weeks 15-17
                 let playoffShift = (p.playoffSOS - 3.0) * 3.0; 
                 score += playoffShift;
+    
+                // Assign playoff badge if they don't already have a higher-priority archetype badge
                 if (!p._sleeperBadge && p.playoffSOS >= 4.0 && currentRound >= 8) {
                     p._sleeperBadge = `🏆 Soft Playoff Schedule (⭐${p.playoffSOS.toFixed(1)})`;
                 }
