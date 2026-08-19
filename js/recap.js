@@ -84,14 +84,16 @@ window.DraftRecap = {
             team.roster.forEach(p => {
                 let pickNum = p.draftPickNum || 1;
                 if (p.adp) {
-                    let diff = p.adp - pickNum;
+                    // Positive value means the player fell past ADP (Steal)
+                    // Negative value means drafted ahead of ADP (Reach)
+                    let diff = pickNum - p.adp; 
                     totalAdpDelta += diff;
 
                     if (diff > maxSteal && pickNum <= numTeams * 12) {
                         maxSteal = diff;
                         bestValue = p;
                     }
-                    if (diff < worstReachDiff && pickNum <= numTeams * 10) { // ✅ FIXED Check
+                    if (diff < worstReachDiff && pickNum <= numTeams * 10) {
                         worstReachDiff = diff;
                         worstReach = p;
                     }
