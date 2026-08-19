@@ -375,7 +375,11 @@ window.Compare = {
                 }
             }
             // Suppress Backup Bust Rate Penalty if Player is Ascending to a Starting Role
-            if (alt.boomBust && topPick.boomBust && !alt._isAscendingRole) {
+            let altPastTouches = (alt.pastStats?.rushAtt || 0) + (alt.pastStats?.rec || 0);
+            let altHasSignificantPastVolume = alt.Pos === 'RB' && altPastTouches >= 100;
+            let altIsExpansionRB = (alt._isAscendingRole || alt.isNewRole || (alt._vacatedCarries >= 60) || alt._inheritsGoalLineWork) && !altHasSignificantPastVolume;
+            
+            if (alt.boomBust && topPick.boomBust && !altIsExpansionRB) {
                 if (alt.boomBust.bust > topPick.boomBust.bust + 8) {
                     consForAlt.push(`<strong>Volatile Bust Risk:</strong> Busted in <strong>${alt.boomBust.bust}%</strong> of games last year compared to ${topPick.Player}'s clean <strong>${topPick.boomBust.bust}%</strong> bust rate.`);
                 }
@@ -621,9 +625,20 @@ window.Compare = {
         // 6. BOOM/BUST CONSISTENCY & CEILING CHECK
         // -------------------------------------------------------------
         if (alt.boomBust && topPick.boomBust) {
-            if (alt.boomBust.bust + 8 < topPick.boomBust.bust) {
+            const checkExpansion = (p) => {
+                let pastTouches = (p.pastStats?.rushAtt || 0) + (p.pastStats?.rec || 0);
+                let pastTargets = p.pastStats?.targets || 0;
+                let pastPassAtt = p.pastStats?.passAtt || 0;
+                let hasSignificantVolume = (p.Pos === 'RB' && pastTouches >= 100) || (['WR', 'TE'].includes(p.Pos) && pastTargets >= 60) || (p.Pos === 'QB' && pastPassAtt >= 200);
+                return (p._isAscendingRole || p.isNewRole || (p._vacatedTgts >= 30) || (p._vacatedCarries >= 60) || p._inheritsGoalLineWork) && !hasSignificantVolume;
+            };
+
+            let altIsExpansion = checkExpansion(alt);
+            let topIsExpansion = checkExpansion(topPick);
+
+            if (alt.boomBust.bust + 8 < topPick.boomBust.bust && !topIsExpansion) {
                 prosForAlt.push(`<strong>Dramatically Safer Floor:</strong> Busted in only <strong>${alt.boomBust.bust}%</strong> of 2025 games vs. ${topPick.Player}'s <strong>${topPick.boomBust.bust}%</strong> bust rate.`);
-            } else if (topPick.boomBust.bust + 8 < alt.boomBust.bust) {
+            } else if (topPick.boomBust.bust + 8 < alt.boomBust.bust && !altIsExpansion) {
                 consForAlt.push(`<strong>Volatile Bust Risk:</strong> Busted in <strong>${alt.boomBust.bust}%</strong> of games last year compared to ${topPick.Player}'s clean <strong>${topPick.boomBust.bust}%</strong> bust rate.`);
             }
 
