@@ -163,7 +163,7 @@ const UI = {
 
             htmlStr += `
                 <tr class="hover:bg-slate-50 transition-colors cursor-pointer" onclick="UI.showWeeklyModal('${p._cleanName}')">
-                    <td class="px-6 py-3 text-sm font-medium text-gray-900">${p.Player}${olTag}</td>
+                    <td class="px-6 py-3 text-sm font-medium text-gray-900">${p.Player}${olTag}${injBadge}</td>
                     <td class="px-6 py-3 text-sm text-gray-500">${p.Pos}</td>
                     <td class="px-6 py-3 text-sm text-gray-500">${p.Team}</td>
                     <td class="px-6 py-3 text-sm font-bold text-indigo-600">${p.ProjPts.toFixed(1)}</td>
@@ -1997,15 +1997,13 @@ const UI = {
                 window.playerChartInst = null;
             }
 
-            if (ctx.parentElement) {
-                ctx.parentElement.innerHTML = '<div class="flex h-full items-center justify-center text-sm text-gray-500">No weekly projection data available.</div>';
-            }
-
-            if (typeof window.Chart !== 'function') {
-                ctx.innerHTML = '<div class="flex h-full items-center justify-center text-sm text-gray-500">Chart unavailable in this environment.</div>';
+            if (typeof window.Chart !== 'function' || !p.weeklyProjections || Object.keys(p.weeklyProjections).length === 0) {
+                if (ctx.parentElement) {
+                    ctx.parentElement.innerHTML = '<div class="flex h-full items-center justify-center text-sm text-gray-500">No weekly projection data available.</div>';
+                }
                 return;
             }
-
+            
             let labels = [], data = [], colors = [];
             for (let w = 1; w <= 18; w++) {
                 labels.push(`Wk ${w}`);
@@ -2204,7 +2202,8 @@ const UI = {
             }
 
             let isOffense = !['DST', 'PK'].includes(p.Pos);
-            let ageStr = p.age ? `<span class="text-[9px] font-semibold text-slate-400 ml-1">Age ${p.age}</span>` : '';
+            let playerAge = UI.getPlayerAge(p);
+            let ageStr = playerAge ? `<span class="text-[9px] font-semibold text-slate-400 ml-1">Age ${playerAge}</span>` : '';
             let olBadge = (isOffense && p.olTier) ? `<span class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-100 text-slate-600">OL ${p.olTier}</span>` : '';
             let sosBadge = p.avgStars ? `<span class="ml-1 inline-flex items-center text-[10px] font-bold text-amber-500">⭐ ${p.avgStars.toFixed(1)}</span>` : '';
 
@@ -2448,7 +2447,7 @@ const UI = {
             if (['RB', 'WR'].includes(pos) && userTeam.counts['FlexRBWR'] < (State.settings.roster.FlexRBWR?.max || 0)) return true;
             if (['RB', 'WR', 'TE'].includes(pos) && userTeam.counts['Flex'] < (State.settings.roster.Flex?.max || 0)) return true;
             if (['QB', 'RB', 'WR', 'TE'].includes(pos) && userTeam.counts['Superflex'] < (State.settings.roster.Superflex?.max || 0)) return true;
-            if (userTeam.counts['Bench'] < State.settings.roster.Bench.max) return true;
+            if (userTeam.counts['Bench'] < (State.settings.roster.Bench?.max || 6)) return true;
             return false;
         });
 
