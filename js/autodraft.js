@@ -237,9 +237,10 @@ window.AutoDraft = {
                 }
             }
 
+            let safeDivisor = Math.max(0.05, multiplier);
             let baseValue = rawVbd >= 0 
                 ? (rawVbd * multiplier) 
-                : (multiplier >= 1 ? rawVbd / multiplier : rawVbd * (1 / multiplier));
+                : (multiplier >= 1 ? rawVbd / multiplier : rawVbd * (1 / safeDivisor));
 
             let adpPenalty = 0;
             let adpBonus = 0;
