@@ -84,7 +84,7 @@ const State = {
 
     normalizePos(pos) {
         if (!pos) return '';
-        let p = pos.toUpperCase().trim();
+        let p = pos.toUpperCase().trim().replace(/[0-9]/g, '');
         if (p === 'K') return 'PK';
         if (p === 'DEF' || p === 'D/ST') return 'DST';
         if (p === 'HB' || p === 'FB') return 'RB';
@@ -574,19 +574,36 @@ const State = {
     parseADPData(text) {
         const rows = text.split(/\r?\n/).filter(row => row.trim() !== '');
         if (rows.length < 2) return [];
-        const headers = rows[0].split('\t').map(h => h.trim());
+        const headers = rows[0].split('\t').map(h => h.trim().toUpperCase());
         const parsed = [];
 
         for (let i = 1; i < rows.length; i++) {
             const vals = rows[i].split('\t').map(v => v.trim());
-            if (vals.length < 4) continue;
+            if (vals.length < 2) continue;
 
-            const name = vals[headers.indexOf('Name')] || vals[headers.indexOf('Player')];
-            const team = this.normalizeTeam(vals[headers.indexOf('Team')]);
-            const posKey = headers.indexOf('POS.RK') >= 0 ? 'POS.RK' : (headers.indexOf('POS') >= 0 ? 'POS' : null);
-            const pos = this.normalizePos(posKey ? vals[headers.indexOf(posKey)] : '');
-            const adpIndex = headers.indexOf('REAL-TIME');
-            const adpValue = parseFloat(adpIndex >= 0 ? vals[adpIndex] : (headers.indexOf('ADP') >= 0 ? vals[headers.indexOf('ADP')] : (headers.indexOf('Pick Num') >= 0 ? vals[headers.indexOf('Pick Num')] : '')));
+            let nameIdx = headers.indexOf('NAME');
+            if (nameIdx === -1) nameIdx = headers.indexOf('PLAYER');
+            const name = nameIdx >= 0 ? vals[nameIdx] : '';
+
+            let teamIdx = headers.indexOf('TEAM');
+            const team = teamIdx >= 0 ? this.normalizeTeam(vals[teamIdx]) : '';
+
+            let posKey = null;
+            if (headers.indexOf('POS') >= 0) posKey = 'POS';
+            else if (headers.indexOf('POSITION') >= 0) posKey = 'POSITION';
+            else if (headers.indexOf('POS.RK') >= 0) posKey = 'POS.RK';
+            
+            let rawPos = posKey ? vals[headers.indexOf(posKey)] : '';
+            const pos = this.normalizePos(rawPos.replace(/[0-9]/g, ''));
+            
+            let adpIndex = headers.indexOf('REAL-TIME');
+            if (adpIndex === -1) adpIndex = headers.indexOf('REAL-TIME ADP');
+            if (adpIndex === -1) adpIndex = headers.indexOf('ADP');
+            if (adpIndex === -1) adpIndex = headers.indexOf('PICK NUM');
+            if (adpIndex === -1) adpIndex = headers.indexOf('OVR');
+            if (adpIndex === -1) adpIndex = headers.indexOf('OVERALL');
+            
+            const adpValue = parseFloat(adpIndex >= 0 ? vals[adpIndex] : '');
 
             if (!name) continue;
             parsed.push({ name, team, pos, adp: isNaN(adpValue) ? null : adpValue });
