@@ -672,10 +672,11 @@ const State = {
                     const depthA = (a.depthChart !== undefined && a.depthChart !== null) ? a.depthChart : 99;
                     const depthB = (b.depthChart !== undefined && b.depthChart !== null) ? b.depthChart : 99;
 
-                    // 1. Group by raw extracted depth (e.g., all 1s before 2s)
                     if (depthA !== depthB) return depthA - depthB;
+                    
+                    if (a.isRBStarter && !b.isRBStarter) return -1;
+                    if (b.isRBStarter && !a.isRBStarter) return 1;
 
-                    // 2. Tiebreaker: Projected Points (Higher projected points wins the higher rank in the hierarchy)
                     return (b.ProjPts || 0) - (a.ProjPts || 0);
                 });
 
@@ -1989,7 +1990,7 @@ const State = {
                 p._departedBackfieldNames = [...new Set(departedNames)];
 
                 // 2. Evaluate the Incoming Backup Threat (Separating Starters vs. Backups)
-            if (p.depthChart > 1 || p.isRBHandcuff) {
+            if ((p.depthChart > 1 || p.isRBHandcuff) && !p.isRBStarter) {
                 // If player is a backup, describe their role behind the starter
                 p._backupThreatLevel = 'Rotational / Backup Role';
                 p._backupThreatNote = p.starterName 
