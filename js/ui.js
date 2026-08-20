@@ -947,8 +947,10 @@ const UI = {
             if (p.isRBStarter && p.handcuffName) {
                 if (p._backupThreatLevel === '1B Committee Threat' || p._backupThreatLevel === 'Passing Down Threat') {
                     pros.push(`<strong>Primary Early-Down Back:</strong> Holds the designated starting role ahead of ${p.handcuffName}.`);
+                } else if (p._backupThreatLevel === 'Goal-Line Vulture Threat') {
+                    pros.push(`<strong>Lead Early-Down & Pass Back:</strong> Commands the primary early-down and receiving workload with ${p.handcuffName} designated as the short-yardage spell.`);
                 } else {
-                    pros.push(`<strong>Clear Backfield Lead:</strong> Uncontested RB1 status with a designated handcuff (${p.handcuffName}).`);
+                    pros.push(`<strong>Clear Backfield Lead:</strong> Uncontested RB1 status with designated handcuff protection (${p.handcuffName}).`);
                 }
             }
 
@@ -1542,12 +1544,14 @@ const UI = {
         let baselinePpg = Number(ppg) || 0;
         let floorPpg = (baselinePpg * Math.max(0.40, 1 - varianceSpread)).toFixed(1);
 
-        // Ceiling PPG scales dynamically off varianceSpread and the continuous upsideScore
+        // Ceiling PPG scales dynamically with a realistic 95th-percentile cap (~30-34 PPG max for historic seasons)
         let maxMultiplier = 1 + varianceSpread;
         if (p.upsideScore > 0 && p.AdvVBD > 0) {
             let ratio = p.upsideScore / p.AdvVBD;
             if (Number.isFinite(ratio) && ratio > 1.0) {
-                maxMultiplier = Math.max(maxMultiplier, ratio);
+                // Dampen the ratio so historic superstars don't exceed realistic historical ceilings (max +38% ceiling)
+                let dampenedRatio = 1 + ((ratio - 1) * 0.45);
+                maxMultiplier = Math.min(1.38, Math.max(maxMultiplier, dampenedRatio));
             }
         }
 
