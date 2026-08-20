@@ -184,8 +184,10 @@ window.Compare = {
 
         // 11. Rushing QB Floor / Escapability
         if (p.Pos === 'QB') {
-            if (p.stats && p.stats.rushAtt >= 50) {
-                highlights.push(`<li><strong class="text-amber-400">🏃 Konami Code Rushing Floor:</strong> Projected for <strong class="text-amber-300">${p.stats.rushYds} rush yards</strong>, creating an elite baseline that pocket passers cannot match.</li>`);
+            if (p.stats && (p.stats.rushYds >= 500 || p.stats.rushAtt >= 90)) {
+                highlights.push(`<li><strong class="text-amber-400">🏃 Elite Rushing Floor:</strong> Projected for <strong class="text-amber-300">${p.stats.rushYds} rush yards</strong>, creating an elite baseline that pocket passers cannot match.</li>`);
+            } else if (p.stats && p.stats.rushYds >= 275) {
+                highlights.push(`<li><strong class="text-amber-400">🏃 Mobility & Scrambling Floor:</strong> Projected for <strong class="text-amber-300">${p.stats.rushYds} rush yards</strong>, giving him a dependable rushing baseline.</li>`);
             }
             if (p.p2s && p.p2s <= 14.0) {
                 highlights.push(`<li><strong class="text-emerald-400">🛡️ Elite Pocket Escapability:</strong> Low ${p.p2s.toFixed(1)}% Pressure-to-Sack rate proves he avoids drive-killing negative plays under pressure.</li>`);
@@ -292,10 +294,11 @@ window.Compare = {
         const topGp = topPick.pastStats?.gp ?? 17;
         const altGp = alt.pastStats?.gp ?? 17;
 
-        if (topGp >= 14 && altGp <= 7 && alt.pastPpg >= 14.0) {
+        if (topGp >= 14 && altGp <= 7 && alt.pastPpg >= 14.0 && (alt.pastPpg > (topPick.pastPpg || 0) + 1.0)) {
             let densityNote = alt._isSmallSampleAlpha ? "with undeniable alpha per-game usage density" : "though heavily skewed by limited sample variance";
-            prosForAlt.push(`<strong>Explosive Per-Game Ceiling:</strong> Produced at an elite rate (${alt.pastPpg.toFixed(1)} PPG in ${altGp} games) ${densityNote}.`);
+            prosForAlt.push(`<strong>Explosive Per-Game Ceiling:</strong> Outpaced ${topPick.Player} on a per-game basis (${alt.pastPpg.toFixed(1)} vs ${topPick.pastPpg.toFixed(1)} PPG) ${densityNote}.`);
             consForAlt.push(`<strong>Proven Full-Season Reliability:</strong> ${topPick.Player} sustained high-end production over a full ${topGp}-game slate, carrying far less regression risk.`);
+        }
         } else if (altGp >= 14 && topGp <= 7 && topPick.pastPpg >= 14.0) {
             prosForAlt.push(`<strong>Full-Season Track Record:</strong> Bankable ${altGp}-game durability and volume baseline vs. ${topPick.Player}'s ${topGp}-game sample.`);
             consForAlt.push(`<strong>Per-Game Dominance:</strong> ${topPick.Player} flashed league-winning per-game dominance (${topPick.pastPpg.toFixed(1)} PPG) when active.`);
