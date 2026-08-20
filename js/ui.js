@@ -2464,6 +2464,14 @@ const UI = {
         let highBustStarters = userRoster.filter(p => (p.draftPickNum || 99) <= 72 && p.boomBust && p.boomBust.bust >= 35).length;
         let isGlassCannon = highBustStarters >= 3;
 
+        // Calculate total portfolio risk (average bust rate of core starters)
+        let totalBustRisk = 0;
+        let coreStarters = userRoster.filter(p => (p.draftPickNum || 99) <= 72);
+        coreStarters.forEach(p => {
+            totalBustRisk += (p.boomBust && p.boomBust.bust) ? p.boomBust.bust : 20.0;
+        });
+        let avgRosterBustRate = coreStarters.length > 0 ? (totalBustRisk / coreStarters.length) : 20.0;
+
         let strategyBanner = "";
         if (currentRound <= 9) {
             let fragilityTag = isGlassCannon 
@@ -2541,6 +2549,23 @@ const UI = {
         // ===========================================================
         viablePlayers.forEach(p => {
             let score = p.AdvVBD || p.VBD;
+
+            // Portfolio Risk Balancing: Shift values based on current roster construction
+            if (coreStarters.length >= 2) {
+                let pBust = p.boomBust?.bust || 20.0;
+                let pBoom = p.boomBust?.boom || 10.0;
+                
+                // Roster is highly volatile; penalize adding more risk
+                if (avgRosterBustRate > 28.0 && pBust > 30.0) {
+                    score *= 0.85; 
+                    p._rosterContextBadge = "⚠️ High Roster Volatility (Needs Floor)";
+                }
+                // Roster is extremely safe; boost high-ceiling flyers
+                else if (avgRosterBustRate < 16.0 && pBoom > 15.0) {
+                    score *= 1.10; 
+                    p._rosterContextBadge = "💥 Safe Roster (Needs Upside)";
+                }
+            }
 
             // 1. Lineup Need & Starter Openings (Calibrated: Panic only ramps after Round 4)
             let posRoster = State.settings.roster[p.Pos];
@@ -2751,9 +2776,9 @@ const UI = {
                 p._survivalProb = survivalProb;
                 let reachDistance = p.adp - currentOverallPick;
 
-                // Dynamic Elastic Allowance: R2 = 11 picks, R6 = 17-21 picks, R10 = 23-27 picks
+                // Dynamic Elasticity Curve: Allows more reach flexibility in later rounds
                 let turnGap = nextActiveWindowPick - currentOverallPick;
-                let allowedReach = 8 + (currentRound * 1.5) + (turnGap >= 18 ? 4 : 0);
+                let allowedReach = Math.round(4.0 + (Math.pow(currentRound, 1.4) * 0.8)) + (turnGap >= 18 ? 4 : 0);
 
                 if (score > 0) {
                     // 1. URGENCY BONUS: Only allowed if in real danger AND within the allowed reach window
@@ -2762,9 +2787,11 @@ const UI = {
                         score += urgencyBonus;
                     } 
                     // 2. REACH PENALTY: Applied if the pick exceeds the round's natural elasticity
-                    else if (reachDistance > allowedReach || (survivalProb > 0.65 && reachDistance >= 12)) {
+                    else if (reachDistance > allowedReach || (survivalProb > 0.65 && reachDistance >= allowedReach)) {
                         let excessReach = Math.max(0, reachDistance - allowedReach);
-                        let reachPenalty = excessReach * 1.1; // Linear scaling past the allowed boundary
+                        // Penalty softens in later rounds where ADP is highly inaccurate
+                        let penaltyWeight = Math.max(0.15, 1.1 - (currentRound * 0.05));
+                        let reachPenalty = excessReach * penaltyWeight;
 
                         // ⚡ The Sleeper Exemption: High-upside stashes soften the reach penalty
                         if (stashBonus > 0 && currentRound >= 7) {
