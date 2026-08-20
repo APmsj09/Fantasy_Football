@@ -3171,11 +3171,11 @@ const State = {
                     p._isFlyer = true;
 
                     // G. Categorize Proportional Scouting Badges
-                    if (calculatedContingentScore >= 38.0) {
+                    if (p.contingentDraftEquity >= 38.0) {
                         p._contingentTier = '👑 Diamond Contingent League-Winner';
                         p._contingentNote = `Elite underlying talent (${yacVal.toFixed(1)} YAC, ${tgtShareVal.toFixed(1)}% Tgt Share) in a high-volume offensive ecosystem.`;
                         ceilingTags.push("Diamond Contingent League-Winner");
-                    } else if (calculatedContingentScore >= 26.0) {
+                    } else if (p.contingentDraftEquity >= 26.0) {
                         p._contingentTier = '💎 High-Ceiling Contingent Stash';
                         p._contingentNote = `High-efficiency backup with strong pass-catching and tackle-breaking elusiveness.`;
                         ceilingTags.push("High-Ceiling Contingent Stash");
