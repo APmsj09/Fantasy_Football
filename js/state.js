@@ -2788,7 +2788,7 @@ const State = {
                 const isPowerFrame = (p.weight && p.weight >= 214) || (p.bmi && p.bmi >= 30.5);
                 const isLowPassing = tgtShare < 8.5 && projTgts <= 32;
 
-                // 1. Uncontested 3-Down Bellcow Alpha (CMC, Saquon, Breece, Bijan)
+                // 1. Uncontested 3-Down Bellcow Alpha
                 if ((snap >= 68 || (p.depthChart === 1 && projCarries >= 220)) && hvo >= 65 && (tgtShare >= 9.5 || projTgts >= 45)) {
                     p._rbArchetype = 'Bellcow Alpha';
                     adjMultiplier += 0.065;
@@ -2796,7 +2796,7 @@ const State = {
                     upsideMultiplier += 0.20;
                     ceilingTags.push("Three-Down Bellcow Monopoly");
                 }
-                // 2. High-Leverage Space Back / Elite Satellite Weapon (Gibbs, Achane, Kamara)
+                // 2. High-Leverage Space Back / Satellite Specialist
                 else if ((tgtShare >= 12.5 || (projCarries < 150 && projTgts >= 45)) && hvo >= 40) {
                     p._rbArchetype = 'High-Leverage Space Back';
                     p._isSatelliteBack = true;
@@ -2804,35 +2804,24 @@ const State = {
                     upsideMultiplier += 0.18;
                     ceilingTags.push("High-Leverage PPR Space Creator");
                 }
-                // --- TIER A: DESIGNED 1B CO-STARTER (Standalone Weekly Flex/RB2) ---
-                // (Snap Share >= 42%, 10+ Proj Touches/G, ProjPts >= 140)
+                // 3. Designed 1B Co-Starter (Guaranteed Standalone Flex)
                 else if (p.depthChart === 2 && snap >= 42 && projCarries >= 135 && projPts >= 140) {
                     p._rbArchetype = '1B Co-Starter';
                     p._isStandaloneCoLead = true;
-                    adjMultiplier += 0.040; // Direct boost to baseline starting VBD
+                    adjMultiplier += 0.040;
                     upsideMultiplier += 0.15;
                     ceilingTags.push("Designed 1B Timeshare / Standalone Flex");
                 }
-
-                // --- TIER B: HANDCUFF+ (High-End Stash with Touch Floor) ---
-                // (Snap Share 30-41%, 6-9 Touches/G, ProjPts 95-139, designated backup)
+                // 4. Handcuff+ (Touch Floor + Contingent Ceiling)
                 else if (p.depthChart === 2 && snap >= 28 && projPts >= 95) {
                     p._rbArchetype = 'Handcuff+ Stash';
                     p._isHandcuffPlus = true;
                     p._isFlyer = true;
-                    adjMultiplier += 0.015;  // Slight floor cushion
-                    upsideMultiplier += 0.30; // Heavy contingent upside boost
+                    adjMultiplier += 0.015;
+                    upsideMultiplier += 0.30;
                     ceilingTags.push("Elite Handcuff+ (Floor Cushion + RB1 Ceiling)");
                 }
-
-                // --- TIER C: PURE CONTINGENT LOTTERY TICKET (0 Standalone Value) ---
-                else if (p.isRBHandcuff || p.depthChart === 2) {
-                    p._rbArchetype = 'Contingent Lottery Ticket';
-                    p._isFlyer = true;
-                    upsideMultiplier += 0.25;
-                    ceilingTags.push("Pure Contingent Lottery Stash");
-                }
-                // 4. Explosive Chunk Slasher (Jaylen Warren, Keaton Mitchell, Chase Brown)
+                // 5. Explosive Chunk Slasher (Tackle-Breaker)
                 else if ((yac >= 3.3 || err >= 5.0) && projCarries >= 100 && hvo >= 30) {
                     p._rbArchetype = 'Explosive Chunk Slasher';
                     p._isChunkSlasher = true;
@@ -2840,7 +2829,7 @@ const State = {
                     upsideMultiplier += 0.20;
                     ceilingTags.push("Explosive Big-Play Efficiency (High YAC)");
                 }
-                // 5. 1A Early-Down Power Hammer (Henry, Montgomery, Pacheco)
+                // 6. 1A Early-Down Power Hammer (Goal-Line Focus)
                 else if (isLowPassing && (rzCarries >= 18 || (p.stats?.rushTd || 0) >= 7) && isPowerFrame) {
                     p._rbArchetype = '1A Early-Down Hammer';
                     p._isGoalLineHammer = true;
@@ -2849,38 +2838,38 @@ const State = {
                     let offenseQuality = matchupThreat ? (6.0 - matchupThreat.dstMatchupStars) : 3.0;
 
                     if (offenseQuality >= 4.0) {
-                        adjMultiplier += 0.035; // High-scoring offense prints inside-the-5 TDs
+                        adjMultiplier += 0.035;
                         if (p.xTD) p.xTD += 1.2;
                     } else if (offenseQuality <= 2.2) {
-                        adjMultiplier -= 0.055; // Zero-yard TD trap in anemic offense
+                        adjMultiplier -= 0.055;
                         if (p.xTD) p.xTD = Math.max(1.5, p.xTD - 2.0);
                         p._isZeroYardTDTrap = true;
                     }
                 }
-                // 6. Ambiguous Backfield Rookie Ascender (Day 1/2 Draft Pick with vacated opportunity)
+                // 7. Ambiguous Backfield Rookie Ascender (Midseason Takeover)
                 else if (pAge <= 23 && (p.depthChart === 2 || p.depthChart === 3) && (p._vacatedCarries >= 50 || p.isNewRole)) {
                     p._rbArchetype = 'Rookie Backfield Ascender';
                     p._isAscendingRole = true;
                     p._isFlyer = true;
                     adjMultiplier += 0.020;
-                    upsideMultiplier += 0.30; // High probability of overtaking incumbent by midseason
+                    upsideMultiplier += 0.30;
                     ceilingTags.push("Rookie Midseason Takeover Trajectory");
                 }
-                // 7. Short-Yardage Goal-Line Vulture (Touchdown Syphon)
+                // 8. Goal-Line Vulture (Short-Yardage Syphon)
                 else if (snap < 40 && (rzCarries >= 16 || (p.stats?.rushTd || 0) >= 5) && isPowerFrame && !p.isRBStarter) {
                     p._rbArchetype = 'Goal-Line Vulture';
                     p._isRedZoneVulture = true;
-                    adjMultiplier -= 0.030; // Severe floor risk outside of scoring
+                    adjMultiplier -= 0.030;
                     upsideMultiplier += 0.10;
                 }
-                // 8. Pure Contingent Lottery Ticket (Pure Backup with 0 standalone value)
+                // 9. Pure Contingent Lottery Ticket (Zero Standalone Value)
                 else if (p.isRBHandcuff || p.depthChart === 2) {
                     p._rbArchetype = 'Contingent Lottery Ticket';
                     p._isFlyer = true;
                     upsideMultiplier += 0.25;
-                    ceilingTags.push("High-Ceiling Contingent Stash");
+                    ceilingTags.push("Pure Contingent Lottery Stash");
                 }
-                // 9. Empty-Touch Committee Trap (Low efficiency / crowded backfield)
+                // 10. Empty-Touch Committee Trap
                 else if (snap < 50 && yac < 2.5 && hvo < 28 && !p.isRBStarter) {
                     p._rbArchetype = 'Empty-Touch Committee Trap';
                     adjMultiplier -= 0.050;
