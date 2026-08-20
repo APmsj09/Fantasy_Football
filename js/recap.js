@@ -134,7 +134,7 @@ window.DraftRecap = {
                 }
 
                 if (roundDrafted >= 8 && !isKickerOrDST && p._cleanName !== worstReach?._cleanName) {
-                    let contingentVal = p.contingentUpsideScore || 0;
+                    let contingentVal = p.contingentDraftEquity || 0;
                     let ceilingDelta = p.upsideScore ? (p.upsideScore - (p.AdvVBD || p.VBD || 0)) : 0;
                     let flyerBonus = (p._isFlyer || p._isAscendingRole || p.isRBHandcuff || p._isHandcuffPlus || p._contingentTier) ? 15 : 0;
 
