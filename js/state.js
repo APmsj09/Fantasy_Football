@@ -2545,13 +2545,13 @@ const State = {
             // 5. Multi-Tiered Sample Confidence & Volume Density Engine
             let pastGp = p.pastStats?.gp ?? p.boomBust?.games ?? 17;
             let sampleConfidence = 1.0;
-            let isMicroSample = pastGp <= 4;
-            let isPartialSample = pastGp > 4 && pastGp <= 8;
-
             if (pastGp <= 4) sampleConfidence = 0.45;       // Micro-Sample (1-4 GP)
             else if (pastGp <= 8) sampleConfidence = 0.68;  // Partial-Sample (5-8 GP)
             else if (pastGp <= 13) sampleConfidence = 0.88; // Solid-Sample (9-13 GP)
             else sampleConfidence = 1.00;                   // Full-Season (14+ GP)
+
+            let isMicroSample = pastGp <= 4;
+            let isPartialSample = pastGp > 4 && pastGp <= 8;
 
             // ===========================================================
             // MULTI-YEAR TRENDING & 65/35 BLENDED STATS ENGINE (2024 + 2025)
@@ -2563,45 +2563,31 @@ const State = {
                 let w25 = 0.65;
                 let w24 = 0.35;
 
-                // Bayesian Injury Adjustment: If 2025 was an injury fluke, don't ignore 2024 workhorse capacity
                 if (s25.gp <= 6 && s24.gp >= 14) {
                     w25 = 0.40;
                     w24 = 0.60;
                     p._isInjuryBounceback = true;
                 }
 
-                p.blendedPpg = (p.pastPpg * w25) + (s24.ppg * w24);
+                p.blendedPpg = ((p.pastPpg || 0) * w25) + ((s24.ppg || 0) * w24);
 
-                // Multi-Year Alpha Validation
                 let share25 = p.targetShare || s25.targetShare || 0;
                 let share24 = s24.targetShare || 0;
                 if (share25 >= 24.0 && share24 >= 24.0) {
                     p._isProvenMultiYearAlpha = true;
-                    adjMultiplier += 0.035; // Locked-in elite talent floor
+                    adjMultiplier += 0.035; 
                 }
 
-                // 3-Year Career Arc Vector (2024 -> 2025 -> 2026)
                 let projPpg = (p.ProjPts || 0) / Math.max(1, p.stats?.gp || 17);
-                if (s24.ppg > 0 && p.pastPpg > s24.ppg * 1.12 && projPpg > p.pastPpg * 1.05) {
+                if (s24.ppg > 0 && (p.pastPpg || 0) > s24.ppg * 1.12 && projPpg > (p.pastPpg || 0) * 1.05) {
                     p._isAscendingCareerArc = true;
                     upsideMultiplier += 0.12;
                     ceilingTags.push("3-Year Ascending Arc");
-                } else if (p.pastPpg < s24.ppg * 0.85 && projPpg < p.pastPpg && (p.age || 25) >= 28) {
+                } else if ((p.pastPpg || 0) < s24.ppg * 0.85 && projPpg < (p.pastPpg || 0) && (p.age || 25) >= 28) {
                     p._isDecliningCareerArc = true;
                     adjMultiplier -= 0.035;
                 }
             }
-
-            // 5. Multi-Tiered Sample Confidence & Volume Density Engine
-            let pastGp = p.pastStats?.gp ?? p.boomBust?.games ?? 17;
-            let sampleConfidence = 1.0;
-            if (pastGp <= 4) sampleConfidence = 0.45;       // Micro-Sample (1-4 GP)
-            else if (pastGp <= 8) sampleConfidence = 0.68;  // Partial-Sample (5-8 GP)
-            else if (pastGp <= 13) sampleConfidence = 0.88; // Solid-Sample (9-13 GP)
-            else sampleConfidence = 1.00;                   // Full-Season (14+ GP)
-
-            let isMicroSample = pastGp <= 4;
-            let isPartialSample = pastGp > 4 && pastGp <= 8;
 
             // 2nd-Level: Volume Density Check
             let tgtsPerGame = (p.pastStats?.targets || 0) / Math.max(1, pastGp);
@@ -2632,11 +2618,8 @@ const State = {
                 if (p.targetShare != null) {
                     let zScore = (p.targetShare - meanTgt) / stdTgt;
                     if (zScore > 0) {
-                        // Adds +0.025 per Standard Deviation above positional mean. Capped at +0.08.
                         adjMultiplier += Math.min(0.08, zScore * 0.025 * sampleConfidence);
                     }
-                    
-                    // Fraud Penalty: High projected points but low target share means highly TD dependent
                     if (p.ProjPts > (p.Pos === 'WR' ? 120 : 95) && zScore < -0.6) {
                         adjMultiplier -= 0.04; 
                     }
@@ -2649,13 +2632,11 @@ const State = {
                     }
                 }
 
-                // Adjusted for TE nuance (8.5 aDOT for TE is equivalent to 12.0 for WR)
                 let isEliteAdot = (p.Pos === 'WR' && p.aDOT >= 12.0) || (p.Pos === 'TE' && p.aDOT >= 8.5);
                 if (p.targetShare >= (p.Pos === 'WR' ? 22.0 : 16.0) && isEliteAdot) {
                     adjMultiplier += (0.03 * sampleConfidence);
                 }
                 
-                // RZ Target Density Bonus
                 if (p.rzTgt && p.pastStats && p.pastStats.targets) {
                     let rzDensity = p.rzTgt / Math.max(1, p.pastStats.targets);
                     if (rzDensity >= 0.20 && p.rzTgt >= (p.Pos === 'WR' ? 12 : 8)) {
@@ -2665,7 +2646,7 @@ const State = {
             }
 
             if (p.Pos === 'RB') {
-                // ⚡ Z-Score Scaling: Rewards RBs dynamically based on standard deviations above league-average
+                // ⚡ Z-Score Scaling: Rewards RBs dynamically based on standard deviations
                 if (p.brokenTackles != null) {
                     let zScore = (p.brokenTackles - rBtMean) / rBtStd;
                     if (zScore > 0) {
@@ -2679,7 +2660,6 @@ const State = {
                     }
                 }
 
-                // 2nd/3rd-Level: YAC vs. O-Line Blocking Context Check
                 if (p.pastStats && p.pastStats.rushAtt >= 60) {
                     let ypc = (p.pastStats.rushYds || 0) / p.pastStats.rushAtt;
                     let yac = p.yacAtt || 0;
@@ -2693,12 +2673,11 @@ const State = {
                 }
             }
 
-            // 2nd/3rd-Level: Expected Touchdowns (xTD) Regression Engine
+            // Expected Touchdowns (xTD) Regression Engine
             if (p.pastStats && p.pastStats.gp >= 4 && p.xTD !== undefined && p.pastStats.totalTd !== undefined) {
                 let tdDiff = p.pastStats.totalTd - p.xTD;
                 let isExplosivePlaymaker = (p.pastStats.bigPlays >= 8) || (p.err && p.err >= 3.5);
                 
-                // Do not penalize explosive playmakers who score from outside the red zone, or players with expanding roles
                 if (tdDiff >= 4.5 && !p._isSmallSampleAlpha && !isExplosivePlaymaker && !p._isAscendingRole) {
                     adjMultiplier -= 0.05;
                     p._isFlukeTDScorer = true;
