@@ -815,11 +815,6 @@ const UI = {
                 pros.push(`<strong>High-Value Opportunities:</strong> Secures highly profitable touches with <strong>${hvoPerGame.toFixed(1)} combined targets & RZ carries per game</strong>.`);
             }
 
-            // ADD THIS NEW SATELLITE BACK CHECK HERE:
-            if (p._isSatelliteBack && State.scoring.ppr >= 0.5) {
-                pros.push(`<strong>PPR Cheat Code:</strong> Commands elite passing game usage for a running back, ensuring a rock-solid floor in PPR formats despite a lack of carries.`);
-            }
-
             // Committee RB Strengths
             if (pos === 'RB' && p.snapShare && p.snapShare >= 40 && p.snapShare <= 65) {
                 if (p._isHandcuffPlus) {
