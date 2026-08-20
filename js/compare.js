@@ -4,7 +4,7 @@ window.Compare = {
         const tiers = State.getPositionalTiers(player.Pos);
         const availableInSameTier = State.availablePlayers.filter(p => p.Pos === player.Pos && (p.staticTier || 1) === tierNum);
 
-        const tierNames = {
+        const tierNames = {a
             1: `Tier 1 (Elite ${player.Pos})`,
             2: `Tier 2 (High-End ${player.Pos} Starter)`,
             3: `Tier 3 (Solid ${player.Pos} Starter)`,
@@ -160,37 +160,55 @@ window.Compare = {
             highlights.push(`<li><strong class="text-emerald-400">📈 Positive Touchdown Regression:</strong> Scored ${p.pastStats.totalTd} TDs last year, but his underlying red-zone usage warranted <strong class="text-emerald-300">${p.xTD.toFixed(1)} Expected TDs (xTD)</strong>. Math projects ~+${Math.round(diff)} more scores with neutral variance.</li>`);
         }
 
-        // 9. Split Backfield Dominance & High-Value Opportunities (HVO)
+        // 9. Comprehensive Running Back Archetype Highlights
         if (p.Pos === 'RB') {
-            if (p.isRBStarter && p.handcuffName) {
-                highlights.push(`<li><strong class="text-indigo-400">🛡️ Clear Backfield Alpha:</strong> Holds uncontested lead-back status with designated handcuff protection (${p.handcuffName}).</li>`);
-            }
-            if (p.hvo && p.hvo >= 60) {
-                highlights.push(`<li><strong class="text-purple-400">💎 High-Value Opportunity (HVO) Dominance:</strong> Handled <strong class="text-purple-300">${p.hvo} high-leverage touches</strong> (Targets + RZ carries), immunizing his floor even in split-carry games.</li>`);
-            } else if (p._isSatelliteBack && State.scoring.ppr >= 0.5) {
-                highlights.push(`<li><strong class="text-blue-400">🎯 High-Leverage PPR Specialist:</strong> Commands high-value targets out of the backfield, capitalizing directly on this league's PPR scoring rules.</li>`);
-            }
-        }
-
-        // 10. Wide Receiver / Tight End Alpha Profiles (WOPR / TPS)
-        if (['WR', 'TE'].includes(p.Pos)) {
-            if (p.wopr && p.wopr >= 0.60) {
-                highlights.push(`<li><strong class="text-blue-400">👑 Elite Alpha WOPR (${p.wopr.toFixed(2)}):</strong> Commands premier market share across both targets and deep air yards.</li>`);
-            }
-            if (p.tps && p.tps >= 0.22) {
-                highlights.push(`<li><strong class="text-purple-400">⚡ Hyper-Efficient Target Earner:</strong> Demands passes on <strong class="text-purple-300">${(p.tps * 100).toFixed(1)}% of routes run</strong> (Targets Per Snap).</li>`);
+            if (p._rbArchetype === 'Bellcow Alpha') {
+                highlights.push(`<li><strong class="text-emerald-400">👑 Three-Down Bellcow Alpha:</strong> Uncontested lead back commanding <strong class="text-emerald-300">${p.hvo || 65}+ High-Value Touches</strong> and complete three-down snap monopoly.</li>`);
+            } else if (p._rbArchetype === 'High-Leverage Space Back') {
+                highlights.push(`<li><strong class="text-blue-400">🎯 High-Leverage Space Creator:</strong> Script-proof receiver out of the backfield (${p.targetShare || 13}% target share), providing an elite PPR floor.</li>`);
+            } else if (p._rbArchetype === 'Premium 1B Co-Starter') {
+                highlights.push(`<li><strong class="text-purple-400">⚔️ Standalone 1B + Lotto Ticket:</strong> Provides immediate weekly Flex utility (${p.ProjPts.toFixed(1)} proj pts) while holding instant RB1 upside if the starter goes down.</li>`);
+            } else if (p._rbArchetype === 'Explosive Chunk Slasher') {
+                highlights.push(`<li><strong class="text-emerald-400">💥 Explosive Chunk Slasher:</strong> Generates independent chunk plays with elite <strong class="text-emerald-300">${p.yacAtt || '3.4'} Yards After Contact</strong> and a high big-play burst rate.</li>`);
+            } else if (p._rbArchetype === '1A Early-Down Hammer') {
+                highlights.push(`<li><strong class="text-amber-400">🔨 Early-Down Power Hammer:</strong> Commands short-yardage and goal-line work, locking in double-digit touchdown equity.</li>`);
+            } else if (p._rbArchetype === 'Rookie Backfield Ascender') {
+                highlights.push(`<li><strong class="text-rose-400">🌱 Rookie Takeover Trajectory:</strong> Dynamic rookie entering an open backfield with an ascending touch trajectory to claim starting duties by midseason.</li>`);
+            } else if (p._rbArchetype === 'Contingent Lottery Ticket') {
+                highlights.push(`<li><strong class="text-purple-400">🎲 Elite Contingent Upside:</strong> Premier bench stash who inherits an immediate workhorse role if ${p.starterName || 'the starter'} misses time.</li>`);
             }
         }
 
-        // 11. Rushing QB Floor / Escapability
+        // 10. Tiered WR & TE Archetype Highlights
+        if (p.Pos === 'WR') {
+            if (p._wrArchetype === 'Alpha Target Funnel') {
+                highlights.push(`<li><strong class="text-blue-400">👑 Dominant Alpha WR1:</strong> Commands a massive <strong class="text-blue-300">${p.targetShare}% target share</strong> (${p.wopr ? p.wopr.toFixed(2) + ' WOPR' : 'Alpha WOPR'}), immunizing him from defense bracket schemes.</li>`);
+            } else if (p._wrArchetype === 'High-Volume Slot Magnet') {
+                highlights.push(`<li><strong class="text-indigo-400">📡 High-Volume Slot Engine:</strong> Highly efficient chain-mover (${p.aDOT} aDOT, ${p.trueCatchRate?.toFixed(1)}% Catch Rate) guaranteeing a bulletproof PPR baseline.</li>`);
+            } else if (p._wrArchetype === 'Vertical Spike-Week Weapon') {
+                highlights.push(`<li><strong class="text-rose-400">🚀 Field-Tilting Deep Weapon:</strong> Generates slate-breaking splash plays with an elite <strong class="text-rose-300">${p.aDOT} aDOT</strong>.</li>`);
+            }
+        } else if (p.Pos === 'TE') {
+            if (p._teArchetype === 'Detached Alpha "Big Slot"') {
+                highlights.push(`<li><strong class="text-purple-400">🦄 Detached Alpha TE Weapon:</strong> Runs routes from wide/slot alignments as a primary team receiver, bypassing the TE streaming pack.</li>`);
+            } else if (p._teArchetype === 'Middle-of-Field Chain Mover') {
+                highlights.push(`<li><strong class="text-indigo-400">🛡️ Reliable MOF Chain-Mover:</strong> Secures dependable 3rd-down and intermediate red-zone priority in the passing tree.</li>`);
+            }
+        }
+
+        // 11. Tiered QB Rushing Floor & Escapability Highlights
         if (p.Pos === 'QB') {
-            if (p.stats && (p.stats.rushYds >= 500 || p.stats.rushAtt >= 90)) {
-                highlights.push(`<li><strong class="text-amber-400">🏃 Elite Rushing Floor:</strong> Projected for <strong class="text-amber-300">${p.stats.rushYds} rush yards</strong>, creating an elite baseline that pocket passers cannot match.</li>`);
-            } else if (p.stats && p.stats.rushYds >= 275) {
-                highlights.push(`<li><strong class="text-amber-400">🏃 Mobility & Scrambling Floor:</strong> Projected for <strong class="text-amber-300">${p.stats.rushYds} rush yards</strong>, giving him a dependable rushing baseline.</li>`);
+            const rushYds = p.stats?.rushYds || 0;
+            if (p._qbArchetype === 'Konami Code Alpha' || rushYds >= 650) {
+                highlights.push(`<li><strong class="text-amber-400">🏃 Konami Code Alpha Floor:</strong> Projected for a massive <strong class="text-amber-300">${rushYds} rush yards</strong>, generating elite weekly baseline points that pocket passers cannot match.</li>`);
+            } else if (p._qbArchetype === 'Dynamic Dual-Threat' || rushYds >= 425) {
+                highlights.push(`<li><strong class="text-amber-400">🏃 Dynamic Dual-Threat:</strong> Projected for <strong class="text-amber-300">${rushYds} rushing yards</strong>, creating high-floor rushing insulation.</li>`);
+            } else if (p._qbArchetype === 'Mobile Pocket Scrambler' || rushYds >= 225) {
+                highlights.push(`<li><strong class="text-slate-300">🏃 Scramble Mobility:</strong> Provides functional rushing support (<strong class="text-slate-200">${rushYds} rush yds</strong>) to supplement his passing output.</li>`);
             }
+
             if (p.p2s && p.p2s <= 14.0) {
-                highlights.push(`<li><strong class="text-emerald-400">🛡️ Elite Pocket Escapability:</strong> Low ${p.p2s.toFixed(1)}% Pressure-to-Sack rate proves he avoids drive-killing negative plays under pressure.</li>`);
+                highlights.push(`<li><strong class="text-emerald-400">🛡️ Elite Pocket Escapability:</strong> Low ${p.p2s.toFixed(1)}% Pressure-to-Sack rate proves he actively converts collapsing pockets into positive plays.</li>`);
             }
         }
 
@@ -335,16 +353,25 @@ window.Compare = {
                 consForAlt.push(`<strong>Goal-Line Vulture Risk:</strong> ${alt.Player} faces short-yardage touchdown competition from ${alt._backupName}, whereas ${topPick.Player} has full three-down control.`);
             }
 
-            // High-Value Opportunities (Normalized for Ascending Backs)
-            const topTouches = (topPick.pastStats?.rushAtt || 0) + (topPick.pastStats?.rec || 0);
-            const altTouches = (alt.pastStats?.rushAtt || 0) + (alt.pastStats?.rec || 0);
-            const isTouchMismatch = Math.abs(topTouches - altTouches) >= 80;
+            // RB Archetype Clashes & Touch Quality
+            if (topPick._rbArchetype && alt._rbArchetype && topPick._rbArchetype !== alt._rbArchetype) {
+                if (topPick._rbArchetype === 'Bellcow Alpha' && alt._rbArchetype !== 'Bellcow Alpha') {
+                    consForAlt.push(`<strong>Lacks Bellcow Monopoly:</strong> ${topPick.Player} holds an uncontested three-down bellcow role, whereas ${alt.Player} operates in a ${alt._rbArchetype} capacity.`);
+                } else if (alt._rbArchetype === 'Premium 1B Co-Starter' && topPick._rbArchetype === 'Contingent Lottery Ticket') {
+                    prosForAlt.push(`<strong>Standalone Flex Floor:</strong> Unlike ${topPick.Player} who needs an injury to be playable, ${alt.Player} provides standalone weekly fantasy scoring alongside contingent upside.`);
+                } else if (alt._rbArchetype === 'High-Leverage Space Back' && topPick._rbArchetype === '1A Early-Down Hammer' && State.scoring.ppr >= 0.5) {
+                    prosForAlt.push(`<strong>PPR Scoring Advantage:</strong> High-leverage pass-catching role (${alt.targetShare || 13}% target share) scales far better with PPR rules than ${topPick.Player}'s early-down grinding.`);
+                } else if (alt._rbArchetype === 'Explosive Chunk Slasher' && topPick._rbArchetype === '1A Early-Down Hammer') {
+                    prosForAlt.push(`<strong>Superior Tackle-Breaking Elusiveness:</strong> Creates independent yardage (<strong>${alt.yacAtt || '3.4'} YAC/Att</strong>) without relying entirely on offensive line blocking.`);
+                }
+            }
 
-            if (topPick.hvo && alt.hvo && !isTouchMismatch) {
-                if (topPick.hvo >= alt.hvo + 12) {
-                    consForAlt.push(`<strong>Inferior Touch Quality:</strong> ${topPick.Player} commands significantly more High-Value Opportunities (<strong>${topPick.hvo} vs ${alt.hvo} HVO</strong>).`);
-                } else if (alt.hvo >= topPick.hvo + 12) {
-                    prosForAlt.push(`<strong>Superior Touch Quality:</strong> Commands more High-Value Opportunities (<strong>${alt.hvo} vs ${topPick.hvo} HVO</strong>).`);
+            // High-Value Opportunities (HVO) Comparison
+            if (topPick.hvo && alt.hvo) {
+                if (topPick.hvo >= alt.hvo + 14) {
+                    consForAlt.push(`<strong>Inferior High-Leverage Touches:</strong> ${topPick.Player} commands significantly more High-Value Opportunities (<strong>${topPick.hvo} vs ${alt.hvo} HVO</strong>).`);
+                } else if (alt.hvo >= topPick.hvo + 14) {
+                    prosForAlt.push(`<strong>Superior High-Leverage Touches:</strong> Commands more High-Value Opportunities (<strong>${alt.hvo} vs ${topPick.hvo} HVO</strong>).`);
                 }
             }
 
@@ -578,22 +605,27 @@ window.Compare = {
             // Dual-Threat & Goal-Line Rushing Equity
             let topRush = topPick.stats?.rushYds || 0;
             let altRush = alt.stats?.rushYds || 0;
-            if (topRush >= altRush + 180) {
-                consForAlt.push(`<strong>Lacks Dual-Threat Floor:</strong> Projected for only ${altRush} rushing yards vs ${topPick.Player}'s massive <strong>${topRush} rushing yards</strong>.`);
-            } else if (altRush >= topRush + 180) {
-                prosForAlt.push(`<strong>Superior Dual-Threat Floor:</strong> Generates a rushing floor (<strong>${altRush} vs ${topRush} rush yds</strong>) that pure pocket passers cannot match.`);
+            let rushDiff = altRush - topRush;
+
+            if (rushDiff >= 200) {
+                prosForAlt.push(`<strong>Superior Dual-Threat Floor:</strong> Commands a true ${alt._qbArchetype || 'rushing'} profile (<strong>${altRush} vs ${topRush} rush yds</strong>), creating a script-independent weekly floor.`);
+            } else if (rushDiff <= -200) {
+                consForAlt.push(`<strong>Lacks Dual-Threat Floor:</strong> Projected for only ${altRush} rushing yards vs ${topPick.Player}'s <strong>${topRush} rushing yards</strong>.`);
             }
 
             if (alt._hasGoalLineRushingEquity && !topPick._hasGoalLineRushingEquity) {
                 prosForAlt.push(`<strong>Goal-Line Rushing Equity:</strong> Directs designed goal-line sneaks/keeper plays, providing immense rushing touchdown upside.`);
             }
 
-            // Pocket Escapability
-            if (topPick.p2s && alt.p2s) {
-                if (alt.p2s >= topPick.p2s + 5.0) {
-                    consForAlt.push(`<strong>Takes Drive-Killing Sacks:</strong> High <strong>${alt.p2s.toFixed(1)}% Pressure-to-Sack rate</strong> indicates difficulty escaping collapsing pockets.`);
-                } else if (topPick.p2s >= alt.p2s + 5.0) {
-                    prosForAlt.push(`<strong>Elite Pocket Escapability:</strong> Lower Pressure-to-Sack rate (<strong>${alt.p2s.toFixed(1)}% vs ${topPick.p2s.toFixed(1)}%</strong>) avoids negative plays.`);
+            // Context-Aware Sack Liabilities
+            if (alt.p2s && topPick.p2s) {
+                if (alt.p2s >= topPick.p2s + 8.0) {
+                    let sackContext = (alt._qbArchetype === 'Pure Pocket Passer')
+                        ? "Lacks scrambling ability to offset a disastrous"
+                        : "Extending broken plays leads to an elevated";
+                    consForAlt.push(`<strong>Takes Drive-Killing Sacks:</strong> ${sackContext} <strong>${alt.p2s.toFixed(1)}% Pressure-to-Sack rate</strong>.`);
+                } else if (topPick.p2s >= alt.p2s + 8.0) {
+                    prosForAlt.push(`<strong>Superior Pocket Escapability:</strong> Lower Pressure-to-Sack rate (<strong>${alt.p2s.toFixed(1)}% vs ${topPick.p2s.toFixed(1)}%</strong>) avoids negative plays.`);
                 }
             }
         }
