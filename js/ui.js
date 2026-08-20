@@ -495,10 +495,11 @@ const UI = {
                     "His monopoly over money touches—receptions and inside-the-10 carries—makes him a usage monster.",
                     "He captures the coveted dual-threat RB role, taking pass-game targets alongside goal-line work."
                 ]);
-            } else if (tgtToCarryRatio >= 0.20 && (rbWeight >= 225 || ypr >= 9.0)) {
-                // ⚡ NEW: Identifies Power-Hybrid / H-Back pass-catching weapons (e.g. Adam Randall)
-                archetypeNote = `A unique 'Power-Hybrid / H-Back' weapon: Combining a massive ${rbWeight} lb frame with legitimate downfield receiving chops (${ypr.toFixed(1)} YPR), he creates mismatch nightmares against linebackers in the passing game.`;
+            } else if (tgtToCarryRatio >= 0.20 && rbWeight >= 222 && ypr >= 9.0) {
+                archetypeNote = `A unique 'Power-Hybrid / H-Back' weapon: Combining an imposing ${rbWeight} lb frame with legitimate downfield receiving chops (${ypr.toFixed(1)} YPR), he creates mismatch nightmares against linebackers in the passing game.`;
                 p._isHybridReceiver = true;
+            } else if (ypr >= 9.0 && p.stats?.rec >= 10) {
+                archetypeNote = `An explosive dual-threat receiver out of the backfield (${ypr.toFixed(1)} YPR), capable of generating chunk plays through the air.`;
             } else if (p._isGoalLineHammer) {
                 archetypeNote = "A pure 'Goal-Line Hammer': He monopolizes inside-the-5 carries for massive touchdown upside, but offers virtually zero receiving floor in PPR formats.";
             } else if (p._isHandcuffPlus) {
@@ -925,7 +926,8 @@ const UI = {
             }
 
             if (p._isAscendingRole) {
-                pros.push(`<strong>📈 Ascending Workload Leap:</strong> Projected for a <strong>+${p._growthPct}% surge in touches per game</strong> compared to 2025 actuals, reflecting an expanding featured role rather than a restricted split.`);
+                let growthDisplay = (p._growthPct !== undefined && !isNaN(p._growthPct)) ? `+${p._growthPct}%` : 'significant';
+                pros.push(`<strong>📈 Ascending Workload Leap:</strong> Projected for a <strong>${growthDisplay} surge in touches per game</strong> compared to 2025 actuals, reflecting an expanding featured role rather than a restricted split.`);
             }
 
             if (p.isTeamChanger && p._envDelta && p._envDelta >= 0.015) {
@@ -1049,16 +1051,20 @@ const UI = {
                     riskScore += 2;
                 }
 
-                // 2. Tiered Durability Concerns
-                if (games <= 8 && games > 0) {
+                // 2. Context-Aware Durability vs. Developmental Reps Check
+                const isDevelopmentalDepth = totalTouches <= 15 && (pAge <= 23 || p.isNewRole);
+
+                if (games <= 8 && games > 0 && !isDevelopmentalDepth) {
                     cons.push(`<strong>Severe Durability Risk:</strong> Missed over half the season, playing only <strong>${games} games</strong>. Staying on the field is a major question mark.`);
                     riskScore += 3;
                     if (games <= 6) {
                         cons.push(`<strong>Small Sample Volatility:</strong> 2025 efficiency metrics are based on just <strong>${games} games</strong>. Rates like PPG and TD frequency carry elevated regression risk over a full 17-game slate.`);
                     }
-                } else if (games <= 12 && games > 0) {
+                } else if (games <= 12 && games > 0 && !isDevelopmentalDepth) {
                     cons.push(`<strong>Durability Risk:</strong> Missed significant time last season, playing only <strong>${games} games</strong>. Injury variance lowers his floor.`);
                     riskScore += 2;
+                } else if (isDevelopmentalDepth) {
+                    cons.push(`<strong>Developmental Sample:</strong> Logged limited active snaps (${games} GP, ${totalTouches} touches) as a rotational depth piece; projection relies on expanding future opportunity.`);
                 }
 
                 // 3. Tiered Turnover Concerns
