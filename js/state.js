@@ -3,6 +3,7 @@ const State = {
     availablePlayers: [],
     currentRecommendations: [],
     teamsById: {},
+    _playerIndex: new Map(),
     draftOrder: [],
     currentPick: 0,
     draftStarted: false,
@@ -140,6 +141,21 @@ const State = {
         });
     },
 
+    buildPlayerIndex() {
+        this._playerIndex.clear();
+        this.allPlayers.forEach(p => {
+            // Create exact lookup key
+            const key = `${p._noSpaceName}_${p._cleanTeam}_${p._cleanPos}`;
+            this._playerIndex.set(key, p);
+            
+            // Create fallback key without team (for players who were traded)
+            const fallbackKey = `${p._noSpaceName}_${p._cleanPos}`;
+            if (!this._playerIndex.has(fallbackKey)) {
+                this._playerIndex.set(fallbackKey, p);
+            }
+        });
+    },
+
     async fetchSleeperProjections(season) {
         try {
             // ⚡ Fetch Kicker Metadata and Projections concurrently for speed
@@ -253,6 +269,16 @@ const State = {
 
         if (!this.allPlayers || !this.allPlayers.length) return null;
 
+        // $O(1)$ Hash Map Lookup (Catches 95%+ of players instantly)
+        if (nPos !== 'DST' && nPos !== 'PK') {
+            let exactMatch = this._playerIndex.get(`${noSpaceName}_${nTeam}_${nPos}`);
+            if (exactMatch) return exactMatch;
+
+            let fallbackMatch = this._playerIndex.get(`${noSpaceName}_${nPos}`);
+            if (fallbackMatch) return fallbackMatch;
+        }
+
+        // Fallback to fuzzy loop for DSTs and edge cases
         if (nPos === 'DST') {
             return this.allPlayers.find(p => {
                 if (p._cleanPos !== 'DST') return false;
@@ -1781,19 +1807,15 @@ const State = {
                 starters = 0;
             } else if (pos === 'QB') {
                 const isSuperflex = (this.settings.roster.Superflex?.max || 0) > 0;
-                if (isSuperflex) {
-                    starters = Math.floor(numTeams * 1.8);
-                } else {
-                    starters = Math.floor(numTeams * (maxPos === 1 ? 1.25 : maxPos * 1.1));
-                }
-            }
-
-            if (pos === 'RB' || pos === 'WR') {
-                let extraSlots = (this.settings.roster.Flex?.max || 0) + (this.settings.roster.FlexRBWR?.max || 0);
-                if (pos === 'WR' && this.settings.roster.Superflex?.max > 0) extraSlots += (this.settings.roster.Superflex.max * 0.1);
-                starters += Math.floor((numTeams * extraSlots) / 2);
-            }
-            if (pos === 'PK') {
+                starters = isSuperflex ? Math.floor(numTeams * 2.5) : Math.floor(numTeams * 1.75);
+            } else if (pos === 'TE') {
+                const isTePrem = (this.scoring.tePremium || 0) > 0;
+                starters = isTePrem ? Math.floor(numTeams * 2.0) : Math.floor(numTeams * 1.75);
+            } else if (pos === 'RB' || pos === 'WR') {
+                // VORP Baseline: Replacement Level (Starters + Average Bench Holdings)
+                // This ensures nearly all draftable players have positive base VBD.
+                starters = Math.floor(numTeams * 5.25); 
+            } else if (pos === 'PK') {
                 starters = Math.floor(numTeams * 1.1);
             } else if (pos === 'DST') {
                 starters = Math.floor(numTeams * 1.25);
