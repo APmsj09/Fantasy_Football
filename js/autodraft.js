@@ -152,6 +152,20 @@ window.AutoDraft = {
                     p._cpuReachBonus += 18.0; 
                 }
 
+                // ⚡ 5. "PLAYER CRUSHES" (Historical Loyalty)
+                if (profile.playerCrushes && profile.playerCrushes.includes(p._cleanName)) {
+                    // If a manager drafted a guy multiple years in a row, they will violently reach for them again
+                    p._cpuReachBonus += 20.0; 
+                }
+
+                // ⚡ 6. ROSTER CONSTRUCTION LIMITS (Streaming Tendencies)
+                if (p.Pos === 'QB' && team.counts['QB'] >= 1 && !profile.draftsBackupQB) {
+                    multiplier *= 0.01; // Manager historically streams backup QBs, refuse to draft a 2nd one
+                }
+                if (p.Pos === 'TE' && team.counts['TE'] >= 1 && !profile.draftsBackupTE) {
+                    multiplier *= 0.01; // Manager historically streams backup TEs, refuse to draft a 2nd one
+                }
+
                 // 5. Correlated Stacking (The "Stack King")
                 let draftedQBs = team.roster.filter(r => r.Pos === 'QB');
                 if (draftedQBs.length > 0 && ['WR', 'TE'].includes(p.Pos) && draftedQBs.some(qb => qb._cleanTeam === p._cleanTeam)) {
