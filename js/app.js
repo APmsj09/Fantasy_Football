@@ -220,6 +220,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 State.fetchSleeperProjections(SEASON) // <-- PULLS DIRECTLY FROM SLEEPER API
             ]);
             State.enrichPlayerMap();
+            State.buildPlayerIndex(); // Build O(1) Lookup Table
 
             // Load all advanced metrics concurrently (swapped to enrichPlayerData)
             await Promise.all([
