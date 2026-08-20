@@ -160,20 +160,20 @@ window.Compare = {
             highlights.push(`<li><strong class="text-emerald-400">📈 Positive Touchdown Regression:</strong> Scored ${p.pastStats.totalTd} TDs last year, but his underlying red-zone usage warranted <strong class="text-emerald-300">${p.xTD.toFixed(1)} Expected TDs (xTD)</strong>. Math projects ~+${Math.round(diff)} more scores with neutral variance.</li>`);
         }
 
-        // 9. Comprehensive Running Back Archetype Highlights
+        // 9. Running Back Archetype Highlights
         if (p.Pos === 'RB') {
             if (p._rbArchetype === 'Bellcow Alpha') {
                 highlights.push(`<li><strong class="text-emerald-400">👑 Three-Down Bellcow Alpha:</strong> Uncontested lead back commanding <strong class="text-emerald-300">${p.hvo || 65}+ High-Value Touches</strong> and complete three-down snap monopoly.</li>`);
+            } else if (p._rbArchetype === '1B Co-Starter') {
+                highlights.push(`<li><strong class="text-indigo-400">⚔️ Designed 1B Co-Starter:</strong> Commands guaranteed weekly standalone volume (<strong class="text-indigo-300">${p.stats?.rushAtt || 0} carries / ${p.stats?.targets || 0} tgts</strong>), providing an immediate Flex floor alongside contingent RB1 upside.</li>`);
+            } else if (p._rbArchetype === 'Handcuff+ Stash') {
+                highlights.push(`<li><strong class="text-purple-400">🔒 Premium Handcuff+:</strong> High-end bench stash with a weekly touch floor to insulate bye weeks, plus league-winning upside if ${p.starterName || 'the starter'} misses time.</li>`);
             } else if (p._rbArchetype === 'High-Leverage Space Back') {
                 highlights.push(`<li><strong class="text-blue-400">🎯 High-Leverage Space Creator:</strong> Script-proof receiver out of the backfield (${p.targetShare || 13}% target share), providing an elite PPR floor.</li>`);
-            } else if (p._rbArchetype === 'Premium 1B Co-Starter') {
-                highlights.push(`<li><strong class="text-purple-400">⚔️ Standalone 1B + Lotto Ticket:</strong> Provides immediate weekly Flex utility (${p.ProjPts.toFixed(1)} proj pts) while holding instant RB1 upside if the starter goes down.</li>`);
             } else if (p._rbArchetype === 'Explosive Chunk Slasher') {
-                highlights.push(`<li><strong class="text-emerald-400">💥 Explosive Chunk Slasher:</strong> Generates independent chunk plays with elite <strong class="text-emerald-300">${p.yacAtt || '3.4'} Yards After Contact</strong> and a high big-play burst rate.</li>`);
+                highlights.push(`<li><strong class="text-emerald-400">💥 Explosive Chunk Slasher:</strong> Generates independent chunk plays with elite <strong class="text-emerald-300">${p.yacAtt || '3.4'} Yards After Contact</strong> and high big-play burst.</li>`);
             } else if (p._rbArchetype === '1A Early-Down Hammer') {
                 highlights.push(`<li><strong class="text-amber-400">🔨 Early-Down Power Hammer:</strong> Commands short-yardage and goal-line work, locking in double-digit touchdown equity.</li>`);
-            } else if (p._rbArchetype === 'Rookie Backfield Ascender') {
-                highlights.push(`<li><strong class="text-rose-400">🌱 Rookie Takeover Trajectory:</strong> Dynamic rookie entering an open backfield with an ascending touch trajectory to claim starting duties by midseason.</li>`);
             } else if (p._rbArchetype === 'Contingent Lottery Ticket') {
                 highlights.push(`<li><strong class="text-purple-400">🎲 Elite Contingent Upside:</strong> Premier bench stash who inherits an immediate workhorse role if ${p.starterName || 'the starter'} misses time.</li>`);
             }
@@ -337,6 +337,21 @@ window.Compare = {
         // -------------------------------------------------------------
         // Running Back High-Value Opportunities (HVO) & Vacated Touch Dynamics
         if (topPick.Pos === 'RB' && alt.Pos === 'RB') {
+            // RB Archetype Clashes & Standalone vs. Contingent Comparison
+            if (topPick._rbArchetype && alt._rbArchetype && topPick._rbArchetype !== alt._rbArchetype) {
+                if (topPick._rbArchetype === 'Bellcow Alpha' && alt._rbArchetype !== 'Bellcow Alpha') {
+                    consForAlt.push(`<strong>Lacks Bellcow Monopoly:</strong> ${topPick.Player} holds an uncontested three-down bellcow role, whereas ${alt.Player} operates in a ${alt._rbArchetype} capacity.`);
+                } else if (topPick._rbArchetype === '1B Co-Starter' && alt._rbArchetype === 'Handcuff+ Stash') {
+                    consForAlt.push(`<strong>Lower Standalone Role:</strong> ${alt.Player} operates in a secondary spell role (${alt.ProjPts.toFixed(1)} proj pts), whereas ${topPick.Player} commands an intentional 1B standalone timeshare (${topPick.ProjPts.toFixed(1)} proj pts).`);
+                } else if (alt._rbArchetype === '1B Co-Starter' && topPick._rbArchetype === 'Contingent Lottery Ticket') {
+                    prosForAlt.push(`<strong>Proven Standalone Flex:</strong> Unlike ${topPick.Player} who is unstartable without an injury, ${alt.Player} can be plugged directly into weekly Flex lineups.`);
+                } else if (alt._rbArchetype === 'High-Leverage Space Back' && topPick._rbArchetype === '1A Early-Down Hammer' && State.scoring.ppr >= 0.5) {
+                    prosForAlt.push(`<strong>PPR Scoring Advantage:</strong> High-leverage pass-catching role (${alt.targetShare || 13}% target share) scales far better with PPR rules than ${topPick.Player}'s early-down grinding.`);
+                } else if (alt._rbArchetype === 'Explosive Chunk Slasher' && topPick._rbArchetype === '1A Early-Down Hammer') {
+                    prosForAlt.push(`<strong>Superior Tackle-Breaking Elusiveness:</strong> Creates independent yardage (<strong>${alt.yacAtt || '3.4'} YAC/Att</strong>) without relying entirely on offensive line blocking.`);
+                }
+            }
+
             // Vacated Opportunity & Role Consolidation
             if (alt._inheritsGoalLineWork && !topPick._inheritsGoalLineWork) {
                 let depStr = alt._departedBackfieldNames?.length > 0 ? ` (${alt._departedBackfieldNames.join(', ')})` : '';
