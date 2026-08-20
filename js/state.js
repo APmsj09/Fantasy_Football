@@ -1811,10 +1811,12 @@ const State = {
             } else if (pos === 'TE') {
                 const isTePrem = (this.scoring.tePremium || 0) > 0;
                 starters = isTePrem ? Math.floor(numTeams * 2.0) : Math.floor(numTeams * 1.75);
-            } else if (pos === 'RB' || pos === 'WR') {
-                // VORP Baseline: Replacement Level (Starters + Average Bench Holdings)
-                // This ensures nearly all draftable players have positive base VBD.
-                starters = Math.floor(numTeams * 5.25); 
+            } else if (pos === 'RB') {
+                // RBs drop off a cliff faster. The true replacement level is around RB48-RB54.
+                starters = Math.floor(numTeams * 4.25); 
+            } else if (pos === 'WR') {
+                // NFL offenses sustain 3+ WRs. The replacement level extends much deeper (~WR66).
+                starters = Math.floor(numTeams * 5.50); 
             } else if (pos === 'PK') {
                 starters = Math.floor(numTeams * 1.1);
             } else if (pos === 'DST') {
@@ -1836,16 +1838,30 @@ const State = {
             DST: (baselines.DST || 120) / 17
         };
 
-        // ⚡ Z-SCORE PRE-CALCULATION ENGINE (Standard Deviations)
-        const validRBs = this.allPlayers.filter(p => p.Pos === 'RB' && p.ProjPts >= 60);
-        const hvoArr = validRBs.map(p => p.hvo || 0);
-        const btArr = validRBs.map(p => p.brokenTackles || 0);
-
+        // ⚡ Z-SCORE PRE-CALCULATION ENGINE (Position-Specific Standard Deviations)
         const calcMean = arr => arr.reduce((a, b) => a + b, 0) / Math.max(1, arr.length);
         const calcStdDev = (arr, mean) => Math.sqrt(arr.reduce((sq, n) => sq + Math.pow(n - mean, 2), 0) / Math.max(1, arr.length));
 
+        // RBs
+        const validRBs = this.allPlayers.filter(p => p.Pos === 'RB' && p.ProjPts >= 60);
+        const hvoArr = validRBs.map(p => p.hvo || 0);
+        const btArr = validRBs.map(p => p.brokenTackles || 0);
         const rHvoMean = calcMean(hvoArr), rHvoStd = calcStdDev(hvoArr, rHvoMean) || 1;
         const rBtMean = calcMean(btArr), rBtStd = calcStdDev(btArr, rBtMean) || 1;
+
+        // WRs (Evaluated against WR standards: ~18% mean)
+        const validWRs = this.allPlayers.filter(p => p.Pos === 'WR' && p.ProjPts >= 60);
+        const wrTgtArr = validWRs.map(p => p.targetShare || 0);
+        const wrWoprArr = validWRs.map(p => p.wopr || 0);
+        const wrTgtMean = calcMean(wrTgtArr), wrTgtStd = calcStdDev(wrTgtArr, wrTgtMean) || 1;
+        const wrWoprMean = calcMean(wrWoprArr), wrWoprStd = calcStdDev(wrWoprArr, wrWoprMean) || 1;
+
+        // TEs (Evaluated against TE standards: ~13% mean)
+        const validTEs = this.allPlayers.filter(p => p.Pos === 'TE' && p.ProjPts >= 50);
+        const teTgtArr = validTEs.map(p => p.targetShare || 0);
+        const teWoprArr = validTEs.map(p => p.wopr || 0);
+        const teTgtMean = calcMean(teTgtArr), teTgtStd = calcStdDev(teTgtArr, teTgtMean) || 1;
+        const teWoprMean = calcMean(teWoprArr), teWoprStd = calcStdDev(teWoprArr, teWoprMean) || 1;
 
         this.allPlayers.forEach(p => {
             const tTeam = this.normalizeTeam(p.Team);
@@ -2576,6 +2592,17 @@ const State = {
                 }
             }
 
+            // 5. Multi-Tiered Sample Confidence & Volume Density Engine
+            let pastGp = p.pastStats?.gp ?? p.boomBust?.games ?? 17;
+            let sampleConfidence = 1.0;
+            if (pastGp <= 4) sampleConfidence = 0.45;       // Micro-Sample (1-4 GP)
+            else if (pastGp <= 8) sampleConfidence = 0.68;  // Partial-Sample (5-8 GP)
+            else if (pastGp <= 13) sampleConfidence = 0.88; // Solid-Sample (9-13 GP)
+            else sampleConfidence = 1.00;                   // Full-Season (14+ GP)
+
+            let isMicroSample = pastGp <= 4;
+            let isPartialSample = pastGp > 4 && pastGp <= 8;
+
             // 2nd-Level: Volume Density Check
             let tgtsPerGame = (p.pastStats?.targets || 0) / Math.max(1, pastGp);
             let touchesPerGame = ((p.pastStats?.rushAtt || 0) + (p.pastStats?.rec || 0)) / Math.max(1, pastGp);
@@ -2587,7 +2614,6 @@ const State = {
             }
 
             // --- FEATURE: Targets Per Snap (TPS) ---
-            // Isolates pure target-earning ability from raw playing time (identifies rookies/part-timers who dominated when on the field)
             if (['WR', 'TE'].includes(p.Pos) && p.pastStats && p.pastStats.targets && p.snaps && p.snaps >= 100) {
                 p.tps = p.pastStats.targets / p.snaps;
                 if (p.tps >= 0.22) {
@@ -2596,47 +2622,59 @@ const State = {
                 }
             }
 
-            if (p.targetShare) {
-                if (p.targetShare >= 32) adjMultiplier += (0.08 * sampleConfidence);
-                else if (p.targetShare >= 28) adjMultiplier += (0.05 * sampleConfidence);
-                else if (p.targetShare >= 23) adjMultiplier += (0.025 * sampleConfidence);
+            // ⚡ DYNAMIC Z-SCORE SCALING FOR RECEIVERS (Position-Aware)
+            if (['WR', 'TE'].includes(p.Pos)) {
+                let meanTgt = p.Pos === 'WR' ? wrTgtMean : teTgtMean;
+                let stdTgt = p.Pos === 'WR' ? wrTgtStd : teTgtStd;
+                let meanWopr = p.Pos === 'WR' ? wrWoprMean : teWoprMean;
+                let stdWopr = p.Pos === 'WR' ? wrWoprStd : teWoprStd;
+
+                if (p.targetShare != null) {
+                    let zScore = (p.targetShare - meanTgt) / stdTgt;
+                    if (zScore > 0) {
+                        // Adds +0.025 per Standard Deviation above positional mean. Capped at +0.08.
+                        adjMultiplier += Math.min(0.08, zScore * 0.025 * sampleConfidence);
+                    }
+                    
+                    // Fraud Penalty: High projected points but low target share means highly TD dependent
+                    if (p.ProjPts > (p.Pos === 'WR' ? 120 : 95) && zScore < -0.6) {
+                        adjMultiplier -= 0.04; 
+                    }
+                }
+
+                if (p.wopr != null) {
+                    let zScore = (p.wopr - meanWopr) / stdWopr;
+                    if (zScore > 0) {
+                        adjMultiplier += Math.min(0.06, zScore * 0.02 * sampleConfidence);
+                    }
+                }
 
                 // Adjusted for TE nuance (8.5 aDOT for TE is equivalent to 12.0 for WR)
                 let isEliteAdot = (p.Pos === 'WR' && p.aDOT >= 12.0) || (p.Pos === 'TE' && p.aDOT >= 8.5);
-                if (p.targetShare >= 22 && isEliteAdot) adjMultiplier += (0.03 * sampleConfidence);
+                if (p.targetShare >= (p.Pos === 'WR' ? 22.0 : 16.0) && isEliteAdot) {
+                    adjMultiplier += (0.03 * sampleConfidence);
+                }
                 
                 // RZ Target Density Bonus
                 if (p.rzTgt && p.pastStats && p.pastStats.targets) {
                     let rzDensity = p.rzTgt / Math.max(1, p.pastStats.targets);
-                    if (rzDensity >= 0.20 && p.rzTgt >= 12) adjMultiplier += (0.03 * sampleConfidence);
-                }
-
-                // --- WOPR (Weighted Opportunity Rating) ENGINE ---
-                if (['WR', 'TE'].includes(p.Pos) && p.wopr) {
-                    if (p.wopr >= 0.65) adjMultiplier += 0.05;
-                    else if (p.wopr >= 0.55) adjMultiplier += 0.025;
-                    else if (p.wopr <= 0.32 && (p.ProjPts || 0) > 110) adjMultiplier -= 0.04;
-                }
-                // Fraud Penalty - High projected points but low target share means highly TD dependent
-                if (['WR', 'TE'].includes(p.Pos) && p.ProjPts > 120) {
-                    if (p.targetShare < 12.0) adjMultiplier -= 0.06;
-                    else if (p.targetShare < 15.0) adjMultiplier -= 0.03;
+                    if (rzDensity >= 0.20 && p.rzTgt >= (p.Pos === 'WR' ? 12 : 8)) {
+                        adjMultiplier += (0.03 * sampleConfidence);
+                    }
                 }
             }
 
-           if (p.Pos === 'RB') {
-                // ⚡ Z-Score Scaling: Rewards players dynamically based on standard deviations above league-average
-                if (p.brokenTackles !== undefined) {
+            if (p.Pos === 'RB') {
+                // ⚡ Z-Score Scaling: Rewards RBs dynamically based on standard deviations above league-average
+                if (p.brokenTackles != null) {
                     let zScore = (p.brokenTackles - rBtMean) / rBtStd;
                     if (zScore > 0) {
-                        // Adds +0.015 per Standard Deviation above mean. Capped at +0.05.
                         adjMultiplier += Math.min(0.05, zScore * 0.015 * sampleConfidence);
                     }
                 }
-                if (p.hvo !== undefined) {
+                if (p.hvo != null) {
                     let zScore = (p.hvo - rHvoMean) / rHvoStd;
                     if (zScore > 0) {
-                        // Adds +0.025 per Standard Deviation above mean. Capped at +0.08.
                         adjMultiplier += Math.min(0.08, zScore * 0.025 * sampleConfidence);
                     }
                 }
