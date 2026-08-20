@@ -3597,6 +3597,7 @@ const State = {
                     name: teamName,
                     years: new Set(),
                     yearlyPicks: {}, // year -> { r1: pos, r2: pos }
+                    yearlyPosCounts: {}, // year -> { QB: 0, RB: 0, WR: 0, TE: 0 }
                     earlyRBs: 0, earlyWRs: 0,
                     firstQbRound: 99, firstTeRound: 99,
                     qbAvgRound: 0, qbCount: 0,
@@ -3604,7 +3605,8 @@ const State = {
                     pkAvgRound: 0, pkCount: 0,
                     dstAvgRound: 0, dstCount: 0,
                     midRoundRBs: 0, midRoundWRs: 0,
-                    teamTally: {}
+                    teamTally: {},
+                    playerTally: {} // ⚡ NEW: Track Player Loyalty
                 };
             }
 
@@ -3612,8 +3614,11 @@ const State = {
             p.years.add(year);
 
             if (!p.yearlyPicks[year]) p.yearlyPicks[year] = {};
+            if (!p.yearlyPosCounts[year]) p.yearlyPosCounts[year] = { QB: 0, RB: 0, WR: 0, TE: 0, PK: 0, DST: 0 };
+
             if (round === 1 && !p.yearlyPicks[year].r1) p.yearlyPicks[year].r1 = pos;
             if (round === 2 && !p.yearlyPicks[year].r2) p.yearlyPicks[year].r2 = pos;
+            p.yearlyPosCounts[year][pos] = (p.yearlyPosCounts[year][pos] || 0) + 1;
 
             // Rounds 1-3 Early Capital
             if (round <= 3) {
@@ -3636,7 +3641,7 @@ const State = {
             if (pos === 'PK') { p.pkAvgRound += round; p.pkCount++; }
             if (pos === 'DST') { p.dstAvgRound += round; p.dstCount++; }
 
-            // Team Bias Tracking from NFL Team column
+            // Team Bias Tracking
             let nflTeam = this.normalizeTeam(rawNflTeam);
             if (!nflTeam) {
                 let matchedPlayer = this.matchPlayerFast(playerName, '', pos);
@@ -3644,6 +3649,12 @@ const State = {
             }
             if (nflTeam) {
                 p.teamTally[nflTeam] = (p.teamTally[nflTeam] || 0) + 1;
+            }
+
+            // ⚡ NEW: Player Loyalty Tracking
+            if (playerName) {
+                let cleanName = this.normalizeName(playerName);
+                p.playerTally[cleanName] = (p.playerTally[cleanName] || 0) + 1;
             }
         }
 
@@ -3663,6 +3674,15 @@ const State = {
 
             p.draftsEarlyQB = p.firstQbRound <= 5;
             p.draftsEarlyTE = p.firstTeRound <= 5;
+
+            // ⚡ NEW: Calculate Average Total Positional Roster Limits
+            let totalQBs = 0, totalTEs = 0;
+            for (let yr in p.yearlyPosCounts) {
+                totalQBs += p.yearlyPosCounts[yr].QB;
+                totalTEs += p.yearlyPosCounts[yr].TE;
+            }
+            p.draftsBackupQB = (totalQBs / draftsCount) >= 1.5; // Do they average > 1.5 QBs a year?
+            p.draftsBackupTE = (totalTEs / draftsCount) >= 1.5;
 
             // Analyze Opening 2-Round Combinations
             let wrWrStarts = 0, rbRbStarts = 0, heroStarts = 0;
@@ -3699,6 +3719,14 @@ const State = {
                 }
             }
             p.teamBias = bias;
+
+            // ⚡ NEW: Identify "Player Crushes" (Drafted 3+ times across multiple years)
+            p.playerCrushes = [];
+            for (let playerName in p.playerTally) {
+                if (p.playerTally[playerName] >= 3) {
+                    p.playerCrushes.push(playerName);
+                }
+            }
         }
 
         this.managerProfiles = profiles;
