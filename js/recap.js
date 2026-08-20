@@ -133,10 +133,17 @@ window.DraftRecap = {
                     }
                 }
 
-                let pUpside = p.upsideScore || 0;
-                if (roundDrafted >= 8 && pUpside > 10 && pUpside > maxStash && p._cleanName !== worstReach?._cleanName && !isKickerOrDST) {
-                    maxStash = pUpside;
-                    topSleeper = p;
+                if (roundDrafted >= 8 && !isKickerOrDST && p._cleanName !== worstReach?._cleanName) {
+                    let contingentVal = p.contingentUpsideScore || 0;
+                    let ceilingDelta = p.upsideScore ? (p.upsideScore - (p.AdvVBD || p.VBD || 0)) : 0;
+                    let flyerBonus = (p._isFlyer || p._isAscendingRole || p.isRBHandcuff || p._isHandcuffPlus || p._contingentTier) ? 15 : 0;
+
+                    let stashRating = Math.max(contingentVal, ceilingDelta) + flyerBonus;
+
+                    if (stashRating > maxStash) {
+                        maxStash = stashRating;
+                        topSleeper = p;
+                    }
                 }
             });
 
@@ -794,7 +801,10 @@ window.DraftRecap = {
                 ? `<span class="text-emerald-600 font-bold">+${adpDiff.toFixed(0)} Value</span>` 
                 : `<span class="text-rose-600 font-bold">${Math.abs(adpDiff).toFixed(0)} Reach</span>`;
 
-            if (label === 'Top Stash / Sleeper') diffStr = `<span class="text-amber-600 font-bold">Upside: ${(pl.upsideScore || 0).toFixed(0)}</span>`;
+            if (label === 'Top Stash / Sleeper') {
+                let badgeText = pl._contingentTier || pl._sleeperBadge || (pl._ceilingTags && pl._ceilingTags[0]) || '💎 High Ceiling Stash';
+                diffStr = `<span class="text-amber-600 font-bold">${badgeText}</span>`;
+            }
 
             let statSummary = '';
             if (pl.stats) {
