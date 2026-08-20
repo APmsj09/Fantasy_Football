@@ -2613,55 +2613,56 @@ const UI = {
 
                     // Changed from massive else/ifs to an accumulator (stashBonus)
                     let baseSleeperBadge = null;
+                    let rawStashPoints = 0; // Renamed to represent infinite raw points
 
                     if (userOwnsStarter && p.Pos === 'RB') {
                         let starter = userRoster.find(r => r._cleanName === State.normalizeName(p.starterName));
-                        // 350-pt stud gives +14.0; 180-pt RB2 gives +7.2
                         let starterQuality = starter ? (starter.ProjPts * 0.04) : 10.0;
-                        // Award extra value if the handcuff has standalone Flex touches (Handcuff Plus)
                         let standaloneTouchBonus = (p.ProjPts && p.ProjPts >= 110) ? 4.0 : 0;
                         
-                        stashBonus += starterQuality + standaloneTouchBonus;
+                        rawStashPoints += starterQuality + standaloneTouchBonus;
                         baseSleeperBadge = `🔒 Handcuff for ${p.starterName}`;
                     } else if (p.isRBHandcuff) {
                         let standaloneTouchBonus = (p.ProjPts && p.ProjPts >= 110) ? 3.0 : 0;
-                        stashBonus += 6.0 + standaloneTouchBonus;
+                        rawStashPoints += 6.0 + standaloneTouchBonus;
                         baseSleeperBadge = `🎲 Lottery Ticket (${p.starterName}'s Backup)`;
                     }
 
                     if (p.depthChart === 2 && p.isNewRole) {
-                        stashBonus += 5.0;
+                        rawStashPoints += 5.0;
                         if (!baseSleeperBadge) baseSleeperBadge = `📈 Breakout Stash (1 Injury Away)`;
                     }
                     if (playerAge && playerAge <= 24) {
-                        // Smooth scale: 21yo = +7.5, 22yo = +5.0, 23yo = +2.5
-                        stashBonus += Math.max(0, (24 - playerAge) * 2.5);
+                        rawStashPoints += Math.max(0, (24 - playerAge) * 3.0); // Slightly boosted raw input
                         if (!baseSleeperBadge && playerAge <= 23) baseSleeperBadge = `🌱 Youth Breakout (Age ${playerAge})`;
                     }
                     if (p.targetShare && p.targetShare >= 12.0) {
-                        // Smooth scale: 15% = +1.2, 25% = +5.2
-                        stashBonus += (p.targetShare - 12.0) * 0.4;
+                        rawStashPoints += (p.targetShare - 12.0) * 0.5;
                         if (!baseSleeperBadge && p.targetShare >= 15.0) baseSleeperBadge = `🎯 ${p.targetShare}% Tgt Share Sleeper`;
                     }
                     if (p.aDOT && p.aDOT >= 10.0) {
-                        // Smooth scale: 12 aDOT = +2.0, 16 aDOT = +6.0
-                        stashBonus += (p.aDOT - 10.0) * 1.0;
+                        rawStashPoints += (p.aDOT - 10.0) * 1.5;
                         if (!baseSleeperBadge && p.aDOT >= 12.0) baseSleeperBadge = `🚀 Deep Threat (${p.aDOT} aDOT)`;
                     }
                     if (p.brokenTackles && p.brokenTackles > 10) {
-                        stashBonus += (p.brokenTackles - 10) * 0.3;
+                        rawStashPoints += (p.brokenTackles - 10) * 0.4;
                         if (!baseSleeperBadge && p.brokenTackles >= 15) baseSleeperBadge = `🏃 Elusive (${p.brokenTackles} Broken Tackles)`;
                     }
                     if (p.hvo && p.hvo >= 30) {
-                        stashBonus += (p.hvo - 30) * 0.15;
+                        rawStashPoints += (p.hvo - 30) * 0.2;
                         if (!baseSleeperBadge && p.hvo >= 40) baseSleeperBadge = `💎 High Value Touch Profile`;
                     }
 
                     p._sleeperBadge = baseSleeperBadge;
 
-                    // Max accumulator cap prevents stashes from overtaking elite starters
-                    stashBonus = Math.min(26.0, stashBonus);
-                    score += (stashBonus * roundScale);
+                    // ⚡ S-CURVE LOGISTIC SCALER ⚡
+                    // Prevents rawStashPoints from endlessly compounding into game-breaking VBD, 
+                    // providing a smooth glide path to the maximum allowed VBD bump.
+                    const maxStashVBD = 22.0; 
+                    const scalePacing = 0.065; 
+                    let smoothedStashBonus = maxStashVBD * (1 - Math.exp(-scalePacing * rawStashPoints));
+
+                    score += (smoothedStashBonus * roundScale);
                 }
             } else if (p.upsideScore && (p.AdvVBD || p.VBD) > 0) {
                 let ceilingGain = (p.upsideScore - (p.AdvVBD || p.VBD)) * 0.25;
@@ -2720,18 +2721,23 @@ const UI = {
                 } 
                 // B. Same-Position Starter Bottlenecks (RBs / WRs)
                 else if (posByeCollisions >= 2) {
-                    // 3rd RB or 3rd WR on the exact same bye creates an unavoidable zero-point lineup hole
-                    let posClashPenalty = rawVbd >= 35.0 ? 3.0 : 6.5; // Elite studs take only a mild hit; depth takes a sharp hit
-                    score -= posClashPenalty;
+                    // ⚡ Fractional Penalty: Decays 15% of value, bounded by realistic caps
+                    let fractionalPenalty = Math.max(2.5, Math.min(7.5, rawVbd * 0.15));
+                    if (rawVbd > 60.0) fractionalPenalty *= 0.4; // Soften penalty for absolute elite superstars
+                    
+                    score -= fractionalPenalty;
                     p._byeWarningTag = `🚨 3rd ${p.Pos} on Wk ${p.byeWeek} Bye`;
                 } 
                 // C. High Multi-Starter Team Bye Collisions (Punt Week Danger)
                 else if (totalByeCollisions >= 3) {
-                    // 4th+ player on same bye forces a punt week unless talent is generational
-                    let stackDeduction = rawVbd >= 40.0 ? 2.0 : (4.0 + (totalByeCollisions - 2) * 2.0);
-                    score -= stackDeduction;
+                    // ⚡ Escalating Fractional Penalty: 10% per collision
+                    let decayFactor = 0.10 + ((totalByeCollisions - 3) * 0.05);
+                    let fractionalPenalty = Math.max(2.0, Math.min(9.0, rawVbd * decayFactor));
+                    if (rawVbd > 60.0) fractionalPenalty *= 0.5; // Do not skip superstars purely due to byes
+                    
+                    score -= fractionalPenalty;
                     p._byeWarningTag = `⚠️ Wk ${p.byeWeek} Pileup (${totalByeCollisions} drafted)`;
-                } 
+                }
                 else if (totalByeCollisions === 2 && posByeCollisions === 1 && currentRound <= 8) {
                     // 2nd RB/WR on same bye in starting rounds: Informative tag, minimal score drag (-1.5)
                     if (rawVbd < 30.0) score -= 1.5;
