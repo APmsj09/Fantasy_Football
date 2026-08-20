@@ -2032,21 +2032,35 @@ const State = {
                     } else {
                         p._backupThreatLevel = 'Low Standalone Threat';
                         p._backupThreatNote = `${backup.Player} operates as a pure contingent backup, giving ${p.Player} an uncontested early-down lead.`;
+                        }
+                    } else {
+                        p._backupThreatLevel = 'Uncontested';
+                        p._backupThreatNote = 'No established backup threat on the depth chart.';
                     }
-                } else {
-                    p._backupThreatLevel = 'Uncontested';
-                    p._backupThreatNote = 'No established backup threat on the depth chart.';
                 }
-            }
+
+                // ⚡ APPLY MATHEMATICAL GOAL-LINE VULTURE PENALTY TO LEAD BACK
+                if (p._backupThreatLevel === 'Goal-Line Vulture Threat') {
+                    let matchupThreat = this.teamOffensiveThreats[tTeam];
+                    let offenseQuality = matchupThreat ? (6.0 - matchupThreat.dstMatchupStars) : 3.0;
+
+                    if (offenseQuality >= 4.0) {
+                        // Elite offense (plenty of red-zone trips to share)
+                        adjMultiplier -= 0.015; 
+                        if (p.xTD) p.xTD = Math.max(3.0, p.xTD - 0.8);
+                    } else {
+                        // Average/Anemic offense (scarce red-zone trips)
+                        adjMultiplier -= 0.035; 
+                        if (p.xTD) p.xTD = Math.max(2.0, p.xTD - 1.5);
+                    }
+                }
 
                 // 3. Inherited Touchdown Validation (Fixes False TD Fluke on Ascending Backs)
                 if (p.depthChart === 1 && vacatedRzAtt >= 15 && p._backupThreatLevel !== 'Goal-Line Vulture Threat') {
                     p._inheritsGoalLineWork = true;
-                    p._inheritedRzAttShare = Math.round(vacatedRzAtt * 0.55); // Projects lead back absorbing 55%+ of vacated RZ carries
-                    
-                    // Adjust Expected Touchdowns (xTD) upward to reflect the newly inherited red-zone role
+                    p._inheritedRzAttShare = Math.round(vacatedRzAtt * 0.55);
                     if (p.xTD) {
-                        p.xTD += (p._inheritedRzAttShare * 0.15); // Add calculated TD expectation
+                        p.xTD += (p._inheritedRzAttShare * 0.15);
                     }
                 }
 
