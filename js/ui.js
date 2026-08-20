@@ -2445,21 +2445,43 @@ const UI = {
             return Math.max(0.0, Math.min(1.0, baseProb));
         };
 
-        // ===========================================================
-        // PRE-LOOP: STRATEGY BADGES 
-        // ===========================================================
+        // =========================================================================
+        // 🎯 4-TIER ROSTER FRAGILITY & DYNAMIC STRUCTURAL STRATEGY ENGINE
+        // =========================================================================
         let userRoster = userTeam.roster;
         let earlyRBs = userRoster.filter(p => p.Pos === 'RB' && (p.draftPickNum || 99) <= 60).length;
         let earlyWRs = userRoster.filter(p => p.Pos === 'WR' && (p.draftPickNum || 99) <= 60).length;
 
+        // 1. Evaluate Live Roster Fragility & Risk Index
+        let highBustStarters = userRoster.filter(p => (p.draftPickNum || 99) <= 72 && p.boomBust && p.boomBust.bust >= 35).length;
+        let isGlassCannon = highBustStarters >= 3;
+
         let strategyBanner = "";
-        if (currentRound <= 7) {
+        if (currentRound <= 9) {
+            let fragilityTag = isGlassCannon 
+                ? `<span class="bg-rose-950 text-rose-300 border border-rose-700 px-2 py-0.5 rounded font-bold ml-1.5">🚨 Fragile 'Glass Cannon' Build</span>` 
+                : `<span class="bg-emerald-950 text-emerald-300 border border-emerald-700 px-2 py-0.5 rounded font-bold ml-1.5">🛡️ Solid Foundation</span>`;
+
             if (earlyRBs === 0 && userRoster.length >= 2) {
-                strategyBanner = `<div class="p-2 mb-2 bg-indigo-950 border border-indigo-700 rounded-lg text-[10px] text-indigo-200">🛡️ <strong>Zero-RB Build:</strong> Prioritizing WR/TE value. Target high-opportunity RBs in rounds 7-10.</div>`;
+                strategyBanner = `<div class="p-2 mb-2 bg-indigo-950 border border-indigo-700 rounded-lg text-[10px] text-indigo-200 flex justify-between items-center">
+                    <span>📡 <strong>Zero-RB Build:</strong> Hammering WR/TE alphas. Target high-HVO space backs & handcuffs in R7–R11.</span>
+                    ${fragilityTag}
+                </div>`;
             } else if (earlyRBs === 1 && earlyWRs >= 2) {
-                strategyBanner = `<div class="p-2 mb-2 bg-emerald-950 border border-emerald-700 rounded-lg text-[10px] text-emerald-200">🦸 <strong>Hero-RB Build:</strong> Anchor RB locked. Evaluating best player available across Flex & WR.</div>`;
+                strategyBanner = `<div class="p-2 mb-2 bg-emerald-950 border border-emerald-700 rounded-lg text-[10px] text-emerald-200 flex justify-between items-center">
+                    <span>🦸 <strong>Hero-RB Build:</strong> Anchor RB secured. Evaluating Best Player Available across WR/TE/Flex.</span>
+                    ${fragilityTag}
+                </div>`;
             } else if (earlyRBs >= 2) {
-                strategyBanner = `<div class="p-2 mb-2 bg-amber-950 border border-amber-700 rounded-lg text-[10px] text-amber-200">💪 <strong>Dual/Robust-RB Foundation:</strong> Multiple high-end RBs drafted. Flex slots will optimize automatically.</div>`;
+                strategyBanner = `<div class="p-2 mb-2 bg-amber-950 border border-amber-700 rounded-lg text-[10px] text-amber-200 flex justify-between items-center">
+                    <span>🚜 <strong>Robust-RB Ground Attack:</strong> Backfield foundation established. Flex slots optimizing dynamically.</span>
+                    ${fragilityTag}
+                </div>`;
+            } else if (isGlassCannon) {
+                strategyBanner = `<div class="p-2 mb-2 bg-rose-950 border border-rose-700 rounded-lg text-[10px] text-rose-200 flex justify-between items-center">
+                    <span>⚠️ <strong>Volatility Warning:</strong> Multiple high-bust starters detected. Prioritizing high-floor insulation assets.</span>
+                    ${fragilityTag}
+                </div>`;
             }
         }
 
