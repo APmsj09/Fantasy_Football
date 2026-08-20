@@ -2580,9 +2580,11 @@ const UI = {
             let isAnyStartingSlotOpen = isPrimaryStarterOpen || isFlexRBWROpen || isFlexOpen || isSuperflexOpen;
 
             if (isPrimaryStarterOpen) {
-                // Aggressively boost open primary starting slots (WR2, QB1, TE1) in mid-rounds
-                let roundPanic = Math.max(0, currentRound - 3) * 1.8;
-                score += 4.0 + roundPanic;
+                // If a starting slot is empty, provide a moderate boost. 
+                // Capped at 4.0 so it serves as a tie-breaker against equal players, 
+                // but won't allow a lesser player to jump a sliding superstar.
+                let roundPanic = Math.max(0, currentRound - 4) * 1.2;
+                score += Math.min(4.0, 2.0 + roundPanic);
             }
 
             // 2. Lineup Value (+PPW)
@@ -2781,28 +2783,22 @@ const UI = {
                 let allowedReach = Math.round(4.0 + (Math.pow(currentRound, 1.4) * 0.8)) + (turnGap >= 18 ? 4 : 0);
 
                 if (score > 0) {
-                    // 1. URGENCY BONUS: Only allowed if in real danger AND within the allowed reach window
-                    if (survivalProb < 0.25 && reachDistance <= allowedReach) {
+                    // 1. VALUE SLIDE BONUS: Heavily reward elite players who have fallen past their ADP
+                    if (reachDistance <= -6) {
+                        let slideValue = Math.min(15.0, Math.abs(reachDistance) * 0.85);
+                        score += slideValue;
+                    }
+                    // 2. URGENCY BONUS: Reward players in danger of not making it back to your next pick
+                    else if (survivalProb < 0.25 && reachDistance <= allowedReach) {
                         let urgencyBonus = Math.min(6.0, (1 - survivalProb) * 6.0);
                         score += urgencyBonus;
                     } 
-                    // 2. REACH PENALTY: Applied if the pick exceeds the round's natural elasticity
+                    // 3. REACH PENALTY: Applied if the pick exceeds the round's natural elasticity
                     else if (reachDistance > allowedReach || (survivalProb > 0.65 && reachDistance >= allowedReach)) {
                         let excessReach = Math.max(0, reachDistance - allowedReach);
                         // Penalty softens in later rounds where ADP is highly inaccurate
                         let penaltyWeight = Math.max(0.15, 1.1 - (currentRound * 0.05));
                         let reachPenalty = excessReach * penaltyWeight;
-
-                        // ⚡ The Sleeper Exemption: High-upside stashes soften the reach penalty
-                        if (stashBonus > 0 && currentRound >= 7) {
-                            reachPenalty = Math.max(0, reachPenalty - (stashBonus * roundScale * 0.85));
-                        }
-
-                        // 🛡️ Onesie Position Trap: Extra friction if reaching on QB/TE/PK/DST to fill a hole
-                        if (['QB', 'TE', 'PK', 'DST'].includes(p.Pos) && isPrimaryStarterOpen && reachDistance > 16) {
-                            reachPenalty *= 1.4;
-                        }
-
                         score -= reachPenalty;
                     }
                 }
