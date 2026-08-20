@@ -3088,26 +3088,94 @@ const State = {
             if (p.Pos === 'RB') {
                 // 🚀 CEILING / FLYER TRAITS
 
-                // TIERED HANDCUFF ENGINE
-                if (p.isRBHandcuff) {
-                    p._isFlyer = true;
-                    let handcuffTierBonus = 0.15; // Base handcuff upside
+                // =========================================================================
+                // 🎯 TEAM OFFENSIVE ECOSYSTEM & ROOKIE SYNTHETIC IMPUTATION ENGINE
+                // =========================================================================
+                if (p.depthChart >= 2 || p.isRBHandcuff) {
+                    const teamKey = this.normalizeTeam(p.Team);
+                    const starter = p.starterName 
+                        ? this.matchPlayerFast(p.starterName, p.Team, 'RB')
+                        : this.allPlayers.find(x => this.normalizeTeam(x.Team) === teamKey && x.Pos === 'RB' && x.depthChart === 1);
 
-                    let starter = this.matchPlayerFast(p.starterName, p.Team, 'RB');
-                    if (starter) {
-                        // Tiers for the role they would inherit
-                        if (starter.ProjPts >= 240) handcuffTierBonus += 0.25;      // Elite bellcow role
-                        else if (starter.ProjPts >= 200) handcuffTierBonus += 0.15; // High-end starter role
-                        else if (starter.ProjPts >= 160) handcuffTierBonus += 0.10; // Solid starter role
+                    // A. Base Starter Value & Historical Injury Probability
+                    const starterProj = starter ? (starter.ProjPts || 180) : 180;
+                    const starterGp = starter?.pastStats?.gp || 17;
+                    const starterInjuryRisk = starterGp <= 10 ? 0.32 : (starterGp <= 14 ? 0.24 : 0.18);
+
+                    // B. Team Offensive Scoring Ecosystem (Red Zone Visits & Passing Scheme)
+                    const matchupThreat = this.teamOffensiveThreats[tTeam];
+                    const offenseQuality = matchupThreat ? (6.0 - matchupThreat.dstMatchupStars) : 3.0; // 1.0 (Anemic) to 5.0 (Elite)
+                    const teamRbTargetRate = teamDist ? (parseFloat(teamDist['RB %']) || 16.0) : 16.0;
+
+                    let ecosystemMultiplier = 1.0;
+                    if (offenseQuality >= 4.2) ecosystemMultiplier += 0.15;      // Top-5 NFL Scoring Offense
+                    else if (offenseQuality >= 3.5) ecosystemMultiplier += 0.08; // Above-Average Offense
+                    else if (offenseQuality <= 2.0) ecosystemMultiplier -= 0.18; // Bottom-5 Anemic Offense
+
+                    if (teamRbTargetRate >= 19.0) ecosystemMultiplier += 0.08;   // High Pass-Catching RB Scheme
+                    else if (teamRbTargetRate <= 12.0) ecosystemMultiplier -= 0.06;
+
+                    // C. Rookie & New Role Synthetic Imputation (Replaces missing NFL career stats)
+                    let yacVal = p.yacAtt;
+                    let tgtShareVal = p.targetShare;
+
+                    if (yacVal === undefined || p.isNewRole) {
+                        const rushEnv = this.teamAdvRush[tTeam];
+                        yacVal = rushEnv && rushEnv.ybcAtt >= 2.6 ? 2.90 : 2.50;
+                        if (p.weight && parseInt(p.weight, 10) >= 215) yacVal += 0.20; // Power frame bonus
                     }
 
-                    // Tiers for blocking environment inheritance
-                    if (p.olTier === 'S') handcuffTierBonus += 0.10;
-                    else if (p.olTier === 'A') handcuffTierBonus += 0.05;
-                    if (rushEnv && rushEnv.ybcAtt >= 2.5) handcuffTierBonus += 0.05;
+                    if (tgtShareVal === undefined || p.isNewRole) {
+                        tgtShareVal = (teamRbTargetRate >= 18.0) ? 11.5 : 8.0;
+                    }
 
-                    upsideMultiplier += handcuffTierBonus;
-                    ceilingTags.push("League-Winning Upside (Contingent)");
+                    // D. Continuous Proportional Talent Scaling
+                    const errVal = p.err || 3.50;
+                    const olRank = p.olRunBlk || 16.5;
+
+                    const deltaYac = (yacVal - 2.50) * 0.08;
+                    const deltaRec = (tgtShareVal - 8.0) * 0.006;
+                    const deltaBurst = (errVal - 3.50) * 0.010;
+                    const deltaLine = (16.5 - olRank) * 0.004;
+
+                    const talentMultiplier = Math.max(0.70, Math.min(1.35, 1.0 + deltaYac + deltaRec + deltaBurst + deltaLine));
+
+                    // E. Physical 3-Down Workhorse Monopoly Scaling
+                    const pWeight = p.weight ? parseInt(p.weight, 10) : 210;
+                    let monopolyFactor = 0.65;
+                    if (pWeight >= 214 && tgtShareVal >= 9.5) {
+                        monopolyFactor = 0.80; // True 3-down frame + receiving profile
+                        p._isThreeDownHeir = true;
+                    } else if (pWeight < 200 && tgtShareVal < 8.0) {
+                        monopolyFactor = 0.45; // High committee splinter risk
+                        p._isSplinterRisk = true;
+                    }
+
+                    // F. Mathematical Contingent League-Winner Score Output
+                    const calculatedContingentScore = (starterProj * 0.60 * monopolyFactor * talentMultiplier * ecosystemMultiplier) * starterInjuryRisk;
+                    p.contingentUpsideScore = calculatedContingentScore;
+
+                    // Scale upside score smoothly based on the calculated score
+                    const scaledUpsideBonus = Math.max(0.05, Math.min(0.35, calculatedContingentScore / 100.0));
+                    upsideMultiplier += scaledUpsideBonus;
+                    p._isFlyer = true;
+
+                    // G. Categorize Proportional Scouting Badges
+                    if (calculatedContingentScore >= 38.0) {
+                        p._contingentTier = '👑 Diamond Contingent League-Winner';
+                        p._contingentNote = `Elite underlying talent (${yacVal.toFixed(1)} YAC, ${tgtShareVal.toFixed(1)}% Tgt Share) in a high-volume offensive ecosystem.`;
+                        ceilingTags.push("Diamond Contingent League-Winner");
+                    } else if (calculatedContingentScore >= 26.0) {
+                        p._contingentTier = '💎 High-Ceiling Contingent Stash';
+                        p._contingentNote = `High-efficiency backup with strong pass-catching and tackle-breaking elusiveness.`;
+                        ceilingTags.push("High-Ceiling Contingent Stash");
+                    } else if (monopolyFactor <= 0.50 || talentMultiplier <= 0.85) {
+                        p._contingentTier = '⚠️ Committee Splinter Risk';
+                        p._contingentNote = `Limited efficiency baseline (${yacVal.toFixed(1)} YAC); starter injury likely causes a multi-back rotation.`;
+                    } else {
+                        p._contingentTier = '🎲 Standard Contingent Stash';
+                        p._contingentNote = `Situational rotational depth.`;
+                    }
                 }
 
                 // Continuous Youth Upside Scale (Max +22% at 21yo, fades to +4% at 24yo)
