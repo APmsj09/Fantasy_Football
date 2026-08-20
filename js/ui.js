@@ -1966,6 +1966,9 @@ const UI = {
         let handcuffBadge = '';
         if (p.isRBStarter && p.handcuffName) {
             handcuffBadge = `<span class="text-xs bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full font-semibold">🛡️ Handcuff: ${p.handcuffName}</span>`;
+        } else if ((p.isRBHandcuff || p.depthChart >= 2) && p._contingentTier) {
+            let badgeCls = p._contingentTier.includes('Diamond') ? 'bg-purple-100 text-purple-800 border-purple-300' : (p._contingentTier.includes('High-Ceiling') ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-slate-100 text-slate-700 border-slate-300');
+            handcuffBadge = `<span class="text-xs border ${badgeCls} px-2 py-0.5 rounded-full font-bold">${p._contingentTier}</span>`;
         } else if (p.isRBHandcuff && p.starterName) {
             handcuffBadge = `<span class="text-xs bg-indigo-50 text-indigo-700 border border-indigo-200 px-2 py-0.5 rounded-full font-semibold">🔒 Handcuff for ${p.starterName}</span>`;
         }
