@@ -1814,6 +1814,17 @@ const State = {
             DST: (baselines.DST || 120) / 17
         };
 
+        // ⚡ Z-SCORE PRE-CALCULATION ENGINE (Standard Deviations)
+        const validRBs = this.allPlayers.filter(p => p.Pos === 'RB' && p.ProjPts >= 60);
+        const hvoArr = validRBs.map(p => p.hvo || 0);
+        const btArr = validRBs.map(p => p.brokenTackles || 0);
+
+        const calcMean = arr => arr.reduce((a, b) => a + b, 0) / Math.max(1, arr.length);
+        const calcStdDev = (arr, mean) => Math.sqrt(arr.reduce((sq, n) => sq + Math.pow(n - mean, 2), 0) / Math.max(1, arr.length));
+
+        const rHvoMean = calcMean(hvoArr), rHvoStd = calcStdDev(hvoArr, rHvoMean) || 1;
+        const rBtMean = calcMean(btArr), rBtStd = calcStdDev(btArr, rBtMean) || 1;
+
         this.allPlayers.forEach(p => {
             const tTeam = this.normalizeTeam(p.Team);
             const passEnv = this.teamAdvPass[tTeam];
@@ -2042,16 +2053,15 @@ const State = {
                 // ⚡ APPLY MATHEMATICAL GOAL-LINE VULTURE PENALTY TO LEAD BACK
                 if (p._backupThreatLevel === 'Goal-Line Vulture Threat') {
                     let matchupThreat = this.teamOffensiveThreats[tTeam];
-                    let offenseQuality = matchupThreat ? (6.0 - matchupThreat.dstMatchupStars) : 3.0;
+                    let offenseQuality = matchupThreat ? (6.0 - matchupThreat.dstMatchupStars) : 3.0; // Scale 1.0 to 5.0
 
-                    if (offenseQuality >= 4.0) {
-                        // Elite offense (plenty of red-zone trips to share)
-                        adjMultiplier -= 0.015; 
-                        if (p.xTD) p.xTD = Math.max(3.0, p.xTD - 0.8);
-                    } else {
-                        // Average/Anemic offense (scarce red-zone trips)
-                        adjMultiplier -= 0.035; 
-                        if (p.xTD) p.xTD = Math.max(2.0, p.xTD - 1.5);
+                    // ⚡ Continuous Interpolation: 5.0 offense = mild penalty (-0.015), 1.0 offense = severe penalty (-0.04)
+                    let vulturePenalty = 0.04 - ((offenseQuality - 1.0) * 0.00625); 
+                    adjMultiplier -= vulturePenalty; 
+
+                    if (p.xTD) {
+                        let xtdDeduction = 1.6 - ((offenseQuality - 1.0) * 0.2); // Deducts between 1.6 TDs and 0.8 TDs
+                        p.xTD = Math.max(1.5, p.xTD - xtdDeduction);
                     }
                 }
 
@@ -2592,15 +2602,21 @@ const State = {
                 }
             }
 
-            if (p.Pos === 'RB') {
-                if (p.brokenTackles) {
-                    if (p.brokenTackles >= 30) adjMultiplier += (0.04 * sampleConfidence);
-                    else if (p.brokenTackles >= 20) adjMultiplier += (0.02 * sampleConfidence);
+           if (p.Pos === 'RB') {
+                // ⚡ Z-Score Scaling: Rewards players dynamically based on standard deviations above league-average
+                if (p.brokenTackles !== undefined) {
+                    let zScore = (p.brokenTackles - rBtMean) / rBtStd;
+                    if (zScore > 0) {
+                        // Adds +0.015 per Standard Deviation above mean. Capped at +0.05.
+                        adjMultiplier += Math.min(0.05, zScore * 0.015 * sampleConfidence);
+                    }
                 }
-                if (p.hvo) {
-                    if (p.hvo >= 100) adjMultiplier += (0.08 * sampleConfidence);
-                    else if (p.hvo >= 80) adjMultiplier += (0.04 * sampleConfidence);
-                    else if (p.hvo >= 60) adjMultiplier += (0.02 * sampleConfidence);
+                if (p.hvo !== undefined) {
+                    let zScore = (p.hvo - rHvoMean) / rHvoStd;
+                    if (zScore > 0) {
+                        // Adds +0.025 per Standard Deviation above mean. Capped at +0.08.
+                        adjMultiplier += Math.min(0.08, zScore * 0.025 * sampleConfidence);
+                    }
                 }
 
                 // 2nd/3rd-Level: YAC vs. O-Line Blocking Context Check
@@ -2730,22 +2746,20 @@ const State = {
 
                 // B. Interactive Pressure-to-Sack (P2S%) Matrix
                 if (p2s !== undefined) {
-                    let p2sMod = 0;
-                    if (p2s <= 13.5) {
-                        p2sMod = (qbMobilityTier <= 2) ? 0.040 : 0.045;
-                    } else if (p2s <= 21.0) {
-                        p2sMod = 0.0;
-                    } else if (p2s <= 28.0) {
-                        if (qbMobilityTier === 1) p2sMod = -0.015;
-                        else if (qbMobilityTier === 2) p2sMod = -0.022;
-                        else if (qbMobilityTier === 3) p2sMod = -0.035;
-                        else p2sMod = -0.045;
-                    } else {
-                        if (qbMobilityTier === 1) p2sMod = -0.028;
-                        else if (qbMobilityTier === 2) p2sMod = -0.038;
-                        else if (qbMobilityTier === 3) p2sMod = -0.050;
-                        else p2sMod = -0.070;
+                    // ⚡ Continuous Scaler: Center league average around 20.0%. 
+                    let p2sDelta = 20.0 - p2s; // Positive = better than average, Negative = worse
+                    let baseP2sMod = p2sDelta * 0.003; // 1% variance = 0.003 multiplier shift
+                    
+                    // Pocket passers (Tier 4) are hurt significantly more by high sack rates than scramblers
+                    let mobilitySensitivity = (qbMobilityTier === 4) ? 1.4 : (qbMobilityTier === 3 ? 1.1 : 0.8);
+                    
+                    // Only apply the penalty scaler to negative deltas, leave positive rewards normalized
+                    if (p2sDelta < 0) {
+                        baseP2sMod *= mobilitySensitivity; 
                     }
+                    
+                    // Bound the absolute maximum effect to realistic boundaries
+                    let p2sMod = Math.max(-0.075, Math.min(0.045, baseP2sMod));
                     adjMultiplier += (p2sMod * sampleConfidence);
                 }
 
