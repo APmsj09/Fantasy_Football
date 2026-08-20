@@ -2767,88 +2767,219 @@ const State = {
                 }
             }
 
-            // ===========================================================
-            // ARCHETYPE DETECTION & MULTIPLIER ADJUSTMENTS
-            // ===========================================================
+            // =========================================================================
+            // 🎯 ENHANCED 5-TIER RB, 5-TIER WR, AND 4-TIER TE ARCHETYPE CLASSIFIERS
+            // =========================================================================
 
-            // 1B Back / Handcuff+
-            if (p.Pos === 'RB' && p.isRBHandcuff && p.snapShare >= 35) {
-                adjMultiplier += 0.04;
-                p._isHandcuffPlus = true;
-            }
-
-            // Empty Calories Receiver
-            if (['WR', 'TE'].includes(p.Pos) && p.targetShare >= 18 && p.ypt && p.ypt <= 6.5) {
-                adjMultiplier -= 0.06;
-                p._isEmptyCalories = true;
-            }
-
-            // Cardio King
-            if (['WR', 'TE'].includes(p.Pos) && p.snapShare >= 75 && p.targetShare && p.targetShare <= 11.5) {
-                adjMultiplier -= 0.07;
-                p._isCardioKing = true;
-            }
-
+            // --- 1. COMPREHENSIVE 8-ARCHETYPE RUNNING BACK VALUATION MATRIX ---
             if (p.Pos === 'RB') {
-                const isLowPassingUsage = (p.targetShare && p.targetShare < 8.5) || (p.stats && p.stats.targets <= 30);
-                const isHighTdEarner = (p.rzAtt && p.rzAtt >= 20) || (p.stats && p.stats.rushTd >= 7) || (p.pastStats && p.pastStats.rushTd >= 7);
-                const isPowerFrame = (p.weight && p.weight >= 214) || (p.bmi && p.bmi >= 30.5);
+                const snap = p.snapShare || 0;
+                const hvo = p.hvo || 0;
+                const tgtShare = p.targetShare || 0;
+                const rzCarries = p.rzAtt || (p.pastStats?.rzAtt || 0);
+                const projCarries = p.stats?.rushAtt || (p.pastStats?.rushAtt || 0);
+                const projTgts = p.stats?.targets || (p.pastStats?.targets || 0);
+                const projPts = p.ProjPts || 0;
+                const yac = p.yacAtt || 2.4;
+                const err = p.err || 0;
+                const pAge = p.age || p.Age || 25;
+                const isPPR = this.scoring.ppr >= 0.5;
 
-                // 1. Identify Pure Goal-Line Hammer Archetype
-                if (isLowPassingUsage && isHighTdEarner && isPowerFrame) {
+                const isPowerFrame = (p.weight && p.weight >= 214) || (p.bmi && p.bmi >= 30.5);
+                const isLowPassing = tgtShare < 8.5 && projTgts <= 32;
+
+                // 1. Uncontested 3-Down Bellcow Alpha (CMC, Saquon, Breece, Bijan)
+                if ((snap >= 68 || (p.depthChart === 1 && projCarries >= 220)) && hvo >= 65 && (tgtShare >= 9.5 || projTgts >= 45)) {
+                    p._rbArchetype = 'Bellcow Alpha';
+                    adjMultiplier += 0.065;
+                    p._isFlyer = true;
+                    upsideMultiplier += 0.20;
+                    ceilingTags.push("Three-Down Bellcow Monopoly");
+                }
+                // 2. High-Leverage Space Back / Elite Satellite Weapon (Gibbs, Achane, Kamara)
+                else if ((tgtShare >= 12.5 || (projCarries < 150 && projTgts >= 45)) && hvo >= 40) {
+                    p._rbArchetype = 'High-Leverage Space Back';
+                    p._isSatelliteBack = true;
+                    adjMultiplier += (isPPR ? 0.050 : -0.020);
+                    upsideMultiplier += 0.18;
+                    ceilingTags.push("High-Leverage PPR Space Creator");
+                }
+                // --- TIER A: DESIGNED 1B CO-STARTER (Standalone Weekly Flex/RB2) ---
+                // (Snap Share >= 42%, 10+ Proj Touches/G, ProjPts >= 140)
+                else if (p.depthChart === 2 && snap >= 42 && projCarries >= 135 && projPts >= 140) {
+                    p._rbArchetype = '1B Co-Starter';
+                    p._isStandaloneCoLead = true;
+                    adjMultiplier += 0.040; // Direct boost to baseline starting VBD
+                    upsideMultiplier += 0.15;
+                    ceilingTags.push("Designed 1B Timeshare / Standalone Flex");
+                }
+
+                // --- TIER B: HANDCUFF+ (High-End Stash with Touch Floor) ---
+                // (Snap Share 30-41%, 6-9 Touches/G, ProjPts 95-139, designated backup)
+                else if (p.depthChart === 2 && snap >= 28 && projPts >= 95) {
+                    p._rbArchetype = 'Handcuff+ Stash';
+                    p._isHandcuffPlus = true;
+                    p._isFlyer = true;
+                    adjMultiplier += 0.015;  // Slight floor cushion
+                    upsideMultiplier += 0.30; // Heavy contingent upside boost
+                    ceilingTags.push("Elite Handcuff+ (Floor Cushion + RB1 Ceiling)");
+                }
+
+                // --- TIER C: PURE CONTINGENT LOTTERY TICKET (0 Standalone Value) ---
+                else if (p.isRBHandcuff || p.depthChart === 2) {
+                    p._rbArchetype = 'Contingent Lottery Ticket';
+                    p._isFlyer = true;
+                    upsideMultiplier += 0.25;
+                    ceilingTags.push("Pure Contingent Lottery Stash");
+                }
+                // 4. Explosive Chunk Slasher (Jaylen Warren, Keaton Mitchell, Chase Brown)
+                else if ((yac >= 3.3 || err >= 5.0) && projCarries >= 100 && hvo >= 30) {
+                    p._rbArchetype = 'Explosive Chunk Slasher';
+                    p._isChunkSlasher = true;
+                    adjMultiplier += 0.025;
+                    upsideMultiplier += 0.20;
+                    ceilingTags.push("Explosive Big-Play Efficiency (High YAC)");
+                }
+                // 5. 1A Early-Down Power Hammer (Henry, Montgomery, Pacheco)
+                else if (isLowPassing && (rzCarries >= 18 || (p.stats?.rushTd || 0) >= 7) && isPowerFrame) {
+                    p._rbArchetype = '1A Early-Down Hammer';
                     p._isGoalLineHammer = true;
 
                     let matchupThreat = this.teamOffensiveThreats[tTeam];
-                    if (matchupThreat) {
-                        let offenseQuality = 6.0 - matchupThreat.dstMatchupStars; // 5.0 = Elite, 1.0 = Anemic
+                    let offenseQuality = matchupThreat ? (6.0 - matchupThreat.dstMatchupStars) : 3.0;
 
-                        // 2. Elite Offense Synergy (Frequent Goal-Line Trips)
-                        if (offenseQuality >= 4.0) {
-                            adjMultiplier += 0.035; // Boosts TD equity in high-scoring offenses
-                            if (p.xTD) p.xTD += 1.2;
-                            p._goalLineContext = `Elite Red-Zone Synergy: Operates as the primary goal-line hammer in a high-scoring offense with frequent inside-the-5 opportunities.`;
-                        } 
-                        // 3. The "Zero-Yard TD Trap" (Anemic Offense Neutralization)
-                        else if (offenseQuality <= 2.2) {
-                            adjMultiplier -= 0.055; // Heavy penalty: Lack of RZ trips kills TD-dependent backs
-                            if (p.xTD) p.xTD = Math.max(1.5, p.xTD - 2.2); // Slashes Expected TDs
-                            p._isZeroYardTDTrap = true;
-                            p._goalLineContext = `Zero-Yard TD Trap: Touchdown dependency is severely neutralized by an anemic offense that rarely reaches the red zone.`;
-                        }
+                    if (offenseQuality >= 4.0) {
+                        adjMultiplier += 0.035; // High-scoring offense prints inside-the-5 TDs
+                        if (p.xTD) p.xTD += 1.2;
+                    } else if (offenseQuality <= 2.2) {
+                        adjMultiplier -= 0.055; // Zero-yard TD trap in anemic offense
+                        if (p.xTD) p.xTD = Math.max(1.5, p.xTD - 2.0);
+                        p._isZeroYardTDTrap = true;
                     }
+                }
+                // 6. Ambiguous Backfield Rookie Ascender (Day 1/2 Draft Pick with vacated opportunity)
+                else if (pAge <= 23 && (p.depthChart === 2 || p.depthChart === 3) && (p._vacatedCarries >= 50 || p.isNewRole)) {
+                    p._rbArchetype = 'Rookie Backfield Ascender';
+                    p._isAscendingRole = true;
+                    p._isFlyer = true;
+                    adjMultiplier += 0.020;
+                    upsideMultiplier += 0.30; // High probability of overtaking incumbent by midseason
+                    ceilingTags.push("Rookie Midseason Takeover Trajectory");
+                }
+                // 7. Short-Yardage Goal-Line Vulture (Touchdown Syphon)
+                else if (snap < 40 && (rzCarries >= 16 || (p.stats?.rushTd || 0) >= 5) && isPowerFrame && !p.isRBStarter) {
+                    p._rbArchetype = 'Goal-Line Vulture';
+                    p._isRedZoneVulture = true;
+                    adjMultiplier -= 0.030; // Severe floor risk outside of scoring
+                    upsideMultiplier += 0.10;
+                }
+                // 8. Pure Contingent Lottery Ticket (Pure Backup with 0 standalone value)
+                else if (p.isRBHandcuff || p.depthChart === 2) {
+                    p._rbArchetype = 'Contingent Lottery Ticket';
+                    p._isFlyer = true;
+                    upsideMultiplier += 0.25;
+                    ceilingTags.push("High-Ceiling Contingent Stash");
+                }
+                // 9. Empty-Touch Committee Trap (Low efficiency / crowded backfield)
+                else if (snap < 50 && yac < 2.5 && hvo < 28 && !p.isRBStarter) {
+                    p._rbArchetype = 'Empty-Touch Committee Trap';
+                    adjMultiplier -= 0.050;
+                }
+                else {
+                    p._rbArchetype = 'Rotational Committee Back';
                 }
             }
 
-            // Satellite Back
-            if (p.Pos === 'RB' && p.targetShare >= 12 && p.stats && p.stats.rushAtt < 120) {
-                if (this.scoring.ppr >= 1.0) adjMultiplier += 0.05;
-                else if (this.scoring.ppr === 0) adjMultiplier -= 0.04;
-                p._isSatelliteBack = true;
+            // --- 2. WIDE RECEIVER 5-TIER ROUTE TREE & OPPORTUNITY MATRIX ---
+            if (p.Pos === 'WR') {
+                const tgtShare = p.targetShare || 0;
+                const wopr = p.wopr || 0;
+                const adot = p.aDOT || 10.0;
+                const snap = p.snapShare || 0;
+                const ypt = p.ypt || 0;
+
+                // Tier 1: Dominant Alpha Target Funnel (Jefferson, Lamb, Chase, Amon-Ra)
+                if (tgtShare >= 25.0 || wopr >= 0.60 || (p.depthChart === 1 && (p.stats?.targets || 0) >= 135)) {
+                    p._wrArchetype = 'Alpha Target Funnel';
+                    adjMultiplier += 0.065;
+                    p._isFlyer = true;
+                    upsideMultiplier += 0.20;
+                    ceilingTags.push("Dominant Alpha Target Funnel");
+                }
+                // Tier 2: High-Volume Slot Magnet / Chain Mover (Godwin, Rice, Keenan Allen)
+                else if (adot <= 9.0 && (tgtShare >= 18.0 || (p.stats?.targets || 0) >= 95) && (p.trueCatchRate || 85) >= 88.0) {
+                    p._wrArchetype = 'High-Volume Slot Magnet';
+                    p._isShortAdotOperator = true;
+                    adjMultiplier += (this.scoring.ppr >= 0.5 ? 0.035 : -0.015);
+                    p._isSafeFloor = true;
+                }
+                // Tier 3: Vertical Spike-Week Weapon (Pickens, Pierce, Jameson Williams)
+                else if (adot >= 12.5 && (p.airYards >= 1000 || ((p.stats?.recAvg || 0) >= 14.5 && (p.stats?.targets || 0) >= 65))) {
+                    p._wrArchetype = 'Vertical Spike-Week Weapon';
+                    p._isSpikeWeekWeapon = true;
+                    p._isFlyer = true;
+                    upsideMultiplier += 0.25;
+                    ceilingTags.push("Vertical Spike-Week Ceiling");
+                }
+                // Tier 4: Capped Beta WR2 in Run-Heavy/Spread Attack
+                else if (p.depthChart === 2 && (teamDist ? teamDist['WR %'] < 55.0 : false)) {
+                    p._wrArchetype = 'Capped Beta WR2';
+                    adjMultiplier -= 0.035;
+                }
+                // Tier 5: Cardio King Decoy (High snaps, zero targets)
+                else if (snap >= 75.0 && tgtShare <= 11.5 && (p.stats?.targets || 0) < 60) {
+                    p._wrArchetype = 'Cardio King Decoy';
+                    p._isCardioKing = true;
+                    adjMultiplier -= 0.070;
+                }
+                // Traps: Empty Calories Receiver (High volume, abysmal efficiency)
+                else if (tgtShare >= 18.0 && ypt > 0 && ypt <= 6.5) {
+                    p._wrArchetype = 'Empty Calories Volume Trap';
+                    p._isEmptyCalories = true;
+                    adjMultiplier -= 0.060;
+                }
+                else {
+                    p._wrArchetype = 'Secondary Target Option';
+                }
             }
 
-            // TD-or-Bust Tight End
-            if (p.Pos === 'TE' && p.targetShare && p.targetShare <= 14 && p.rzTgt && p.rzTgt >= 10) {
-                adjMultiplier -= 0.02;
-                p._isTDorBust = true;
-            }
+            // --- 3. TIGHT END 4-TIER DETACHMENT & ALIGNMENT HIERARCHY ---
+            if (p.Pos === 'TE') {
+                const tgtShare = p.targetShare || 0;
+                const rzTgt = p.rzTgt || 0;
+                const projPts = p.ProjPts || 0;
+                const wopr = p.wopr || 0;
+                const snap = p.snapShare || 0;
 
-            // Short-aDOT PPR Operator
-            if (['WR', 'TE'].includes(p.Pos) && p.targetShare >= 18 && p.aDOT && p.aDOT <= 6.5) {
-                if (this.scoring.ppr >= 1.0) adjMultiplier += 0.03;
-                else if (this.scoring.ppr === 0) adjMultiplier -= 0.03;
-                p._isShortAdotOperator = true;
-            }
-
-            // Play-Action Merchant QB
-            if (p.Pos === 'QB' && passEnv && (passEnv.playActionYds >= 1000 || passEnv.rpoYds >= 600)) {
-                adjMultiplier += 0.03;
-                p._isPlayActionMerchant = true;
-            }
-
-            // Red Zone Vulture RB
-            if (p.Pos === 'RB' && p.rzAtt && p.rzAtt >= 18 && p.snapShare && p.snapShare <= 50 && !p.isRBStarter) {
-                adjMultiplier += 0.02;
-                p._isRedZoneVulture = true;
+                // Tier 1: Detached Alpha "Big Slot" Weapon (Kelce, McBride, Bowers, Kittle)
+                if (tgtShare >= 18.0 || projPts >= 200 || wopr >= 0.45 || (p.depthChart === 1 && (p.stats?.targets || 0) >= 105)) {
+                    p._teArchetype = 'Detached Alpha "Big Slot"';
+                    adjMultiplier += 0.055;
+                    p._isFlyer = true;
+                    upsideMultiplier += 0.20;
+                    ceilingTags.push("Detached TE Matchup Weapon");
+                }
+                // Tier 2: Middle-of-Field (MOF) Chain Mover (Ferguson, Engram, Njoku)
+                else if (tgtShare >= 13.5 || ((p.stats?.targets || 0) >= 75 && rzTgt >= 8)) {
+                    p._teArchetype = 'Middle-of-Field Chain Mover';
+                    adjMultiplier += 0.020;
+                    p._isSafeFloor = true;
+                }
+                // Tier 3: Red-Zone TD Specialist / Touchdown-or-Bust
+                else if (tgtShare < 13.5 && (rzTgt >= 10 || (p.stats?.recTd || 0) >= 6)) {
+                    p._teArchetype = 'Red-Zone TD Specialist';
+                    p._isTDorBust = true;
+                    adjMultiplier -= 0.020;
+                    upsideMultiplier += 0.15;
+                }
+                // Tier 4: Inline Blocker / Cardio TE Trap
+                else if (snap >= 65.0 && tgtShare <= 10.0 && (p.stats?.targets || 0) < 45) {
+                    p._teArchetype = 'Inline Blocker Trap';
+                    adjMultiplier -= 0.060;
+                }
+                else {
+                    p._teArchetype = 'Rotational Tight End';
+                }
             }
 
             // 7. Advanced Team Environment Metrics & Scheme Archetypes
