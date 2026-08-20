@@ -1172,7 +1172,8 @@ const State = {
                 simSeasonScore += newScore;
 
                 let weekDiff = newScore - baseWeeklyScores[w];
-                if (weekDiff > maxWeekAdded) {
+                const startersOnByeThisWeek = team.roster.filter(r => String(r.byeWeek) === String(w)).length;
+                if (weekDiff > maxWeekAdded && startersOnByeThisWeek > 0 && w >= 5 && w <= 14) {
                     maxWeekAdded = weekDiff;
                     bestByeFillWeek = w;
                 }
