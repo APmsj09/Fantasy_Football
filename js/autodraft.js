@@ -246,11 +246,15 @@ window.AutoDraft = {
             let adpBonus = 0;
             let isFanTarget = profile && profile.teamBias && profile.teamBias !== 'None' && profile.teamBias === State.normalizeTeam(p.Team);
 
-            if (p.adp) {
+           if (p.adp) {
                 let adpDiff = p.adp - currentOverallPick;
                 
-                if (adpDiff > 12) {
-                    adpPenalty = Math.min(18.0, (adpDiff - 10) * 0.65);
+                // Dynamic Elasticity Curve for CPU
+                let allowedReach = Math.round(4.0 + (Math.pow(round, 1.4) * 0.8));
+                
+                if (adpDiff > allowedReach) {
+                    let penaltyWeight = Math.max(0.25, 1.0 - (round * 0.06));
+                    adpPenalty = Math.min(18.0, (adpDiff - allowedReach) * penaltyWeight);
                     
                     // ⚡ CPU Personality Override: Managers will ignore ADP reach penalties for "their guys"
                     if (isFanTarget) {
