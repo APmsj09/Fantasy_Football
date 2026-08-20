@@ -3397,18 +3397,18 @@ const State = {
 
             // 🎯 TRUE RIGHT-TAIL CEILING (POTENTIAL IF THINGS GO RIGHT)
             if (p.Pos === 'RB' && p.depthChart >= 2 && p.contingentPeakPoints) {
-                // If things go right for a backup, their potential is their Inherited Peak Role, not 1.3x their 3-carry backup stats!
                 p.ceilingProjPts = Math.max(p.ProjPts * upsideMultiplier, p.contingentPeakPoints);
             } else if (['WR', 'TE'].includes(p.Pos) && p._isAscendingRole && p._vacatedAirYards >= 500) {
-                // If things go right for an ascending receiver, they absorb the vacated target funnel
-                p.ceilingProjPts = (p.ProjPts * upsideMultiplier) + (p._vacatedAirYards * 0.08);
+                // Air yards convert to fantasy points at ~0.035, capped at a realistic 40-point surge
+                let airYardBump = Math.min(40.0, p._vacatedAirYards * 0.035);
+                p.ceilingProjPts = Math.min(p.ProjPts * 1.38, (p.ProjPts * upsideMultiplier) + airYardBump);
             } else {
-                // Standard starters: Peak efficiency + TD luck surge
-                p.ceilingProjPts = (p.ProjPts * upsideMultiplier);
+                // Standard starters capped at 1.35x ceiling
+                p.ceilingProjPts = Math.min(p.ProjPts * 1.35, p.ProjPts * upsideMultiplier);
             }
 
             // Upside Score measures their Potential Ceiling against the starting baseline
-            p.upsideScore = p.ceilingProjPts - rawBasePts;
+            p.upsideScore = Math.max(0, p.ceilingProjPts - rawBasePts);
 
             // ===========================================================
             // FINAL CALCULATIONS
