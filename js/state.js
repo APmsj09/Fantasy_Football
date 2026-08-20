@@ -3151,12 +3151,22 @@ const State = {
                         p._isSplinterRisk = true;
                     }
 
-                    // F. Mathematical Contingent League-Winner Score Output
-                    const calculatedContingentScore = (starterProj * 0.60 * monopolyFactor * talentMultiplier * ecosystemMultiplier) * starterInjuryRisk;
-                    p.contingentUpsideScore = calculatedContingentScore;
+                    // =========================================================================
+                    // 🎯 DECOUPLED CONDITIONAL POTENTIAL (IF THINGS GO RIGHT = 100% ROLE HEIR)
+                    // =========================================================================
+                
+                    // A. Blended Draft Value (Factors in probability of injury to set fair draft cost)
+                    p.contingentDraftEquity = (starterProj * 0.60 * monopolyFactor * talentMultiplier * ecosystemMultiplier) * starterInjuryRisk;
 
-                    // Scale upside score smoothly based on the calculated score
-                    const scaledUpsideBonus = Math.max(0.05, Math.min(0.35, calculatedContingentScore / 100.0));
+                    // B. TRUE CONDITIONAL POTENTIAL (If things go right: Starter misses time & backup inherits role)
+                    // In this upside universe, probability is 1.0, NOT 0.20!
+                    p.contingentPeakPoints = (starterProj * 0.85 * monopolyFactor * talentMultiplier * ecosystemMultiplier);
+                
+                    // C. Upside Score uses Full Potential Points
+                    p.contingentUpsideScore = p.contingentPeakPoints;
+
+                    // Boost ceiling multiplier based on conditional potential
+                    const scaledUpsideBonus = Math.max(0.10, Math.min(0.60, (p.contingentPeakPoints - (p.ProjPts || 100)) / 150));
                     upsideMultiplier += scaledUpsideBonus;
                     p._isFlyer = true;
 
@@ -3330,12 +3340,22 @@ const State = {
 
             p._ceilingTags = [...new Set(ceilingTags)];
 
-            let baseVbd = p.VBD;
-            if (baseVbd > 0) {
-                p.upsideScore = baseVbd * upsideMultiplier;
+            const rawBasePts = baselines[p.Pos] || 0;
+
+            // 🎯 TRUE RIGHT-TAIL CEILING (POTENTIAL IF THINGS GO RIGHT)
+            if (p.Pos === 'RB' && p.depthChart >= 2 && p.contingentPeakPoints) {
+                // If things go right for a backup, their potential is their Inherited Peak Role, not 1.3x their 3-carry backup stats!
+                p.ceilingProjPts = Math.max(p.ProjPts * upsideMultiplier, p.contingentPeakPoints);
+            } else if (['WR', 'TE'].includes(p.Pos) && p._isAscendingRole && p._vacatedAirYards >= 500) {
+                // If things go right for an ascending receiver, they absorb the vacated target funnel
+                p.ceilingProjPts = (p.ProjPts * upsideMultiplier) + (p._vacatedAirYards * 0.08);
             } else {
-                p.upsideScore = baseVbd / Math.max(0.5, upsideMultiplier);
+                // Standard starters: Peak efficiency + TD luck surge
+                p.ceilingProjPts = (p.ProjPts * upsideMultiplier);
             }
+
+            // Upside Score measures their Potential Ceiling against the starting baseline
+            p.upsideScore = p.ceilingProjPts - rawBasePts;
 
             // ===========================================================
             // FINAL CALCULATIONS
