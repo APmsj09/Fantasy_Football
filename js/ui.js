@@ -2151,7 +2151,11 @@ const UI = {
 
     renderDraftAvailablePlayers() {
         const tbody = document.getElementById('draft-players-body');
-        let htmlStr = '';
+        if (!tbody) return;
+
+        // ✅ FIX: Hoist userTeam & userRoster to the top of the function
+        const userTeam = State.teamsById[State.userTeamId];
+        const userRoster = userTeam?.roster || [];
 
         let filterPos = document.getElementById('draft-position-filter')?.value || '';
         let search = this.normalizeSearchText(document.getElementById('draft-search')?.value || '');
@@ -2174,6 +2178,7 @@ const UI = {
         let isUserTurn = isMock && (onClockId === State.userTeamId);
 
         let previousVBD = null;
+        let htmlStr = '';
 
         displayList.forEach(p => {
             let currentVBD = p.AdvVBD || p.VBD;
@@ -2194,8 +2199,31 @@ const UI = {
             }
 
             let adpStr = p.adp ? p.adp.toFixed(1) : '-';
-            let byeStr = p.byeWeek && p.byeWeek !== 'N/A' ? `Wk ${p.byeWeek}` : '-';
             let depthStr = p.depthChart ? `#${p.depthChart}` : '-';
+
+            // ⚡ INTELLIGENT BYE WEEK UI CONFLICT DETECTOR
+            let byeStr = '-';
+            if (p.byeWeek && p.byeWeek !== 'N/A') {
+                const sameByeRoster = userRoster.filter(r => String(r.byeWeek) === String(p.byeWeek));
+                const samePosByeRoster = sameByeRoster.filter(r => r.Pos === p.Pos);
+                const totalByeCount = sameByeRoster.length;
+                const posByeCount = samePosByeRoster.length;
+
+                const isOnesie = ['QB', 'TE', 'PK', 'DST'].includes(p.Pos);
+                const hasOnesieStarterConflict = isOnesie && posByeCount >= 1;
+
+                if (hasOnesieStarterConflict) {
+                    byeStr = `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-black bg-rose-100 text-rose-800 border border-rose-300 shadow-sm" title="Warning: Shares Week ${p.byeWeek} bye with drafted ${p.Pos} (${samePosByeRoster.map(x=>x.Player).join(', ')})">Wk ${p.byeWeek} 🚨 ${p.Pos}</span>`;
+                } else if (totalByeCount >= 3 || posByeCount >= 2) {
+                    byeStr = `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-black bg-rose-100 text-rose-700 border border-rose-200" title="Heavy Collision: ${totalByeCount} drafted player(s) already on Week ${p.byeWeek} bye">Wk ${p.byeWeek} (${totalByeCount} 🚨)</span>`;
+                } else if (totalByeCount === 2 || posByeCount === 1) {
+                    byeStr = `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200" title="Caution: ${totalByeCount} player(s) sharing Week ${p.byeWeek} bye (${sameByeRoster.map(x=>x.Player).join(', ')})">Wk ${p.byeWeek} (${totalByeCount} ⚠️)</span>`;
+                } else if (totalByeCount === 1) {
+                    byeStr = `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-700 border border-slate-200" title="1 player on roster on Week ${p.byeWeek} bye">Wk ${p.byeWeek} <span class="text-[9px] text-slate-400 ml-0.5">(1)</span></span>`;
+                } else {
+                    byeStr = `<span class="text-slate-600 font-medium">Wk ${p.byeWeek}</span>`;
+                }
+            }
 
             let advTags = [];
 
@@ -2206,8 +2234,7 @@ const UI = {
             if (p.aDOT && p.aDOT > 12) advTags.push(`<span class="bg-rose-100 text-rose-700 px-1.5 py-0.5 rounded">${p.aDOT} aDOT</span>`);
             if (p.brokenTackles && p.brokenTackles > 15) advTags.push(`<span class="bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded">${p.brokenTackles} B-Tkl</span>`);
 
-            const userTeam = State.teamsById[State.userTeamId];
-            const userOwnsStarter = p.starterName && userTeam?.roster.some(r => r._cleanName === State.normalizeName(p.starterName));
+            const userOwnsStarter = p.starterName && userRoster.some(r => r._cleanName === State.normalizeName(p.starterName));
 
             if (userOwnsStarter) {
                 advTags.push(`<span class="bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded">🔒 Handcuff for ${p.starterName}</span>`);
@@ -2240,7 +2267,7 @@ const UI = {
                 injBadge = `<span class="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold ${color}">${abbr}</span>`;
             }
 
-            // --- KEY STATS LINE WITH ATTEMPTS & TARGETS ---
+            // Key Stats Line
             let keyStatsHTML = '';
             if (p.stats) {
                 let st = p.stats;
@@ -2272,7 +2299,7 @@ const UI = {
                     <td class="px-2 py-2 text-right text-[11px] font-extrabold text-indigo-900">${(p.AdvVBD || p.VBD).toFixed(1)}</td>
                     <td class="px-2 py-2 text-center text-[11px]">${ppwStr}</td>
                     <td class="px-2 py-2 text-center text-[11px] text-gray-600">${adpStr}</td>
-                    <td class="px-2 py-2 text-center text-[11px] text-gray-600">${byeStr}</td>
+                    <td class="px-2 py-2 text-center text-[11px]">${byeStr}</td>
                     <td class="px-2 py-2 text-center text-[11px] text-gray-600">${depthStr}</td>
                     <td class="px-3 py-2 text-right">${btnHtml}</td>
                 </tr>
@@ -2644,22 +2671,41 @@ const UI = {
                 score = applyFactor(score, penalty);
             }
 
-            // 7. Bye Week Clustering & Onesie Upside
-            if (p.byeWeek !== 'N/A') {
-                let sharedByes = userRoster.filter(r => r.byeWeek === p.byeWeek).length;
-                if (sharedByes >= 2 && currentRound <= 10) score = applyFactor(score, Math.pow(0.85, sharedByes - 1));
-            }
-            if (['QB', 'TE', 'PK', 'DST'].includes(p.Pos) && userTeam.counts[p.Pos] >= 1) {
-                const startersAtPos = userRoster.filter(r => r.Pos === p.Pos);
-                const bestStarter = startersAtPos.sort((a, b) => b.ProjPts - a.ProjPts)[0];
+            // 7. BALANCED BYE-WEEK CLUSTERING & ONESIE INSULATION
+            p._byeWarningTag = null;
+            if (p.byeWeek && p.byeWeek !== 'N/A') {
+                const sameByePlayers = userRoster.filter(r => String(r.byeWeek) === String(p.byeWeek));
+                const samePosByePlayers = sameByePlayers.filter(r => r.Pos === p.Pos);
+                const totalByeCollisions = sameByePlayers.length;
+                const posByeCollisions = samePosByePlayers.length;
+                const rawVbd = p.AdvVBD || p.VBD || 0;
 
-                if (bestStarter && bestStarter.byeWeek === p.byeWeek && p.byeWeek !== 'N/A') {
-                    let byePenalty = 0.50 + (Math.min(1.0, currentRound / totalRounds) * 0.35);
-                    score = applyFactor(score, byePenalty);
-                }
+                const isOnesie = ['QB', 'TE', 'PK', 'DST'].includes(p.Pos);
 
-                if (bestStarter && (bestStarter.AdvVBD || bestStarter.VBD) < 20 && p.upsideScore > (p.AdvVBD || p.VBD) * 1.15) {
-                    score = applyFactor(score, 1.10);
+                // A. Onesie Starter Conflict: Backup QB/TE on same bye as Starter is useless for bye coverage
+                if (isOnesie && userTeam.counts[p.Pos] >= 1 && posByeCollisions >= 1) {
+                    const existingStarter = samePosByePlayers[0];
+                    score = applyFactor(score, 0.40); // 60% penalty: Cannot cover starter's bye week
+                    p._byeWarningTag = `🚨 Same Wk ${p.byeWeek} Bye as ${existingStarter.Player}`;
+                } 
+                // B. Same-Position Starter Bottlenecks (RBs / WRs)
+                else if (posByeCollisions >= 2) {
+                    // 3rd RB or 3rd WR on the exact same bye creates an unavoidable zero-point lineup hole
+                    let posClashPenalty = rawVbd >= 35.0 ? 3.0 : 6.5; // Elite studs take only a mild hit; depth takes a sharp hit
+                    score -= posClashPenalty;
+                    p._byeWarningTag = `🚨 3rd ${p.Pos} on Wk ${p.byeWeek} Bye`;
+                } 
+                // C. High Multi-Starter Team Bye Collisions (Punt Week Danger)
+                else if (totalByeCollisions >= 3) {
+                    // 4th+ player on same bye forces a punt week unless talent is generational
+                    let stackDeduction = rawVbd >= 40.0 ? 2.0 : (4.0 + (totalByeCollisions - 2) * 2.0);
+                    score -= stackDeduction;
+                    p._byeWarningTag = `⚠️ Wk ${p.byeWeek} Pileup (${totalByeCollisions} drafted)`;
+                } 
+                else if (totalByeCollisions === 2 && posByeCollisions === 1 && currentRound <= 8) {
+                    // 2nd RB/WR on same bye in starting rounds: Informative tag, minimal score drag (-1.5)
+                    if (rawVbd < 30.0) score -= 1.5;
+                    p._byeWarningTag = `⚠️ 2nd ${p.Pos} on Wk ${p.byeWeek} Bye`;
                 }
             }
 
@@ -2797,7 +2843,8 @@ const UI = {
             let stackBadge = bestFit._stackPartner ? ` • ⚡ Stack w/ ${bestFit._stackPartner}` : '';
 
             let cliffBadge = '';
-            if (bestFit._rosterContextBadge) cliffBadge = ` • <span class="text-amber-200 font-bold">${bestFit._rosterContextBadge}</span>`;
+            if (bestFit._byeWarningTag) cliffBadge = ` • <span class="text-rose-300 font-bold">${bestFit._byeWarningTag}</span>`;
+            else if (bestFit._rosterContextBadge) cliffBadge = ` • <span class="text-amber-200 font-bold">${bestFit._rosterContextBadge}</span>`;
             else if (bestFit._tierCliffTag) cliffBadge = ` • <span class="text-amber-200 font-bold">${bestFit._tierCliffTag}</span>`;
 
             let recBadgeTitle = (bestFit._addedPPW && bestFit._addedPPW >= 14.0) ? "#1 Lineup Fit" : "#1 Recommended Pick";
@@ -2826,8 +2873,9 @@ const UI = {
             let hasPositiveValue = (p.AdvVBD || p.VBD) > 0;
 
             let highlight = '';
-            // NEW: Highlight the absolute highest VBD player on the board if they aren't the #1 recommendation
-            if (p === bpaPlayer) {
+            if (p._byeWarningTag) {
+                highlight = `<span class="text-rose-300 font-extrabold">${p._byeWarningTag}</span>`;
+            } else if (p === bpaPlayer) {
                 highlight = `<span class="text-fuchsia-300 font-extrabold tracking-wide">💎 Highest Actual Value (BPA)</span>`;
             } else if (p._sleeperBadge) {
                 highlight = `<span class="text-emerald-300 font-bold">${p._sleeperBadge}</span>`;
