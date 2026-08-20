@@ -2692,8 +2692,12 @@ const UI = {
                     score += (smoothedStashBonus * roundScale);
                 }
             } else if (p.upsideScore && (p.AdvVBD || p.VBD) > 0) {
-                let ceilingGain = (p.upsideScore - (p.AdvVBD || p.VBD)) * 0.25;
-                score += Math.max(0, ceilingGain);
+                // In Rounds 1-5, ceiling gain is tightly capped (+4.0 VBD max) 
+                // so speculative upside never overrides true tier-1 superstars
+                let rawGain = Math.max(0, p.upsideScore - (p.AdvVBD || p.VBD));
+                let ceilingWeight = currentRound <= 5 ? 0.05 : 0.15;
+                let ceilingGain = Math.min(5.0, rawGain * ceilingWeight);
+                score += ceilingGain;
             }
 
             // 6. Bench vs. Starter Threshold Penalties
