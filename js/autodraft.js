@@ -94,82 +94,81 @@ window.AutoDraft = {
             }
 
             // =========================================================
-            // 🧠 CPU PERSONALITY & DRAFT TENDENCY ENGINE
+            // 🧠 CPU PERSONALITY & DRAFT TENDENCY ENGINE (Balanced)
             // =========================================================
             p._cpuReachBonus = 0;
 
             if (profile) {
-                // 1. Extreme Archetype Enforcing (Forces the bot to stick to its build)
+                // 1. Archetype Enforcing (Nudges the bot, doesn't force it blindly)
                 if (round <= 6) {
                     if (profile.strategy === 'Hero-RB') {
-                        if (team.counts['RB'] === 0 && p.Pos === 'RB') multiplier *= 1.60; // Must secure the Hero
-                        if (team.counts['RB'] >= 1 && p.Pos === 'WR' && round <= 5) multiplier *= 1.50;
-                        if (team.counts['RB'] >= 1 && p.Pos === 'RB' && round <= 5) multiplier *= 0.05; // Refuse to draft RB2 early
+                        if (team.counts['RB'] === 0 && p.Pos === 'RB') multiplier *= 1.35; // Nudge to get their 1 RB
+                        if (team.counts['RB'] >= 1 && p.Pos === 'WR' && round <= 5) multiplier *= 1.25;
+                        if (team.counts['RB'] >= 1 && p.Pos === 'RB' && round <= 5) multiplier *= 0.40; // Soft discouragement of RB2
                     }
                     else if (profile.strategy === 'Zero-RB' && round <= 5) {
-                        if (['WR', 'TE'].includes(p.Pos)) multiplier *= 1.60;
-                        if (p.Pos === 'RB') multiplier *= 0.01; // Absolute refusal to draft early RBs
+                        if (['WR', 'TE'].includes(p.Pos)) multiplier *= 1.30;
+                        if (p.Pos === 'RB') multiplier *= 0.25; // Heavily avoids early RBs, but will take an insane value fall
                     }
                     else if (profile.strategy === 'Robust-RB') {
-                        if (p.Pos === 'RB' && round <= 4) multiplier *= 1.80; // Violent reach for RBs
-                        if (['WR', 'TE'].includes(p.Pos) && round <= 4 && team.counts['RB'] >= 3) multiplier *= 1.40;
+                        if (p.Pos === 'RB' && round <= 4) multiplier *= 1.40; 
+                        if (['WR', 'TE'].includes(p.Pos) && round <= 4 && team.counts['RB'] >= 3) multiplier *= 1.20;
                     }
                     else if (profile.strategy === 'Double-Elite' && round <= 5) {
-                        if (p.Pos === 'QB' && team.counts['QB'] === 0) multiplier *= 1.80;
-                        if (p.Pos === 'TE' && team.counts['TE'] === 0) multiplier *= 1.80;
+                        if (p.Pos === 'QB' && team.counts['QB'] === 0) multiplier *= 1.40;
+                        if (p.Pos === 'TE' && team.counts['TE'] === 0) multiplier *= 1.40;
                     }
                 }
 
-                // 2. Mid-Round Tendencies & Handcuff Hoarders
+                // 2. Mid-Round Tendencies
                 if (round >= 7 && round <= 11 && profile.likesHandcuffs && p.Pos === 'RB') {
-                    multiplier *= 1.40; // Handcuff hoarders will reach heavily for lotto tickets
+                    multiplier *= 1.25; // Nudges handcuff hoarders
                 }
 
-                // 3. 🚨 POSITIONAL PANIC REACHING
-                // If a bot historically drafts a QB in Round 5, and it's Round 5, it hits the panic button.
+                // 3. 🚨 POSITIONAL PANIC REACHING (Balanced)
+                // If a bot historically drafts a QB in Round 5, and it's Round 5, they get a moderate bump.
                 if (isStarterOpen) {
                     if (p.Pos === 'QB' && team.counts['QB'] === 0) {
                         let qbDiff = round - (Math.floor(profile.qbAvgRound) - 1);
-                        if (qbDiff >= 0) p._cpuReachBonus += 15.0 + (qbDiff * 15.0); // +15 VBD per round delayed
+                        // +6.0 VBD base panic, +5.0 per round delayed. (Caps around a 1.5 round reach)
+                        if (qbDiff >= 0) p._cpuReachBonus += 6.0 + (qbDiff * 5.0); 
                     }
                     if (p.Pos === 'TE' && team.counts['TE'] === 0) {
                         let teDiff = round - (Math.floor(profile.teAvgRound) - 1);
-                        if (teDiff >= 0) p._cpuReachBonus += 12.0 + (teDiff * 12.0);
+                        if (teDiff >= 0) p._cpuReachBonus += 5.0 + (teDiff * 4.0);
                     }
                     if (p.Pos === 'PK' && profile.reachesForKicker) {
                         let pkDiff = round - (Math.floor(profile.pkAvgRound) - 1);
-                        if (pkDiff >= 0) p._cpuReachBonus += 25.0 + (pkDiff * 12.0);
+                        if (pkDiff >= 0) p._cpuReachBonus += 15.0 + (pkDiff * 8.0);
                     }
                     if (p.Pos === 'DST' && profile.reachesForDST) {
                         let dstDiff = round - (Math.floor(profile.dstAvgRound) - 1);
-                        if (dstDiff >= 0) p._cpuReachBonus += 25.0 + (dstDiff * 12.0);
+                        if (dstDiff >= 0) p._cpuReachBonus += 15.0 + (dstDiff * 8.0);
                     }
                 }
 
                 // 4. "THE HOMER" (Team Bias Reach)
                 if (profile.teamBias !== 'None' && profile.teamBias === State.normalizeTeam(p.Team)) {
-                    // Massive flat VBD boost so the bot aggressively over-drafts their favorite team
-                    p._cpuReachBonus += 18.0; 
+                    p._cpuReachBonus += 6.0; // About a half-round reach for their favorite team's players
                 }
 
-                // ⚡ 5. "PLAYER CRUSHES" (Historical Loyalty)
+                // 5. "PLAYER CRUSHES" (Historical Loyalty)
                 if (profile.playerCrushes && profile.playerCrushes.includes(p._cleanName)) {
-                    // If a manager drafted a guy multiple years in a row, they will violently reach for them again
-                    p._cpuReachBonus += 20.0; 
+                    p._cpuReachBonus += 8.5; // About a 1-round reach for their historical favorite player
                 }
 
-                // ⚡ 6. ROSTER CONSTRUCTION LIMITS (Streaming Tendencies)
+                // 6. ROSTER CONSTRUCTION LIMITS (Streaming Tendencies)
                 if (p.Pos === 'QB' && team.counts['QB'] >= 1 && !profile.draftsBackupQB) {
-                    multiplier *= 0.01; // Manager historically streams backup QBs, refuse to draft a 2nd one
+                    multiplier *= 0.15; // Strongly discourages drafting a backup QB, but allows a massive steal
                 }
                 if (p.Pos === 'TE' && team.counts['TE'] >= 1 && !profile.draftsBackupTE) {
-                    multiplier *= 0.01; // Manager historically streams backup TEs, refuse to draft a 2nd one
+                    multiplier *= 0.15; // Strongly discourages drafting a backup TE
                 }
 
-                // 5. Correlated Stacking (The "Stack King")
+                // 7. Correlated Stacking (The "Stack King")
                 let draftedQBs = team.roster.filter(r => r.Pos === 'QB');
                 if (draftedQBs.length > 0 && ['WR', 'TE'].includes(p.Pos) && draftedQBs.some(qb => qb._cleanTeam === p._cleanTeam)) {
-                    p._cpuReachBonus += 10.0; // Will reach for their QB's top target
+                    p._cpuReachBonus += 5.0; // Slight bump to complete a stack
                 }
             }
 
@@ -285,21 +284,23 @@ window.AutoDraft = {
                     let penaltyWeight = Math.max(0.25, 1.0 - (round * 0.06));
                     adpPenalty = Math.min(18.0, (adpDiff - allowedReach) * penaltyWeight);
 
-                    // ⚡ CPU PERSONALITY OVERRIDE: 
-                    // Tell the AI to completely ignore standard ADP rules when drafting for their archetype
+                    // ⚡ CPU PERSONALITY OVERRIDE (Softened):
+                    // Reduces the ADP penalty for biased picks, but does not completely remove it.
+                    // This allows the AI to reach 1-2 rounds early for "their guys" without drafting them 5 rounds early.
                     
                     let isFanTarget = profile && profile.teamBias !== 'None' && profile.teamBias === State.normalizeTeam(p.Team);
+                    let isPlayerCrush = profile && profile.playerCrushes && profile.playerCrushes.includes(p._cleanName);
                     
-                    if (isFanTarget) {
-                        adpPenalty = 0; // The Homer Pick: Will reach aggressively without penalty
+                    if (isPlayerCrush || isFanTarget) {
+                        adpPenalty *= 0.3; // 70% reduction in penalty. They will reach, but not blindly.
                     } else if (p.Pos === 'RB' && profile?.strategy === 'Robust-RB' && round <= 5) {
-                        adpPenalty = 0; // Robust-RB will violently reach for early RBs
+                        adpPenalty *= 0.4; 
                     } else if (['WR', 'TE'].includes(p.Pos) && profile?.strategy === 'Zero-RB' && round <= 5) {
-                        adpPenalty = 0; // Zero-RB will violently reach for early WRs/TEs
+                        adpPenalty *= 0.4; 
                     } else if (p.Pos === 'RB' && p.isRBHandcuff && profile?.likesHandcuffs && round >= 7) {
-                        adpPenalty = 0; // Handcuff hoarders ignore ADP for backups
+                        adpPenalty *= 0.2; // Late rounds ADP is mostly noise anyway
                     } else if (p._cpuReachBonus > 0) {
-                        adpPenalty = 0; // If they are panic-reaching for a Positional Need (like QB/TE), ignore ADP
+                        adpPenalty *= 0.5; // Positional panic reaching gets a 50% discount on the penalty
                     }
                 } else if (adpDiff < -12) {
                     adpBonus = Math.min(10, Math.abs(adpDiff + 12) * 0.3); // Catch sliding value
