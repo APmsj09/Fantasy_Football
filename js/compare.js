@@ -4,7 +4,8 @@ window.Compare = {
         const tiers = State.getPositionalTiers(player.Pos);
         const availableInSameTier = State.availablePlayers.filter(p => p.Pos === player.Pos && (p.staticTier || 1) === tierNum);
 
-        const tierNames = {a
+        // ✅ FIX 1: Removed stray 'a'
+        const tierNames = {
             1: `Tier 1 (Elite ${player.Pos})`,
             2: `Tier 2 (High-End ${player.Pos} Starter)`,
             3: `Tier 3 (Solid ${player.Pos} Starter)`,
@@ -31,7 +32,6 @@ window.Compare = {
 
         const currentPickNum = State.currentPick + 1;
         
-        // Multi-Window Lookahead for the Comparison Modal
         let userFuturePicks = [];
         State.draftOrder.forEach((teamId, idx) => {
             if (idx >= State.currentPick && teamId === State.userTeamId) userFuturePicks.push(idx + 1);
@@ -47,7 +47,6 @@ window.Compare = {
         let nextUserOverallPick = nextWindowPicks.length > 0 ? nextWindowPicks[0] : (currentPickNum + State.settings.numTeams);
         let html = `
             <div class="space-y-6">
-                <!-- Top Recommendation Highlight Card -->
                 <div class="bg-gradient-to-br from-emerald-950 via-slate-900 to-slate-950 border border-emerald-500/40 p-5 rounded-2xl shadow-lg text-white">
                     <div class="flex justify-between items-start mb-3 flex-wrap gap-2">
                         <div>
@@ -144,8 +143,6 @@ window.Compare = {
             highlights.push(`<li><strong class="text-rose-400">💥 Elite Ceiling:</strong> Provides league-winning upside metrics (Upside Score: ${(p.upsideScore).toFixed(1)}).</li>`);
         } else if (p.targetShare && p.targetShare >= 20.0) {
             highlights.push(`<li><strong class="text-blue-400">🎯 Volume Security:</strong> Commands a massive ${p.targetShare}% of his team's targets, insulating him from negative game scripts.</li>`);
-        } else if (p.depthChart === 2 && p.isNewRole) {
-            highlights.push(`<li><strong class="text-amber-400">📈 Breakout Stash:</strong> High-potential stash who is one depth-chart shift away from inheriting a massive role.</li>`);
         }
 
         // 7. Off-Season Scheme Upgrades (Environmental Migration)
@@ -160,7 +157,7 @@ window.Compare = {
             highlights.push(`<li><strong class="text-emerald-400">📈 Positive Touchdown Regression:</strong> Scored ${p.pastStats.totalTd} TDs last year, but his underlying red-zone usage warranted <strong class="text-emerald-300">${p.xTD.toFixed(1)} Expected TDs (xTD)</strong>. Math projects ~+${Math.round(diff)} more scores with neutral variance.</li>`);
         }
 
-        // 9. Running Back Archetype Highlights
+        // 9. Comprehensive Running Back Archetype Highlights
         if (p.Pos === 'RB') {
             if (p._rbArchetype === 'Bellcow Alpha') {
                 highlights.push(`<li><strong class="text-emerald-400">👑 Three-Down Bellcow Alpha:</strong> Uncontested lead back commanding <strong class="text-emerald-300">${p.hvo || 65}+ High-Value Touches</strong> and complete three-down snap monopoly.</li>`);
@@ -174,6 +171,8 @@ window.Compare = {
                 highlights.push(`<li><strong class="text-emerald-400">💥 Explosive Chunk Slasher:</strong> Generates independent chunk plays with elite <strong class="text-emerald-300">${p.yacAtt || '3.4'} Yards After Contact</strong> and high big-play burst.</li>`);
             } else if (p._rbArchetype === '1A Early-Down Hammer') {
                 highlights.push(`<li><strong class="text-amber-400">🔨 Early-Down Power Hammer:</strong> Commands short-yardage and goal-line work, locking in double-digit touchdown equity.</li>`);
+            } else if (p._rbArchetype === 'Rookie Backfield Ascender') {
+                highlights.push(`<li><strong class="text-rose-400">🌱 Rookie Takeover Trajectory:</strong> Dynamic rookie entering an open backfield with an ascending touch trajectory to claim starting duties by midseason.</li>`);
             } else if (p._rbArchetype === 'Contingent Lottery Ticket') {
                 highlights.push(`<li><strong class="text-purple-400">🎲 Elite Contingent Upside:</strong> Premier bench stash who inherits an immediate workhorse role if ${p.starterName || 'the starter'} misses time.</li>`);
             }
@@ -243,7 +242,6 @@ window.Compare = {
         const altPosCount = team.counts[alt.Pos] || 0;
         const topPosCount = team.counts[topPick.Pos] || 0;
 
-        // Check if the alternative player is TRULY blocked from the starting lineup (including Flex)
         let isAltBlocked = altPosCount >= altPosLimit;
         if (isAltBlocked) {
             if (['RB', 'WR'].includes(alt.Pos) && team.counts['FlexRBWR'] < (State.settings.roster.FlexRBWR?.max || 0)) isAltBlocked = false;
@@ -258,7 +256,6 @@ window.Compare = {
                 prosForAlt.push(`<strong>Higher Absolute Value:</strong> In a vacuum, ${alt.Player} has a mathematically higher value (+${diff.toFixed(1)} VBD) regardless of roster needs.`);
             }
 
-            // Only declare a Roster Logjam if the players are DIFFERENT positions and the alt's position is already full
             if (topPick.Pos !== alt.Pos) {
                 if (isAltBlocked) {
                     consForAlt.push(`<strong>Roster Logjam:</strong> Your starting ${alt.Pos} and Flex slots are already filled. Taking ${topPick.Player} (${topPick.Pos}) addresses an unfilled starting spot rather than adding a bench player.`);
@@ -289,7 +286,6 @@ window.Compare = {
             if (currentPickNum - alt.adp >= 8) {
                 prosForAlt.push(`<strong>Extreme Market Value:</strong> The public let ${alt.Player} slide past his ADP (${alt.adp.toFixed(1)}). Capitalizing on this drop presents massive draft value at Pick ${currentPickNum}.`);
             } else if (alt.adp > nextPick + 4) {
-                // Only advise waiting if the player's ADP is safely past your ACTUAL next pick in the draft order
                 consForAlt.push(`<strong>Exploit Public ADP:</strong> The public values ${alt.Player} at pick ${alt.adp.toFixed(1)} (safely past your next pick at #${nextPick}), giving you a high chance of drafting him later.`);
             }
         }
@@ -316,8 +312,8 @@ window.Compare = {
             let densityNote = alt._isSmallSampleAlpha ? "with undeniable alpha per-game usage density" : "though heavily skewed by limited sample variance";
             prosForAlt.push(`<strong>Explosive Per-Game Ceiling:</strong> Outpaced ${topPick.Player} on a per-game basis (${alt.pastPpg.toFixed(1)} vs ${topPick.pastPpg.toFixed(1)} PPG) ${densityNote}.`);
             consForAlt.push(`<strong>Proven Full-Season Reliability:</strong> ${topPick.Player} sustained high-end production over a full ${topGp}-game slate, carrying far less regression risk.`);
-        }
         } else if (altGp >= 14 && topGp <= 7 && topPick.pastPpg >= 14.0) {
+            // ✅ FIX 2: Cleaned up closing braces
             prosForAlt.push(`<strong>Full-Season Track Record:</strong> Bankable ${altGp}-game durability and volume baseline vs. ${topPick.Player}'s ${topGp}-game sample.`);
             consForAlt.push(`<strong>Per-Game Dominance:</strong> ${topPick.Player} flashed league-winning per-game dominance (${topPick.pastPpg.toFixed(1)} PPG) when active.`);
         }
@@ -335,9 +331,13 @@ window.Compare = {
         // -------------------------------------------------------------
         // 4B. ADVANCED ENGINE FEATURES (HVO, xTD, SCHEME SHIFTS, WOPR)
         // -------------------------------------------------------------
-        // Running Back High-Value Opportunities (HVO) & Vacated Touch Dynamics
         if (topPick.Pos === 'RB' && alt.Pos === 'RB') {
-            // RB Archetype Clashes & Standalone vs. Contingent Comparison
+            // ✅ FIX 3: Declared touch variables properly
+            const topTouches = (topPick.pastStats?.rushAtt || 0) + (topPick.pastStats?.rec || 0);
+            const altTouches = (alt.pastStats?.rushAtt || 0) + (alt.pastStats?.rec || 0);
+            const isTouchMismatch = Math.abs(topTouches - altTouches) >= 80;
+
+            // ✅ FIX 4: Deduped Archetype Clashes
             if (topPick._rbArchetype && alt._rbArchetype && topPick._rbArchetype !== alt._rbArchetype) {
                 if (topPick._rbArchetype === 'Bellcow Alpha' && alt._rbArchetype !== 'Bellcow Alpha') {
                     consForAlt.push(`<strong>Lacks Bellcow Monopoly:</strong> ${topPick.Player} holds an uncontested three-down bellcow role, whereas ${alt.Player} operates in a ${alt._rbArchetype} capacity.`);
@@ -368,21 +368,8 @@ window.Compare = {
                 consForAlt.push(`<strong>Goal-Line Vulture Risk:</strong> ${alt.Player} faces short-yardage touchdown competition from ${alt._backupName}, whereas ${topPick.Player} has full three-down control.`);
             }
 
-            // RB Archetype Clashes & Touch Quality
-            if (topPick._rbArchetype && alt._rbArchetype && topPick._rbArchetype !== alt._rbArchetype) {
-                if (topPick._rbArchetype === 'Bellcow Alpha' && alt._rbArchetype !== 'Bellcow Alpha') {
-                    consForAlt.push(`<strong>Lacks Bellcow Monopoly:</strong> ${topPick.Player} holds an uncontested three-down bellcow role, whereas ${alt.Player} operates in a ${alt._rbArchetype} capacity.`);
-                } else if (alt._rbArchetype === 'Premium 1B Co-Starter' && topPick._rbArchetype === 'Contingent Lottery Ticket') {
-                    prosForAlt.push(`<strong>Standalone Flex Floor:</strong> Unlike ${topPick.Player} who needs an injury to be playable, ${alt.Player} provides standalone weekly fantasy scoring alongside contingent upside.`);
-                } else if (alt._rbArchetype === 'High-Leverage Space Back' && topPick._rbArchetype === '1A Early-Down Hammer' && State.scoring.ppr >= 0.5) {
-                    prosForAlt.push(`<strong>PPR Scoring Advantage:</strong> High-leverage pass-catching role (${alt.targetShare || 13}% target share) scales far better with PPR rules than ${topPick.Player}'s early-down grinding.`);
-                } else if (alt._rbArchetype === 'Explosive Chunk Slasher' && topPick._rbArchetype === '1A Early-Down Hammer') {
-                    prosForAlt.push(`<strong>Superior Tackle-Breaking Elusiveness:</strong> Creates independent yardage (<strong>${alt.yacAtt || '3.4'} YAC/Att</strong>) without relying entirely on offensive line blocking.`);
-                }
-            }
-
             // High-Value Opportunities (HVO) Comparison
-            if (topPick.hvo && alt.hvo) {
+            if (topPick.hvo && alt.hvo && !isTouchMismatch) {
                 if (topPick.hvo >= alt.hvo + 14) {
                     consForAlt.push(`<strong>Inferior High-Leverage Touches:</strong> ${topPick.Player} commands significantly more High-Value Opportunities (<strong>${topPick.hvo} vs ${alt.hvo} HVO</strong>).`);
                 } else if (alt.hvo >= topPick.hvo + 14) {
@@ -407,9 +394,8 @@ window.Compare = {
                     prosForAlt.push(`<strong>Higher Explosive Run Rate:</strong> Generates chunk runs at a superior rate (<strong>${alt.err.toFixed(1)}% vs ${topPick.err.toFixed(1)}% ERR</strong>).`);
                 }
             }
-        
 
-            // Big Plays Comparison (Suppressed on Backup Sample Size Mismatches)
+            // Big Plays Comparison
             let topBig = topPick.pastStats?.bigPlays || 0;
             let altBig = alt.pastStats?.bigPlays || 0;
             if (!isTouchMismatch) {
@@ -419,7 +405,8 @@ window.Compare = {
                     consForAlt.push(`<strong>Fewer Explosive Plays:</strong> Logged ${altBig} big plays (20+ yds) vs. ${topPick.Player}'s <strong>${topBig}</strong>.`);
                 }
             }
-            // Suppress Backup Bust Rate Penalty if Player is Ascending to a Starting Role
+
+            // Suppress Backup Bust Rate Penalty if Ascending
             let altPastTouches = (alt.pastStats?.rushAtt || 0) + (alt.pastStats?.rec || 0);
             let altHasSignificantPastVolume = alt.Pos === 'RB' && altPastTouches >= 100;
             let altIsExpansionRB = (alt._isAscendingRole || alt.isNewRole || (alt._vacatedCarries >= 60) || alt._inheritsGoalLineWork) && !altHasSignificantPastVolume;
@@ -430,7 +417,7 @@ window.Compare = {
                 }
             }
 
-            // Offensive Line Run-Blocking (YBC/Att) Edge
+            // O-Line Blocking Edge
             let topTeam = State.normalizeTeam(topPick.Team);
             let altTeam = State.normalizeTeam(alt.Team);
             let topRushEnv = State.teamAdvRush ? State.teamAdvRush[topTeam] : null;
@@ -465,7 +452,6 @@ window.Compare = {
         // Wide Receiver / Tight End Air Share, Vacated Targets & Tree Dynamics
         // -------------------------------------------------------------
         if (['WR', 'TE'].includes(topPick.Pos) && ['WR', 'TE'].includes(alt.Pos)) {
-            // Multi-Currency Vacated Volume & Role Inheritance
             const formatVacatedNote = (player, depList) => {
                 if (player._vacatedRoleType === 'Intermediate MOF & Red-Zone Funnel' || player._inheritsRzFunnel) {
                     return `inheriting high-leverage <strong>Middle-of-the-Field targets and +${player._vacatedRzTgts || 0} Red-Zone looks</strong>${depList}, expanding his weekly touchdown equity`;
@@ -478,7 +464,6 @@ window.Compare = {
                 }
             };
 
-            // Added _inheritsUnderneathShare to properly trigger for Slot WRs and short TEs
             let altHasVacated = alt._inheritsAlphaAirShare || alt._inheritsRzFunnel || alt._inheritsIntermediateVolume || alt._inheritsUnderneathShare;
             let topHasVacated = topPick._inheritsAlphaAirShare || topPick._inheritsRzFunnel || topPick._inheritsIntermediateVolume || topPick._inheritsUnderneathShare;
 
@@ -534,19 +519,16 @@ window.Compare = {
         // CROSS-POSITIONAL ADVANCED TRAIT CLASHES (RB vs WR, RB vs TE)
         // -------------------------------------------------------------
         if (topPick.Pos === 'RB' && ['WR', 'TE'].includes(alt.Pos)) {
-            // WR Target Command & WOPR vs RB Ground Dependency
             if (alt.targetShare && alt.targetShare >= 23.0) {
                 prosForAlt.push(`<strong>Script-Proof Target Priority:</strong> Commands a massive <strong>${alt.targetShare}% target share</strong>, establishing a bulletproof PPR floor that cannot be neutralized by negative game scripts.`);
             } else if (alt.wopr && alt.wopr >= 0.58) {
                 prosForAlt.push(`<strong>Elite Downfield Opportunity (WOPR):</strong> Commands a dominant <strong>${alt.wopr.toFixed(2)} WOPR</strong> with massive air yards share, giving him multi-touchdown spike week upside.`);
             }
 
-            // Targets Per Snap (Route Dominance)
             if (alt.tps && alt.tps >= 0.21) {
                 prosForAlt.push(`<strong>Elite Route Separation:</strong> Demands targets on <strong>${(alt.tps * 100).toFixed(1)}% of routes run</strong> (TPS), proving elite individual separation skills.`);
             }
 
-            // Passing Tree Concentration & Vacated Air Yards
             if (alt._passingTreeType === 'Concentrated 2-Man Funnel') {
                 prosForAlt.push(`<strong>Concentrated Passing Funnel:</strong> Operates in a 2-man target funnel in ${alt.Team}, locking in reliable high-volume weekly pass attempts.`);
             }
@@ -555,30 +537,25 @@ window.Compare = {
                 prosForAlt.push(`<strong>Inherited Alpha Air Yards:</strong> Inherits <strong>+${alt._vacatedAirYards} deep air yards</strong>${depList}, raising his ceiling.`);
             }
 
-            // Hands / Catch Rate
             if (alt.trueCatchRate && alt.trueCatchRate >= 88.0) {
                 prosForAlt.push(`<strong>Reliable Hands & Quality Targets:</strong> Converted <strong>${alt.trueCatchRate.toFixed(1)}% of catchable passes</strong> into receptions.`);
             }
 
-            // Schedule Advantage
             if (alt.avgStars && topPick.avgStars && alt.avgStars >= topPick.avgStars + 0.20) {
                 prosForAlt.push(`<strong>Softer Matchup Schedule:</strong> Faces a more favorable matchup slate (⭐<strong>${alt.avgStars.toFixed(2)}</strong> vs. ⭐${topPick.avgStars.toFixed(2)}).`);
             }
 
-            // Workload Longevity & Structural Safety
             let topTouches = (topPick.pastStats?.rushAtt || 0) + (topPick.pastStats?.rec || 0);
             if (topTouches >= 300) {
                 prosForAlt.push(`<strong>Workload Durability Advantage:</strong> Avoids the severe injury and efficiency cliff that running backs historically face following a 300+ touch season (${topPick.Player} had ${topTouches} touches).`);
             }
 
-            // Big-Play Strikes
             let altBig = alt.pastStats?.bigPlays || 0;
             let topBig = topPick.pastStats?.bigPlays || 0;
             if (altBig >= topBig + 2) {
                 prosForAlt.push(`<strong>Explosive Playmaking:</strong> Generated <strong>${altBig} big plays (20+ yds)</strong> vs. ${topPick.Player}'s ${topBig}.`);
             }
 
-            // Why RB wins over WR
             if (topPick.hvo && topPick.hvo >= 70) {
                 consForAlt.push(`<strong>Positional Bellcow Scarcity:</strong> True three-down workhorse running backs commanding ${topPick.hvo} High-Value Opportunities are far more scarce than high-volume wide receivers.`);
             }
@@ -590,7 +567,6 @@ window.Compare = {
                 }
             }
         } else if (['WR', 'TE'].includes(topPick.Pos) && alt.Pos === 'RB') {
-            // When Top Pick is WR and Alternative is RB
             if (alt.hvo && alt.hvo >= 65) {
                 prosForAlt.push(`<strong>High-Value Touch Scarcity:</strong> Commands <strong>${alt.hvo} High-Value Opportunities</strong> (Targets + RZ carries) in an elite bellcow backfield role.`);
             }
@@ -608,7 +584,6 @@ window.Compare = {
 
         // Quarterback Dual-Threat, Weapon Room & Escapability Clashes
         if (topPick.Pos === 'QB' && alt.Pos === 'QB') {
-            // Surrounding Weapon Quality
             if (alt._eliteWeaponCount && topPick._eliteWeaponCount) {
                 if (alt._eliteWeaponCount > topPick._eliteWeaponCount) {
                     prosForAlt.push(`<strong>Superior Weapon Ecosystem:</strong> Surrounded by ${alt._eliteWeaponCount} elite pass-catchers (${alt._avgWeaponCatchRate}% team catch rate) vs. ${topPick.Player}'s ${topPick._eliteWeaponCount}.`);
@@ -617,7 +592,6 @@ window.Compare = {
                 }
             }
 
-            // Dual-Threat & Goal-Line Rushing Equity
             let topRush = topPick.stats?.rushYds || 0;
             let altRush = alt.stats?.rushYds || 0;
             let rushDiff = altRush - topRush;
@@ -632,7 +606,6 @@ window.Compare = {
                 prosForAlt.push(`<strong>Goal-Line Rushing Equity:</strong> Directs designed goal-line sneaks/keeper plays, providing immense rushing touchdown upside.`);
             }
 
-            // Context-Aware Sack Liabilities
             if (alt.p2s && topPick.p2s) {
                 if (alt.p2s >= topPick.p2s + 8.0) {
                     let sackContext = (alt._qbArchetype === 'Pure Pocket Passer')
@@ -645,7 +618,7 @@ window.Compare = {
             }
         }
 
-        // Environmental Scheme Upgrades (Offseason Team Changers)
+        // Environmental Scheme Upgrades
         if (topPick.isTeamChanger || alt.isTeamChanger) {
             if (topPick._envDelta && topPick._envDelta >= 0.02 && (!alt._envDelta || alt._envDelta < topPick._envDelta)) {
                 consForAlt.push(`<strong>Hidden Environmental Upgrade:</strong> ${topPick.Player} moved to a significantly improved blocking and accuracy ecosystem; ${alt.Player} lacks this efficiency catalyst.`);
@@ -724,7 +697,6 @@ window.Compare = {
         let altTier = this.getTierDetails(alt);
 
         if (topPick.Pos === alt.Pos) {
-            // Same Position Tier Comparison
             if (topTier.tierNum < altTier.tierNum) {
                 let vbdGap = ((topPick.AdvVBD || topPick.VBD) - (alt.AdvVBD || alt.VBD)).toFixed(1);
                 consForAlt.push(`<strong>Tier Difference:</strong> ${topPick.Player} is in <strong>${topTier.tierName}</strong> while ${alt.Player} falls into <strong>${altTier.tierName}</strong> (-${vbdGap} VBD gap).`);
@@ -734,7 +706,6 @@ window.Compare = {
                 consForAlt.push(`<strong>Tier Cliff Warning:</strong> ${topPick.Player} is the <strong>final player</strong> in ${topTier.tierName}. Drafting ${alt.Player} causes you to completely miss this tier.`);
             }
 
-            // Same-Position Raw Projection & Metric Tiebreakers
             let projDiff = (topPick.ProjPts || 0) - (alt.ProjPts || 0);
             if (projDiff >= 5.0) {
                 consForAlt.push(`<strong>Higher Total Season Projection:</strong> ${topPick.Player} projects for <strong>+${projDiff.toFixed(1)} more total season points</strong> (${topPick.ProjPts.toFixed(1)} vs ${alt.ProjPts.toFixed(1)}).`);
@@ -748,7 +719,6 @@ window.Compare = {
                 prosForAlt.push(`<strong>Elusiveness Edge:</strong> ${alt.Player} logged <strong>${alt.brokenTackles} broken tackles</strong> vs ${topPick.Player}'s ${topPick.brokenTackles}.`);
             }
         } else {
-            // Cross-Position Tier Scarcity Comparison
             if (topTier.isLastInTier && (topTier.tierNum <= 3 || currentRound <= 8)) {
                 const altTiers = State.getPositionalTiers(alt.Pos);
                 let altSurvivingCount = 0;
@@ -776,7 +746,6 @@ window.Compare = {
 
         // Fallbacks
         if (prosForAlt.length === 0) {
-            // Surface standalone baseline metrics if the alternative has zero relative edges over topPick
             const pAge = alt.age || alt.Age;
 
             if (alt.Pos === 'RB' && alt.stats?.rushAtt >= 130) {
@@ -829,7 +798,6 @@ window.Compare = {
                 </div>
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <!-- Why draft the alt -->
                     <div>
                         <h6 class="text-[10px] font-extrabold uppercase tracking-wider text-emerald-600 mb-1">Why pick ${alt.Player.split(' ').slice(1).join(' ') || alt.Player}?</h6>
                         <ul class="text-xs text-gray-700 space-y-1.5">
@@ -837,7 +805,6 @@ window.Compare = {
                         </ul>
                     </div>
                     
-                    <!-- Why we chose the top pick over them -->
                     <div>
                         <h6 class="text-[10px] font-extrabold uppercase tracking-wider text-rose-600 mb-1">Why ${topPick.Player.split(' ').slice(1).join(' ') || topPick.Player} wins</h6>
                         <ul class="text-xs text-gray-700 space-y-1.5">
