@@ -2678,16 +2678,70 @@ const State = {
                 }
             }
 
+            // 🎯 4-TIER QB VALUATION & ESCAPABILITY MATRIX
             if (p.Pos === 'QB') {
-                if (p.pressureRate) {
-                    if (p.pressureRate > 26.0) adjMultiplier -= 0.03;
-                    else if (p.pressureRate < 14.0) adjMultiplier += 0.02;
+                const rushYds = p.stats?.rushYds || 0;
+                const rushAtt = p.stats?.rushAtt || 0;
+                const p2s = p.p2s;
+                const pressRate = p.pressureRate;
+
+                // A. 4-Tier Mobility Classification
+                let qbMobilityTier = 4;
+                let mobilityBonus = 0.0;
+
+                if (rushYds >= 650 || rushAtt >= 115) {
+                    qbMobilityTier = 1; // Konami Alpha (Daniels, Lamar, Allen)
+                    mobilityBonus = 0.055;
+                    p._qbArchetype = 'Konami Code Alpha';
+                    p._isFlyer = true;
+                    upsideMultiplier += 0.30;
+                    ceilingTags.push("Konami Code Rushing Weapon");
+                } else if (rushYds >= 425 || rushAtt >= 75) {
+                    qbMobilityTier = 2; // Dynamic Dual-Threat (Maye, Richardson, Kyler)
+                    mobilityBonus = 0.035;
+                    p._qbArchetype = 'Dynamic Dual-Threat';
+                    p._isFlyer = true;
+                    upsideMultiplier += 0.20;
+                    ceilingTags.push("Dual-Threat Rushing Floor");
+                } else if (rushYds >= 225 || rushAtt >= 45) {
+                    qbMobilityTier = 3; // Mobile Scrambler (Lawrence, Mahomes, Love)
+                    mobilityBonus = 0.015;
+                    p._qbArchetype = 'Mobile Pocket Scrambler';
+                } else {
+                    qbMobilityTier = 4; // Pure Pocket Passer (Goff, Burrow, Cousins, Stroud)
+                    mobilityBonus = -0.010;
+                    p._qbArchetype = 'Pure Pocket Passer';
                 }
-                
-                // Pressure-to-Sack Rate (Evaluates QB processing/escapability independent of O-Line)
-                if (p.p2s !== undefined) {
-                    if (p.p2s <= 14.0) adjMultiplier += (0.04 * sampleConfidence); // Elite escapability (e.g. Mahomes)
-                    else if (p.p2s >= 24.0) adjMultiplier -= (0.05 * sampleConfidence); // Statue / Takes drive-killing sacks
+                adjMultiplier += mobilityBonus;
+
+                // B. Interactive Pressure-to-Sack (P2S%) Matrix
+                if (p2s !== undefined) {
+                    let p2sMod = 0;
+                    if (p2s <= 13.5) {
+                        p2sMod = (qbMobilityTier <= 2) ? 0.040 : 0.045;
+                    } else if (p2s <= 21.0) {
+                        p2sMod = 0.0;
+                    } else if (p2s <= 28.0) {
+                        if (qbMobilityTier === 1) p2sMod = -0.015;
+                        else if (qbMobilityTier === 2) p2sMod = -0.022;
+                        else if (qbMobilityTier === 3) p2sMod = -0.035;
+                        else p2sMod = -0.045;
+                    } else {
+                        if (qbMobilityTier === 1) p2sMod = -0.028;
+                        else if (qbMobilityTier === 2) p2sMod = -0.038;
+                        else if (qbMobilityTier === 3) p2sMod = -0.050;
+                        else p2sMod = -0.070;
+                    }
+                    adjMultiplier += (p2sMod * sampleConfidence);
+                }
+
+                // C. Pressure Rate Impact
+                if (pressRate !== undefined) {
+                    if (pressRate >= 26.0) {
+                        adjMultiplier -= (qbMobilityTier === 4 ? 0.045 : 0.020);
+                    } else if (pressRate <= 15.0) {
+                        adjMultiplier += 0.025;
+                    }
                 }
             }
             
