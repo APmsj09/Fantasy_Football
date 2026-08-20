@@ -635,21 +635,23 @@ window.Compare = {
         }
 
         // -------------------------------------------------------------
-        // 5. HANDCUFF & ROSTER PROTECTION DYNAMICS
+        // 5. METRIC-BASED HANDCUFF & ROSTER PROTECTION DYNAMICS
         // -------------------------------------------------------------
         let userOwnsAltStarter = alt.starterName && team.roster.some(r => r._cleanName === State.normalizeName(alt.starterName));
         let userOwnsTopStarter = topPick.starterName && team.roster.some(r => r._cleanName === State.normalizeName(topPick.starterName));
 
         if (userOwnsAltStarter) {
-            prosForAlt.push(`<strong>Direct Handcuff:</strong> Protects your investment in ${alt.starterName}.`);
-        } else if (alt.isRBHandcuff && !userOwnsAltStarter) {
-            prosForAlt.push(`<strong>Lottery Ticket Stash:</strong> Huge contingent upside if ${alt.starterName} goes down.`);
+            prosForAlt.push(`<strong>🛡️ Direct Roster Insurance:</strong> Protects your early-round investment in ${alt.starterName} by locking down 100% of the team's backfield touches.`);
+        } else if ((alt.isRBHandcuff || alt.depthChart >= 2) && !userOwnsAltStarter && alt.contingentUpsideScore >= 26.0) {
+            prosForAlt.push(`<strong>${alt._contingentTier || '💎 League-Winning Lottery Ticket'}:</strong> Backed by elite underlying metrics (${alt.yacAtt ? alt.yacAtt.toFixed(1) + ' YAC/Att' : 'High Elusiveness'}), he inherits an immediate RB1 role if ${alt.starterName || 'the starter'} misses time.`);
+        } else if (alt._isSplinterRisk) {
+            consForAlt.push(`<strong>⚠️ Committee Splinter Risk:</strong> Lacks standalone efficiency; an injury to ${alt.starterName || 'the starter'} would likely trigger a multi-back rotation rather than a pure workhorse role.`);
         }
 
         if (userOwnsTopStarter) {
-            consForAlt.push(`<strong>Missed Insurance:</strong> Passing on ${topPick.Player} leaves your RB1 (${topPick.starterName}) exposed without a handcuff.`);
-        } else if (topPick.isRBHandcuff && !userOwnsTopStarter) {
-            consForAlt.push(`<strong>Passed Lottery Ticket:</strong> ${topPick.Player} offers a league-winning ceiling if the starter goes down, which provides more value to a bench stash.`);
+            consForAlt.push(`<strong>Missed Roster Insurance:</strong> Passing on ${topPick.Player} leaves your investment in ${topPick.starterName} exposed without handcuff protection.`);
+        } else if ((topPick.isRBHandcuff || topPick.depthChart >= 2) && !userOwnsTopStarter && topPick.contingentUpsideScore >= 26.0) {
+            consForAlt.push(`<strong>Passed True League-Winner:</strong> ${topPick.Player} (${topPick._contingentTier || 'High Upside'}) possesses the specific tackle-breaking and receiving profile to explode if the starter misses time.`);
         }
 
         // -------------------------------------------------------------
