@@ -205,9 +205,11 @@ const State = {
 
                 if (pos === 'DST') {
                     team = this.normalizeTeam(pid);
-                    // Check if this DST was already loaded from your TSV
-                    let existingDST = this.allPlayers.find(p => p.Pos === 'DST' && p._cleanTeam === team);
+                    
+                    // 👇 Fix: Use normalizeTeam(p.Team) instead of p._cleanTeam since enrichPlayerMap hasn't run yet
+                    let existingDST = this.allPlayers.find(p => p.Pos === 'DST' && this.normalizeTeam(p.Team) === team);
                     if (existingDST) return; // Skip Sleeper duplicate, keep your rich TSV data!
+                    
                     pName = team + " Defense";
                 }else if (pos === 'PK') {
                     // Resolve Kicker Name from metadata
