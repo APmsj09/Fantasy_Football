@@ -2623,81 +2623,70 @@ const UI = {
                 p._stackPartner = null;
             }
 
-            // 5. Late-Round Upside Shift & Archetype Accumulation (Rounds 7+)
+            // ===========================================================
+            // 5. LATE-ROUND UPSIDE & CONTINGENT VALUE (FIXED)
+            // ===========================================================
             p._sleeperBadge = null;
-            let stashBonus = 0;
             let roundScale = Math.min(1.0, Math.max(0, currentRound - 6) * 0.15);
 
             if (currentRound >= 7) {
-                let upsideWeight = Math.min(0.80, (currentRound - 6) * 0.15);
-                let floorWeight = 1.0 - upsideWeight;
-                let ceilingScore = p.upsideScore || score;
-                score = (score * floorWeight) + (ceilingScore * upsideWeight);
+                // A. Base Stash Point Accumulator
+                let playerAge = p.age || p.Age;
+                let userOwnsStarter = p.starterName && userRoster.some(r => r._cleanName === State.normalizeName(p.starterName));
+                let baseSleeperBadge = null;
+                let rawStashPoints = 0;
 
-                if (['RB', 'WR', 'TE', 'QB'].includes(p.Pos)) {
-                    let playerAge = p.age || p.Age;
-                    let userOwnsStarter = p.starterName && userRoster.some(r => r._cleanName === State.normalizeName(p.starterName));
-
-                    // Changed from massive else/ifs to an accumulator (stashBonus)
-                    let baseSleeperBadge = null;
-                    let rawStashPoints = 0; // Renamed to represent infinite raw points
-
-                    if (userOwnsStarter && p.Pos === 'RB') {
-                        let starter = userRoster.find(r => r._cleanName === State.normalizeName(p.starterName));
-                        let starterQuality = starter ? (starter.ProjPts * 0.04) : 10.0;
-                        let standaloneTouchBonus = (p.ProjPts && p.ProjPts >= 110) ? 4.0 : 0;
-                        
-                        rawStashPoints += starterQuality + standaloneTouchBonus;
-                        baseSleeperBadge = `🔒 Handcuff for ${p.starterName}`;
-                    } else if (p.isRBHandcuff) {
-                        let standaloneTouchBonus = (p.ProjPts && p.ProjPts >= 110) ? 3.0 : 0;
-                        rawStashPoints += 6.0 + standaloneTouchBonus;
-                        baseSleeperBadge = `🎲 Lottery Ticket (${p.starterName}'s Backup)`;
-                    }
-
-                    if (p.depthChart === 2 && p.isNewRole) {
-                        rawStashPoints += 5.0;
-                        if (!baseSleeperBadge) baseSleeperBadge = `📈 Breakout Stash (1 Injury Away)`;
-                    }
-                    if (playerAge && playerAge <= 24) {
-                        rawStashPoints += Math.max(0, (24 - playerAge) * 3.0); // Slightly boosted raw input
-                        if (!baseSleeperBadge && playerAge <= 23) baseSleeperBadge = `🌱 Youth Breakout (Age ${playerAge})`;
-                    }
-                    if (p.targetShare && p.targetShare >= 12.0) {
-                        rawStashPoints += (p.targetShare - 12.0) * 0.5;
-                        if (!baseSleeperBadge && p.targetShare >= 15.0) baseSleeperBadge = `🎯 ${p.targetShare}% Tgt Share Sleeper`;
-                    }
-                    if (p.aDOT && p.aDOT >= 10.0) {
-                        rawStashPoints += (p.aDOT - 10.0) * 1.5;
-                        if (!baseSleeperBadge && p.aDOT >= 12.0) baseSleeperBadge = `🚀 Deep Threat (${p.aDOT} aDOT)`;
-                    }
-                    if (p.brokenTackles && p.brokenTackles > 10) {
-                        rawStashPoints += (p.brokenTackles - 10) * 0.4;
-                        if (!baseSleeperBadge && p.brokenTackles >= 15) baseSleeperBadge = `🏃 Elusive (${p.brokenTackles} Broken Tackles)`;
-                    }
-                    if (p.hvo && p.hvo >= 30) {
-                        rawStashPoints += (p.hvo - 30) * 0.2;
-                        if (!baseSleeperBadge && p.hvo >= 40) baseSleeperBadge = `💎 High Value Touch Profile`;
-                    }
-
-                    p._sleeperBadge = baseSleeperBadge;
-
-                    // ⚡ S-CURVE LOGISTIC SCALER ⚡
-                    // Prevents rawStashPoints from endlessly compounding into game-breaking VBD, 
-                    // providing a smooth glide path to the maximum allowed VBD bump.
-                    const maxStashVBD = 22.0; 
-                    const scalePacing = 0.065; 
-                    let smoothedStashBonus = maxStashVBD * (1 - Math.exp(-scalePacing * rawStashPoints));
-
-                    score += (smoothedStashBonus * roundScale);
+                if (userOwnsStarter && p.Pos === 'RB') {
+                    let starter = userRoster.find(r => r._cleanName === State.normalizeName(p.starterName));
+                    let starterQuality = starter ? (starter.ProjPts * 0.04) : 10.0;
+                    rawStashPoints += starterQuality + ((p.ProjPts && p.ProjPts >= 110) ? 4.0 : 0);
+                    baseSleeperBadge = `🔒 Handcuff for ${p.starterName}`;
+                } else if (p.isRBHandcuff || (p.depthChart >= 2 && p.Pos === 'RB')) {
+                    // Use calculated contingent equity rather than arbitrary flat boosts
+                    let contingentBoost = p.contingentDraftEquity ? (p.contingentDraftEquity * 0.35) : 6.0;
+                    rawStashPoints += contingentBoost;
+                    baseSleeperBadge = p._contingentTier || `🎲 Lottery Ticket (${p.starterName || 'Starter'}'s Backup)`;
                 }
-            } else if (p.upsideScore && (p.AdvVBD || p.VBD) > 0) {
-                // In Rounds 1-5, ceiling gain is tightly capped (+4.0 VBD max) 
-                // so speculative upside never overrides true tier-1 superstars
-                let rawGain = Math.max(0, p.upsideScore - (p.AdvVBD || p.VBD));
-                let ceilingWeight = currentRound <= 5 ? 0.05 : 0.15;
-                let ceilingGain = Math.min(5.0, rawGain * ceilingWeight);
-                score += ceilingGain;
+
+                if (p.depthChart === 2 && p.isNewRole) {
+                    rawStashPoints += 4.0;
+                    if (!baseSleeperBadge) baseSleeperBadge = `📈 Breakout Stash (1 Injury Away)`;
+                }
+                if (playerAge && playerAge <= 24) {
+                    rawStashPoints += Math.max(0, (24 - playerAge) * 2.5);
+                    if (!baseSleeperBadge && playerAge <= 23) baseSleeperBadge = `🌱 Youth Breakout (Age ${playerAge})`;
+                }
+                if (p.targetShare && p.targetShare >= 12.0) {
+                    rawStashPoints += (p.targetShare - 12.0) * 0.5;
+                    if (!baseSleeperBadge && p.targetShare >= 15.0) baseSleeperBadge = `🎯 ${p.targetShare}% Tgt Share Sleeper`;
+                }
+                if (p.aDOT && p.aDOT >= 10.0) {
+                    rawStashPoints += (p.aDOT - 10.0) * 1.2;
+                    if (!baseSleeperBadge && p.aDOT >= 12.0) baseSleeperBadge = `🚀 Deep Threat (${p.aDOT} aDOT)`;
+                }
+                if (p.hvo && p.hvo >= 30) {
+                    rawStashPoints += (p.hvo - 30) * 0.2;
+                    if (!baseSleeperBadge && p.hvo >= 40) baseSleeperBadge = `💎 High Value Touch Profile`;
+                }
+
+                p._sleeperBadge = baseSleeperBadge;
+
+                // B. S-Curve Scaled Stash Bump (Max +20 VBD)
+                const maxStashVBD = 20.0;
+                const scalePacing = 0.065;
+                let smoothedStashBonus = maxStashVBD * (1 - Math.exp(-scalePacing * rawStashPoints));
+
+                // Add stash bump to baseline score (DO NOT replace baseline with unweighted ceiling)
+                score += (smoothedStashBonus * roundScale);
+
+                // C. Controlled Ceiling Delta (Dampened for pure contingent backups)
+                if (p.upsideScore && p.upsideScore > 0) {
+                    let ceilingDelta = Math.max(0, p.upsideScore - Math.max(0, p.AdvVBD || p.VBD || 0));
+                    // For backups with negative/near-zero base VBD, cap the speculative ceiling gain
+                    let ceilingWeight = (p.depthChart >= 2 || p.isRBHandcuff) ? 0.06 : 0.18;
+                    let cappedCeilingGain = Math.min(12.0, ceilingDelta * ceilingWeight);
+                    score += (cappedCeilingGain * roundScale);
+                }
             }
 
             // 6. Bench vs. Starter Threshold Penalties
@@ -2776,34 +2765,40 @@ const UI = {
                 }
             }
 
-            // 8. Value Over Next Available (VONA) & Elastic Reach Penalty
+            // ===========================================================
+            // 8. VALUE OVER NEXT AVAILABLE (VONA) & AVAILABILITY DELAY
+            // ===========================================================
             if (p.adp) {
                 let survivalProb = getSurvivalProb(p);
                 p._survivalProb = survivalProb;
-                let reachDistance = p.adp - currentOverallPick;
-
-                // Dynamic Elasticity Curve: Allows more reach flexibility in later rounds
+                let reachDistance = p.adp - currentOverallPick; // Negative = Sliding value, Positive = Reaching
                 let turnGap = nextActiveWindowPick - currentOverallPick;
                 let allowedReach = Math.round(4.0 + (Math.pow(currentRound, 1.4) * 0.8)) + (turnGap >= 18 ? 4 : 0);
 
-                if (score > 0) {
-                    // 1. VALUE SLIDE BONUS: Heavily reward elite players who have fallen past their ADP
+                if (score > 0 || (p.AdvVBD || p.VBD) > -15.0) {
+                    // 1. SLIDE VALUE BONUS (Player falling past ADP)
                     if (reachDistance <= -6) {
-                        let slideValue = Math.min(15.0, Math.abs(reachDistance) * 0.85);
+                        // Scales up to +25 VBD for massive slides (e.g. Blake Corum sliding 24 picks)
+                        let slideValue = Math.min(25.0, Math.abs(reachDistance) * 0.85);
                         score += slideValue;
                     }
-                    // 2. URGENCY BONUS: Reward players in danger of not making it back to your next pick
+                    // 2. URGENCY BONUS (High risk of being drafted before your next turn)
                     else if (survivalProb < 0.25 && reachDistance <= allowedReach) {
-                        let urgencyBonus = Math.min(6.0, (1 - survivalProb) * 6.0);
+                        let urgencyBonus = Math.min(8.0, (1 - survivalProb) * 8.0);
                         score += urgencyBonus;
-                    } 
-                    // 3. REACH PENALTY: Applied if the pick exceeds the round's natural elasticity
-                    else if (reachDistance > allowedReach || (survivalProb > 0.65 && reachDistance >= allowedReach)) {
+                    }
+                    // 3. AVAILABILITY DELAY DISCOUNT (Crucial Fix)
+                    // If a player has a high chance to survive to your next pick (#144),
+                    // don't draft them now over someone who won't survive!
+                    else if (reachDistance > 0 && survivalProb >= 0.65) {
+                        let delayDiscount = (survivalProb - 0.50) * Math.min(22.0, reachDistance * 0.60);
+                        score -= delayDiscount;
+                    }
+                    // 4. EXCESS REACH PENALTY
+                    else if (reachDistance > allowedReach) {
                         let excessReach = Math.max(0, reachDistance - allowedReach);
-                        // Penalty softens in later rounds where ADP is highly inaccurate
-                        let penaltyWeight = Math.max(0.15, 1.1 - (currentRound * 0.05));
-                        let reachPenalty = excessReach * penaltyWeight;
-                        score -= reachPenalty;
+                        let penaltyWeight = Math.max(0.35, 1.1 - (currentRound * 0.04));
+                        score -= (excessReach * penaltyWeight);
                     }
                 }
             }
