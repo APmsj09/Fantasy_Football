@@ -1757,6 +1757,24 @@ const UI = {
 
         let envBadgesHTML = envBadges.length > 0 ? `<div class="flex flex-wrap gap-2 mb-2">${envBadges.join('')}</div>` : '';
 
+        let combineBadges = [];
+        if (p.isRookie || p.draftRound) {
+            if (p.draftRound) {
+                let pickStr = p.nflDraftPick ? ` (Pick #${p.nflDraftPick})` : '';
+                combineBadges.push(`<span class="bg-indigo-100 text-indigo-800 text-xs font-bold px-2.5 py-1 rounded-full border border-indigo-200">🎓 NFL Draft: Rnd ${p.draftRound}${pickStr}</span>`);
+            }
+            if (p.fortyTime) {
+                combineBadges.push(`<span class="bg-amber-100 text-amber-800 text-xs font-bold px-2.5 py-1 rounded-full border border-amber-200">⏱️ 40yd: ${p.fortyTime}s</span>`);
+            }
+            if (p.speedScore) {
+                combineBadges.push(`<span class="bg-emerald-100 text-emerald-800 text-xs font-bold px-2.5 py-1 rounded-full border border-emerald-200">⚡ Speed Score: ${p.speedScore}</span>`);
+            }
+            if (p.combineStats && p.combineStats.vertical) {
+                combineBadges.push(`<span class="bg-slate-100 text-slate-700 text-xs font-bold px-2.5 py-1 rounded-full border border-slate-200">Vertical: ${p.combineStats.vertical}"</span>`);
+            }
+        }
+        let combineBadgesHTML = combineBadges.length > 0 ? `<div class="flex flex-wrap gap-2 mb-2">${combineBadges.join('')}</div>` : '';
+
         let ppwBadge = '';
         if (p._addedPPW >= 1.0 || (p._addedPPW > 0.1 && !p._byeFillWeek)) {
             ppwBadge = `<span class="bg-emerald-100 text-emerald-800 text-xs font-bold px-2.5 py-1 rounded-full border border-emerald-200">📈 +${p._addedPPW.toFixed(1)} PPW Lineup Fit</span>`;
@@ -2003,7 +2021,7 @@ const UI = {
             </div>
 
             <div id="card-tab-overview">
-                <div class="mb-3">${envBadgesHTML}${ppwBadge}</div>
+                <div class="mb-3">${combineBadgesHTML}${envBadgesHTML}${ppwBadge}</div>
                 ${statsDashboard}
                 ${bbWidgetHTML}
                 ${pastStatsHTML} 
