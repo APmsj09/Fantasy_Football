@@ -205,8 +205,11 @@ const State = {
 
                 if (pos === 'DST') {
                     team = this.normalizeTeam(pid);
+                    // Check if this DST was already loaded from your TSV
+                    let existingDST = this.allPlayers.find(p => p.Pos === 'DST' && p._cleanTeam === team);
+                    if (existingDST) return; // Skip Sleeper duplicate, keep your rich TSV data!
                     pName = team + " Defense";
-                } else if (pos === 'PK') {
+                }else if (pos === 'PK') {
                     // Resolve Kicker Name from metadata
                     let sp = kMap[pid];
                     if (sp && sp.full_name) {
@@ -3872,34 +3875,58 @@ const State = {
 
     parseDefData(text) {
         const rows = text.split(/\r?\n/).filter(row => row.trim() !== '');
-        const headers = rows[0].split('\t').map(h => h.trim());
+        if (rows.length < 2) return [];
+        
+        // Normalize headers to lowercase to match your TSV exactly
+        const headers = rows[0].split('\t').map(h => h.trim().toLowerCase());
         const parsed = [];
 
-        for (let i = 1; i < rows.length; i++) {
-            const vals = rows[i].split('\t');
-            let city = vals[headers.indexOf('City')] || '';
-            let teamName = vals[headers.indexOf('Team')] || '';
+        const getVal = (rowVals, key) => {
+            const idx = headers.indexOf(key.toLowerCase());
+            return idx !== -1 ? parseFloat(rowVals[idx]) : 0;
+        };
+        const getStr = (rowVals, key) => {
+            const idx = headers.indexOf(key.toLowerCase());
+            return idx !== -1 ? rowVals[idx].trim() : '';
+        };
 
-            // Auto-fix decimal point error (20 -> 2.0, 14 -> 1.4, 32 -> 3.2)
-            let rawDTD = parseFloat(vals[headers.indexOf('DTD')]) || 0;
-            let realDefTDs = rawDTD > 5 ? (rawDTD / 10) : rawDTD;
+        for (let i = 1; i < rows.length; i++) {
+            const vals = rows[i].split('\t').map(v => v.trim());
+            if (vals.length < 4) continue;
+
+            let city = getStr(vals, 'city');
+            let teamName = getStr(vals, 'team');
+            let abv = getStr(vals, 'abv') || getStr(vals, 'team');
+
+            let defInt = getVal(vals, 'int');
+            let safety = getVal(vals, 'sfty') || getVal(vals, 'safety');
+            let sack = getVal(vals, 'sck') || getVal(vals, 'sacks') || getVal(vals, 'sack');
+            let defFum = getVal(vals, 'frec') || getVal(vals, 'fr');
+            let rawDTD = getVal(vals, 'dtd') || getVal(vals, 'def td');
+            let realDefTDs = rawDTD > 10 ? (rawDTD / 10) : rawDTD;
+
+            let papg = getVal(vals, 'ppg') || getVal(vals, 'papg') || 20.0;
+            let ptsAllowed = getVal(vals, 'pts') || Math.round(papg * 17);
 
             let p = {
-                Player: `${city} ${teamName}`.trim(),
+                Player: `${city} ${teamName}`.trim() || `${this.normalizeTeam(abv)} Defense`,
                 Pos: 'DST',
-                Team: vals[headers.indexOf('Abv')] || '',
+                Team: this.normalizeTeam(abv),
                 stats: {
-                    defInt: parseFloat(vals[headers.indexOf('INT')]) || 0,
-                    safety: parseFloat(vals[headers.indexOf('Safety')]) || 0,
-                    sack: parseFloat(vals[headers.indexOf('Sacks')]) || 0,
-                    tfl: parseFloat(vals[headers.indexOf('TFL')]) || 0,
-                    defFum: parseFloat(vals[headers.indexOf('FR')]) || 0,
-                    defTd: realDefTDs, // Fixes DTD float issue
-                    papg: parseFloat(vals[headers.indexOf('PAPG')]) || 18.0,
-                    blk: parseFloat(vals[headers.indexOf('Blk')]) || 0
+                    defInt: defInt,
+                    safety: safety,
+                    sack: sack,
+                    defFum: defFum,
+                    defTd: realDefTDs,
+                    ptsAllowed: ptsAllowed,
+                    papg: parseFloat(papg.toFixed(1)),
+                    rushYdsAllowed: getVal(vals, 'rush'),
+                    totalYdsAllowed: getVal(vals, 'total'),
+                    ypg: getVal(vals, 'avg')
                 },
                 ProjPts: 0, VBD: 0, AdvVBD: 0
             };
+
             if (p.Player && p.Team) parsed.push(p);
         }
         return parsed;
