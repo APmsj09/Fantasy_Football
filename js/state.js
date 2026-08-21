@@ -684,6 +684,77 @@ const State = {
         });
     },
 
+    parseRookieData(text) {
+        const rows = text.split(/\r?\n/).filter(row => row.trim() !== '');
+        if (rows.length < 2) return [];
+        const headers = rows[0].split('\t').map(h => h.trim());
+        const parsed = [];
+
+        for (let i = 1; i < rows.length; i++) {
+            const vals = rows[i].split('\t').map(v => v.trim());
+            if (vals.length < 2) continue;
+
+            const player = vals[headers.indexOf('Player')];
+            if (!player) continue;
+
+            const rawRnd = vals[headers.indexOf('DraftRound')] || '';
+            const rawPick = vals[headers.indexOf('DraftPick')] || '';
+            const draftTeam = vals[headers.indexOf('DraftTeam')] || '';
+            const wt = parseFloat(vals[headers.indexOf('Wt')]) || null;
+            const forty = parseFloat(vals[headers.indexOf('40yd')]) || null;
+
+            let speedScore = null;
+            if (wt && forty && forty > 0) {
+                speedScore = parseFloat(((wt * 200) / Math.pow(forty, 4)).toFixed(1));
+            }
+
+            parsed.push({
+                player,
+                pos: this.normalizePos(vals[headers.indexOf('Pos')]),
+                school: vals[headers.indexOf('School')],
+                ht: vals[headers.indexOf('Ht')],
+                wt,
+                forty,
+                speedScore,
+                vertical: parseFloat(vals[headers.indexOf('Vertical')]) || null,
+                broadJump: parseFloat(vals[headers.indexOf('Broad Jump')]) || null,
+                bench: parseInt(vals[headers.indexOf('Bench')], 10) || null,
+                threeCone: parseFloat(vals[headers.indexOf('3Cone')]) || null,
+                shuttle: parseFloat(vals[headers.indexOf('Shuttle')]) || null,
+                draftTeam: this.normalizeTeam(draftTeam),
+                draftRound: rawRnd ? parseInt(rawRnd, 10) : null,
+                overallPick: rawPick ? parseInt(rawPick, 10) : null,
+                draftYear: parseInt(vals[headers.indexOf('DraftYear')], 10) || 2026
+            });
+        }
+        return parsed;
+    },
+
+    mergeRookieData(rookieList) {
+        if (!rookieList || !Array.isArray(rookieList)) return;
+
+        rookieList.forEach(r => {
+            let p = this.matchPlayerFast(r.player, r.draftTeam, r.pos);
+            if (!p) return;
+
+            p.isRookie = true;
+            p.draftRound = r.draftRound;
+            p.nflDraftPick = r.overallPick;
+            p.speedScore = r.speedScore;
+            p.fortyTime = r.forty;
+            p.college = r.school;
+            if (r.wt && !p.weight) p.weight = r.wt;
+            if (r.ht && !p.height) p.height = r.ht;
+            p.combineStats = {
+                vertical: r.vertical,
+                broadJump: r.broadJump,
+                bench: r.bench,
+                threeCone: r.threeCone,
+                shuttle: r.shuttle
+            };
+        });
+    },
+
     finalizeDepthCharts() {
         // ⚡ Ensure Sleeper's tied designations (LWR1, RWR1, SWR1) and imported TSV data 
         // are properly resolved into a clean, sequential depth chart hierarchy (1, 2, 3...)
@@ -1245,11 +1316,17 @@ const State = {
             if (weekRating === 'BYE') {
                 player.weeklyProjections[`W${w}`] = 0;
             } else {
-                // Fallback undefined or non-numeric ratings to neutral 3.0 stars
                 let ratingVal = (typeof weekRating === 'number') ? weekRating : 3.0;
                 let starDiff = ratingVal - 3.0;
                 let multiplier = 1 + (starDiff * 0.08);
-                player.weeklyProjections[`W${w}`] = Math.max(0, baseWeeklyPts * multiplier);
+
+                // 📈 Rookie Ramp-Up Factor (Weeks 1-6 = ~80%, Weeks 14-17 = ~125%)
+                let rookieGrowthFactor = 1.0;
+                if (player.isRookie) {
+                    rookieGrowthFactor = 0.80 + (0.50 * ((w - 1) / 17));
+                }
+
+                player.weeklyProjections[`W${w}`] = Math.max(0, baseWeeklyPts * multiplier * rookieGrowthFactor);
             }
         }
     },
@@ -2831,6 +2908,50 @@ const State = {
                     adjMultiplier -= Math.pow(pAge - 31, 1.2) * 0.025;
                 } else if (p.Pos === 'QB' && pAge >= 38) {
                     adjMultiplier -= Math.pow(pAge - 37, 1.2) * 0.02;
+                }
+            }
+
+            // ===========================================================
+            // 🌟 ROOKIE DRAFT CAPITAL & ATHLETIC PEDIGREE VALUATION
+            // ===========================================================
+            if (p.isRookie || p.nflDraftPick) {
+                let pick = p.nflDraftPick || (p.draftRound ? (p.draftRound * 32 - 16) : 150);
+                
+                // 1. NFL Draft Capital Multiplier
+                if (pick <= 10) {
+                    adjMultiplier += 0.065;      // Top 10 Pick: Guaranteed Day-1 Focal Point
+                    upsideMultiplier += 0.25;
+                    ceilingTags.push("Top-10 Franchise Draft Capital");
+                } else if (pick <= 32) {
+                    adjMultiplier += 0.040;      // 1st Round: Major Scheme Investment
+                    upsideMultiplier += 0.18;
+                    ceilingTags.push("1st Round NFL Draft Capital");
+                } else if (pick <= 64) {
+                    adjMultiplier += 0.020;      // 2nd Round: High-Leverage Opportunity
+                    upsideMultiplier += 0.12;
+                    ceilingTags.push("Day-2 Draft Capital");
+                } else if (pick >= 140) {
+                    adjMultiplier -= 0.035;      // Day 3 (Round 5+): Rotational Battle
+                }
+
+                // 2. Weight-Adjusted Speed Score (Running Backs)
+                if (p.Pos === 'RB' && p.speedScore) {
+                    if (p.speedScore >= 112.0) {
+                        upsideMultiplier += 0.20;
+                        ceilingTags.push(`Elite Size-Speed Athlete (${p.speedScore} Speed Score)`);
+                        p._speedScoreBadge = `⚡ Elite Speed Score (${p.speedScore})`;
+                    } else if (p.speedScore >= 104.0) {
+                        upsideMultiplier += 0.10;
+                        ceilingTags.push(`Plus Size-Speed Profile (${p.speedScore})`);
+                    } else if (p.speedScore < 94.0) {
+                        adjMultiplier -= 0.030;  // Lacks breakaway burst for his weight
+                    }
+                }
+
+                // 3. Sub-4.40 Speed Weapon (WRs)
+                if (p.Pos === 'WR' && p.fortyTime && p.fortyTime <= 4.38) {
+                    upsideMultiplier += 0.15;
+                    ceilingTags.push(`Blazing 40yd Speed (${p.fortyTime}s)`);
                 }
             }
 
