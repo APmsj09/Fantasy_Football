@@ -1323,7 +1323,7 @@ const State = {
                 // 📈 Rookie Ramp-Up Factor (Weeks 1-6 = ~80%, Weeks 14-17 = ~125%)
                 let rookieGrowthFactor = 1.0;
                 if (player.isRookie) {
-                    rookieGrowthFactor = 0.80 + (0.50 * ((w - 1) / 17));
+                    rookieGrowthFactor = 0.75 + (0.50 * ((w - 1) / 17)); // Wk 1 = 75%, Wk 18 = 125%
                 }
 
                 player.weeklyProjections[`W${w}`] = Math.max(0, baseWeeklyPts * multiplier * rookieGrowthFactor);
