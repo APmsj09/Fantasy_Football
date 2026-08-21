@@ -660,17 +660,20 @@
                                                 onclick="UI.sortTable('draft', 'ProjPts')">Proj ↕</th>
                                             <th class="px-2 py-2.5 text-right text-[10px] font-extrabold text-indigo-600 uppercase tracking-wider hover:text-indigo-800"
                                                 onclick="UI.sortTable('draft', 'AdvVBD')">Adv VBD ↕</th>
+                                            <!-- 👇 NEW HEADERS 👇 -->
+                                            <th class="px-2 py-2.5 text-center text-[10px] font-extrabold text-purple-600 uppercase tracking-wider hover:text-purple-800"
+                                                onclick="UI.sortTable('draft', 'upsideScore')">Upside ↕</th>
+                                            <th class="px-2 py-2.5 text-center text-[10px] font-extrabold text-gray-500 uppercase tracking-wider">Floor / Ceil</th>
+                                            <!-- 👆 NEW HEADERS 👆 -->
                                             <th class="px-2 py-2.5 text-center text-[10px] font-extrabold text-emerald-600 uppercase tracking-wider hover:text-emerald-800"
-                                                onclick="UI.sortTable('draft', '_addedPPW')">+PPW Added ↕</th>
+                                                onclick="UI.sortTable('draft', '_addedPPW')">+PPW ↕</th>
                                             <th class="px-2 py-2.5 text-center text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600"
-                                                onclick="UI.sortTable('draft', 'adp')">ADP ↕</th>
+                                                onclick="UI.sortTable('draft', 'adp')">ADP (Surv) ↕</th>
                                             <th class="px-2 py-2.5 text-center text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600"
                                                 onclick="UI.sortTable('draft', 'byeWeek')">Bye ↕</th>
                                             <th class="px-2 py-2.5 text-center text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600"
                                                 onclick="UI.sortTable('draft', 'depthChart')">Depth ↕</th>
-                                            <th
-                                                class="px-3 py-2.5 text-right text-[10px] font-extrabold text-gray-500 uppercase tracking-wider">
-                                                Action</th>
+                                            <th class="px-3 py-2.5 text-right text-[10px] font-extrabold text-gray-500 uppercase tracking-wider">Action</th>
                                         </tr>
                                     </thead>
                                     <tbody id="draft-players-body" class="bg-white divide-y divide-gray-100"></tbody>
