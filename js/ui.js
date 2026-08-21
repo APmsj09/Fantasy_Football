@@ -2280,6 +2280,26 @@ const UI = {
                 ppwStr = `<span class="text-gray-300 text-[10px] font-mono">0.0</span>`;
             }
 
+            // 1. Floor & Ceiling PPG Calculation
+            let ppg = (p.ProjPts / (p.stats?.gp || 17)).toFixed(1);
+            let variance = 0.22;
+            if (p.isRBHandcuff) variance += 0.12;
+            if (p._isSafeFloor) variance -= 0.05;
+            if (p.boomBust && p.boomBust.bust >= 35) variance += 0.08;
+
+            let floorVal = Math.max(1.5, ppg * (1 - variance)).toFixed(1);
+            let ceilVal = p.ceilingProjPts ? (p.ceilingProjPts / 17).toFixed(1) : (ppg * (1 + variance)).toFixed(1);
+            let rangeDisplay = `<span class="text-[10px] font-semibold text-slate-700 whitespace-nowrap"><span class="text-rose-500">${floorVal}</span> - <span class="text-emerald-600 font-bold">${ceilVal}</span></span>`;
+
+            // 2. Survival % on ADP Column
+            let survPct = p._survivalProb !== undefined ? Math.round(p._survivalProb * 100) : (p.adp ? 50 : 100);
+            let survColor = survPct < 25 ? 'text-rose-600 font-bold' : (survPct > 75 ? 'text-slate-400' : 'text-amber-600');
+            let adpDisplayStr = p.adp ? `${p.adp.toFixed(0)} <span class="text-[9px] ${survColor}">(${survPct}%)</span>` : '-';
+
+            // 3. Upside Score Badge (VBD Delta)
+            let upsideVal = p.upsideScore ? p.upsideScore.toFixed(0) : (p.AdvVBD || 0).toFixed(0);
+            let upsideStr = `<span class="text-[10px] font-black text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-200/80">+${upsideVal}</span>`;
+
             let isOffense = !['DST', 'PK'].includes(p.Pos);
             let playerAge = UI.getPlayerAge(p);
             let ageStr = playerAge ? `<span class="text-[9px] font-semibold text-slate-400 ml-1">Age ${playerAge}</span>` : '';
@@ -2323,6 +2343,8 @@ const UI = {
                     <td class="px-2 py-2 text-center text-[11px] text-gray-600 font-medium">${p.Pos}</td>
                     <td class="px-2 py-2 text-right text-[11px] font-bold text-indigo-600">${p.ProjPts.toFixed(1)}</td>
                     <td class="px-2 py-2 text-right text-[11px] font-extrabold text-indigo-900">${(p.AdvVBD || p.VBD).toFixed(1)}</td>
+                    <td class="px-2 py-2 text-center">${upsideStr}</td>
+                    <td class="px-2 py-2 text-center">${rangeDisplay}</td>
                     <td class="px-2 py-2 text-center text-[11px]">${ppwStr}</td>
                     <td class="px-2 py-2 text-center text-[11px] text-gray-600">${adpStr}</td>
                     <td class="px-2 py-2 text-center text-[11px]">${byeStr}</td>
@@ -2342,6 +2364,7 @@ const UI = {
 
             const getSortVal = (player, k) => {
                 if (k === 'AdvVBD') return Number(player.AdvVBD ?? player.VBD ?? 0);
+                if (k === 'upsideScore') return Number(player.upsideScore ?? player.AdvVBD ?? 0); // 👈 ADD THIS LINE
                 if (k === 'ProjPts') return Number(player.ProjPts ?? 0);
                 if (k === 'adp' || k === 'depthChart' || k === 'byeWeek') {
                     const raw = player[k];
