@@ -1,5 +1,8 @@
 window.appGoToSetup = function (mode) {
     document.getElementById('setting-draft-type').value = mode;
+    if (typeof UI.renderProfileAssignments === 'function') {
+        UI.renderProfileAssignments();
+    }
     UI.switchTab('setup-screen');
 }
 
@@ -445,6 +448,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (settingsTeams) settingsTeams.addEventListener('change', () => UI.renderProfileAssignments());
     const settingsUserPick = document.getElementById('setting-user-pick');
     if (settingsUserPick) settingsUserPick.addEventListener('change', () => UI.renderProfileAssignments());
+
+    const settingsDraftType = document.getElementById('setting-draft-type');
+    if (settingsDraftType) settingsDraftType.addEventListener('change', () => UI.renderProfileAssignments());
 
     // FIX: Safely fallback `State.settings.numTeams` if it hasn't been instantiated yet to prevent crashing before UI start.
     const initialRound = Math.floor(State.currentPick / (State.settings.numTeams || 12)) + 1;
