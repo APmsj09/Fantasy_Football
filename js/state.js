@@ -3972,32 +3972,44 @@ const State = {
             let isUser = (i + 1 === parseInt(this.settings.userTeamIndex));
             if (isUser) this.userTeamId = id;
 
-            let dropdown = document.getElementById(`profile-team-${i + 1}`);
-            let selectedName = dropdown ? dropdown.value : "";
-            let profile = null;
-            let teamName = isUser ? "My Team" : `CPU ${i + 1}`;
+            // 1. Read Custom Name Input
+            let customNameInput = document.getElementById(`custom-name-team-${i + 1}`);
+            let customName = customNameInput ? customNameInput.value.trim() : "";
 
-            if (selectedName) {
-                profile = availableProfiles.find(p => p.name === selectedName);
-                if (profile) {
-                    teamName = profile.name + (isUser ? ' (You)' : '');
+            // 2. Read AI Profile if in Mock mode
+            let dropdown = document.getElementById(`profile-team-${i + 1}`);
+            let selectedProfileName = dropdown ? dropdown.value : "";
+            let profile = null;
+
+            if (selectedProfileName) {
+                profile = availableProfiles.find(p => p.name === selectedProfileName);
+            }
+
+            // 3. Resolve Team Name (Defaults to typed custom name)
+            let teamName = customName || (isUser ? "My Team" : `Team ${i + 1}`);
+
+            // 4. In Mock Draft mode: Assign AI personality and use profile name if no custom name was entered
+            if (this.settings.draftMode === 'mock' && !isUser) {
+                if (!profile && availableProfiles.length > 0) {
+                    let unassigned = availableProfiles.filter(p => !usedProfiles.includes(p.name));
+                    let pool = unassigned.length > 0 ? unassigned : availableProfiles;
+                    let profileIndex = Math.floor(Math.random() * pool.length);
+                    profile = pool[profileIndex];
                     usedProfiles.push(profile.name);
+                }
+
+                // If left blank or default "Team X", use the AI profile's name
+                if (!customName || customName === `Team ${i + 1}`) {
+                    if (profile) teamName = profile.name;
                 }
             }
 
-            if (!isUser && !profile && availableProfiles.length > 0) {
-                let unassigned = availableProfiles.filter(p => !usedProfiles.includes(p.name));
-                let pool = unassigned.length > 0 ? unassigned : availableProfiles;
-                let profileIndex = Math.floor(Math.random() * pool.length);
-                profile = pool[profileIndex];
-                teamName = profile.name;
-                usedProfiles.push(profile.name);
-            }
-
             this.teamsById[id] = {
-                id: id, name: teamName,
+                id: id, 
+                name: teamName,
                 isCPU: this.settings.draftMode === 'mock' ? !isUser : false,
-                profile: profile, roster: [],
+                profile: profile, 
+                roster: [],
                 counts: { QB: 0, RB: 0, WR: 0, TE: 0, FlexRBWR: 0, Flex: 0, Superflex: 0, PK: 0, DST: 0, Bench: 0 }
             };
             teamIds.push(id);
