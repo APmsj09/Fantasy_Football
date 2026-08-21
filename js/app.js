@@ -217,6 +217,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 fetchTSV(`${DATA_DIR}/RB_CBS_${SEASON}.tsv`, State.parseCBS_RB.bind(State), data => State.allPlayers.push(...data)),
                 fetchTSV(`${DATA_DIR}/WR_CBS_${SEASON}.tsv`, State.parseCBS_WR.bind(State), data => State.allPlayers.push(...data)),
                 fetchTSV(`${DATA_DIR}/TE_CBS_${SEASON}.tsv`, State.parseCBS_TE.bind(State), data => State.allPlayers.push(...data)),
+                fetchTSV(`${DATA_DIR}/def_proj_${SEASON}.tsv`, State.parseDefData.bind(State), data => State.allPlayers.push(...data)),
                 State.fetchSleeperProjections(SEASON) // <-- PULLS DIRECTLY FROM SLEEPER API
             ]);
             State.enrichPlayerMap();
