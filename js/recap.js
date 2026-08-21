@@ -148,39 +148,40 @@ window.DraftRecap = {
             });
 
             // Bell-Curve Scoring Algorithm
-            let score = 72;
+            let score = 78; // Base calibrated for a 12-team median
             let starterEdge = ((team.basePts - avgLeagueBase) / avgLeagueBase) * 100;
-            score += Math.max(-16, Math.min(16, starterEdge * 1.5));
+            score += Math.max(-14, Math.min(14, starterEdge * 2.2)); // Rewards close starter margins
 
             let benchEdge = ((team.benchPts - avgLeagueBench) / (avgLeagueBench || 1)) * 100;
-            score += Math.max(-7, Math.min(7, benchEdge * 0.25));
+            score += Math.max(-6, Math.min(6, benchEdge * 0.20));
 
-            score += Math.max(-6, Math.min(6, weightedAdpDelta * 0.12));
+            score += Math.max(-5, Math.min(5, weightedAdpDelta * 0.10));
 
             let teamFloorRatio = team.floorPts / Math.max(1, team.ceilingPts);
             let riskDiff = (teamFloorRatio - avgLeagueFloorRatio) * 100;
-            score += Math.max(-4, Math.min(3, riskDiff * 0.5));
+            score += Math.max(-3, Math.min(3, riskDiff * 0.4));
 
+            // Deductions for missing positions
             const coreNeeds = { QB: 1, RB: 2, WR: 2, TE: 1 };
             Object.keys(coreNeeds).forEach(pos => {
                 let req = State.settings.roster[pos]?.max || coreNeeds[pos];
                 if ((team.counts[pos] || 0) < req) score -= 6.0;
             });
-            if ((team.counts['PK'] || 0) < (State.settings.roster['PK']?.max || 1)) score -= 1.5;
-            if ((team.counts['DST'] || 0) < (State.settings.roster['DST']?.max || 1)) score -= 1.5;
 
             score = Math.max(0, Math.min(100, score));
             let grade = 'F', color = 'text-gray-500', bg = 'bg-gray-100';
-            if (score >= 93) { grade = 'A+'; color = 'text-emerald-600'; bg = 'bg-emerald-50 border-emerald-200'; }
-            else if (score >= 89) { grade = 'A'; color = 'text-emerald-500'; bg = 'bg-emerald-50 border-emerald-200'; }
-            else if (score >= 85) { grade = 'A-'; color = 'text-emerald-400'; bg = 'bg-emerald-50 border-emerald-200'; }
-            else if (score >= 82) { grade = 'B+'; color = 'text-indigo-600'; bg = 'bg-indigo-50 border-indigo-200'; }
-            else if (score >= 79) { grade = 'B'; color = 'text-indigo-500'; bg = 'bg-indigo-50 border-indigo-200'; }
-            else if (score >= 76) { grade = 'B-'; color = 'text-indigo-400'; bg = 'bg-indigo-50 border-indigo-200'; }
-            else if (score >= 73) { grade = 'C+'; color = 'text-amber-600'; bg = 'bg-amber-50 border-amber-200'; }
-            else if (score >= 70) { grade = 'C'; color = 'text-amber-500'; bg = 'bg-amber-50 border-amber-200'; }
-            else if (score >= 66) { grade = 'C-'; color = 'text-amber-400'; bg = 'bg-amber-50 border-amber-200'; }
-            else if (score >= 60) { grade = 'D'; color = 'text-rose-500'; bg = 'bg-rose-50 border-rose-200'; }
+            if (score >= 97) { grade = 'A+'; color = 'text-emerald-600'; bg = 'bg-emerald-50 border-emerald-200'; }
+            else if (score >= 93) { grade = 'A'; color = 'text-emerald-500'; bg = 'bg-emerald-50 border-emerald-200'; }
+            else if (score >= 90) { grade = 'A-'; color = 'text-emerald-400'; bg = 'bg-emerald-50 border-emerald-200'; }
+            else if (score >= 87) { grade = 'B+'; color = 'text-indigo-600'; bg = 'bg-indigo-50 border-indigo-200'; }
+            else if (score >= 83) { grade = 'B'; color = 'text-indigo-500'; bg = 'bg-indigo-50 border-indigo-200'; }
+            else if (score >= 80) { grade = 'B-'; color = 'text-indigo-400'; bg = 'bg-indigo-50 border-indigo-200'; }
+            else if (score >= 77) { grade = 'C+'; color = 'text-amber-600'; bg = 'bg-amber-50 border-amber-200'; }
+            else if (score >= 73) { grade = 'C'; color = 'text-amber-500'; bg = 'bg-amber-50 border-amber-200'; }
+            else if (score >= 70) { grade = 'C-'; color = 'text-amber-400'; bg = 'bg-amber-50 border-amber-200'; }
+            else if (score >= 67) { grade = 'D+'; color = 'text-rose-500'; bg = 'bg-rose-50 border-rose-200'; }
+            else if (score >= 63) { grade = 'D'; color = 'text-rose-500'; bg = 'bg-rose-50 border-rose-200'; }
+            else if (score >= 60) { grade = 'D-'; color = 'text-rose-500'; bg = 'bg-rose-50 border-rose-200'; }
             else { grade = 'F'; color = 'text-rose-700'; bg = 'bg-rose-100 border-rose-300'; }
 
             let units = this.analyzeUnits(team, unitAvgs, posSlots);
@@ -521,47 +522,53 @@ window.DraftRecap = {
     },
 
     analyzeUnits(team, unitAvgs, posSlots) {
-        const buildUnitGrade = (pos) => {
-            let sorted = team.roster.filter(p => p.Pos === pos).sort((a,b) => (b.ProjPts || 0) - (a.ProjPts || 0));
-            let starters = sorted.slice(0, posSlots[pos]);
-            let depth = sorted.slice(posSlots[pos]);
+        // Calculate true starters including Flex slots
+        let projectedStarters = this.getProjectedStarters(team).starters;
 
-            let starterPts = starters.reduce((sum, p) => sum + (p.ProjPts || 0), 0);
-            let depthPts = depth.reduce((sum, p) => sum + (p.ProjPts || 0), 0);
+        const buildUnitGrade = (pos) => {
+            let startersAtPos = projectedStarters.filter(p => p.Pos === pos);
+            let benchAtPos = team.roster.filter(p => p.Pos === pos && !projectedStarters.some(s => s._cleanName === p._cleanName));
+
+            let starterPts = startersAtPos.reduce((sum, p) => sum + (p.ProjPts || 0), 0);
+            let depthPts = benchAtPos.reduce((sum, p) => sum + (p.ProjPts || 0), 0);
             
-            let starterWeight = ['QB', 'TE'].includes(pos) && posSlots[pos] === 1 ? 0.88 : 0.75;
+            // Weight starters heavily (85%), depth moderately (15%)
+            let starterWeight = ['QB', 'TE'].includes(pos) ? 0.90 : 0.82;
             let depthWeight = 1.0 - starterWeight;
 
             let unitScore = (starterPts * starterWeight) + (depthPts * depthWeight);
             let leagueAvg = unitAvgs[pos] || 1;
             let ratio = unitScore / leagueAvg;
 
+            // Full, calibrated 11-tier grading ladder
             let grade = 'C', note = "Average Unit";
-            if (ratio >= 1.20) grade = 'A+';
-            else if (ratio >= 1.10) grade = 'A';
-            else if (ratio >= 1.04) grade = 'B+';
-            else if (ratio >= 0.96) grade = 'C+';
-            else if (ratio >= 0.90) grade = 'C';
-            else if (ratio >= 0.82) grade = 'D';
+            if (ratio >= 1.22) grade = 'A+';
+            else if (ratio >= 1.14) grade = 'A';
+            else if (ratio >= 1.08) grade = 'A-';
+            else if (ratio >= 1.03) grade = 'B+';
+            else if (ratio >= 0.97) grade = 'B';
+            else if (ratio >= 0.92) grade = 'B-';
+            else if (ratio >= 0.86) grade = 'C+';
+            else if (ratio >= 0.80) grade = 'C';
+            else if (ratio >= 0.74) grade = 'C-';
+            else if (ratio >= 0.65) grade = 'D';
             else grade = 'F';
 
             if (starterPts / (leagueAvg * starterWeight) >= 1.10 && depthPts === 0) {
-                note = (grade.includes('A') || grade.includes('B')) ? "High-End Starter (Zero Depth)" : "Solitary Starter";
-            } else if (starterPts / (leagueAvg * starterWeight) <= 0.88 && depthPts / (leagueAvg * depthWeight) >= 1.2) {
-                note = "Deep, but Lacks an Alpha";
-            } else if (ratio >= 1.10) {
+                note = "Elite Starter (Zero Depth)";
+            } else if (ratio >= 1.08) {
                 note = "Dominant Position Group";
-            } else if (ratio <= 0.82) {
-                note = "Severe Positional Weakness";
+            } else if (ratio <= 0.74) {
+                note = "Thin Positional Room";
             }
 
-            let lead = starters[0] ? `${starters[0].Player}${this.formatPlayerProof(starters[0])}` : 'None';
+            let lead = startersAtPos[0] ? `${startersAtPos[0].Player}${this.formatPlayerProof(startersAtPos[0])}` : 'None';
             let summary = '';
 
-            if (pos === 'RB') summary = `${starters.reduce((s, p) => s + (p.hvo||0), 0)} Starter HVO • ${note}`;
-            if (pos === 'WR') summary = `${starters.reduce((s, p) => s + (p.stats?.targets||0), 0)} Starter Tgts • ${note}`;
-            if (pos === 'QB') summary = starters[0] ? `${starters[0].stats?.passYds || 0} Pass Yds • ${note}` : note;
-            if (pos === 'TE') summary = starters[0] ? `${starters[0].stats?.targets || 0} Targets • ${note}` : note;
+            if (pos === 'RB') summary = `${startersAtPos.reduce((s, p) => s + (p.hvo||0), 0)} Starter HVO • ${note}`;
+            if (pos === 'WR') summary = `${startersAtPos.reduce((s, p) => s + (p.stats?.targets||0), 0)} Starter Tgts • ${note}`;
+            if (pos === 'QB') summary = startersAtPos[0] ? `${startersAtPos[0].stats?.passYds || 0} Pass Yds • ${note}` : note;
+            if (pos === 'TE') summary = startersAtPos[0] ? `${startersAtPos[0].stats?.targets || 0} Targets • ${note}` : note;
 
             return { grade, summary, lead };
         };
@@ -604,66 +611,137 @@ window.DraftRecap = {
 
         const a = team.analysis || {};
         const numTeams = State.settings.numTeams || 12;
-        const seed = (team.name.length + rank * 13 + (r1.draftPickNum || 1)) % 5;
 
-        // 1. CATCHPHRASE HEADLINE GENERATOR
+        // 🎲 Deterministic Hash Seed for Rotation
+        const seed = Math.abs((team.name.length * 19 + rank * 37 + (r1.draftPickNum || 1) * 11)) >>> 0;
+        const pickVar = (arr, offset = 0) => arr[(seed + offset) % arr.length];
+
+        // =========================================================================
+        // 1. DYNAMIC HEADLINES (15+ Specialized Templates)
+        // =========================================================================
         let headline = "";
-        if (rank === 1) headline = "🏆 THE TITLE FAVORITE JUGGERNAUT";
-        else if (rank <= 3) headline = "👑 HEAVYWEIGHT CONTENDER";
-        else if (persona.label.includes("Stars & Scrubs") || (a.starterEdge >= 5 && a.benchEdge <= -10)) headline = "💣 THE TICKING TIME BOMB (TOP HEAVY)";
-        else if (persona.label.includes("Zero-RB")) headline = "📡 THE AIR-RAID PERIMETER REVOLUTION";
-        else if (persona.label.includes("Robust-RB")) headline = "🚜 TRENCH WARFARE & GROUND HAMMERS";
-        else if (persona.label.includes("Value Sniper")) headline = "🎯 THE DRAFT ROOM BANDIT";
-        else if (persona.label.includes("Waiver Wire")) headline = "⚔️ THE FLEX STREAMING GAMBIT";
-        else if (rank >= 10) headline = "🩹 LIVING ON A PRAYER & WAIVER WIRES";
-        else headline = "⚖️ THE CALCULATED BLUEPRINT";
+        if (a.hasEliteStack && a.score >= 85) {
+            headline = pickVar([
+                "⚡ HIGH-CORRELATION PLAYOFF CONTENDER",
+                "⚡ AERIAL SYNERGY & TARGET STACK ARCHITECTURE",
+                "⚡ THE CORRELATED SPIKE-WEEK BLUEPRINT"
+            ]);
+        } else if (rank === 1) {
+            headline = pickVar([
+                "🏆 CONSENSUS REGULAR SEASON FAVORITE",
+                "🏆 THE PROJECTED LEAGUE POWERHOUSE",
+                "🏆 BLUE-CHIP LINEUP FOUNDATION"
+            ]);
+        } else if (a.score >= 90) {
+            headline = pickVar([
+                "👑 ELITE ROSTER ARCHITECTURE & VALUE ARBITRAGE",
+                "👑 HEAVYWEIGHT CONTENDER & DRAFT BOARD MASTERCLASS",
+                "👑 TIER-1 ROSTER CONSTRUCTION"
+            ]);
+        } else if (persona.label.includes("Zero-RB")) {
+            headline = pickVar([
+                "📡 HIGH-VOLUME PERIMETER PASSING BUILD",
+                "📡 THE SPREAD AIR-RAID BLUEPRINT",
+                "📡 ELITE PPR TARGET SHARE MONOPOLY"
+            ]);
+        } else if (persona.label.includes("Robust-RB")) {
+            headline = pickVar([
+                "🚜 GROUND WORKHORSE FOUNDATION",
+                "🚜 TRENCH DOMINANCE & BELLCOW VOLUME",
+                "🚜 MULTI-DOWN RUSHING POWERHOUSE"
+            ]);
+        } else if (persona.label.includes("Hero-RB")) {
+            headline = pickVar([
+                "🦸 TEXTBOOK HERO-RB ANCHOR BLUEPRINT",
+                "🦸 ANCHOR-RB & BALANCED PASS-CATCHING CORE",
+                "🦸 FOUNDATIONAL HERO-RB ARCHITECTURE"
+            ]);
+        } else if (persona.label.includes("Stars & Scrubs")) {
+            headline = "⭐ HIGH-LEVERAGE TOP-HEAVY STARTING LINEUP";
+        } else if (rank >= 10 || a.score < 70) {
+            headline = pickVar([
+                "⚠️ HIGH-VOLATILITY ROSTER PROFILE",
+                "🩹 WAIVER-WIRE TACTICIAN & DEPTH REBUILD",
+                "🎲 HIGH-VARIANCE POSTSEASON PATH"
+            ]);
+        } else {
+            headline = pickVar([
+                "⚖️ BALANCED POSTSEASON CONTENDER",
+                "⚖️ HIGH-FLOOR PLAYOFF ARCHITECTURE",
+                "⚖️ METHODICAL DRAFT BOARD EXECUTION"
+            ]);
+        }
 
-        // 2. OPENING 3-ROUND STRATEGY ANALYSIS
-        let draftStartCommentary = "";
+        // =========================================================================
+        // 2. OPENING 3-ROUND STRATEGIC FINGERPRINT
+        // =========================================================================
+        let strategyCommentary = "";
         const r1Pos = r1.Pos, r2Pos = r2.Pos, r3Pos = r3 ? r3.Pos : "";
 
-        if (r1Pos === 'RB' && r2Pos === 'RB') {
-            draftStartCommentary = `committed to an old-school, smash-mouth identity by spending back-to-back early capital on <strong>${r1.Player}</strong> and <strong>${r2.Player}</strong>, locking down workhorse rushing equity before the RB board evaporated.`;
-        } else if (r1Pos === 'WR' && r2Pos === 'WR') {
-            draftStartCommentary = `unleashed an aggressive aerial assault, anchoring their foundation with the elite receiving tandem of <strong>${r1.Player}</strong> and <strong>${r2.Player}</strong> to build an overwhelming weekly PPR ceiling.`;
-        } else if (['TE', 'QB'].includes(r1Pos) || ['TE', 'QB'].includes(r2Pos)) {
-            let unicorn = ['TE', 'QB'].includes(r1Pos) ? r1 : r2;
-            let partner = unicorn === r1 ? r2 : r1;
-            draftStartCommentary = `executed a high-stakes structural gambit, paying the premium for a positional unicorn in <strong>${unicorn.Player}</strong> (${unicorn.Pos}) alongside <strong>${partner.Player}</strong> (${partner.Pos}) to create an immediate weekly mismatch.`;
-        } else if (r1Pos === 'RB' && r2Pos === 'WR') {
-            draftStartCommentary = `executed the textbook Hero-RB blueprint, locking in <strong>${r1.Player}</strong> as an uncontested backfield bellcow before immediately pivoting to <strong>${r2.Player}</strong> to anchor their pass-catching corps.`;
-        } else if (r1Pos === 'WR' && r2Pos === 'RB') {
-            draftStartCommentary = `built around premier target share, securing alpha wideout <strong>${r1.Player}</strong> at the top of the board and reinforcing their ground game with <strong>${r2.Player}</strong>.`;
-        } else {
-            draftStartCommentary = `laid their core infrastructure with <strong>${r1.Player}</strong> and <strong>${r2.Player}</strong>.`;
+        // Triple WR Start
+        if (r1Pos === 'WR' && r2Pos === 'WR' && r3Pos === 'WR') {
+            const intros = [
+                `went all-in on perimeter dominance, locking down a terrifying three-wide receiver foundation with <strong>${r1.Player}</strong>, <strong>${r2.Player}</strong>, and <strong>${r3.Player}</strong> to command a massive weekly PPR advantage.`,
+                `executed an aggressive pass-first assault, monopolizing elite targets early with <strong>${r1.Player}</strong>, <strong>${r2.Player}</strong>, and <strong>${r3.Player}</strong> before pivoting to backfield value.`,
+                `built an overwhelming aerial foundation, drafting <strong>${r1.Player}</strong>, <strong>${r2.Player}</strong>, and <strong>${r3.Player}</strong> in succession to ensure their pass-catching corps leads the league in weekly target share.`
+            ];
+            strategyCommentary = pickVar(intros, 1);
+        }
+        // Dual WR Start
+        else if (r1Pos === 'WR' && r2Pos === 'WR') {
+            const intros = [
+                `prioritized perimeter firepower early, securing the high-end receiving tandem of <strong>${r1.Player}</strong> and <strong>${r2.Player}</strong> to establish an elite weekly PPR baseline.`,
+                `anchored their foundation around dominant air yards, pairing alpha wideouts <strong>${r1.Player}</strong> and <strong>${r2.Player}</strong> to secure a reliable starting pass-catching core.`,
+                `committed early capital to target share security, opening their draft with <strong>${r1.Player}</strong> and <strong>${r2.Player}</strong> to build an elite weekly receiving floor.`
+            ];
+            strategyCommentary = pickVar(intros, 2);
+        }
+        // Dual RB Start
+        else if (r1Pos === 'RB' && r2Pos === 'RB') {
+            const intros = [
+                `committed heavy early capital to the ground game, pairing <strong>${r1.Player}</strong> and <strong>${r2.Player}</strong> to lock down high-volume rushing equity before the running back board evaporated.`,
+                `established an immovable backfield foundation, spending their top two selections on workhorse rushers <strong>${r1.Player}</strong> and <strong>${r2.Player}</strong>.`,
+                `prioritized three-down rushing volume, securing <strong>${r1.Player}</strong> and <strong>${r2.Player}</strong> to insulate their roster against positional scarcity.`
+            ];
+            strategyCommentary = pickVar(intros, 3);
+        }
+        // Hero-RB (RB + WR)
+        else if (r1Pos === 'RB' && r2Pos === 'WR') {
+            const intros = [
+                `executed a textbook Hero-RB blueprint, locking in <strong>${r1.Player}</strong> as an uncontested backfield anchor before immediately pivoting to <strong>${r2.Player}</strong> for target-share stability.`,
+                `anchored their roster around bellcow rusher <strong>${r1.Player}</strong>, followed by <strong>${r2.Player}</strong> to balance ground equity with perimeter ceiling.`,
+                `secured their foundational running back early with <strong>${r1.Player}</strong>, then reinforced their starting pass-catchers with <strong>${r2.Player}</strong>.`
+            ];
+            strategyCommentary = pickVar(intros, 4);
+        }
+        // WR + RB Start
+        else if (r1Pos === 'WR' && r2Pos === 'RB') {
+            const intros = [
+                `built around premier target share with alpha wideout <strong>${r1.Player}</strong>, while reinforcing their backfield foundation with <strong>${r2.Player}</strong>.`,
+                `opened with an elite pass-catching anchor in <strong>${r1.Player}</strong> before securing high-value backfield touches with <strong>${r2.Player}</strong>.`,
+                `established a balanced two-pillar core, combining the receiving floor of <strong>${r1.Player}</strong> with the rushing volume of <strong>${r2.Player}</strong>.`
+            ];
+            strategyCommentary = pickVar(intros, 5);
+        }
+        // Early QB/TE Investment
+        else if (['TE', 'QB'].includes(r1Pos) || ['TE', 'QB'].includes(r2Pos) || ['TE', 'QB'].includes(r3Pos)) {
+            let special = ['TE', 'QB'].includes(r1Pos) ? r1 : (['TE', 'QB'].includes(r2Pos) ? r2 : r3);
+            let partner = special === r1 ? r2 : r1;
+            const intros = [
+                `executed a high-stakes positional advantage gambit, investing premium draft capital in <strong>${special.Player}</strong> (${special.Pos}) alongside <strong>${partner.Player}</strong> (${partner.Pos}) to bypass middle-tier volatility.`,
+                `secured a premier weekly positional mismatch in <strong>${special.Player}</strong> (${special.Pos}), pairing them with <strong>${partner.Player}</strong> to build distinct weekly upside.`,
+                `bypassed positional streaming entirely by drafting <strong>${special.Player}</strong> (${special.Pos}) alongside <strong>${partner.Player}</strong> for structural weekly stability.`
+            ];
+            strategyCommentary = pickVar(intros, 6);
+        }
+        // Fallback
+        else {
+            strategyCommentary = `established their early core around <strong>${r1.Player}</strong> and <strong>${r2.Player}</strong>.`;
         }
 
-        // 3. SEED-BASED INTRO PARAGRAPH
-        let openingParagraph = "";
-        if (rank <= 3) {
-            const contenderIntros = [
-                `The <strong>${team.name}</strong> exited the draft room as the consensus <strong>#${rank} projected powerhouse</strong>. Embracing their identity as <strong>${persona.label} ${persona.icon}</strong>, they ${draftStartCommentary}`,
-                `Putting on a clinic in draft capital efficiency, the <strong>${team.name}</strong> emerged with the <strong>#${rank} overall projected seed</strong>. They initiated their draft by ${draftStartCommentary}`,
-                `Few rosters in the league boast more weekly starting firepower than the <strong>${team.name}</strong> (Rank <strong>#${rank} overall</strong>). Operating as a true <strong>${persona.label} ${persona.icon}</strong>, they established control early by ${draftStartCommentary}`
-            ];
-            openingParagraph = contenderIntros[seed % contenderIntros.length];
-        } else if (rank <= 8) {
-            const playoffIntros = [
-                `Projected firmly in the postseason hunt at <strong>#${rank} overall</strong>, the <strong>${team.name}</strong> assembled a competitive lineup fitting of a <strong>${persona.label} ${persona.icon}</strong>. Their strategy began by ${draftStartCommentary}`,
-                `The <strong>${team.name}</strong> navigated the draft board into a balanced <strong>#${rank} projected standing</strong>. They initiated their campaign by ${draftStartCommentary}`,
-                `Securing the <strong>#${rank} projected seed</strong>, the <strong>${team.name}</strong> built a lineup with legitimate dark-horse upside. They laid their early foundation by ${draftStartCommentary}`
-            ];
-            openingParagraph = playoffIntros[seed % playoffIntros.length];
-        } else {
-            const underdogIntros = [
-                `The <strong>${team.name}</strong> face an uphill climb after exiting the draft projected for <strong>#${rank} overall</strong>. Embracing the identity of a <strong>${persona.label} ${persona.icon}</strong>, their draft kicked off by ${draftStartCommentary}`,
-                `Landing at the <strong>#${rank} projected seed</strong>, the <strong>${team.name}</strong> face major structural depth questions heading into Week 1. While they started their draft by ${draftStartCommentary}`,
-                `Exiting the draft room at <strong>#${rank} of ${numTeams}</strong>, the <strong>${team.name}</strong> carry a volatile high-risk profile. They committed early by ${draftStartCommentary}`
-            ];
-            openingParagraph = underdogIntros[seed % underdogIntros.length];
-        }
-
-        // 4. POSITIONAL PRAISE & ROAST ENGINE (Unit Breakdown)
+        // =========================================================================
+        // 3. DYNAMIC POSITIONAL UNIT HIERARCHY (Praise Best vs Critique Worst)
+        // =========================================================================
         const unitRanks = [
             { pos: 'Wide Receivers', key: 'wr', grade: units.wr.grade, summary: units.wr.summary, lead: units.wr.lead },
             { pos: 'Backfield', key: 'rb', grade: units.rb.grade, summary: units.rb.summary, lead: units.rb.lead },
@@ -671,85 +749,139 @@ window.DraftRecap = {
             { pos: 'Tight End spot', key: 'te', grade: units.te.grade, summary: units.te.summary, lead: units.te.lead }
         ];
 
-        const gradeValues = { 'A+': 9, 'A': 8, 'A-': 7, 'B+': 6, 'B': 5, 'B-': 4, 'C+': 3, 'C': 2, 'C-': 1, 'D': 0, 'F': -1 };
+        const gradeValues = { 'A+': 9, 'A': 8, 'A-': 7, 'B+': 6, 'B': 5, 'B-': 4, 'C+': 3, 'C': 2, 'C-': 1, 'D+': 0.5, 'D': 0, 'D-': -0.5, 'F': -1 };
         unitRanks.sort((x, y) => (gradeValues[y.grade] ?? 0) - (gradeValues[x.grade] ?? 0));
 
         const bestUnit = unitRanks[0];
         const worstUnit = unitRanks[unitRanks.length - 1];
 
-        let unitAnalysis = "";
-        // Praise best unit
-        if (gradeValues[bestUnit.grade] >= 7) {
-            unitAnalysis += `Their undeniable crown jewel is their <strong>${bestUnit.pos}</strong> (<span class="font-bold text-emerald-600">Grade: ${bestUnit.grade}</span>), an elite room anchored by ${bestUnit.lead}. `;
-        } else if (gradeValues[bestUnit.grade] >= 5) {
-            unitAnalysis += `Their most reliable group is their <strong>${bestUnit.pos}</strong> (${bestUnit.grade}), led by ${bestUnit.lead}. `;
-        } else {
-            unitAnalysis += `Their most functional starting unit is their <strong>${bestUnit.pos}</strong> (${bestUnit.grade}), headlined by ${bestUnit.lead}. `;
+        let unitReview = "";
+
+        // Praise Best Unit (3 variations per group)
+        if (bestUnit.key === 'wr') {
+            unitReview += pickVar([
+                `The crown jewel of this roster is an elite wide receiver room (<span class="text-emerald-600 font-bold">Grade: ${bestUnit.grade}</span>), headlined by ${bestUnit.lead}. `,
+                `Their primary structural asset is a dominant pass-catching corps (<span class="text-emerald-600 font-bold">Grade: ${bestUnit.grade}</span>), spearheaded by ${bestUnit.lead}. `,
+                `They boast one of the most dangerous receiving rooms in the league (<span class="text-emerald-600 font-bold">Grade: ${bestUnit.grade}</span>), anchored by ${bestUnit.lead}. `
+            ], 1);
+        } else if (bestUnit.key === 'rb') {
+            unitReview += pickVar([
+                `Their roster is anchored by a high-floor backfield (<span class="text-emerald-600 font-bold">Grade: ${bestUnit.grade}</span>), led by ${bestUnit.lead}. `,
+                `The foundation of this team rests on heavy rushing volume (<span class="text-emerald-600 font-bold">Grade: ${bestUnit.grade}</span>), spearheaded by ${bestUnit.lead}. `,
+                `They built an imposing ground attack (<span class="text-emerald-600 font-bold">Grade: ${bestUnit.grade}</span>), anchored by ${bestUnit.lead}. `
+            ], 2);
+        } else if (bestUnit.key === 'qb') {
+            unitReview += pickVar([
+                `They hold a significant weekly advantage under center (<span class="text-emerald-600 font-bold">Grade: ${bestUnit.grade}</span>) with ${bestUnit.lead}. `,
+                `Quarterback is their primary positional separator (<span class="text-emerald-600 font-bold">Grade: ${bestUnit.grade}</span>), led by ${bestUnit.lead}. `,
+                `Their offensive engine is driven by elite quarterback production (<span class="text-emerald-600 font-bold">Grade: ${bestUnit.grade}</span>) with ${bestUnit.lead}. `
+            ], 3);
+        } else if (bestUnit.key === 'te') {
+            unitReview += pickVar([
+                `They bypass positional streaming entirely with a premier tight end room (<span class="text-emerald-600 font-bold">Grade: ${bestUnit.grade}</span>) led by ${bestUnit.lead}. `,
+                `Their tight end spot represents a distinct weekly matchup mismatch (<span class="text-emerald-600 font-bold">Grade: ${bestUnit.grade}</span>) spearheaded by ${bestUnit.lead}. `
+            ], 4);
         }
 
-        // Roast/Critique worst unit
-        if (gradeValues[worstUnit.grade] <= 0) {
-            unitAnalysis += `However, their roster contains a glaring Achilles' heel at <strong>${worstUnit.pos}</strong> (<span class="font-bold text-rose-600">Grade: ${worstUnit.grade}</span>), representing a severe positional liability that rivals will target.`;
-        } else if (gradeValues[worstUnit.grade] <= 3) {
-            unitAnalysis += `On the flip side, their <strong>${worstUnit.pos}</strong> (${worstUnit.grade}) lacks true alpha upside and could struggle during difficult weekly matchups.`;
+        // Critique Worst Unit (Constructive & Analytical)
+        if ((gradeValues[worstUnit.grade] ?? 0) <= 2) {
+            if (worstUnit.key === 'rb') {
+                unitReview += pickVar([
+                    `However, backfield depth (<span class="text-rose-600 font-bold">Grade: ${worstUnit.grade}</span>) is relatively thin, meaning starter health and active waiver-wire churning will be critical. `,
+                    `On the flip side, their running back room (<span class="text-rose-600 font-bold">Grade: ${worstUnit.grade}</span>) carries volume risk if secondary options do not claim expanded roles. `,
+                    `The main area of vulnerability sits at running back (<span class="text-rose-600 font-bold">Grade: ${worstUnit.grade}</span>), which may require in-season trading to reinforce. `
+                ], 5);
+            } else if (worstUnit.key === 'wr') {
+                unitReview += pickVar([
+                    `However, their pass-catching group (<span class="text-rose-600 font-bold">Grade: ${worstUnit.grade}</span>) lacks proven high-volume target earners, which could limit weekly ceiling. `,
+                    `Conversely, their wide receiver room (<span class="text-rose-600 font-bold">Grade: ${worstUnit.grade}</span>) carries floor volatility in negative game scripts. `,
+                    `Their wide receiver depth (<span class="text-rose-600 font-bold">Grade: ${worstUnit.grade}</span>) is relatively light, placing heavy pressure on core starters to stay healthy. `
+                ], 6);
+            } else if (worstUnit.key === 'qb' || worstUnit.key === 'te') {
+                unitReview += `Positional streaming may be necessary at ${worstUnit.pos.toLowerCase()} (<span class="text-rose-600 font-bold">Grade: ${worstUnit.grade}</span>) during difficult matchup weeks. `;
+            }
         } else {
-            unitAnalysis += `Impressively, they avoided any failing position rooms, maintaining balanced floor across every starting slot.`;
+            unitReview += `Impressively, they avoided any failing position groups, maintaining a balanced floor across starting slots. `;
         }
 
-        // 5. DRAFT ROOM MOVES (Steals, Reaches & Streaming Tactics)
-        let draftMoves = [];
+        // =========================================================================
+        // 4. CONTEXTUAL STORYLINE BADGES & HIGHLIGHTS
+        // =========================================================================
+        let specialMoveCommentary = [];
+
+        // Correlation Stacking
+        if (a.hasEliteStack) {
+            let qb = team.roster.find(p => p.Pos === 'QB');
+            let teammate = team.roster.find(p => p._cleanTeam === qb?._cleanTeam && ['WR', 'TE'].includes(p.Pos) && (p.ProjPts || 0) >= 190);
+            if (qb && teammate) {
+                specialMoveCommentary.push(`Securing the <strong>${qb.Player} + ${teammate.Player}</strong> correlation stack (${qb.Team}) creates immense week-winning upside in high-scoring shootouts.`);
+            }
+        }
+
+        // Draft Day Steal
         if (a.bestValue && a.bestValue.adp) {
             let stealDiff = Math.round(a.bestValue.adp - (a.bestValue.draftPickNum || 1));
-            if (stealDiff >= 18) {
-                draftMoves.push(`<strong>Draft Room Bandit:</strong> Snagging <strong>${a.bestValue.Player}</strong> at Pick #${a.bestValue.draftPickNum} (ADP #${a.bestValue.adp.toFixed(0)}, <span class="text-emerald-600 font-bold">+${stealDiff} pick value</span>) was one of the sharpest value falls in the draft.`);
+            if (stealDiff >= 14) {
+                specialMoveCommentary.push(`Capitalizing on the slide of <strong>${a.bestValue.Player}</strong> at Pick #${a.bestValue.draftPickNum} (<span class="text-emerald-600 font-bold">+${stealDiff} picks past ADP</span>) provided major draft capital arbitrage.`);
             }
         }
-        if (a.worstReach && a.worstReach.adp) {
-            let reachDiff = Math.round((a.worstReach.draftPickNum || 1) - a.worstReach.adp);
-            if (reachDiff >= 18) {
-                draftMoves.push(`<strong>Reaching for Need:</strong> Selecting <strong>${a.worstReach.Player}</strong> at Pick #${a.worstReach.draftPickNum} (<span class="text-rose-600 font-bold">${reachDiff} picks ahead of ADP</span>) burned early capital.`);
-            }
-        }
-        if (a.streamingAnalysis?.isStreamingQB && a.streamingAnalysis?.isStreamingTE) {
-            draftMoves.push(`<strong>Zero-Backup Gambit:</strong> Punting both QB and TE backups allows them to hoard high-upside RB/WR lottery tickets on the bench.`);
+
+        // Handcuff Monopoly
+        let ownsHandcuff = team.roster.some(p => p.isRBHandcuff && p.starterName && team.roster.some(s => s._cleanName === State.normalizeName(p.starterName)));
+        if (ownsHandcuff) {
+            specialMoveCommentary.push(`Locking down in-house backfield handcuff insurance protects their early-round rushing investment against injury attrition.`);
         }
 
-        let draftMovesHTML = draftMoves.length > 0 ? ` ${draftMoves.join(' ')}` : '';
+        // Rookie/Youth Upside
+        let rookieCount = team.roster.filter(p => p.isRookie || (p.age && p.age <= 22)).length;
+        if (rookieCount >= 3) {
+            specialMoveCommentary.push(`Investing in an ascending youth core (${rookieCount} young prospects) establishes a high right-tail ceiling for the fantasy playoffs.`);
+        }
 
-        // 6. CHAT-READY BOLD VERDICT / WATERCOOLER PREDICTION
-        let boldVerdict = "";
-        if (rank <= 3) {
+        let specialMoveHTML = specialMoveCommentary.length > 0 ? ` ${specialMoveCommentary.slice(0, 2).join(' ')}` : '';
+
+        // =========================================================================
+        // 5. ROTATING EDITORIAL VERDICT (Synced with 90/80/70 scale)
+        // =========================================================================
+        let chatVerdict = "";
+        if (a.score >= 90) {
             const verdicts = [
-                `🏆 <strong>Championship Forecast:</strong> An absolute title frontrunner. If their core starters stay healthy, this team is a lock to be playing for the trophy in Week 17.`,
-                `🏆 <strong>Championship Forecast:</strong> High weekly floor meets slate-breaking spike weeks. Expect them to lead the league in weekly high-score payouts.`,
-                `🏆 <strong>Championship Forecast:</strong> A complete powerhouse with zero fatal flaws. The rest of the league will need major injury luck to knock them out.`
+                `🔥 <strong>Draft Evaluation: ${a.grade} (${Math.round(a.score)}/100)</strong> — Outstanding structural execution. Combines a stable weekly floor with slate-breaking ceiling potential; projected as a primary championship contender.`,
+                `🔥 <strong>Draft Evaluation: ${a.grade} (${Math.round(a.score)}/100)</strong> — A clinic in modern draft theory. High-end starter value meets deep late-round upside. Expect them to contend for the regular season title.`,
+                `🔥 <strong>Draft Evaluation: ${a.grade} (${Math.round(a.score)}/100)</strong> — Complete roster synergy with zero fatal flaws. If their core starters stay healthy, this team is built for a deep postseason run.`
             ];
-            boldVerdict = verdicts[seed % verdicts.length];
-        } else if (rank <= 8) {
+            chatVerdict = pickVar(verdicts, 7);
+        } else if (a.score >= 80) {
             const verdicts = [
-                `⚖️ <strong>Playoff Forecast:</strong> A dangerous postseason contender. If their secondary flex options hit their midseason upside, they can easily crash the championship game.`,
-                `⚖️ <strong>Playoff Forecast:</strong> Solid playoff lock with dark-horse upside. Their season will be decided by how well they manage midseason bye weeks.`,
-                `⚖️ <strong>Playoff Forecast:</strong> A high-floor competitor capable of knocking off the top seeds on any given Sunday if their top picks produce.`
+                `⚖️ <strong>Draft Evaluation: ${a.grade} (${Math.round(a.score)}/100)</strong> — Well-constructed starting lineup with legitimate playoff upside. Managing mid-season bye weeks will be the key to securing a high seed.`,
+                `⚖️ <strong>Draft Evaluation: ${a.grade} (${Math.round(a.score)}/100)</strong> — High-floor competitive roster. If their secondary flex options hit their mid-season breakout trajectory, they can easily crash the championship game.`,
+                `⚖️ <strong>Draft Evaluation: ${a.grade} (${Math.round(a.score)}/100)</strong> — Solid postseason contender with distinct weekly strengths. Navigating weekly injury attrition will determine their ceiling.`
             ];
-            boldVerdict = verdicts[seed % verdicts.length];
+            chatVerdict = pickVar(verdicts, 8);
+        } else if (a.score >= 70) {
+            const verdicts = [
+                `🩹 <strong>Draft Evaluation: ${a.grade} (${Math.round(a.score)}/100)</strong> — Competitive starting baseline, but carries depth risk. In-season waiver management and timely trading will dictate postseason qualification.`,
+                `🩹 <strong>Draft Evaluation: ${a.grade} (${Math.round(a.score)}/100)</strong> — High-variance profile. Their playoff path will depend on hitting on early-season waiver wire breakout candidates.`,
+                `🩹 <strong>Draft Evaluation: ${a.grade} (${Math.round(a.score)}/100)</strong> — Viable starting core that will need active bench management and aggressive trade negotiations to push into title contention.`
+            ];
+            chatVerdict = pickVar(verdicts, 9);
         } else {
             const verdicts = [
-                `🚨 <strong>Season Outlook:</strong> Playoff hopes will require relentless waiver wire churning and hitting on late-round backup lottery tickets.`,
-                `🚨 <strong>Season Outlook:</strong> An uphill climb. Survival hinges on trading for depth early before bye-week collisions take their toll.`,
-                `🚨 <strong>Season Outlook:</strong> High-risk profile. One major starter injury could send them spiraling into the consolation bracket.`
+                `🚨 <strong>Draft Evaluation: ${a.grade} (${Math.round(a.score)}/100)</strong> — High-risk structural profile with noticeable lineup holes. Will require aggressive early-season waiver wire prioritization.`,
+                `🚨 <strong>Draft Evaluation: ${a.grade} (${Math.round(a.score)}/100)</strong> — An uphill climb. Survival will hinge on proactive in-season trading and capitalizing on backfield injuries on the waiver wire.`
             ];
-            boldVerdict = verdicts[seed % verdicts.length];
+            chatVerdict = pickVar(verdicts, 10);
         }
 
         return `
-            <div class="space-y-3">
+            <div class="space-y-2.5 text-xs">
                 <div class="text-[11px] font-black tracking-wider uppercase text-indigo-600 mb-1 flex items-center gap-1.5">
                     <span>${headline}</span>
                 </div>
-                <p class="leading-relaxed text-slate-700">${openingParagraph}</p>
-                <p class="leading-relaxed text-slate-700">${unitAnalysis}${draftMovesHTML}</p>
-                <div class="p-3 bg-slate-50 rounded-xl border border-slate-200/80 text-xs text-slate-800 font-medium leading-snug shadow-sm">
-                    ${boldVerdict}
+                <p class="leading-relaxed text-slate-700">The <strong>${team.name}</strong> exited the draft projected for the <strong>#${rank} overall seed</strong>. Operating under a <strong>${persona.label} ${persona.icon}</strong> framework, they ${strategyCommentary}</p>
+                <p class="leading-relaxed text-slate-700">${unitReview}${specialMoveHTML}</p>
+                <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-800 font-medium leading-snug shadow-sm">
+                    ${chatVerdict}
                 </div>
             </div>
         `;
