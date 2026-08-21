@@ -2098,8 +2098,9 @@ const UI = {
         const container = document.getElementById('profile-assignments-container');
         if (!container) return;
 
-        const numTeams = parseInt(document.getElementById('setting-teams').value) || 12;
-        const userPick = parseInt(document.getElementById('setting-user-pick').value) || 1;
+        const numTeams = parseInt(document.getElementById('setting-teams')?.value) || 12;
+        const userPick = parseInt(document.getElementById('setting-user-pick')?.value) || 1;
+        const draftMode = document.getElementById('setting-draft-type')?.value || 'live';
 
         let profiles = Object.values(State.managerProfiles);
         let optionsHtml = `<option value="">Random AI</option>`;
@@ -2107,28 +2108,59 @@ const UI = {
             optionsHtml += `<option value="${p.name}">${p.name}</option>`;
         });
 
-        const prevSelections = {};
+        // Save existing input values before re-rendering so you don't lose typed names
+        const prevNames = {};
+        const prevProfiles = {};
         for (let i = 1; i <= 32; i++) {
-            let el = document.getElementById(`profile-team-${i}`);
-            if (el) prevSelections[i] = el.value;
+            let nameEl = document.getElementById(`custom-name-team-${i}`);
+            if (nameEl) prevNames[i] = nameEl.value;
+            let profEl = document.getElementById(`profile-team-${i}`);
+            if (profEl) prevProfiles[i] = profEl.value;
         }
 
         container.innerHTML = '';
         for (let i = 1; i <= numTeams; i++) {
             let isUser = (i === userPick);
-            container.innerHTML += `
-                <div>
-                    <label class="text-gray-600 block mb-1 text-xs font-semibold">Team ${i} ${isUser ? '<span class="text-indigo-600">(You)</span>' : ''}</label>
-                    <select id="profile-team-${i}" class="w-full border-gray-300 border rounded-lg p-2 text-sm bg-slate-50 focus:ring-2 focus:ring-indigo-500 outline-none">
-                        ${optionsHtml}
-                    </select>
-                </div>
-            `;
+            let defaultName = isUser ? "Maryland Madness" : `Team ${i}`;
+            let savedName = prevNames[i] !== undefined ? prevNames[i] : defaultName;
+
+            if (draftMode === 'live') {
+                // 🏈 LIVE DRAFT MODE: Clean Custom Team Name Text Inputs for all managers
+                container.innerHTML += `
+                    <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                        <label class="text-slate-700 block mb-1 text-[11px] font-extrabold uppercase flex justify-between items-center">
+                            <span>Pick #${i}</span>
+                            ${isUser ? '<span class="text-indigo-600 font-extrabold text-[10px] bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded">YOU</span>' : '<span class="text-slate-400 font-semibold text-[10px]">Opponent</span>'}
+                        </label>
+                        <input type="text" id="custom-name-team-${i}" value="${savedName}" placeholder="Manager / Team Name" 
+                            class="w-full border-gray-300 border rounded-lg p-2 text-xs font-bold text-gray-800 bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none shadow-sm">
+                    </div>
+                `;
+            } else {
+                // 🤖 MOCK DRAFT MODE: Team Name + AI Personality Profile Selector
+                container.innerHTML += `
+                    <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200 space-y-1.5">
+                        <label class="text-slate-700 block text-[11px] font-extrabold uppercase flex justify-between items-center">
+                            <span>Pick #${i}</span>
+                            ${isUser ? '<span class="text-indigo-600 font-extrabold text-[10px] bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded">YOU</span>' : ''}
+                        </label>
+                        <input type="text" id="custom-name-team-${i}" value="${savedName}" placeholder="Team Name" 
+                            class="w-full border-gray-300 border rounded-lg p-1.5 text-xs font-bold text-gray-800 bg-white focus:ring-2 focus:ring-indigo-500 outline-none">
+                        ${!isUser ? `
+                        <select id="profile-team-${i}" class="w-full border-gray-300 border rounded-lg p-1.5 text-[11px] bg-white text-slate-600 focus:ring-2 focus:ring-indigo-500 outline-none font-medium">
+                            ${optionsHtml}
+                        </select>` : ''}
+                    </div>
+                `;
+            }
         }
 
-        for (let i = 1; i <= numTeams; i++) {
-            let el = document.getElementById(`profile-team-${i}`);
-            if (el && prevSelections[i]) el.value = prevSelections[i];
+        // Restore profile selections in mock mode
+        if (draftMode === 'mock') {
+            for (let i = 1; i <= numTeams; i++) {
+                let el = document.getElementById(`profile-team-${i}`);
+                if (el && prevProfiles[i]) el.value = prevProfiles[i];
+            }
         }
     },
 
