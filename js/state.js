@@ -161,7 +161,8 @@ const State = {
             // ⚡ Fetch Kicker Metadata and Projections concurrently for speed
             const [playersRes, projRes] = await Promise.all([
                 fetch('https://api.sleeper.app/v1/players/nfl').catch(() => null),
-                fetch(`https://api.sleeper.app/projections/nfl/20${season}?season_type=regular&position[]=K&position[]=DEF`).catch(() => null)
+                // ⚡ NEW: Pull ALL offensive positions to create an ensemble blend
+                fetch(`https://api.sleeper.app/projections/nfl/20${season}?season_type=regular&position[]=QB&position[]=RB&position[]=WR&position[]=TE&position[]=K&position[]=DEF`).catch(() => null)
             ]);
 
             let kMap = {};
@@ -186,10 +187,22 @@ const State = {
                 'NYJ', 'PHI', 'PIT', 'SEA', 'SF', 'TB', 'TEN', 'WAS'
             ]);
 
+            this.sleeperProjectionsMap = {}; // ⚡ NEW: Store projections for blending
+
             projList.forEach(entry => {
                 let pid = String(entry.player_id || '').trim();
                 let rawPos = entry.position;
                 let isKicker = rawPos === 'K' || kMap[pid]?.position === 'K';
+
+                // ⚡ NEW: Map ALL players for the blending engine
+                if (entry && (entry.player || kMap[pid])) {
+                    const fName = entry.player ? `${entry.player.first_name || ''} ${entry.player.last_name || ''}` : kMap[pid].full_name;
+                    const cName = this.normalizeName(fName);
+                    const cPos = this.normalizePos(rawPos || kMap[pid]?.position);
+                    if (cName && cPos) {
+                        this.sleeperProjectionsMap[`${cName}_${cPos}`] = entry.stats || {};
+                    }
+                }
                 
                 // 🛑 FILTER OUT IDPs (Individual Defensive Players):
                 // Team Defenses have letter IDs ("SF", "BAL"). IDPs have numeric IDs ("10858").
@@ -1579,6 +1592,7 @@ const State = {
         passYds: 0.04, passTd: 6, int: -2,
         rushYds: 0.1, rushTd: 6, recYds: 0.1, recTd: 6, ppr: 1, fumLost: -2,
         xp: 1, sack: 1, turnover: 2, defTd: 6, safety: 2,
+        retYds: 0.04, retTd: 6, qbSack: 0, // ⚡ Return yards & QB sack penalty
 
         // 🎛️ NEW: UI Toggles
         useMilestones: true,
@@ -1596,9 +1610,65 @@ const State = {
         std_fg0_29: 3, std_fg30_39: 3, std_fg40_49: 4, std_fg50_plus: 5
     },
 
+    stadiumClimates: {
+        'Dome': ['ATL', 'ARI', 'DAL', 'DET', 'HOU', 'IND', 'LV', 'LA', 'LAC', 'MIN', 'NO'],
+        'Warm': ['CAR', 'JAX', 'MIA', 'TB', 'SF'],
+        'SevereCold': ['BUF', 'CHI', 'CLE', 'GB', 'NE', 'NYG', 'NYJ', 'PIT']
+    },
+
     calculateProjections() {
         this.allPlayers.forEach(p => {
             let s = p.stats || {};
+            
+            // =========================================================
+            // ⚡ PER-GAME CONSENSUS BLENDING (CBS + Sleeper)
+            // =========================================================
+            const sleeperKey = `${p._cleanName}_${p._cleanPos}`;
+            const sl = this.sleeperProjectionsMap ? this.sleeperProjectionsMap[sleeperKey] : null;
+
+            if (sl) {
+                // Helper: Convert to per-game rates, average them, multiply by Sleeper's active GP
+                const blendStat = (cbsRaw, slRaw, cbsGp, slGp) => {
+                    let cbsVal = Number(cbsRaw) || 0;
+                    let slVal = Number(slRaw) || 0;
+                    let cGp = Number(cbsGp) || 17;
+                    let sGp = Number(slGp) || 17;
+
+                    if (cbsVal > 0 && slVal > 0) {
+                        let cbsPerGame = cbsVal / cGp;
+                        let slPerGame = slVal / sGp;
+                        let consensusPerGame = (cbsPerGame + slPerGame) / 2;
+                        return consensusPerGame * sGp; // Sleeper GP is truth
+                    }
+                    return cbsVal > 0 ? cbsVal : slVal;
+                };
+
+                // Sync GP to Sleeper's injury-adjusted reality
+                s.gp = (sl.gp && sl.gp > 0) ? sl.gp : (s.gp || 17);
+
+                // Blend Core Stats
+                s.passAtt = blendStat(s.passAtt, sl.pass_att, (p.stats?.gp || 17), s.gp);
+                s.passCmp = blendStat(s.passCmp, sl.pass_cmp, (p.stats?.gp || 17), s.gp);
+                s.passYds = blendStat(s.passYds, sl.pass_yd, (p.stats?.gp || 17), s.gp);
+                s.passTd  = blendStat(s.passTd, sl.pass_td, (p.stats?.gp || 17), s.gp);
+                s.int     = blendStat(s.int, sl.pass_int, (p.stats?.gp || 17), s.gp);
+
+                s.rushAtt = blendStat(s.rushAtt, sl.rush_att, (p.stats?.gp || 17), s.gp);
+                s.rushYds = blendStat(s.rushYds, sl.rush_yd, (p.stats?.gp || 17), s.gp);
+                s.rushTd  = blendStat(s.rushTd, sl.rush_td, (p.stats?.gp || 17), s.gp);
+
+                s.targets = blendStat(s.targets, sl.rec_tgt, (p.stats?.gp || 17), s.gp);
+                s.rec     = blendStat(s.rec, sl.rec, (p.stats?.gp || 17), s.gp);
+                s.recYds  = blendStat(s.recYds, sl.rec_yd, (p.stats?.gp || 17), s.gp);
+                s.recTd   = blendStat(s.recTd, sl.rec_td, (p.stats?.gp || 17), s.gp);
+                s.fum     = blendStat(s.fum, sl.fum_lost, (p.stats?.gp || 17), s.gp);
+
+                // Activate New Sleeper Categories
+                s.qbSacks = sl.pass_sack || 0;
+                s.retYds  = (sl.kr_yd || 0) + (sl.pr_yd || 0);
+                s.retTd   = (sl.kr_td || 0) + (sl.pr_td || 0);
+            }
+
             let gp = s.gp || 17;
 
             if (p.Pos === 'PK') {
@@ -1658,6 +1728,10 @@ const State = {
                 let rush2ptPts = this.scoring.use2pt ? ((s.rush2pt || 0) * sc(this.scoring.rush2pt, 2)) : 0;
                 let rec2ptPts = this.scoring.use2pt ? ((s.rec2pt || 0) * sc(this.scoring.rec2pt, 2)) : 0;
 
+                // ⚡ Calculate Return Yards and QB Sacks
+                let retPts = ((s.retYds || 0) * sc(this.scoring.retYds, 0.04)) + ((s.retTd || 0) * sc(this.scoring.retTd, 6));
+                let qbSackPts = p.Pos === 'QB' ? ((s.qbSacks || 0) * sc(this.scoring.qbSack, 0)) : 0;
+
                 let basePts =
                     ((s.passYds || 0) * sc(this.scoring.passYds, 0.04)) +
                     ((s.passTd || 0) * sc(this.scoring.passTd, 6)) +
@@ -1670,7 +1744,8 @@ const State = {
                     ((s.recTd || 0) * sc(this.scoring.recTd, 6)) +
                     rec2ptPts +
                     recPoints +
-                    ((s.fum || 0) * sc(this.scoring.fumLost, -2));
+                    ((s.fum || 0) * sc(this.scoring.fumLost, -2)) +
+                    retPts + qbSackPts; // ⚡ Added to base formula
                 
                 let passYpg = (s.passYds || 0) / gp;
                 let rushYpg = (s.rushYds || 0) / gp;
@@ -1989,6 +2064,72 @@ const State = {
             let ceilingTags = [];
             p._isFlyer = false;
             p._isSafeFloor = false;
+
+            // =========================================================
+            // ⚡ ADVANCED FEATURE ENGINEERING (Weather, Breakouts, Game Script)
+            // =========================================================
+
+            // 1. Playoff Weather & Dome Insulation
+            let playoffDomeCount = 0;
+            let playoffColdCount = 0;
+            [15, 16, 17].forEach(w => {
+                let opp = this.nflSchedule[tTeam]?.[w] || '';
+                if (opp && opp !== 'BYE') {
+                    let isAway = opp.includes('@');
+                    let gameLocation = isAway ? this.normalizeTeam(opp.replace('@', '').trim()) : tTeam;
+                    if (this.stadiumClimates?.Dome?.includes(gameLocation)) playoffDomeCount++;
+                    if (this.stadiumClimates?.SevereCold?.includes(gameLocation)) playoffColdCount++;
+                }
+            });
+
+            if (['QB', 'WR', 'TE', 'PK'].includes(p.Pos)) {
+                if (playoffDomeCount >= 2) {
+                    adjMultiplier += 0.02; // Small floor stability bump
+                    ceilingTags.push("🏆 Climate-Controlled Playoff Schedule");
+                } else if (playoffColdCount >= 2) {
+                    adjMultiplier -= 0.015; // Small weather risk penalty
+                    if (p.Pos === 'PK') adjMultiplier -= 0.04; 
+                    p._coldWeatherRisk = true; // Flag to widen variance spread later
+                }
+            }
+
+            // 2. Subtle Sophomore / Year 3 Breakout Nudges (Extremely Small)
+            let pAgeVal = p.age || p.Age;
+            let estYearsInNFL = pAgeVal ? (pAgeVal - 21) : 5;
+            
+            if (p.Pos === 'WR' && estYearsInNFL === 2) {
+                let rookieTargets = p.pastStats?.targets || 0;
+                if (rookieTargets >= 50 || p.ypt >= 8.5) {
+                    upsideMultiplier += 0.06; // Just a +6% ceiling nudge
+                    adjMultiplier += 0.015;   // Just a +1.5% baseline tiebreaker
+                    ceilingTags.push("🚀 Year 2 WR Leap Window");
+                }
+            }
+            if (p.Pos === 'TE' && estYearsInNFL === 3) {
+                let careerHighTgts = Math.max(p.pastStats?.targets || 0, p.stats2024?.targets || 0);
+                if (careerHighTgts >= 40) {
+                    upsideMultiplier += 0.05; // Just a +5% ceiling nudge
+                    adjMultiplier += 0.01;    // Just a +1% baseline tiebreaker
+                    ceilingTags.push("📈 Year 3 TE Inflection");
+                }
+            }
+
+            // 3. Game-Script Floor Decay (For early-down RBs on bad teams)
+            if (p.Pos === 'RB') {
+                let teamThreat = this.teamOffensiveThreats[tTeam];
+                let teamQuality = teamThreat ? (6.0 - teamThreat.dstMatchupStars) : 3.0; // 1.0 (Bad) to 5.0 (Elite)
+                let isPassCatcher = (p.targetShare && p.targetShare >= 9.0) || p._isSatelliteBack;
+
+                if (teamQuality <= 2.5 && !isPassCatcher) {
+                    adjMultiplier -= 0.045; // Base projection drop (scripted out)
+                    p._rosterContextBadge = "⚠️ Game-Script Dependent (Low Receiving Floor)";
+                    p._scriptRisk = true; // Flag to widen variance spread later
+                } else if (teamQuality >= 4.0 && !isPassCatcher && p.weight >= 215) {
+                    adjMultiplier += 0.035; // Bonus for grinding clock with the lead
+                    ceilingTags.push("🚜 High-Probability 4th Quarter Closer");
+                }
+            }
+
 
             // --- FEATURE: Balanced Offensive Ecosystem & Garbage Time Insulation ---
             let matchupThreat = this.teamOffensiveThreats[tTeam];
@@ -3253,6 +3394,20 @@ const State = {
                 }
             }
 
+            // ⚡ Fumble Rate Benching Risk
+            let projTouches = (p.stats?.rushAtt || 0) + (p.stats?.rec || 0);
+            if (p.Pos === 'RB' && projTouches >= 100 && p.stats?.fum > 0) {
+                p.fumbleRate = projTouches / p.stats.fum; // Touches per fumble
+                
+                // If they fumble more than once every 55 touches
+                if (p.fumbleRate <= 55.0) {
+                    adjMultiplier -= 0.035; 
+                    p._fumbleRisk = true; // ⚡ FIXED: Flag them for the variance spread later
+                    p._ceilingTags.push("⚠️ High Benching Risk (Fumbles)");
+                }
+            }
+
+
             // ===========================================================
             // 10. DYNAMIC UPSIDE, CEILING & VOLATILITY CLASSIFICATIONS
             // ===========================================================
@@ -3600,13 +3755,16 @@ const State = {
                 }
             }
 
+            if (p._scriptRisk) varianceSpread += 0.06; // Widens floor down if they can get scripted out
+            if (p._coldWeatherRisk) varianceSpread += 0.03; // Slight floor instability for Dec weather
+            if (p._fumbleRisk) varianceSpread += 0.04; // ⚡ FIXED: Safely widens floor for benching risk
+
             // Final Bounds Safety Check
             varianceSpread = Math.max(0.08, Math.min(0.55, varianceSpread));
             p.varianceSpread = varianceSpread;
 
             let baselinePpg = (p.ProjPts / Math.max(1, p.stats?.gp || 17));
             p.floorPpg = Math.max(1.5, baselinePpg * Math.max(0.40, 1 - varianceSpread));
-
             // Ceiling PPG scales dynamically with a realistic cap
             let maxMultiplier = 1 + varianceSpread;
             if (p.upsideScore > 0 && p.AdvVBD > 0) {
