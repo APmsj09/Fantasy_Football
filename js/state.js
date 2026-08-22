@@ -3536,6 +3536,88 @@ const State = {
             // Upside Score measures their Potential Ceiling against the starting baseline
             p.upsideScore = Math.max(0, p.ceilingProjPts - rawBasePts);
 
+            // =============================================================
+            // DYNAMIC VARIANCE SPREAD (Floor/Ceiling Bounds)
+            // =============================================================
+            let varianceSpread = 0.22; // Neutral baseline spread
+
+            // 1. Role & Archetype Volatility
+            if (p.isRBHandcuff) varianceSpread += 0.12;
+            if (p._isFlyer) varianceSpread += 0.04;
+
+            // 2. Continuous Age Volatility (Decays smoothly from 21yo to 24yo)
+            let pAgeVal = p.age || p.Age;
+            if (pAgeVal && pAgeVal <= 24) {
+                varianceSpread += (25 - pAgeVal) * 0.025; // 21yo = +0.10, 24yo = +0.025
+            }
+
+            // 3. Continuous Depth of Target (aDOT) Volatility
+            if (p.aDOT) {
+                let aDotDelta = p.aDOT - 9.5;
+                varianceSpread += (aDotDelta * 0.012);
+            }
+
+            // 4. Continuous Target Share Stability (Higher Share = Tightened Floor)
+            if (p.targetShare && ['WR', 'TE', 'RB'].includes(p.Pos)) {
+                if (p.targetShare > 12.0) {
+                    varianceSpread -= Math.min(0.08, (p.targetShare - 12.0) * 0.004);
+                }
+            }
+
+            // 5. Continuous QB Rushing Mobility
+            if (p.Pos === 'QB' && p.stats && p.stats.rushAtt) {
+                varianceSpread += Math.min(0.10, (p.stats.rushAtt / 100) * 0.07);
+            }
+
+            // 6. Safe Floor Qualifier Adjustment & Workload Trajectory
+            if (p._isSafeFloor) varianceSpread -= 0.05;
+            if (p._isAscendingRole) varianceSpread -= 0.03;
+            if (p._isDecliningRole) varianceSpread += 0.06;
+
+            // 7. Historical Boom / Bust Continuous Scaling
+            if (p.boomBust && p.boomBust.games >= 4) {
+                let bb = p.boomBust;
+                let sampleWeight = Math.min(1.0, bb.games / 12);
+                let bustTolerance = p.Pos === 'WR' ? 28 : (p.Pos === 'QB' ? 18 : 22);
+                let top12Baseline = p.Pos === 'QB' ? 58 : (p.Pos === 'TE' ? 42 : 48);
+
+                let pastTouches = (p.pastStats?.rushAtt || 0) + (p.pastStats?.rec || 0);
+                let pastTargets = p.pastStats?.targets || 0;
+                let pastPassAtt = p.pastStats?.passAtt || 0;
+                let hasSignificantPastVolume = (p.Pos === 'RB' && pastTouches >= 100) || (['WR', 'TE'].includes(p.Pos) && pastTargets >= 60) || (p.Pos === 'QB' && pastPassAtt >= 200);
+
+                let isRoleExpansion = (p._isAscendingRole || p.isNewRole || (p._vacatedTgts >= 30) || (p._vacatedCarries >= 60) || p._inheritsGoalLineWork) && !hasSignificantPastVolume;
+                if (isRoleExpansion) {
+                    bustTolerance += 20;
+                    sampleWeight *= 0.5;
+                }
+
+                if (bb.bust > bustTolerance) {
+                    varianceSpread += ((bb.bust - bustTolerance) * 0.005) * sampleWeight;
+                }
+                if (bb.top12 > top12Baseline) {
+                    varianceSpread -= ((bb.top12 - top12Baseline) * 0.003) * sampleWeight;
+                }
+            }
+
+            // Final Bounds Safety Check
+            varianceSpread = Math.max(0.08, Math.min(0.55, varianceSpread));
+            p.varianceSpread = varianceSpread;
+
+            let baselinePpg = (p.ProjPts / Math.max(1, p.stats?.gp || 17));
+            p.floorPpg = Math.max(1.5, baselinePpg * Math.max(0.40, 1 - varianceSpread));
+
+            // Ceiling PPG scales dynamically with a realistic cap
+            let maxMultiplier = 1 + varianceSpread;
+            if (p.upsideScore > 0 && p.AdvVBD > 0) {
+                let ratio = p.upsideScore / p.AdvVBD;
+                if (Number.isFinite(ratio) && ratio > 1.0) {
+                    let dampenedRatio = 1 + ((ratio - 1) * 0.45);
+                    maxMultiplier = Math.min(1.38, Math.max(maxMultiplier, dampenedRatio));
+                }
+            }
+            p.ceilingPpg = baselinePpg * maxMultiplier;
+
             // ===========================================================
             // FINAL CALCULATIONS
             // ===========================================================
