@@ -3385,8 +3385,8 @@ const State = {
                 // If they fumble more than once every 55 touches
                 if (p.fumbleRate <= 55.0) {
                     adjMultiplier -= 0.035; 
-                    p._fumbleRisk = true; // ⚡ FIXED: Flag them to widen the floor safely later
-                    p._ceilingTags.push("⚠️ High Benching Risk (Fumbles)");
+                    p._fumbleRisk = true; 
+                    ceilingTags.push("⚠️ High Benching Risk (Fumbles)"); // ⚡ FIXED: push to local array
                 }
             }
 
@@ -3683,7 +3683,7 @@ const State = {
             if (p._isFlyer) varianceSpread += 0.04;
 
             // 2. Continuous Age Volatility (Decays smoothly from 21yo to 24yo)
-            let pAgeVal = p.age || p.Age;
+            // ⚡ FIXED: Reuse existing pAgeVal instead of re-declaring let
             if (pAgeVal && pAgeVal <= 24) {
                 varianceSpread += (25 - pAgeVal) * 0.025; // 21yo = +0.10, 24yo = +0.025
             }
