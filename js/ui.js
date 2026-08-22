@@ -2262,11 +2262,13 @@ const UI = {
             let keyStatsHTML = '';
             if (p.stats) {
                 let st = p.stats;
-                if (p.Pos === 'QB') keyStatsHTML = `<span class="text-slate-500">${st.passAtt || 0} Pass Att • ${st.passYds || 0} Pass Yds • ${st.rushAtt || 0} Rush Att • ${st.rushYds || 0} Rush Yds</span>`;
-                else if (p.Pos === 'RB') keyStatsHTML = `<span class="text-slate-500">${st.rushAtt || 0} Rush Att • ${st.rushYds || 0} Rush Yds • ${st.targets || 0} Tgt • ${st.rec || 0} Rec</span>`;
-                else if (['WR', 'TE'].includes(p.Pos)) keyStatsHTML = `<span class="text-slate-500">${st.targets || 0} Tgt • ${st.rec || 0} Rec • ${st.recYds || 0} Rec Yds • ${st.recTd || 0} TD</span>`;
-                else if (p.Pos === 'DST') keyStatsHTML = `<span class="text-slate-500">${st.sack || 0} Sacks • ${(st.defInt || 0) + (st.defFum || 0)} Turnovers • ${st.papg || 18.0} PAPG</span>`;
-                else if (p.Pos === 'PK') keyStatsHTML = `<span class="text-slate-500">${st.fgTotal || 0} FGs • ${st.xp || 0} PATs</span>`;
+                const r = (val) => Math.round(Number(val) || 0); // ⚡ Helper to round clean integers
+
+                if (p.Pos === 'QB') keyStatsHTML = `<span class="text-slate-500">${r(st.passAtt)} Pass Att • ${r(st.passYds)} Pass Yds • ${r(st.rushAtt)} Rush Att • ${r(st.rushYds)} Rush Yds</span>`;
+                else if (p.Pos === 'RB') keyStatsHTML = `<span class="text-slate-500">${r(st.rushAtt)} Rush Att • ${r(st.rushYds)} Rush Yds • ${r(st.targets)} Tgt • ${r(st.rec)} Rec</span>`;
+                else if (['WR', 'TE'].includes(p.Pos)) keyStatsHTML = `<span class="text-slate-500">${r(st.targets)} Tgt • ${r(st.rec)} Rec • ${r(st.recYds)} Rec Yds • ${r(st.recTd)} TD</span>`;
+                else if (p.Pos === 'DST') keyStatsHTML = `<span class="text-slate-500">${r(st.sack)} Sacks • ${r((st.defInt || 0) + (st.defFum || 0))} Turnovers • ${(Number(st.papg) || 18.0).toFixed(1)} PAPG</span>`;
+                else if (p.Pos === 'PK') keyStatsHTML = `<span class="text-slate-500">${r(st.fgTotal)} FGs • ${r(st.xp)} PATs</span>`;
             }
             let statsDiv = keyStatsHTML ? `<div class="text-[10px] font-medium mt-0.5 tracking-tight">${keyStatsHTML}</div>` : '';
 
