@@ -1472,91 +1472,10 @@ const UI = {
         else if (riskScore >= 2) riskBadge = `<span class="bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2.5 py-0.5 rounded-full font-bold">⚡ MODERATE RISK</span>`;
 
         // -------------------------------------------------------------
-        // RANGE OF OUTCOMES
+        // RANGE OF OUTCOMES (Reads pre-computed State values)
         // -------------------------------------------------------------
-        let varianceSpread = 0.22; // Neutral baseline spread
-
-        // 1. Role & Archetype Volatility
-        if (p.isRBHandcuff) varianceSpread += 0.08;
-        if (p._isFlyer) varianceSpread += 0.04;
-
-        // 2. Continuous Age Volatility (Decays smoothly from 21yo to 24yo)
-        if (pAge && pAge <= 24) {
-            varianceSpread += (25 - pAge) * 0.025; // 21yo = +0.10, 22yo = +0.075, 24yo = +0.025
-        }
-
-        // 3. Continuous Depth of Target (aDOT) Volatility
-        if (p.aDOT) {
-            // Neutral aDOT baseline is 9.5 yds. Downfield routes = wider variance; short routes = tight PPR floor
-            let aDotDelta = p.aDOT - 9.5;
-            varianceSpread += (aDotDelta * 0.012);
-        }
-
-        // 4. Continuous Target Share Stability (Higher Share = Tightened Floor)
-        if (p.targetShare && ['WR', 'TE', 'RB'].includes(pos)) {
-            if (p.targetShare > 12.0) {
-                varianceSpread -= Math.min(0.08, (p.targetShare - 12.0) * 0.004);
-            }
-        }
-
-        // 5. Continuous QB Rushing Mobility
-        if (pos === 'QB' && p.stats && p.stats.rushAtt) {
-            varianceSpread += Math.min(0.10, (p.stats.rushAtt / 100) * 0.07);
-        }
-
-        // 6. Safe Floor Qualifier Adjustment & Workload Trajectory
-        if (p._isSafeFloor) varianceSpread -= 0.03;
-
-        // Ascending roles solidify a player's floor, while contracting roles create massive weekly touch variance
-        if (p._isAscendingRole) varianceSpread -= 0.03;
-        if (p._isDecliningRole) varianceSpread += 0.06;
-
-        // 7. Historical Boom / Bust Continuous Scaling
-        if (p.boomBust && p.boomBust.games >= 4) {
-            let bb = p.boomBust;
-            let sampleWeight = Math.min(1.0, bb.games / 12);
-            let bustTolerance = pos === 'WR' ? 28 : (pos === 'QB' ? 18 : 22);
-            let top12Baseline = pos === 'QB' ? 58 : (pos === 'TE' ? 42 : 48);
-
-            let pastTouches = (p.pastStats?.rushAtt || 0) + (p.pastStats?.rec || 0);
-            let pastTargets = p.pastStats?.targets || 0;
-            let pastPassAtt = p.pastStats?.passAtt || 0;
-            let hasSignificantPastVolume = (pos === 'RB' && pastTouches >= 100) || (['WR', 'TE'].includes(pos) && pastTargets >= 60) || (pos === 'QB' && pastPassAtt >= 200);
-
-            let isRoleExpansion = (p._isAscendingRole || p.isNewRole || (p._vacatedTgts >= 30) || (p._vacatedCarries >= 60) || p._inheritsGoalLineWork) && !hasSignificantPastVolume;
-            if (isRoleExpansion) {
-                bustTolerance += 20;
-                sampleWeight *= 0.5;
-            }
-
-            // High bust rate widens the spread (lowers floor)
-            if (bb.bust > bustTolerance) {
-                varianceSpread += ((bb.bust - bustTolerance) * 0.005) * sampleWeight;
-            }
-            // High Top-12 rate tightens the spread (raises floor)
-            if (bb.top12 > top12Baseline) {
-                varianceSpread -= ((bb.top12 - top12Baseline) * 0.003) * sampleWeight;
-            }
-        }
-
-        // Final Bounds Safety Check
-        varianceSpread = Math.max(0.08, Math.min(0.55, varianceSpread));
-
-        let baselinePpg = Number(ppg) || 0;
-        let floorPpg = (baselinePpg * Math.max(0.40, 1 - varianceSpread)).toFixed(1);
-
-        // Ceiling PPG scales dynamically with a realistic 95th-percentile cap (~30-34 PPG max for historic seasons)
-        let maxMultiplier = 1 + varianceSpread;
-        if (p.upsideScore > 0 && p.AdvVBD > 0) {
-            let ratio = p.upsideScore / p.AdvVBD;
-            if (Number.isFinite(ratio) && ratio > 1.0) {
-                // Dampen the ratio so historic superstars don't exceed realistic historical ceilings (max +38% ceiling)
-                let dampenedRatio = 1 + ((ratio - 1) * 0.45);
-                maxMultiplier = Math.min(1.38, Math.max(maxMultiplier, dampenedRatio));
-            }
-        }
-
-        let ceilingPpg = (baselinePpg * maxMultiplier).toFixed(1);
+        let floorPpg = (p.floorPpg !== undefined ? p.floorPpg : (Number(ppg) || 0) * 0.78).toFixed(1);
+        let ceilingPpg = (p.ceilingPpg !== undefined ? p.ceilingPpg : (Number(ppg) || 0) * 1.25).toFixed(1);
 
         // Algorithm Verdict Transparency Box
         let algorithmVerdictHTML = "";
@@ -2312,15 +2231,9 @@ const UI = {
                 ppwStr = `<span class="text-gray-300 text-[10px] font-mono">0.0</span>`;
             }
 
-            // 1. Floor & Ceiling PPG Calculation
-            let ppg = (p.ProjPts / (p.stats?.gp || 17)).toFixed(1);
-            let variance = 0.22;
-            if (p.isRBHandcuff) variance += 0.12;
-            if (p._isSafeFloor) variance -= 0.05;
-            if (p.boomBust && p.boomBust.bust >= 35) variance += 0.08;
-
-            let floorVal = Math.max(1.5, ppg * (1 - variance)).toFixed(1);
-            let ceilVal = p.ceilingProjPts ? (p.ceilingProjPts / 17).toFixed(1) : (ppg * (1 + variance)).toFixed(1);
+            // 1. Floor & Ceiling PPG Calculation (Using unified State values)
+            let floorVal = (p.floorPpg !== undefined ? p.floorPpg : (p.ProjPts / 17) * 0.78).toFixed(1);
+            let ceilVal = (p.ceilingPpg !== undefined ? p.ceilingPpg : (p.ProjPts / 17) * 1.25).toFixed(1);
             let rangeDisplay = `<span class="text-[10px] font-semibold text-slate-700 whitespace-nowrap"><span class="text-rose-500">${floorVal}</span> - <span class="text-emerald-600 font-bold">${ceilVal}</span></span>`;
 
             // 2. Survival % on ADP Column
@@ -2396,7 +2309,9 @@ const UI = {
 
             const getSortVal = (player, k) => {
                 if (k === 'AdvVBD') return Number(player.AdvVBD ?? player.VBD ?? 0);
-                if (k === 'upsideScore') return Number(player.upsideScore ?? player.AdvVBD ?? 0); // 👈 ADD THIS LINE
+                if (k === 'upsideScore') return Number(player.upsideScore ?? player.AdvVBD ?? 0);
+                if (k === 'floorPpg') return Number(player.floorPpg ?? 0);       // 👈 ADD THIS
+                if (k === 'ceilingPpg') return Number(player.ceilingPpg ?? 0);   // 👈 ADD THIS
                 if (k === 'ProjPts') return Number(player.ProjPts ?? 0);
                 if (k === 'adp' || k === 'depthChart' || k === 'byeWeek') {
                     const raw = player[k];
@@ -2502,8 +2417,16 @@ const UI = {
                 if (!t) return;
                 let count = t.counts[player.Pos] || 0;
                 
-                if (count >= starterMax) safetyCount++;
-                else if (count === 0) threatCount++;
+                if (['QB', 'TE', 'PK', 'DST'].includes(player.Pos)) {
+                    if (count >= starterMax) safetyCount++;
+                    else threatCount++;
+                } else {
+                    let needsStarter = count < starterMax;
+                    let hasFlex = (t.counts['Flex'] || 0) < (State.settings.roster.Flex?.max || 0) || 
+                                  (t.counts['FlexRBWR'] || 0) < (State.settings.roster.FlexRBWR?.max || 0);
+                    if (needsStarter || hasFlex) threatCount++;
+                    else safetyCount++;
+                }
             });
 
             // ⚡ ELASTIC THREAT WINDOW: Scales with the draft round + turn gap
@@ -2519,7 +2442,7 @@ const UI = {
                 }
             } else {
                 if (threatCount >= 2 && isAdpInDanger) {
-                    baseProb = Math.max(0.05, baseProb - 0.18);
+                    baseProb = Math.max(0.05, baseProb - (0.04 * Math.min(6, threatCount)));
                 }
             }
 
@@ -2576,34 +2499,24 @@ const UI = {
 
         let userQBs = userRoster.filter(r => r.Pos === 'QB');
 
-        // Calculate Tier Drops
-        ['RB', 'WR', 'TE', 'QB'].forEach(pos => {
+        // ⚡ Calculate Positional Scarcity Panic (Tier Cliffs)
+        let scarcity = {};
+        ['QB', 'RB', 'WR', 'TE'].forEach(pos => {
             let tiers = State.getPositionalTiers(pos);
-            if (tiers.length > 0 && tiers[0].length === 1) {
-                let lastPlayer = tiers[0][0];
-                let nextTop = tiers[1] ? (tiers[1][0].AdvVBD || tiers[1][0].VBD) : 0;
-                let drop = ((lastPlayer.AdvVBD || lastPlayer.VBD) - nextTop);
-                if (drop >= 6.0) {
-                    lastPlayer._tierCliffTag = `⚡ Last Tier 1 ${pos}`;
-                }
+            if (tiers.length > 1 && tiers[0].length <= 3) {
+                let lastInTopTier = tiers[0][tiers[0].length - 1];
+                let firstInNextTier = tiers[1][0];
+                let drop = (lastInTopTier.AdvVBD || lastInTopTier.VBD || 0) - (firstInNextTier.AdvVBD || firstInNextTier.VBD || 0);
+                let urgencyMult = tiers[0].length === 1 ? 1.0 : (tiers[0].length === 2 ? 0.7 : 0.4);
+                scarcity[pos] = Math.max(0, drop) * urgencyMult;
+            } else {
+                scarcity[pos] = 0;
             }
         });
 
-        // Filter valid players (Delay Kickers & non-elite DSTs)
-        // Filter valid players (Delay Kickers & non-elite DSTs)
+        // Filter roster-eligible players
         let viablePlayers = State.availablePlayers.filter(p => {
             let pos = p.Pos;
-
-            if (pos === 'PK' && currentRound <= totalRounds - 2) return false;
-            if (pos === 'DST') {
-                let posRank = parseInt(p.posRank?.replace(/\D/g, '') || 99);
-                if (posRank <= 6 && currentRound >= 10) {
-                    // Elite DST allowed starting Round 10
-                } else if (currentRound <= totalRounds - 2) {
-                    return false;
-                }
-            }
-
             let posRoster = State.settings.roster[pos];
             let starterMax = posRoster ? posRoster.max : 1;
 
@@ -2622,6 +2535,20 @@ const UI = {
         // ===========================================================
         viablePlayers.forEach(p => {
             let score = p.AdvVBD || p.VBD;
+
+            // Delay Kickers and non-elite DSTs via score suppression rather than array filtering
+            if (p.Pos === 'PK' && currentRound <= totalRounds - 2) score = -999;
+            if (p.Pos === 'DST') {
+                let posRankInt = parseInt(p.posRank?.replace(/\D/g, '') || 99);
+                if (posRankInt > 6 && currentRound <= totalRounds - 2) score = -999;
+            }
+
+            p._tierCliffTag = null;
+            let posRankInAvail = State.availablePlayers.filter(x => x.Pos === p.Pos).findIndex(x => x._cleanName === p._cleanName);
+            if (posRankInAvail < 3 && scarcity[p.Pos] > 0) {
+                score += scarcity[p.Pos];
+                p._tierCliffTag = `⚡ Tier Cliff: ${p.Pos}`;
+            }
 
             // 1. Lineup Need & Starter Openings
             let posRoster = State.settings.roster[p.Pos];
