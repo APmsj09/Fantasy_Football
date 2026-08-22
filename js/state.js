@@ -161,18 +161,12 @@ const State = {
             // ⚡ Fetch Kicker Metadata and Projections concurrently for speed
             const [playersRes, projRes] = await Promise.all([
                 fetch('https://api.sleeper.app/v1/players/nfl').catch(() => null),
-                // ⚡ NEW: Pull ALL offensive positions to create an ensemble blend
                 fetch(`https://api.sleeper.app/projections/nfl/20${season}?season_type=regular&position[]=QB&position[]=RB&position[]=WR&position[]=TE&position[]=K&position[]=DEF`).catch(() => null)
             ]);
 
-            let kMap = {};
+            let pMap = {}; // ⚡ FIXED: Store all players temporarily to resolve skill player names
             if (playersRes && playersRes.ok) {
-                const pData = await playersRes.json();
-                for (let pid in pData) {
-                    if (pData[pid].position === 'K') {
-                        kMap[pid] = pData[pid];
-                    }
-                }
+                pMap = await playersRes.json();
             }
 
             if (!projRes || !projRes.ok) return;
@@ -192,20 +186,19 @@ const State = {
             projList.forEach(entry => {
                 let pid = String(entry.player_id || '').trim();
                 let rawPos = entry.position;
-                let isKicker = rawPos === 'K' || kMap[pid]?.position === 'K';
+                let meta = pMap[pid] || {};
+                let isKicker = rawPos === 'K' || meta.position === 'K';
 
-                // ⚡ NEW: Map ALL players for the blending engine
-                if (entry && (entry.player || kMap[pid])) {
-                    const fName = entry.player ? `${entry.player.first_name || ''} ${entry.player.last_name || ''}` : kMap[pid].full_name;
-                    const cName = this.normalizeName(fName);
-                    const cPos = this.normalizePos(rawPos || kMap[pid]?.position);
+                // ⚡ FIXED: Map ALL players for the blending engine
+                if (meta.full_name) {
+                    const cName = this.normalizeName(meta.full_name);
+                    const cPos = this.normalizePos(rawPos || meta.position);
                     if (cName && cPos) {
                         this.sleeperProjectionsMap[`${cName}_${cPos}`] = entry.stats || {};
                     }
                 }
                 
                 // 🛑 FILTER OUT IDPs (Individual Defensive Players):
-                // Team Defenses have letter IDs ("SF", "BAL"). IDPs have numeric IDs ("10858").
                 if (!isKicker) {
                     if (!isNaN(Number(pid))) return; // Skip numeric IDs (IDP players)
                     let nTeam = this.normalizeTeam(pid);
@@ -218,21 +211,13 @@ const State = {
 
                 if (pos === 'DST') {
                     team = this.normalizeTeam(pid);
-                    
-                    // 👇 Fix: Use normalizeTeam(p.Team) instead of p._cleanTeam since enrichPlayerMap hasn't run yet
                     let existingDST = this.allPlayers.find(p => p.Pos === 'DST' && this.normalizeTeam(p.Team) === team);
-                    if (existingDST) return; // Skip Sleeper duplicate, keep your rich TSV data!
-                    
+                    if (existingDST) return; 
                     pName = team + " Defense";
-                }else if (pos === 'PK') {
-                    // Resolve Kicker Name from metadata
-                    let sp = kMap[pid];
-                    if (sp && sp.full_name) {
-                        pName = sp.full_name;
-                        team = this.normalizeTeam(sp.team || entry.team);
-                    } else if (entry.player && entry.player.first_name) {
-                        pName = `${entry.player.first_name} ${entry.player.last_name}`;
-                        team = this.normalizeTeam(entry.team);
+                } else if (pos === 'PK') {
+                    if (meta.full_name) {
+                        pName = meta.full_name;
+                        team = this.normalizeTeam(meta.team || entry.team);
                     } else {
                         return; // Skip unnamed records
                     }
@@ -251,8 +236,6 @@ const State = {
                 if (pos === 'PK') {
                     let totalFGs = (st.fgm_0_19 || 0) + (st.fgm_20_29 || 0) + (st.fgm_30_39 || 0) + (st.fgm_40_49 || 0) + (st.fgm_50p || 0);
                     let totalXPs = st.xpm || 0;
-                    
-                    // 🛑 IGNORE RETIRED / 0-PROJECTION KICKERS (Vinatieri, Matt Bryant, etc.)
                     if (totalFGs === 0 && totalXPs === 0) return;
 
                     p.stats.fgm_0_19 = st.fgm_0_19 || 0;
@@ -3402,11 +3385,10 @@ const State = {
                 // If they fumble more than once every 55 touches
                 if (p.fumbleRate <= 55.0) {
                     adjMultiplier -= 0.035; 
-                    p._fumbleRisk = true; // ⚡ FIXED: Flag them for the variance spread later
+                    p._fumbleRisk = true; // ⚡ FIXED: Flag them to widen the floor safely later
                     p._ceilingTags.push("⚠️ High Benching Risk (Fumbles)");
                 }
             }
-
 
             // ===========================================================
             // 10. DYNAMIC UPSIDE, CEILING & VOLATILITY CLASSIFICATIONS
@@ -3757,7 +3739,7 @@ const State = {
 
             if (p._scriptRisk) varianceSpread += 0.06; // Widens floor down if they can get scripted out
             if (p._coldWeatherRisk) varianceSpread += 0.03; // Slight floor instability for Dec weather
-            if (p._fumbleRisk) varianceSpread += 0.04; // ⚡ FIXED: Safely widens floor for benching risk
+            if (p._fumbleRisk) varianceSpread += 0.04; // ⚡ FIXED: Safely applies fumble risk penalty here
 
             // Final Bounds Safety Check
             varianceSpread = Math.max(0.08, Math.min(0.55, varianceSpread));
