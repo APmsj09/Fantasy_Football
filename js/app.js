@@ -231,6 +231,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 enrichPlayerData(),
                 // Current Year Data (2026)
                 fetchTSV(`${DATA_DIR}/Rookies_${SEASON}.tsv`, State.parseRookieData.bind(State), State.mergeRookieData.bind(State)),
+                fetchTSV(`${DATA_DIR}/current_inj_${SEASON}.tsv`, State.parseInjuryData.bind(State), State.mergeInjuryData.bind(State)),
                 fetchTSV(`${DATA_DIR}/Schedule_${SEASON}.tsv`, State.parseScheduleData.bind(State)),
                 fetchTSV(`${DATA_DIR}/SOS_${SEASON}.tsv`, State.parseSOSData.bind(State), State.mergeSOSData.bind(State)),
                 fetchTSV(`${DATA_DIR}/RB_Handcuffs_${SEASON}.tsv`, State.parseHandcuffData.bind(State), State.mergeHandcuffData.bind(State)),
