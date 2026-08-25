@@ -375,16 +375,28 @@ const UI = {
                     opportunityBullets.push(`<strong>Target Opportunity:</strong> ${p.Player} enters the ${p.Team} passing attack with starting route potential.`);
                 }
             } else if (pos === 'QB') {
-                if (p._avgWeaponCatchRate) {
-                    opportunityBullets.push(`<strong>Pass-Catcher Quality:</strong> Top targets boast an average <strong>${p._avgWeaponCatchRate}% True Catch Rate</strong> with ${p._eliteWeaponCount || 0} elite separator(s) <span class="text-indigo-800 font-bold">[WEAPON ENVIRONMENT]</span>.`);
+                if (p._totalWeaponProj) {
+                    let weaponGrade = p._totalWeaponProj >= 500 ? "[ELITE ARSENAL]" : (p._totalWeaponProj >= 350 ? "[ABOVE AVERAGE WEAPONS]" : "[WEAK WEAPON ROOM]");
+                    let weaponColor = p._totalWeaponProj >= 500 ? "text-emerald-800" : (p._totalWeaponProj >= 350 ? "text-indigo-800" : "text-rose-800");
+                    opportunityBullets.push(`<strong>Surrounding Weapons:</strong> Supported by a receiving corps projecting for a combined ${Math.round(p._totalWeaponProj)} points, featuring ${p._eliteWeaponCount || 0} elite separator(s). <span class="${weaponColor} font-bold">${weaponGrade}</span>.`);
+                }
+                if (p.olTier) {
+                    let lineGrade = ['S', 'A'].includes(p.olTier) ? "[IMPREGNABLE POCKET]" : (['D', 'F'].includes(p.olTier) ? "[POOR PROTECTION]" : "[AVERAGE LINE]");
+                    let lineColor = ['S', 'A'].includes(p.olTier) ? "text-emerald-800" : (['D', 'F'].includes(p.olTier) ? "text-rose-800" : "text-indigo-800");
+                    opportunityBullets.push(`<strong>Trench Protection:</strong> Operates behind a <strong>Tier ${p.olTier} Offensive Line</strong>. <span class="${lineColor} font-bold">${lineGrade}</span>.`);
+                }
+                if (p._inEliteOffense || p._inAnemicOffense) {
+                    let offGrade = p._inEliteOffense ? "[ELITE OFFENSIVE ECOSYSTEM]" : "[ANEMIC SCORING ENVIRONMENT]";
+                    let offColor = p._inEliteOffense ? "text-emerald-800" : "text-rose-800";
+                    opportunityBullets.push(`<strong>Offensive Grade:</strong> Directing a scheme graded as a ${p._inEliteOffense ? 'Top-Tier' : 'Bottom-Tier'} NFL scoring ecosystem. <span class="${offColor} font-bold">${offGrade}</span>.`);
                 }
                 if (p._hasGoalLineRushingEquity) {
                     opportunityBullets.push(`<strong>Goal-Line Rushing Equity:</strong> Commands designed goal-line sneaks/keeper plays (${p.stats?.rushTd || 0} proj rush TDs), providing a significant rushing floor boost <span class="text-emerald-800 font-bold">[KONAMI CODE BOOST]</span>.`);
                 }
                 if (passEnv && passEnv.pktTime) {
                     let pkt = passEnv.pktTime;
-                    let grade = pkt >= 2.5 ? "[GREAT POCKET PROTECTION]" : (pkt >= 2.3 ? "[AVERAGE PROTECTION]" : "[POOR PROTECTION - High Pressure]");
-                    opportunityBullets.push(`<strong>Pocket Protection:</strong> ${p.Team}'s line allowed <strong>${pkt}s pocket time</strong> with a <strong>${passEnv.prssPct}% pressure rate</strong> <span class="text-indigo-800 font-bold">${grade}</span>.`);
+                    let grade = pkt >= 2.5 ? "[GREAT POCKET TIME]" : (pkt >= 2.3 ? "[AVERAGE POCKET TIME]" : "[HIGH PRESSURE / QUICK THROWS]");
+                    opportunityBullets.push(`<strong>Pocket Dynamics:</strong> ${p.Team}'s scheme allows <strong>${pkt}s pocket time</strong> with a <strong>${passEnv.prssPct}% pressure rate</strong> <span class="text-indigo-800 font-bold">${grade}</span>.`);
                 }
             }
 
