@@ -1487,8 +1487,10 @@ const UI = {
                     cons.push(`<strong>Currently ${dispStatus}:</strong> Dealing with an active injury designation leading into Week 1${customNote}.`);
                     riskScore += 1;
                 }
-            } else if (p._isPriorYearRecovery) {
-                pros.push(`<strong>Successfully Rehabbed (${p._injuryNote || 'Major Injury'}):</strong> Sustained a major injury in late 2025, but completed a full 8+ month rehab and enters 2026 with an Active designation.`);
+            } else if (p._isMajorReturn) {
+                pros.push(`<strong>Year-1 Major Injury Return (${p._injuryNote || 'Major Procedure'}):</strong> Cleared and Active for Week 1 after missing ${p._missed25 || 'significant'} games. Historical sports science data shows Year-1 returns (ACL/Achilles/Dislocations) often experience early-season snap management before surging in the second half.`);
+            } else if (p._isFullyCleared) {
+                pros.push(`<strong>Clean Bill of Health (${p._injuryNote || 'Prior Issue'}):</strong> Overcame a prior issue and enters Week 1 with no active workload limitations.`);
             } else if (p._injuryNote) {
                 pros.push(`<strong>Clean Bill of Health:</strong> Overcame a prior setback${customNote} and enters Week 1 fully cleared.`);
             }
