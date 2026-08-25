@@ -518,6 +518,19 @@ const State = {
             let when = vals[headers.indexOf('When_Occurred')] || '';
             let status = vals[headers.indexOf('Status_26')] || '';
 
+            // Categorize timing recency
+            let timing = 'camp_recent'; // Default to acute
+            let lowerWhen = when.toLowerCase();
+            if (lowerWhen.includes('2025') || lowerWhen.includes('in-season')) {
+                timing = 'prior_season'; // 8-10+ months ago
+            } else if (lowerWhen.includes('offseason') || lowerWhen.includes('spring') || lowerWhen.includes('early 2026')) {
+                timing = 'offseason_rehab'; // 4-7 months ago
+            } else if (lowerWhen.includes('summer') || lowerWhen.includes('june') || lowerWhen.includes('july')) {
+                timing = 'summer_recent'; // 1-2 months ago
+            } else if (lowerWhen.includes('aug') || lowerWhen.includes('camp')) {
+                timing = 'camp_recent'; // Acute right before Week 1
+            }
+
             // Categorize the penalty type based on keywords
             let penalty = 'minor';
             let lowerReason = reason.toLowerCase();
@@ -527,8 +540,12 @@ const State = {
                 penalty = 'pup_list';
             } else if (lowerReason.includes('hamstring') || lowerReason.includes('groin') || lowerReason.includes('calf') || lowerReason.includes('quad')) {
                 penalty = 'soft_tissue';
-            } else if (lowerReason.includes('sprain') || lowerReason.includes('surgery') || lowerReason.includes('disloc') || lowerReason.includes('hernia') || lowerReason.includes('mcl') || lowerReason.includes('acl') || lowerReason.includes('leg') || lowerReason.includes('ankle')) {
+            } else if (lowerReason.includes('acl') || lowerReason.includes('achilles') || lowerReason.includes('disloc') || lowerReason.includes('fracture') || lowerReason.includes('tear')) {
+                penalty = 'major_recovery';
+            } else if (lowerReason.includes('sprain') || lowerReason.includes('surgery') || lowerReason.includes('hernia') || lowerReason.includes('mcl') || lowerReason.includes('leg') || lowerReason.includes('ankle')) {
                 penalty = 'structural_sprain';
+            } else {
+                penalty = 'minor';
             }
 
             // Normalize the status string for the UI
@@ -540,7 +557,7 @@ const State = {
 
             if (player) {
                 parsed.push({
-                    player, pos, team, reason, when, status: formattedStatus, penalty
+                    player, pos, team, reason, when, status: formattedStatus, penalty, timing
                 });
             }
         }
@@ -555,6 +572,8 @@ const State = {
                 p.injuryStatus = inj.status !== 'Active' ? inj.status : null; 
                 p._injuryNote = `${inj.when}: ${inj.reason}`;
                 p._injuryPenalty = inj.penalty;
+                p._injuryTiming = inj.timing;
+                p._rawInjuryStatus = inj.status;
             }
         });
     },
@@ -1711,23 +1730,47 @@ const State = {
             }
 
             // =========================================================
-            // 🚨 CUSTOM INJURY OVERRIDE & PENALTY ENGINE
+            // 🚨 TIMING-AWARE CUSTOM INJURY OVERRIDE & PENALTY ENGINE
             // =========================================================
             if (p._injuryPenalty) {
-                // 1. PUP List (Guaranteed to miss minimum 4 games)
+                let timing = p._injuryTiming || 'camp_recent';
+                let isActive = p._rawInjuryStatus === 'Active';
+
+                // 1. PUP List (Minimum 4 games missed + 1 game ramp-up)
                 if (p._injuryPenalty === 'pup_list') {
-                    s.gp = Math.min(s.gp || 17, 13); // Capped at 13 games max
+                    s.gp = Math.min(s.gp || 17, 12); 
                     p._isPupList = true;
                 }
-                // 2. Soft Tissue in August (Hamstrings/Groins)
+                // 2. Soft Tissue (Hamstrings/Groins)
                 else if (p._injuryPenalty === 'soft_tissue') {
-                    s.gp = Math.min(s.gp || 17, 15); // Likely misses 1-2 games
-                    p._isSoftTissueRisk = true;
+                    if (timing === 'camp_recent') {
+                        s.gp = Math.min(s.gp || 17, 15); // Acute August injury risks Week 1-2
+                        p._isSoftTissueRisk = true;
+                    } else {
+                        s.gp = Math.min(s.gp || 17, 16); // Healed offseason strain
+                    }
                 }
-                // 3. Structural Sprains / Surgery (Slow Ramp-Up)
-                else if (p._injuryPenalty === 'structural_sprain' || p._injuryPenalty === 'core_muscle') {
-                    s.gp = Math.min(s.gp || 17, 15);
-                    p._isSlowRampUp = true;
+                // 3. Major Recoveries (ACL, Dislocation, Achilles)
+                else if (p._injuryPenalty === 'major_recovery') {
+                    if (timing === 'prior_season' && isActive) {
+                        s.gp = Math.min(s.gp || 17, 16); // Full 9+ month rehab, already cleared
+                        p._isPriorYearRecovery = true;
+                    } else if (timing === 'camp_recent') {
+                        s.gp = Math.min(s.gp || 17, 10); // Major structural injury in August is catastrophic
+                        p._isSlowRampUp = true;
+                    } else {
+                        s.gp = Math.min(s.gp || 17, 14); // Spring surgery ramp-up
+                        p._isSlowRampUp = true;
+                    }
+                }
+                // 4. Moderate Sprains & Surgeries (High-Ankles, Hernias, Arthroscopic)
+                else if (p._injuryPenalty === 'structural_sprain') {
+                    if (timing === 'camp_recent') {
+                        s.gp = Math.min(s.gp || 17, 15); // Acute sprain inside 3 weeks of season
+                        p._isSlowRampUp = true;
+                    } else {
+                        s.gp = Math.min(s.gp || 17, 16); // Offseason surgery with months of recovery
+                    }
                 }
             }
 
@@ -3899,20 +3942,33 @@ const State = {
             // 11. INJURY PENALTIES & PHYSICAL ATTRIBUTES (BMI) - Sign-Aware Adjustments
             const applySignedFactor = (val, factor) => val >= 0 ? val * factor : (factor >= 1 ? val / factor : val * (1 / factor));
 
-            // Apply custom training camp nuances first
+            // Timing-Aware Multipliers & Variance Adjustments
             if (p._isSoftTissueRisk) {
-                varianceSpread += 0.08; // Significantly lowers the floor (re-injury risk)
-                p.AdvVBD = applySignedFactor(p.AdvVBD, 0.93); // Minor base penalty, major variance penalty
-                ceilingTags.push("⚠️ High Re-Injury Risk (Soft Tissue)");
+                varianceSpread += 0.08; // Acute August hamstring/groin widens weekly floor
+                p.AdvVBD = applySignedFactor(p.AdvVBD, 0.90);
+                ceilingTags.push("⚠️ August Soft Tissue Re-Injury Risk");
             }
             if (p._isPupList) {
-                varianceSpread += 0.04;
-                p.AdvVBD = applySignedFactor(p.AdvVBD, 0.75); // Major baseline penalty for missing a month
+                varianceSpread += 0.06;
+                p.AdvVBD = applySignedFactor(p.AdvVBD, 0.72); 
                 ceilingTags.push("🚨 Starting Season on PUP List");
             }
-            if (p._isSlowRampUp || p._injuryPenalty === 'major_recovery') {
-                varianceSpread += 0.05;
-                p.AdvVBD = applySignedFactor(p.AdvVBD, 0.88); // Penalty for likely snaps count limits early on
+            if (p._isSlowRampUp) {
+                let isMajor = p._injuryPenalty === 'major_recovery';
+                let isOffseason = p._injuryTiming === 'offseason_rehab' || p._injuryTiming === 'summer_recent';
+
+                // Scale penalty based on how long ago the injury happened
+                if (isOffseason) {
+                    varianceSpread += 0.03; // Minor caution
+                    p.AdvVBD = applySignedFactor(p.AdvVBD, 0.95); // Only 5% discount (rehabbed for months)
+                } else {
+                    varianceSpread += isMajor ? 0.09 : 0.05; // Acute August sprain
+                    p.AdvVBD = applySignedFactor(p.AdvVBD, isMajor ? 0.78 : 0.91);
+                }
+            }
+            if (p._isPriorYearRecovery) {
+                varianceSpread += 0.02; // Minor floor insulation
+                p.AdvVBD = applySignedFactor(p.AdvVBD, 0.97); // Fully healed from 2025; no harsh penalty
             }
 
             if (p.injuryStatus && !p._isPupList && !p._isSoftTissueRisk && !p._isSlowRampUp) {
