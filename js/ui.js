@@ -1030,12 +1030,6 @@ const UI = {
             pros.push(`<strong>Bye Week Insurance:</strong> Provides a critical +${p._byeFillPts.toFixed(1)} point boost during Week ${p._byeFillWeek}.`);
         }
 
-        if (p.bmi && p.bmi >= 31.5 && p.Pos === 'RB') {
-            let hMatch = String(p.height).match(/(\d+)['\-]+(\d+)/);
-            let formattedH = hMatch ? `${hMatch[1]}'${hMatch[2]}"` : (!isNaN(p.height) ? `${Math.floor(p.height / 12)}'${p.height % 12}"` : p.height);
-            pros.push(`<strong>Elite Power Profile:</strong> At ${formattedH} and ${p.weight} lbs, possesses prototypical workhorse size and short-yardage gravity.`);
-        }
-
         if (pros.length === 0) {
             pros.push(`<strong>Dependable Volume Role:</strong> Projected for a reliable ${proj.toFixed(1)} season points as the ${posRankStr} in fantasy.`);
         }
@@ -1063,10 +1057,14 @@ const UI = {
                     riskScore += 2;
                 }
 
-                // 2. Context-Aware Durability vs. Developmental Reps Check
+                // 2. Context-Aware Durability vs. Non-Injury / Developmental Sample Check
                 const isDevelopmentalDepth = totalTouches <= 15 && (pAge <= 23 || p.isNewRole);
+                const isNonInjuryAbsence = p._isPastNonInjury || (p._injuryPenalty === 'past_non_injury');
 
-                if (games <= 8 && games > 0 && !isDevelopmentalDepth) {
+                if (isNonInjuryAbsence && games <= 14) {
+                    // Suppress false "Injury Durability" alarms for past suspensions/holdouts (e.g. Rashee Rice)
+                    cons.push(`<strong>Shortened 2025 Sample (${games} GP):</strong> Missed games last season due to a non-injury absence${p._injuryNote ? ` (${p._injuryNote})` : ''}. His per-game output reflects elite efficiency over a truncated schedule.`);
+                } else if (games <= 8 && games > 0 && !isDevelopmentalDepth) {
                     cons.push(`<strong>Severe Durability Risk:</strong> Missed over half the season, playing only <strong>${games} games</strong>. Staying on the field is a major question mark.`);
                     riskScore += 3;
                     if (games <= 6) {
@@ -1883,22 +1881,22 @@ const UI = {
 
                 <div class="bg-white p-3.5 rounded-xl border border-slate-200 mb-4 text-xs text-gray-800 grid grid-cols-2 md:grid-cols-3 gap-y-3 gap-x-4">
                     ${p.Pos === 'QB' ? `
-                        <div><span class="font-bold text-gray-400 block text-[10px] uppercase">Pass Comp / Att</span> ${s.passCmp} / ${s.passAtt}</div>
-                        <div><span class="font-bold text-gray-400 block text-[10px] uppercase">Pass Yds / Rating</span> ${s.passYds} <span class="text-gray-400">(${s.passerRating})</span></div>
-                        <div><span class="font-bold text-gray-400 block text-[10px] uppercase">TD : INT</span> <span class="text-emerald-600 font-bold">${s.passTd} TD</span> / <span class="text-red-500">${s.int} INT</span></div>
+                        <div><span class="font-bold text-gray-400 block text-[10px] uppercase">Pass Comp / Att</span> ${Math.round(s.passCmp || 0)} / ${Math.round(s.passAtt || 0)}</div>
+                        <div><span class="font-bold text-gray-400 block text-[10px] uppercase">Pass Yds / Rating</span> ${Math.round(s.passYds || 0)} <span class="text-gray-400">(${s.passerRating})</span></div>
+                        <div><span class="font-bold text-gray-400 block text-[10px] uppercase">TD : INT</span> <span class="text-emerald-600 font-bold">${Math.round(s.passTd || 0)} TD</span> / <span class="text-red-500">${Math.round(s.int || 0)} INT</span></div>
                         ${p.trueAccuracy ? `<div><span class="font-bold text-gray-400 block text-[10px] uppercase">True Accuracy</span> ${p.trueAccuracy.toFixed(1)}%</div>` : ''}
                     ` : ''}
 
                     ${s.rushAtt > 0 ? `
-                        <div><span class="font-bold text-gray-400 block text-[10px] uppercase">Rushing Vol</span> ${s.rushAtt} Att</div>
-                        <div><span class="font-bold text-gray-400 block text-[10px] uppercase">Rush Yds / YPC</span> ${s.rushYds} yds <span class="text-emerald-600 font-bold">(${(s.rushYds / s.rushAtt).toFixed(1)} YPC)</span></div>
-                        <div><span class="font-bold text-gray-400 block text-[10px] uppercase">Rush TDs</span> ${s.rushTd} TD</div>
+                        <div><span class="font-bold text-gray-400 block text-[10px] uppercase">Rushing Vol</span> ${Math.round(s.rushAtt || 0)} Att</div>
+                        <div><span class="font-bold text-gray-400 block text-[10px] uppercase">Rush Yds / YPC</span> ${Math.round(s.rushYds || 0)} yds <span class="text-emerald-600 font-bold">(${((s.rushYds || 0) / (s.rushAtt || 1)).toFixed(1)} YPC)</span></div>
+                        <div><span class="font-bold text-gray-400 block text-[10px] uppercase">Rush TDs</span> ${Math.round(s.rushTd || 0)} TD</div>
                     ` : ''}
 
                     ${s.targets > 0 ? `
-                        <div><span class="font-bold text-gray-400 block text-[10px] uppercase">Receiving Vol</span> ${s.rec} Rec / ${s.targets} Tgt</div>
-                        <div><span class="font-bold text-gray-400 block text-[10px] uppercase">Rec Yds / YPR</span> ${s.recYds} yds <span class="text-indigo-600 font-bold">(${s.recAvg} YPR)</span></div>
-                        <div><span class="font-bold text-gray-400 block text-[10px] uppercase">Rec TDs</span> ${s.recTd} TD</div>
+                        <div><span class="font-bold text-gray-400 block text-[10px] uppercase">Receiving Vol</span> ${Math.round(s.rec || 0)} Rec / ${Math.round(s.targets || 0)} Tgt</div>
+                        <div><span class="font-bold text-gray-400 block text-[10px] uppercase">Rec Yds / YPR</span> ${Math.round(s.recYds || 0)} yds <span class="text-indigo-600 font-bold">(${typeof s.recAvg === 'number' ? s.recAvg.toFixed(1) : (s.recYds && s.rec ? (s.recYds/s.rec).toFixed(1) : '0.0')} YPR)</span></div>
+                        <div><span class="font-bold text-gray-400 block text-[10px] uppercase">Rec TDs</span> ${Math.round(s.recTd || 0)} TD</div>
                     ` : ''}
                 </div>
             `;
