@@ -531,16 +531,24 @@ const State = {
                 timing = 'camp_recent'; // Acute right before Week 1
             }
 
+            // Non-Injury Absences (Suspensions, Holdouts, Personal, etc.)
+            const nonInjuryKeywords = ['suspension', 'holdout', 'benched', 'inactive', 'personal', 'illness', 'legal', 'leave'];
+            let isNonInjury = nonInjuryKeywords.some(kw => lowerReason.includes(kw));
+
             // Categorize the penalty type based on status & keywords
             let penalty = 'minor';
             let lowerReason = reason.toLowerCase();
             let upperStatus = status.toUpperCase();
             let gamesSuspended = 0;
 
-            if (upperStatus.includes('SUS') || lowerReason.includes('suspens')) {
-                penalty = 'suspension';
-                let match = lowerReason.match(/(\d+)\s*-?\s*game/);
-                gamesSuspended = match ? parseInt(match[1], 10) : 4;
+            if (isNonInjury) {
+                if (upperStatus.includes('SUS') || upperStatus === 'OUT') {
+                    penalty = 'suspension'; // Active in-season suspension
+                    let match = lowerReason.match(/(\d+)\s*-?\s*game/);
+                    gamesSuspended = match ? parseInt(match[1], 10) : (parseInt(vals[headers.indexOf('Missed_25')], 10) || 4);
+                } else {
+                    penalty = 'past_non_injury'; // Historical 2025 suspension/holdout (healed/served)
+                }
             } else if (upperStatus === 'SHORT_IR' || upperStatus === 'IR_RETURN' || (upperStatus === 'IR' && !lowerReason.includes('season'))) {
                 penalty = 'short_ir';
             } else if (upperStatus === 'IR' || upperStatus === 'OUT_FOR_SEASON' || lowerReason.includes('season-ending')) {
@@ -609,13 +617,12 @@ const State = {
         injList.forEach(inj => {
             let p = this.matchPlayerFast(inj.player, inj.team, inj.pos);
             if (p) {
-                // Sleeper is the strict final authority on live injury status.
-                // The custom TSV provides contextual and historical metadata only.
                 p._injuryNote = `${inj.when}: ${inj.reason}`;
                 p._injuryPenalty = inj.penalty;
                 p._injuryTiming = inj.timing;
                 p._gamesSuspended = inj.gamesSuspended || 0;
                 p._missed25 = inj.missed25 || 0;
+                p._isPastNonInjury = (inj.penalty === 'past_non_injury');
             }
         });
     },
@@ -2450,10 +2457,10 @@ const State = {
                         p._backupThreatNote = `${backup.Player} has proven short-yardage gravity and may cap goal-line monopoly.`;
                     } else if (backupPastTgtShare >= 12.0 || backupProjTgts >= 40) {
                         p._backupThreatLevel = 'Passing Down Threat';
-                        p._backupThreatNote = `${backup.Player} commands high pass-catching volume (${backupProjTgts} proj targets), capping 3rd-down snaps.`;
+                        p._backupThreatNote = `${backup.Player} commands high pass-catching volume (${Math.round(backupProjTgts)} proj targets), capping 3rd-down snaps.`;
                     } else if (isHeavyStandalone) {
                         p._backupThreatLevel = '1B Committee Threat';
-                        p._backupThreatNote = `${backup.Player} commands significant standalone volume (${backupProjCarries} carries / ${backupProjTgts} targets), forming a split rotation.`;
+                        p._backupThreatNote = `${backup.Player} commands significant standalone volume (${Math.round(backupProjCarries)} carries / ${Math.round(backupProjTgts)} targets), forming a split rotation.`;
                     } else {
                         p._backupThreatLevel = 'Low Standalone Threat';
                         p._backupThreatNote = `${backup.Player} operates as a pure contingent backup, giving ${p.Player} an uncontested early-down lead.`;
