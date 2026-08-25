@@ -1459,13 +1459,26 @@ const UI = {
         else if (p.avgStars && p.avgStars <= 2.8) { cons.push(`<strong>Tough Overall Schedule:</strong> Faces a difficult ${p.avgStars.toFixed(2)}/5.0 star schedule.`); riskScore += 1; }
 
         // 🚑 INJURY CHECKS (MUST BE BEFORE RISK BADGE EVALUATION)
-        if (p.injuryStatus) {
-            if (['Out', 'IR', 'PUP'].includes(p.injuryStatus)) {
-                cons.push(`<strong>Currently Injured (${p.injuryStatus}):</strong> Expected to miss significant time. Drafting him requires stash capacity and patience.`);
+        if (p.injuryStatus || p._injuryNote) {
+            let customNote = p._injuryNote ? ` (${p._injuryNote})` : '';
+            let dispStatus = p.injuryStatus || 'Active/Recovering';
+            
+            if (['Out', 'IR', 'PUP'].includes(dispStatus)) {
+                cons.push(`<strong>Currently Injured (${dispStatus}):</strong> Expected to miss significant time${customNote}. Drafting him requires stash capacity and patience.`);
                 riskScore += 2;
-            } else if (['Questionable', 'Doubtful'].includes(p.injuryStatus)) {
-                cons.push(`<strong>Currently ${p.injuryStatus}:</strong> Dealing with an active injury designation leading into the season.`);
-                riskScore += 1;
+            } else if (['Questionable', 'Doubtful'].includes(dispStatus)) {
+                if (p._isSoftTissueRisk) {
+                    cons.push(`<strong>Soft Tissue Risk:</strong> Dealing with an active ${dispStatus} designation${customNote}. Soft tissue injuries in August carry a notoriously high re-injury rate, significantly lowering his floor.`);
+                    riskScore += 2;
+                } else if (p._isSlowRampUp) {
+                    cons.push(`<strong>Slow Ramp-Up Risk:</strong> Dealing with a structural/surgical recovery${customNote}. Expect heavily managed snap counts early in the season.`);
+                    riskScore += 1;
+                } else {
+                    cons.push(`<strong>Currently ${dispStatus}:</strong> Dealing with an active injury designation leading into the season${customNote}.`);
+                    riskScore += 1;
+                }
+            } else if (p._injuryNote) {
+                cons.push(`<strong>Injury Recovery Context:</strong> Active, but recovering from an offseason issue${customNote}.`);
             }
         }
 
