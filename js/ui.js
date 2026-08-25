@@ -1458,42 +1458,41 @@ const UI = {
         if (p.avgStars && p.avgStars <= 2.2) { cons.push(`<strong>Brutal Overall Schedule:</strong> Faces a grueling ${p.avgStars.toFixed(2)}/5.0 star schedule loaded with elite offenses.`); riskScore += 2; }
         else if (p.avgStars && p.avgStars <= 2.8) { cons.push(`<strong>Tough Overall Schedule:</strong> Faces a difficult ${p.avgStars.toFixed(2)}/5.0 star schedule.`); riskScore += 1; }
 
-        // 🚑 TIMING-AWARE INJURY & SUSPENSION CHECKS
-        if (p.injuryStatus || p._injuryNote) {
+        // 🚑 SLEEPER-DRIVEN INJURY CHECKS WITH TSV CONTEXT
+        if (p.injuryStatus) {
             let customNote = p._injuryNote ? ` (${p._injuryNote})` : '';
-            let dispStatus = p.injuryStatus || 'Active';
-            let timing = p._injuryTiming || 'camp_recent';
+            let dispStatus = p.injuryStatus;
             
-            if (p._isSeasonIR || dispStatus === 'Out for Season') {
-                cons.push(`<strong>Out for Season (IR):</strong> Has suffered a season-ending injury${customNote} and holds zero fantasy value for the 2026 campaign.`);
-                riskScore += 4;
+            if (p._isSeasonIR || dispStatus === 'Out for Season' || dispStatus === 'IR') {
+                cons.push(`<strong>Injured Reserve (${dispStatus}):</strong> Listed on IR by team reports${customNote}. Drafting him requires active IR-slot management.`);
+                riskScore += 3;
             } else if (p._isSuspended || dispStatus === 'Suspended') {
-                cons.push(`<strong>Serving Suspension (${p._gamesSuspended || 4} Games):</strong> Out for the start of the season${customNote}. Requires bench capacity, but provides fresh legs and full health for the second half and fantasy playoffs.`);
+                cons.push(`<strong>Serving Suspension (${p._gamesSuspended || 4} Games):</strong> Out for the start of the season${customNote}. Requires bench capacity, but provides fresh legs and full health for the fantasy playoffs.`);
                 riskScore += 2;
-            } else if (['Out', 'IR', 'PUP', 'Short-Term IR'].includes(dispStatus) || p._isPupList || p._isShortIR) {
-                cons.push(`<strong>Extended Absence (${dispStatus}):</strong> Expected to miss the opening month of the season${customNote}. Drafting him requires active stash management.`);
+            } else if (['Out', 'PUP', 'Short-Term IR'].includes(dispStatus) || p._isPupList || p._isShortIR) {
+                cons.push(`<strong>Extended Absence (${dispStatus}):</strong> Expected to miss early regular season games${customNote}. Drafting him requires active stash management.`);
                 riskScore += 2;
             } else if (['Questionable', 'Doubtful'].includes(dispStatus)) {
+                let timing = p._injuryTiming || 'camp_recent';
+
                 if (p._isSoftTissueRisk) {
-                    cons.push(`<strong>Acute Soft Tissue Risk:</strong> Suffered a recent August setback${customNote}. Soft tissue strains right before Week 1 carry a high re-injury and mid-game exit rate.`);
+                    cons.push(`<strong>Live Soft Tissue Caution:</strong> Listed as ${dispStatus} with a muscle strain${customNote}. Soft tissue injuries carry elevated re-injury and mid-game exit risk.`);
                     riskScore += 2;
                 } else if (timing === 'offseason_rehab') {
-                    cons.push(`<strong>Offseason Surgical Rehab:</strong> Managing an offseason procedure${customNote}. Had several months to rehab, but snap counts may be monitored early.`);
+                    cons.push(`<strong>Offseason Surgical Rehab:</strong> Listed as ${dispStatus} while managing an offseason procedure${customNote}. Had several months to rehab, but snap counts may be monitored over early weeks.`);
                     riskScore += 1;
                 } else if (p._isSlowRampUp) {
-                    cons.push(`<strong>Acute Structural Issue:</strong> Managing a recent August injury${customNote}. Expect limited workloads over the opening 1-2 weeks.`);
+                    cons.push(`<strong>Live Structural Recovery:</strong> Listed as ${dispStatus} with a recent structural injury${customNote}. Expect limited or ramp-up workloads over the opening weeks.`);
                     riskScore += 2;
                 } else {
-                    cons.push(`<strong>Currently ${dispStatus}:</strong> Dealing with an active injury designation leading into Week 1${customNote}.`);
+                    cons.push(`<strong>Currently ${dispStatus}:</strong> Dealing with an active designation leading into Week 1${customNote}.`);
                     riskScore += 1;
                 }
-            } else if (p._isMajorReturn) {
-                pros.push(`<strong>Year-1 Major Injury Return (${p._injuryNote || 'Major Procedure'}):</strong> Cleared and Active for Week 1 after missing ${p._missed25 || 'significant'} games. Historical sports science data shows Year-1 returns (ACL/Achilles/Dislocations) often experience early-season snap management before surging in the second half.`);
-            } else if (p._isFullyCleared) {
-                pros.push(`<strong>Clean Bill of Health (${p._injuryNote || 'Prior Issue'}):</strong> Overcame a prior issue and enters Week 1 with no active workload limitations.`);
-            } else if (p._injuryNote) {
-                pros.push(`<strong>Clean Bill of Health:</strong> Overcame a prior setback${customNote} and enters Week 1 fully cleared.`);
             }
+        } else if (p._isMajorReturn) {
+            pros.push(`<strong>Year-1 Major Injury Return (${p._injuryNote || 'Major 2025 Procedure'}):</strong> Cleared and Active for Week 1 after missing ${p._missed25 || 'significant'} games last year. Historical sports science data indicates a gradual early ramp-up followed by strong second-half output.`);
+        } else if (p._injuryNote && p._isFullyCleared) {
+            pros.push(`<strong>Clean Bill of Health (${p._injuryNote}):</strong> Listed as fully active on team reports with no ongoing workload restrictions.`);
         }
 
         if (cons.length === 0) {
