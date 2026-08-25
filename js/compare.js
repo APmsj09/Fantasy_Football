@@ -601,9 +601,9 @@ window.Compare = {
             let rushDiff = altRush - topRush;
 
             if (rushDiff >= 200) {
-                prosForAlt.push(`<strong>Superior Dual-Threat Floor:</strong> Commands a true ${alt._qbArchetype || 'rushing'} profile (<strong>${altRush} vs ${topRush} rush yds</strong>), creating a script-independent weekly floor.`);
+                prosForAlt.push(`<strong>Superior Dual-Threat Floor:</strong> Commands a true ${alt._qbArchetype || 'rushing'} profile (<strong>${Math.round(altRush)} vs ${Math.round(topRush)} rush yds</strong>), creating a script-independent weekly floor.`);
             } else if (rushDiff <= -200) {
-                consForAlt.push(`<strong>Lacks Dual-Threat Floor:</strong> Projected for only ${altRush} rushing yards vs ${topPick.Player}'s <strong>${topRush} rushing yards</strong>.`);
+                consForAlt.push(`<strong>Lacks Dual-Threat Floor:</strong> Projected for only ${Math.round(altRush)} rushing yards vs ${topPick.Player}'s <strong>${Math.round(topRush)} rushing yards</strong>.`);
             }
 
             if (alt._hasGoalLineRushingEquity && !topPick._hasGoalLineRushingEquity) {
