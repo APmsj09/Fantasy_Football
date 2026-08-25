@@ -197,6 +197,10 @@ window.Compare = {
 
         // 11. Tiered QB Rushing Floor & Escapability Highlights
         if (p.Pos === 'QB') {
+            if (p._qbSituationScore && p._qbSituationScore > 0.05) {
+                highlights.push(`<li><strong class="text-indigo-400">⚔️ Elite Overall Situation:</strong> Supported by an incredibly strong offensive ecosystem (Grade, O-Line, Weapons) which elevates his floor significantly.</li>`);
+            }
+            
             const rushYds = p.stats?.rushYds || 0;
             if (p._qbArchetype === 'Konami Code Alpha' || rushYds >= 650) {
                 highlights.push(`<li><strong class="text-amber-400">🏃 Konami Code Alpha Floor:</strong> Projected for a massive <strong class="text-amber-300">${rushYds} rush yards</strong>, generating elite weekly baseline points that pocket passers cannot match.</li>`);
