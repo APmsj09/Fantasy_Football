@@ -2510,19 +2510,55 @@ const State = {
 
                 let avgCatchRate = 0;
                 let eliteWeapons = 0;
+                let totalWeaponProj = 0;
+                
                 teamPassCatchers.forEach(w => {
                     if (w.trueCatchRate && w.trueCatchRate >= 88.0) eliteWeapons++;
+                    if (w.targetShare && w.targetShare >= 22.0) eliteWeapons++; // Also count target hogs as elite
                     avgCatchRate += (w.trueCatchRate || 80.0);
+                    totalWeaponProj += (w.ProjPts || 0);
                 });
+                
                 p._avgWeaponCatchRate = teamPassCatchers.length > 0 ? (avgCatchRate / teamPassCatchers.length).toFixed(1) : 80.0;
                 p._eliteWeaponCount = eliteWeapons;
+                p._totalWeaponProj = totalWeaponProj;
+
+                // Offense Grade & O-Line context
+                let matchupThreat = this.teamOffensiveThreats[teamKey];
+                let offenseQuality = matchupThreat ? (6.0 - matchupThreat.dstMatchupStars) : 3.0; // 1.0 to 5.0
+                
+                // Assess Trench Protection
+                let lineQuality = 3.0; // Average
+                if (p.olTier === 'S') lineQuality = 5.0;
+                else if (p.olTier === 'A') lineQuality = 4.0;
+                else if (p.olTier === 'D') lineQuality = 2.0;
+                else if (p.olTier === 'F') lineQuality = 1.0;
+                
+                // Synthesize the "Full QB Situation" multiplier
+                let situationMultiplier = 0;
+                
+                // 1. Surrounding Weapons Factor
+                if (totalWeaponProj >= 500) situationMultiplier += 0.04;
+                else if (totalWeaponProj <= 250) situationMultiplier -= 0.03;
+                
+                if (eliteWeapons >= 2) situationMultiplier += 0.03;
+                
+                // 2. Playcaller / Offensive Ecosystem
+                if (offenseQuality >= 4.2) situationMultiplier += 0.04;
+                else if (offenseQuality <= 2.0) situationMultiplier -= 0.04;
+                
+                // 3. O-Line Trench Factor
+                if (lineQuality >= 4.0) situationMultiplier += 0.03;
+                else if (lineQuality <= 2.0) situationMultiplier -= 0.04;
+
+                adjMultiplier += situationMultiplier;
+                p._qbSituationScore = situationMultiplier; // Track for narrative/UI
 
                 // Konami Code / Goal-Line Rushing Equity
                 if (p.stats && p.stats.rushTd >= 5) {
                     p._hasGoalLineRushingEquity = true;
                 }
             }
-
             // --- WORKLOAD TRAJECTORY (ALL POSITIONS) ---
             if (['RB', 'WR', 'TE'].includes(p.Pos) && p.pastStats && p.pastStats.gp >= 6 && p.stats) {
                 let pastOppsPG = ((p.pastStats.rushAtt || 0) + (p.pastStats.targets || p.pastStats.rec || 0)) / p.pastStats.gp;
