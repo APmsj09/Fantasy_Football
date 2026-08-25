@@ -609,8 +609,8 @@ const State = {
         injList.forEach(inj => {
             let p = this.matchPlayerFast(inj.player, inj.team, inj.pos);
             if (p) {
-                // Sleeper remains the final authority on live injuryStatus.
-                // We only store the custom TSV's contextual metadata.
+                // Sleeper is the strict final authority on live injury status.
+                // The custom TSV provides contextual and historical metadata only.
                 p._injuryNote = `${inj.when}: ${inj.reason}`;
                 p._injuryPenalty = inj.penalty;
                 p._injuryTiming = inj.timing;
@@ -1772,79 +1772,52 @@ const State = {
             }
 
             // =========================================================
-            // 🚨 SLEEPER-FIRST INJURY CONTEXT & PENALTY ENGINE
+            // 🚨 SLEEPER-FIRST INJURY CONTEXT & HISTORICAL RECOVERY ENGINE
             // =========================================================
-            let hasLiveInjury = Boolean(p.injuryStatus && p.injuryStatus !== 'Active' && p.injuryStatus !== 'None');
+            let hasLiveSleeperInjury = Boolean(p.injuryStatus && p.injuryStatus !== 'Active' && p.injuryStatus !== 'None');
 
-            if (hasLiveInjury) {
-                // Sleeper confirms an active injury! Check TSV to apply context-specific penalties:
+            if (hasLiveSleeperInjury) {
+                // 1. LIVE INJURY: Sleeper confirmed an active tag. Check TSV for specific context:
                 let timing = p._injuryTiming || 'camp_recent';
 
-                // 1. Suspensions
                 if (p.injuryStatus === 'Suspended' || p._injuryPenalty === 'suspension') {
                     let missed = p._gamesSuspended > 0 ? p._gamesSuspended : 4;
                     s.gp = Math.max(0, 17 - missed);
                     p._isSuspended = true;
-                }
-                // 2. Short-Term IR
-                else if (p.injuryStatus === 'Short-Term IR' || p._injuryPenalty === 'short_ir') {
+                } else if (p.injuryStatus === 'Short-Term IR' || p._injuryPenalty === 'short_ir') {
                     s.gp = Math.min(s.gp || 17, 13);
                     p._isShortIR = true;
-                }
-                // 3. Season-Ending IR
-                else if (p.injuryStatus === 'Out for Season' || p._injuryPenalty === 'season_ir') {
+                } else if (p.injuryStatus === 'Out for Season' || p._injuryPenalty === 'season_ir') {
                     s.gp = 0;
                     p._isSeasonIR = true;
-                }
-                // 4. PUP List
-                else if (p.injuryStatus === 'PUP' || p._injuryPenalty === 'pup_list') {
+                } else if (p.injuryStatus === 'PUP' || p._injuryPenalty === 'pup_list') {
                     s.gp = Math.min(s.gp || 17, 12); 
                     p._isPupList = true;
-                }
-                // 5. Soft Tissue (Hamstrings/Groins/Psoas)
-                else if (p._injuryPenalty === 'soft_tissue') {
-                    if (timing === 'camp_recent') {
-                        s.gp = Math.min(s.gp || 17, 15);
-                        p._isSoftTissueRisk = true;
-                    } else {
-                        s.gp = Math.min(s.gp || 17, 16); 
-                    }
-                }
-                // 6. Major Recoveries (ACL, Achilles, Dislocations)
-                else if (p._injuryPenalty === 'major_recovery') {
-                    if (timing === 'camp_recent') {
-                        s.gp = Math.min(s.gp || 17, 10);
-                        p._isSlowRampUp = true;
-                    } else {
-                        s.gp = Math.min(s.gp || 17, 14);
-                        p._isSlowRampUp = true;
-                    }
-                }
-                // 7. Moderate Sprains & Surgeries
-                else if (p._injuryPenalty === 'structural_sprain') {
-                    if (timing === 'camp_recent') {
-                        s.gp = Math.min(s.gp || 17, 15);
-                        p._isSlowRampUp = true;
-                    } else {
-                        s.gp = Math.min(s.gp || 17, 16);
-                    }
-                }
-                // 8. General Out / Missed Time
-                else if (p.injuryStatus === 'Out' || p._injuryPenalty === 'missed_time') {
+                } else if (p._injuryPenalty === 'soft_tissue') {
+                    s.gp = Math.min(s.gp || 17, 15);
+                    p._isSoftTissueRisk = true;
+                } else if (p._injuryPenalty === 'major_recovery') {
+                    s.gp = Math.min(s.gp || 17, 12);
+                    p._isSlowRampUp = true;
+                } else if (p._injuryPenalty === 'structural_sprain') {
+                    s.gp = Math.min(s.gp || 17, 15);
+                    p._isSlowRampUp = true;
+                } else if (p.injuryStatus === 'Out' || p._injuryPenalty === 'missed_time') {
                     s.gp = Math.min(s.gp || 17, 15);
                     p._isMissedTime = true;
                 }
             } else if (p._injuryPenalty) {
-                // Sleeper says player is ACTIVE / HEALTHY!
-                // Check if they are returning from a major structural injury or missed significant time in 2025:
-                let isMajorReturn = p._injuryPenalty === 'major_recovery' || (p._missed25 && p._missed25 >= 4);
+                // 2. SLEEPER SAYS HEALTHY: Check if returning from a major 2025/prior structural reconstruction
+                let isPriorMajorInjury = (p._injuryPenalty === 'major_recovery' || (p._missed25 && p._missed25 >= 4)) && 
+                                         (p._injuryTiming === 'prior_season' || p._injuryTiming === 'offseason_rehab');
 
-                if (isMajorReturn) {
-                    // Year-1 Return Model: Cleared to play, but account for early-season load management
+                if (isPriorMajorInjury) {
+                    // Year-1 Return Model (e.g. Kittle Achilles, Skattebo Dislocation, Kraft ACL):
+                    // Cleared to play, but account for early-season load management & pitch counts
                     s.gp = Math.min(s.gp || 17, 16);
                     p._isMajorReturn = true;
                 } else {
-                    // Fully cleared from minor/moderate issue (e.g., finger, minor soreness)
+                    // Minor or resolved issue: 100% full go
                     p._isFullyCleared = true; 
                 }
             }
@@ -4018,14 +3991,14 @@ const State = {
             const applySignedFactor = (val, factor) => val >= 0 ? val * factor : (factor >= 1 ? val / factor : val * (1 / factor));
 
             if (p._isMajorReturn) {
-                // Year-1 Return post-ACL/Achilles/Dislocation:
-                // Widens variance for early efficiency suppression, but preserves high second-half ceiling
-                varianceSpread += 0.05; 
-                p.AdvVBD = applySignedFactor(p.AdvVBD, 0.95); // 5% realistic Year-1 recovery tax
-                ceilingTags.push("📈 Year-1 Major Injury Recovery (Late-Season Surge)");
+                // Year-1 Return post-major 2025 surgery (Cleared on Sleeper):
+                varianceSpread += 0.04; 
+                p.AdvVBD = applySignedFactor(p.AdvVBD, 0.96); // 4% realistic Year-1 efficiency adjustment
+                ceilingTags.push("📈 Year-1 Major Injury Return (Second-Half Surge)");
             } else if (p._isFullyCleared) {
+                // Sleeper says Healthy and no major prior reconstruction: Full baseline
                 varianceSpread += 0.01; 
-                p.AdvVBD = applySignedFactor(p.AdvVBD, 0.99); // 1% minor history tax
+                p.AdvVBD = applySignedFactor(p.AdvVBD, 1.0); 
             } else if (p._isSuspended) {
                 let games = s.gp || 13;
                 let activeRatio = games / 17.0;
@@ -4044,29 +4017,19 @@ const State = {
             } else if (p._isSoftTissueRisk) {
                 varianceSpread += 0.08;
                 p.AdvVBD = applySignedFactor(p.AdvVBD, 0.90);
-                ceilingTags.push("⚠️ August Soft Tissue Re-Injury Risk");
+                ceilingTags.push("⚠️ Live Soft Tissue Re-Injury Risk");
             } else if (p._isPupList) {
                 varianceSpread += 0.06;
                 p.AdvVBD = applySignedFactor(p.AdvVBD, 0.72); 
                 ceilingTags.push("🚨 Starting Season on PUP List");
             } else if (p._isSlowRampUp) {
                 let isMajor = p._injuryPenalty === 'major_recovery';
-                let isOffseason = p._injuryTiming === 'offseason_rehab' || p._injuryTiming === 'summer_recent';
-
-                if (isOffseason) {
-                    varianceSpread += 0.03; 
-                    p.AdvVBD = applySignedFactor(p.AdvVBD, 0.95); 
-                } else {
-                    varianceSpread += isMajor ? 0.09 : 0.05; 
-                    p.AdvVBD = applySignedFactor(p.AdvVBD, isMajor ? 0.78 : 0.91);
-                }
+                varianceSpread += isMajor ? 0.09 : 0.05; 
+                p.AdvVBD = applySignedFactor(p.AdvVBD, isMajor ? 0.78 : 0.91);
             } else if (p._isMissedTime) {
                 varianceSpread += 0.05;
                 p.AdvVBD = applySignedFactor(p.AdvVBD, 0.88);
                 ceilingTags.push("⚠️ Expected to Miss Time");
-            } else if (p._isPriorYearRecovery) {
-                varianceSpread += 0.02; 
-                p.AdvVBD = applySignedFactor(p.AdvVBD, 0.97); 
             } else if (p.injuryStatus && !p._isSuspended) {
                 // Sleeper says injured, but player is NOT in your TSV file (Generic fallback)
                 if (['IR', 'PUP', 'SUS', 'NA', 'COV'].includes(p.injuryStatus.toUpperCase())) {
