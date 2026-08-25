@@ -501,6 +501,64 @@ const State = {
         this.nflSchedule = schedule;
     },
 
+    parseInjuryData(text) {
+        const rows = text.split(/\r?\n/).filter(row => row.trim() !== '');
+        if (rows.length < 2) return [];
+        const headers = rows[0].split('\t').map(h => h.trim());
+        const parsed = [];
+
+        for (let i = 1; i < rows.length; i++) {
+            const vals = rows[i].split('\t').map(v => v.trim());
+            if (vals.length < 3) continue;
+
+            let player = vals[headers.indexOf('Player')];
+            let pos = vals[headers.indexOf('Pos')];
+            let team = this.normalizeTeam(vals[headers.indexOf('Team')]);
+            let reason = vals[headers.indexOf('Absence_Reason')] || '';
+            let when = vals[headers.indexOf('When_Occurred')] || '';
+            let status = vals[headers.indexOf('Status_26')] || '';
+
+            // Categorize the penalty type based on keywords
+            let penalty = 'minor';
+            let lowerReason = reason.toLowerCase();
+            let upperStatus = status.toUpperCase();
+
+            if (upperStatus === 'PUP') {
+                penalty = 'pup_list';
+            } else if (lowerReason.includes('hamstring') || lowerReason.includes('groin') || lowerReason.includes('calf') || lowerReason.includes('quad')) {
+                penalty = 'soft_tissue';
+            } else if (lowerReason.includes('sprain') || lowerReason.includes('surgery') || lowerReason.includes('disloc') || lowerReason.includes('hernia') || lowerReason.includes('mcl') || lowerReason.includes('acl') || lowerReason.includes('leg') || lowerReason.includes('ankle')) {
+                penalty = 'structural_sprain';
+            }
+
+            // Normalize the status string for the UI
+            let formattedStatus = status;
+            if (upperStatus === 'QUESTIONABLE') formattedStatus = 'Questionable';
+            else if (upperStatus === 'DOUBTFUL') formattedStatus = 'Doubtful';
+            else if (upperStatus === 'PUP') formattedStatus = 'PUP';
+            else if (upperStatus === 'ACTIVE') formattedStatus = 'Active';
+
+            if (player) {
+                parsed.push({
+                    player, pos, team, reason, when, status: formattedStatus, penalty
+                });
+            }
+        }
+        return parsed;
+    },
+
+    mergeInjuryData(injList) {
+        injList.forEach(inj => {
+            let p = this.matchPlayerFast(inj.player, inj.team, inj.pos);
+            if (p) {
+                // Override Sleeper's injury status
+                p.injuryStatus = inj.status !== 'Active' ? inj.status : null; 
+                p._injuryNote = `${inj.when}: ${inj.reason}`;
+                p._injuryPenalty = inj.penalty;
+            }
+        });
+    },
+
     parseHandcuffData(text) {
         const rows = text.split(/\r?\n/).filter(row => row.trim() !== '');
         if (rows.length < 2) return [];
@@ -1650,6 +1708,27 @@ const State = {
                 s.qbSacks = sl.pass_sack || 0;
                 s.retYds  = (sl.kr_yd || 0) + (sl.pr_yd || 0);
                 s.retTd   = (sl.kr_td || 0) + (sl.pr_td || 0);
+            }
+
+            // =========================================================
+            // 🚨 CUSTOM INJURY OVERRIDE & PENALTY ENGINE
+            // =========================================================
+            if (p._injuryPenalty) {
+                // 1. PUP List (Guaranteed to miss minimum 4 games)
+                if (p._injuryPenalty === 'pup_list') {
+                    s.gp = Math.min(s.gp || 17, 13); // Capped at 13 games max
+                    p._isPupList = true;
+                }
+                // 2. Soft Tissue in August (Hamstrings/Groins)
+                else if (p._injuryPenalty === 'soft_tissue') {
+                    s.gp = Math.min(s.gp || 17, 15); // Likely misses 1-2 games
+                    p._isSoftTissueRisk = true;
+                }
+                // 3. Structural Sprains / Surgery (Slow Ramp-Up)
+                else if (p._injuryPenalty === 'structural_sprain' || p._injuryPenalty === 'core_muscle') {
+                    s.gp = Math.min(s.gp || 17, 15);
+                    p._isSlowRampUp = true;
+                }
             }
 
             let gp = s.gp || 17;
@@ -3820,7 +3899,23 @@ const State = {
             // 11. INJURY PENALTIES & PHYSICAL ATTRIBUTES (BMI) - Sign-Aware Adjustments
             const applySignedFactor = (val, factor) => val >= 0 ? val * factor : (factor >= 1 ? val / factor : val * (1 / factor));
 
-            if (p.injuryStatus) {
+            // Apply custom training camp nuances first
+            if (p._isSoftTissueRisk) {
+                varianceSpread += 0.08; // Significantly lowers the floor (re-injury risk)
+                p.AdvVBD = applySignedFactor(p.AdvVBD, 0.93); // Minor base penalty, major variance penalty
+                ceilingTags.push("⚠️ High Re-Injury Risk (Soft Tissue)");
+            }
+            if (p._isPupList) {
+                varianceSpread += 0.04;
+                p.AdvVBD = applySignedFactor(p.AdvVBD, 0.75); // Major baseline penalty for missing a month
+                ceilingTags.push("🚨 Starting Season on PUP List");
+            }
+            if (p._isSlowRampUp || p._injuryPenalty === 'major_recovery') {
+                varianceSpread += 0.05;
+                p.AdvVBD = applySignedFactor(p.AdvVBD, 0.88); // Penalty for likely snaps count limits early on
+            }
+
+            if (p.injuryStatus && !p._isPupList && !p._isSoftTissueRisk && !p._isSlowRampUp) {
                 // Tier 1: Multi-week/Long-term absence (IR, PUP, Suspended). Heaviest penalty (~30% drop in total value)
                 if (['IR', 'PUP', 'SUS', 'NA', 'COV'].includes(p.injuryStatus.toUpperCase()) || ['IR', 'PUP', 'SUS'].includes(p.injuryStatus)) {
                     p.AdvVBD = applySignedFactor(p.AdvVBD, 0.70); 
