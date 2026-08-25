@@ -1458,27 +1458,39 @@ const UI = {
         if (p.avgStars && p.avgStars <= 2.2) { cons.push(`<strong>Brutal Overall Schedule:</strong> Faces a grueling ${p.avgStars.toFixed(2)}/5.0 star schedule loaded with elite offenses.`); riskScore += 2; }
         else if (p.avgStars && p.avgStars <= 2.8) { cons.push(`<strong>Tough Overall Schedule:</strong> Faces a difficult ${p.avgStars.toFixed(2)}/5.0 star schedule.`); riskScore += 1; }
 
-        // 🚑 INJURY CHECKS (MUST BE BEFORE RISK BADGE EVALUATION)
+        // 🚑 TIMING-AWARE INJURY & SUSPENSION CHECKS
         if (p.injuryStatus || p._injuryNote) {
             let customNote = p._injuryNote ? ` (${p._injuryNote})` : '';
-            let dispStatus = p.injuryStatus || 'Active/Recovering';
+            let dispStatus = p.injuryStatus || 'Active';
+            let timing = p._injuryTiming || 'camp_recent';
             
-            if (['Out', 'IR', 'PUP'].includes(dispStatus)) {
-                cons.push(`<strong>Currently Injured (${dispStatus}):</strong> Expected to miss significant time${customNote}. Drafting him requires stash capacity and patience.`);
+            if (p._isSeasonIR || dispStatus === 'Out for Season') {
+                cons.push(`<strong>Out for Season (IR):</strong> Has suffered a season-ending injury${customNote} and holds zero fantasy value for the 2026 campaign.`);
+                riskScore += 4;
+            } else if (p._isSuspended || dispStatus === 'Suspended') {
+                cons.push(`<strong>Serving Suspension (${p._gamesSuspended || 4} Games):</strong> Out for the start of the season${customNote}. Requires bench capacity, but provides fresh legs and full health for the second half and fantasy playoffs.`);
+                riskScore += 2;
+            } else if (['Out', 'IR', 'PUP', 'Short-Term IR'].includes(dispStatus) || p._isPupList || p._isShortIR) {
+                cons.push(`<strong>Extended Absence (${dispStatus}):</strong> Expected to miss the opening month of the season${customNote}. Drafting him requires active stash management.`);
                 riskScore += 2;
             } else if (['Questionable', 'Doubtful'].includes(dispStatus)) {
                 if (p._isSoftTissueRisk) {
-                    cons.push(`<strong>Soft Tissue Risk:</strong> Dealing with an active ${dispStatus} designation${customNote}. Soft tissue injuries in August carry a notoriously high re-injury rate, significantly lowering his floor.`);
+                    cons.push(`<strong>Acute Soft Tissue Risk:</strong> Suffered a recent August setback${customNote}. Soft tissue strains right before Week 1 carry a high re-injury and mid-game exit rate.`);
                     riskScore += 2;
-                } else if (p._isSlowRampUp) {
-                    cons.push(`<strong>Slow Ramp-Up Risk:</strong> Dealing with a structural/surgical recovery${customNote}. Expect heavily managed snap counts early in the season.`);
+                } else if (timing === 'offseason_rehab') {
+                    cons.push(`<strong>Offseason Surgical Rehab:</strong> Managing an offseason procedure${customNote}. Had several months to rehab, but snap counts may be monitored early.`);
                     riskScore += 1;
+                } else if (p._isSlowRampUp) {
+                    cons.push(`<strong>Acute Structural Issue:</strong> Managing a recent August injury${customNote}. Expect limited workloads over the opening 1-2 weeks.`);
+                    riskScore += 2;
                 } else {
-                    cons.push(`<strong>Currently ${dispStatus}:</strong> Dealing with an active injury designation leading into the season${customNote}.`);
+                    cons.push(`<strong>Currently ${dispStatus}:</strong> Dealing with an active injury designation leading into Week 1${customNote}.`);
                     riskScore += 1;
                 }
+            } else if (p._isPriorYearRecovery) {
+                pros.push(`<strong>Successfully Rehabbed (${p._injuryNote || 'Major Injury'}):</strong> Sustained a major injury in late 2025, but completed a full 8+ month rehab and enters 2026 with an Active designation.`);
             } else if (p._injuryNote) {
-                cons.push(`<strong>Injury Recovery Context:</strong> Active, but recovering from an offseason issue${customNote}.`);
+                pros.push(`<strong>Clean Bill of Health:</strong> Overcame a prior setback${customNote} and enters Week 1 fully cleared.`);
             }
         }
 
