@@ -2564,14 +2564,25 @@ const UI = {
             let isSuperflexOpen = ['QB', 'RB', 'WR', 'TE'].includes(p.Pos) && (userTeam.counts['Superflex'] < (State.settings.roster.Superflex?.max || 0));
             let isAnyStartingSlotOpen = isPrimaryStarterOpen || isFlexRBWROpen || isFlexOpen || isSuperflexOpen;
 
+            // Evaluating Board Scarcity and Opportunity Cost instead of blind flat bonuses
             if (isPrimaryStarterOpen) {
-                let roundPanic = Math.max(0, currentRound - 4) * 1.2;
-                score += Math.min(4.0, 2.0 + roundPanic);
+                let positionalDropoff = scarcity[p.Pos] || 0;
+                let survival = p._survivalProb !== undefined ? p._survivalProb : 0.5;
+                
+                // If a positional tier is dropping off BEFORE our next pick, apply urgency
+                if (survival < 0.60 && positionalDropoff > 0) {
+                    score += Math.min(6.0, positionalDropoff * 1.5);
+                }
+
+                // Gentle nudge to fill starters in the early/mid rounds, scaling down so we don't blindly reach for QB/TE later
+                let roundNudge = Math.max(0, 4.0 - (currentRound * 0.4));
+                score += roundNudge;
             }
 
-            // 2. Lineup Value (+PPW)
+            // 2. Lineup Value (+PPW) -> Scaled dynamically (BPA matters more early, PPW matters more late)
             if (isAnyStartingSlotOpen && p._addedPPW && p._addedPPW >= 0.5) {
-                let ppwWeight = isPrimaryStarterOpen ? 0.90 : 0.75;
+                let roundWeight = Math.min(1.0, currentRound / 8); 
+                let ppwWeight = (isPrimaryStarterOpen ? 0.70 : 0.45) * roundWeight;
                 score += (p._addedPPW * ppwWeight);
             }
 
@@ -2760,7 +2771,8 @@ const UI = {
                 let bestStarterRank = draftedAtPos.length > 0 ? Math.min(...draftedAtPos.map(r => parseInt(r.posRank?.replace(/\D/g, '') || 99))) : 99;
 
                 if (['RB', 'WR'].includes(p.Pos)) {
-                    let decayBase = emptyStarterHoles > 0 ? 0.50 : 0.80; // Harsher penalty if starting holes exist
+                    // Less punishing for RB/WR bench spots. Opportunity cost is low, value is high.
+                    let decayBase = emptyStarterHoles > 0 ? 0.75 : 0.90; 
                     penalty = Math.pow(decayBase, overage + 1);
                 } else if (p.Pos === 'TE') {
                     if (overage === 0) penalty = bestStarterRank <= 5 ? 0.05 : (bestStarterRank <= 10 ? 0.25 : 0.60);
