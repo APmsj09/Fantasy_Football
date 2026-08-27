@@ -6,7 +6,7 @@ window.AutoDraft = {
         if (State.settings.draftMode === 'live') return;
 
         const teamId = State.draftOrder[State.currentPick];
-        const team = State.teamsById[teamId];F
+        const team = State.teamsById[teamId];
 
         if (team && team.isCPU) {
             this.isDrafting = true;
