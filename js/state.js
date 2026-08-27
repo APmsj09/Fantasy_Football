@@ -1439,26 +1439,42 @@ const State = {
         }
         if (activeWeeks === 0) activeWeeks = 17;
 
-        const baseWeeklyPts = player.ProjPts / activeWeeks;
+        // Fetch expected missed games to properly sequence zeros
+        let expectedMissed = 0;
+        if (player.Min_Missed_26 !== undefined && player.Max_Missed_26 !== undefined) {
+            expectedMissed = Math.round((Number(player.Min_Missed_26) + Number(player.Max_Missed_26)) / 2);
+        }
+
+        // Base points per active game (uses true Healthy PPG if available)
+        const baseWeeklyPts = player._healthyPpg ? player._healthyPpg : (player.ProjPts / Math.max(1, activeWeeks - expectedMissed));
+        let missedCount = 0;
 
         for (let w = 1; w <= 18; w++) {
             let weekRating = player.sosWeeks ? player.sosWeeks[`W${w}`] : 3.0;
 
             if (weekRating === 'BYE') {
                 player.weeklyProjections[`W${w}`] = 0;
-            } else {
-                let ratingVal = (typeof weekRating === 'number') ? weekRating : 3.0;
-                let starDiff = ratingVal - 3.0;
-                let multiplier = 1 + (starDiff * 0.08);
-
-                // 📈 Rookie Ramp-Up Factor (Weeks 1-6 = ~80%, Weeks 14-17 = ~125%)
-                let rookieGrowthFactor = 1.0;
-                if (player.isRookie) {
-                    rookieGrowthFactor = 0.75 + (0.50 * ((w - 1) / 17)); // Wk 1 = 75%, Wk 18 = 125%
-                }
-
-                player.weeklyProjections[`W${w}`] = Math.max(0, baseWeeklyPts * multiplier * rookieGrowthFactor);
+                continue;
             }
+
+            // If they are projected to miss games, zero out the early weeks
+            if (missedCount < expectedMissed) {
+                player.weeklyProjections[`W${w}`] = 0;
+                missedCount++;
+                continue;
+            }
+
+            let ratingVal = (typeof weekRating === 'number') ? weekRating : 3.0;
+            let starDiff = ratingVal - 3.0;
+            let multiplier = 1 + (starDiff * 0.08);
+
+            // 📈 Rookie Ramp-Up Factor (Weeks 1-6 = ~80%, Weeks 14-17 = ~125%)
+            let rookieGrowthFactor = 1.0;
+            if (player.isRookie) {
+                rookieGrowthFactor = 0.75 + (0.50 * ((w - 1) / 17)); // Wk 1 = 75%, Wk 18 = 125%
+            }
+
+            player.weeklyProjections[`W${w}`] = Math.max(0, baseWeeklyPts * multiplier * rookieGrowthFactor);
         }
     },
 
@@ -2124,25 +2140,29 @@ const State = {
             let maxPos = this.settings.roster[pos]?.max !== undefined ? this.settings.roster[pos].max : 1;
             let starters = numTeams * maxPos;
 
+            // Dynamically scale baselines based on User Roster Settings
+            let flexRBWR = this.settings.roster.FlexRBWR?.max || 0;
+            let flex = this.settings.roster.Flex?.max || 0;
+            let superFlex = this.settings.roster.Superflex?.max || 0;
+            let bench = this.settings.roster.Bench?.max || 6;
+
             if (maxPos === 0) {
                 starters = 0;
             } else if (pos === 'QB') {
-                const isSuperflex = (this.settings.roster.Superflex?.max || 0) > 0;
-                starters = isSuperflex ? Math.floor(numTeams * 2.5) : Math.floor(numTeams * 1.75);
-            } else if (pos === 'TE') {
-                const isTePrem = (this.scoring.tePremium || 0) > 0;
-                starters = isTePrem ? Math.floor(numTeams * 2.0) : Math.floor(numTeams * 1.75);
+                starters = Math.floor(numTeams * (maxPos + (superFlex > 0 ? 1.0 : 0) + (bench * 0.10)));
             } else if (pos === 'RB') {
-                // RBs drop off a cliff faster. The true replacement level is around RB48-RB54.
-                starters = Math.floor(numTeams * 4.25); 
+                starters = Math.floor(numTeams * (maxPos + (flexRBWR * 0.5) + (flex * 0.4) + (bench * 0.35)));
             } else if (pos === 'WR') {
-                // NFL offenses sustain 3+ WRs. The replacement level extends much deeper (~WR66).
-                starters = Math.floor(numTeams * 5.50); 
-            } else if (pos === 'PK') {
-                starters = Math.floor(numTeams * 1.1);
-            } else if (pos === 'DST') {
-                starters = Math.floor(numTeams * 1.25);
+                starters = Math.floor(numTeams * (maxPos + (flexRBWR * 0.5) + (flex * 0.5) + (bench * 0.40)));
+            } else if (pos === 'TE') {
+                starters = Math.floor(numTeams * (maxPos + (flex * 0.1) + (bench * 0.05)));
+                if (this.scoring.tePremium > 0) starters = Math.floor(starters * 1.2);
+            } else if (pos === 'PK' || pos === 'DST') {
+                starters = Math.floor(numTeams * maxPos); // No bench representation needed for kicker/defense baselines
             }
+            
+            // Ensure minimum 1 starter per team if maxPos > 0
+            starters = Math.max(starters, numTeams * maxPos);
 
             let sortedPos = [...this.allPlayers].filter(p => p.Pos === pos).sort((a, b) => b.ProjPts - a.ProjPts);
             let baselineIndex = Math.min(Math.max(starters - 1, 0), sortedPos.length - 1);
@@ -2206,11 +2226,12 @@ const State = {
                 }
             }
 
-            // Kicker and Defense VBD suppression
+            // Gentle VBD Compression: Defenses and Kickers are highly replaceable on waivers.
+            // Instead of nuking their value to negative infinity, we gently compress the scale.
             if (p.Pos === 'PK') {
-                rawVBD = (rawVBD * 0.05) - 30.0;
+                rawVBD = rawVBD * 0.35;
             } else if (p.Pos === 'DST') {
-                rawVBD = (rawVBD * 0.10) - 20.0;
+                rawVBD = rawVBD * 0.40;
             }
             p.VBD = rawVBD;
 
