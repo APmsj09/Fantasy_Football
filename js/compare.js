@@ -1,5 +1,6 @@
 window.Compare = {
     getTierDetails(player) {
+        if (!player) return { tierNum: 1, tierName: 'Tier 1', remaining: 1, isLastInTier: false };
         const tierNum = player.staticTier || 1;
         const tiers = State.getPositionalTiers(player.Pos);
         const availableInSameTier = State.availablePlayers.filter(p => p.Pos === player.Pos && (p.staticTier || 1) === tierNum);
@@ -27,7 +28,7 @@ window.Compare = {
 
         const topPick = recs[0];
         const alternatives = recs.slice(1, 8); // Evaluates up to 8 total targets
-        const userTeam = State.teamsById[State.userTeamId];
+        const userTeam = State.teamsById[State.userTeamId] || { counts: {}, roster: [] };
         const currentPickNum = State.currentPick + 1;
         
         let userFuturePicks = [];
@@ -54,8 +55,8 @@ window.Compare = {
                             </h3>
                         </div>
                         <div class="text-right">
-                            <span class="block text-lg font-black text-indigo-700">${(topPick.AdvVBD || topPick.VBD).toFixed(1)} <span class="text-xs text-indigo-400 font-semibold">Adv VBD</span></span>
-                            <span class="text-xs text-slate-500 font-medium">Proj: ${topPick.ProjPts.toFixed(1)} pts</span>
+                            <span class="block text-lg font-black text-indigo-700">${(topPick.AdvVBD || topPick.VBD || 0).toFixed(1)} <span class="text-xs text-indigo-400 font-semibold">Adv VBD</span></span>
+                            <span class="text-xs text-slate-500 font-medium">Proj: ${(topPick.ProjPts || 0).toFixed(1)} pts</span>
                         </div>
                     </div>
                     
@@ -87,16 +88,17 @@ window.Compare = {
     },
 
     generateMacroThoughtProcess(p, team, nextPick) {
+        team = team || State.teamsById[State.userTeamId] || { counts: {}, roster: [] };
         let narrative = `The engine recommends prioritizing <strong>${p.Player}</strong> here. `;
         const tierInfo = this.getTierDetails(p);
         let posRoster = State.settings.roster[p.Pos];
-        let isStarterNeeded = team.counts[p.Pos] < (posRoster ? posRoster.max : 1);
+        let isStarterNeeded = (team.counts[p.Pos] || 0) < (posRoster ? posRoster.max : 1);
         
         let reasons = [];
 
         // 1. Lineup Value (+PPW) & Critical Bye-Week Plug
         if (p._byeFillWeek) {
-            reasons.push(`he acts as a <strong>critical Week ${p._byeFillWeek} bye-week plug</strong>, insulating a major starting vacancy for an estimated <strong>+${p._byeFillPts.toFixed(1)} fill points</strong>`);
+            reasons.push(`he acts as a <strong>critical Week ${p._byeFillWeek} bye-week plug</strong>, insulating a major starting vacancy for an estimated <strong>+${(p._byeFillPts || 0).toFixed(1)} fill points</strong>`);
         } else if (isStarterNeeded) {
             reasons.push(`he fills an open starting ${p.Pos} slot, directly boosting your optimal weekly lineup by <strong>+${(p._addedPPW || 0).toFixed(2)} Points Per Week</strong>`);
         } else if (p._addedPPW && p._addedPPW >= 1.0) {
@@ -128,11 +130,13 @@ window.Compare = {
     },
 
     generateTopPickHighlights(p, team, nextPick) {
+        team = team || State.teamsById[State.userTeamId] || { counts: {}, roster: [] };
+        nextPick = nextPick || (State.currentPick + 1 + State.settings.numTeams);
         let highlights = [];
 
         // 1. Lineup Value (+PPW) & Bye-Week Coverage
         if (p._byeFillWeek) {
-            highlights.push(`<li><strong class="text-amber-700">🔄 Critical Bye-Week Plug:</strong> Insulates a severe roster hole in Week ${p._byeFillWeek} (+${p._byeFillPts.toFixed(1)} fill points).</li>`);
+            highlights.push(`<li><strong class="text-amber-700">🔄 Critical Bye-Week Plug:</strong> Insulates a severe roster hole in Week ${p._byeFillWeek} (+${(p._byeFillPts || 0).toFixed(1)} fill points).</li>`);
         } else if (p._addedPPW >= 1.0 || (p._addedPPW > 0 && !p._byeFillWeek)) {
             highlights.push(`<li><strong class="text-emerald-700">⚡ Starting Lineup Maximizer:</strong> Directly increases your starting roster's projected weekly optimal output by <strong>+${p._addedPPW.toFixed(2)} Points Per Week</strong>.</li>`);
         }
@@ -148,7 +152,7 @@ window.Compare = {
 
         // 3. Positional Need & Lineup Slotting
         let posRoster = State.settings.roster[p.Pos];
-        let isStarterNeeded = team.counts[p.Pos] < (posRoster ? posRoster.max : 1);
+        let isStarterNeeded = (team.counts[p.Pos] || 0) < (posRoster ? posRoster.max : 1);
         if (isStarterNeeded) {
             highlights.push(`<li><strong class="text-indigo-700">📋 Core Starter Requirement:</strong> Secures an essential open starter slot at <strong>${p.Pos}</strong> before viable talent drops into replacement tiers.</li>`);
         }
@@ -157,7 +161,7 @@ window.Compare = {
         if (p._stackPartner) {
             highlights.push(`<li><strong class="text-purple-700">⚡ Stacking Multiplier:</strong> Correlates directly with your roster's QB (${p._stackPartner}) for week-winning ceiling outcomes.</li>`);
         }
-        let userOwnsStarter = p.starterName && team.roster.some(r => r._cleanName === State.normalizeName(p.starterName));
+        let userOwnsStarter = p.starterName && (team.roster || []).some(r => r._cleanName === State.normalizeName(p.starterName));
         if (userOwnsStarter) {
             highlights.push(`<li><strong class="text-blue-700">🔒 Roster Security Handcuff:</strong> Protects your investment in ${p.starterName} by securing his direct handcuff.</li>`);
         } else if (p.isRBHandcuff) {
@@ -248,6 +252,9 @@ window.Compare = {
     },
 
     generateHeadToHead(topPick, alt, team, nextPick) {
+        const currentPickNum = State.currentPick + 1;
+        team = team || State.teamsById[State.userTeamId] || { counts: {}, roster: [] };
+        
         let topVBD = topPick.AdvVBD || topPick.VBD || 0;
         let altVBD = alt.AdvVBD || alt.VBD || 0;
         let vbdGap = topVBD - altVBD;
@@ -426,7 +433,7 @@ window.Compare = {
             topCase.push(`Enters the season with 100% health, whereas ${alt.Player} is returning from a major procedure and may see managed snap counts early on.`);
         }
         if (alt.byeWeek && alt.byeWeek !== 'N/A') {
-            let sameByeCount = team.roster.filter(r => String(r.byeWeek) === String(alt.byeWeek)).length;
+            let sameByeCount = (team.roster || []).filter(r => String(r.byeWeek) === String(alt.byeWeek)).length;
             if (sameByeCount >= 3) {
                 topCase.push(`Drafting him avoids creating a severe Week ${alt.byeWeek} bye-week hole (${sameByeCount} of your players are already off that week).`);
             }
@@ -459,7 +466,7 @@ window.Compare = {
         if (alt._stackPartner) {
             altCase.push(`<strong>Correlation Stacking:</strong> You want to complete the ${alt.Team} passing stack with ${alt._stackPartner}, exponentially raising your weekly ceiling.`);
         }
-        let userOwnsAltStarter = alt.starterName && team.roster.some(r => r._cleanName === State.normalizeName(alt.starterName));
+        let userOwnsAltStarter = alt.starterName && (team.roster || []).some(r => r._cleanName === State.normalizeName(alt.starterName));
         if (userOwnsAltStarter) {
             altCase.push(`<strong>Roster Insurance:</strong> He is the direct handcuff to your starter (${alt.starterName}), securing your backfield from injury risk.`);
         }
@@ -592,7 +599,7 @@ window.Compare = {
                             <span class="text-indigo-500">🛡️</span> The Case for ${topPick.Player.split(' ').slice(-1)[0]}
                         </h6>
                         <ul class="text-xs text-slate-600 space-y-2">
-                            ${topCase.slice(0, 3).map(c => `<li class="flex items-start"><span class="text-indigo-400 mr-2 font-black">•</span> <span class="leading-snug">${c}</span></li>`).join('')}
+                            ${topCase.slice(0, 4).map(c => `<li class="flex items-start"><span class="text-indigo-400 mr-2 font-black">•</span> <span class="leading-snug">${c}</span></li>`).join('')}
                         </ul>
                     </div>
                     
@@ -601,7 +608,7 @@ window.Compare = {
                             <span class="text-emerald-500">🔄</span> Why Pivot to ${alt.Player.split(' ').slice(-1)[0]}?
                         </h6>
                         <ul class="text-xs text-slate-600 space-y-2">
-                            ${altCase.slice(0, 3).map(c => `<li class="flex items-start"><span class="text-emerald-400 mr-2 font-black">•</span> <span class="leading-snug">${c}</span></li>`).join('')}
+                            ${altCase.slice(0, 4).map(c => `<li class="flex items-start"><span class="text-emerald-400 mr-2 font-black">•</span> <span class="leading-snug">${c}</span></li>`).join('')}
                         </ul>
                     </div>
                 </div>
