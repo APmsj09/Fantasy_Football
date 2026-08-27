@@ -4,15 +4,14 @@ window.Compare = {
         const tiers = State.getPositionalTiers(player.Pos);
         const availableInSameTier = State.availablePlayers.filter(p => p.Pos === player.Pos && (p.staticTier || 1) === tierNum);
 
-        // ✅ FIX 1: Removed stray 'a'
         const tierNames = {
             1: `Tier 1 (Elite ${player.Pos})`,
-            2: `Tier 2 (High-End ${player.Pos} Starter)`,
-            3: `Tier 3 (Solid ${player.Pos} Starter)`,
-            4: `Tier 4 (Low-End Starter / High Flex)`,
-            5: `Tier 5 (Premium Bench / Rotational)`,
-            6: `Tier 6 (Upside Flyers & Handcuffs)`,
-            7: `Tier 7 (Deep Stash & Depth)`
+            2: `Tier 2 (High-End ${player.Pos})`,
+            3: `Tier 3 (Solid ${player.Pos})`,
+            4: `Tier 4 (Low-End / High Flex)`,
+            5: `Tier 5 (Premium Bench)`,
+            6: `Tier 6 (Upside Flyers)`,
+            7: `Tier 7 (Deep Stash)`
         };
         let tierName = tierNames[tierNum] || `Tier ${tierNum} (${player.Pos} Depth)`;
 
@@ -27,9 +26,8 @@ window.Compare = {
         if (!recs || recs.length < 2) return;
 
         const topPick = recs[0];
-        const alternatives = recs.slice(1, 6); // Top 5 alternatives
+        const alternatives = recs.slice(1, 10);
         const userTeam = State.teamsById[State.userTeamId];
-
         const currentPickNum = State.currentPick + 1;
         
         let userFuturePicks = [];
@@ -40,781 +38,574 @@ window.Compare = {
         let nextWindowPicks = [];
         for (let i = 0; i < userFuturePicks.length; i++) {
             let pick = userFuturePicks[i];
-            if ((pick - currentPickNum) > 2) {
-                nextWindowPicks.push(pick);
-            }
+            if ((pick - currentPickNum) > 2) nextWindowPicks.push(pick);
         }
         let nextUserOverallPick = nextWindowPicks.length > 0 ? nextWindowPicks[0] : (currentPickNum + State.settings.numTeams);
+        
         let html = `
             <div class="space-y-6">
-                <div class="bg-gradient-to-br from-emerald-950 via-slate-900 to-slate-950 border border-emerald-500/40 p-5 rounded-2xl shadow-lg text-white">
-                    <div class="flex justify-between items-start mb-3 flex-wrap gap-2">
+                <!-- THE PRIMARY TARGET (Writeup Style) -->
+                <div class="bg-white border border-indigo-100 p-5 rounded-2xl shadow-sm">
+                    <div class="flex justify-between items-start mb-4 flex-wrap gap-2">
                         <div>
-                            <span class="text-[10px] uppercase tracking-widest font-extrabold text-emerald-400 mb-1 flex items-center gap-1.5">
-                                <span>🏆</span> THE TOP RECOMMENDATION
-                            </span>
-                            <h3 class="text-2xl font-black text-white tracking-tight">${topPick.Player} 
-                                <span class="text-sm font-semibold text-emerald-300">(${topPick.Pos} • ${topPick.Team})</span>
+                            <span class="text-xs font-extrabold text-indigo-500 mb-1 block tracking-wide uppercase">Primary Recommendation</span>
+                            <h3 class="text-2xl font-black text-slate-900 tracking-tight">${topPick.Player} 
+                                <span class="text-sm font-semibold text-slate-500">(${topPick.Pos} • ${topPick.Team})</span>
                             </h3>
                         </div>
-                        <div class="flex items-center gap-2">
-                            <span class="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-black px-3 py-1 rounded-xl text-sm">
-                                ${(topPick.AdvVBD || topPick.VBD).toFixed(1)} Adv VBD
-                            </span>
+                        <div class="text-right">
+                            <span class="block text-lg font-black text-indigo-700">${(topPick.AdvVBD || topPick.VBD).toFixed(1)} <span class="text-xs text-indigo-400 font-semibold">Adv VBD</span></span>
+                            <span class="text-xs text-slate-500 font-medium">Proj: ${topPick.ProjPts.toFixed(1)} pts</span>
                         </div>
                     </div>
                     
-                    <p class="text-xs text-slate-300 leading-relaxed mb-4">
-                        Draft Pro recommends <strong>${topPick.Player}</strong> after validating his baseline against advanced metrics, structural lineup additions, touch-quality ratios, and draft board scarcity.
-                    </p>
-                    
-                    <ul class="space-y-2 text-xs bg-slate-900/80 p-3.5 rounded-xl border border-slate-800 text-slate-200">
-                        ${this.generateTopPickHighlights(topPick, userTeam, nextUserOverallPick)}
-                    </ul>
+                    <div class="text-sm leading-relaxed text-slate-700 space-y-3">
+                        <p>${this.generateMacroThoughtProcess(topPick, userTeam, nextUserOverallPick)}</p>
+                        <p>${this.generateTopPickHighlights(topPick, userTeam, nextUserOverallPick)}</p>
+                    </div>
                 </div>
                 
-                <div class="flex items-center justify-between border-b border-gray-200 pb-2 pt-2">
-                    <h4 class="font-extrabold text-gray-700 uppercase tracking-wider text-xs">
-                        Head-to-Head Analytical Breakdown (Why Alternatives Ranked Lower)
-                    </h4>
-                    <span class="text-[10px] font-bold text-gray-400">Comparing Next ${alternatives.length} Options</span>
+                <div class="flex items-center gap-3">
+                    <div class="h-px bg-slate-200 flex-1"></div>
+                    <h4 class="font-bold text-slate-400 uppercase tracking-widest text-[10px]">Alternative Considerations</h4>
+                    <div class="h-px bg-slate-200 flex-1"></div>
                 </div>
         `;
 
-        alternatives.forEach((alt, index) => {
-            html += this.generateHeadToHead(topPick, alt, userTeam, nextUserOverallPick, index);
+        alternatives.forEach((alt) => {
+            html += this.generateHeadToHead(topPick, alt, userTeam, nextUserOverallPick);
         });
 
         html += `</div>`;
-
-        UI.showMessage(`🎯 Strategic Draft Decision Engine`, html);
+        UI.showMessage(`Strategic Draft Room Discussion`, html);
     },
 
-    generateTopPickHighlights(p, team, nextPick) {
-        let highlights = [];
-
-        // 1. Lineup Value (+PPW) & Bye-Week Coverage
-        if (p._addedPPW >= 1.0 || (p._addedPPW > 0 && !p._byeFillWeek)) {
-            highlights.push(`<li><strong class="text-emerald-400">⚡ Starting Lineup Maximizer:</strong> Directly increases your starting roster's projected weekly optimal output by <strong class="text-emerald-300">+${p._addedPPW.toFixed(2)} Points Per Week</strong>.</li>`);
-        } else if (p._byeFillWeek) {
-            highlights.push(`<li><strong class="text-amber-400">🔄 Critical Bye-Week Plug:</strong> Insulates a severe roster hole in Week ${p._byeFillWeek} (+${p._byeFillPts.toFixed(1)} fill points).</li>`);
-        }
-
-        // 2. Market Urgency & Survival Probability
-        if (p.adp) {
-            if (p._survivalProb !== undefined && p._survivalProb < 0.20) {
-                highlights.push(`<li><strong class="text-rose-400">🚨 High Draft Urgency:</strong> Has only a <strong class="text-rose-300">${Math.round(p._survivalProb * 100)}% chance</strong> to survive until your next pick (#${nextPick}). Draft him now or lose him.</li>`);
-            } else if (p.adp < State.currentPick + 6) {
-                highlights.push(`<li><strong class="text-rose-400">🚨 Immediate ADP Scarcity:</strong> Board momentum (ADP ${p.adp.toFixed(1)}) dictates he will not survive the turn.</li>`);
-            }
-        }
-
-        // 3. Positional Need & Lineup Slotting
+    generateMacroThoughtProcess(p, team, nextPick) {
+        let narrative = `The algorithm suggests prioritizing <strong>${p.Player}</strong> at this spot. `;
+        const tierInfo = this.getTierDetails(p);
         let posRoster = State.settings.roster[p.Pos];
         let isStarterNeeded = team.counts[p.Pos] < (posRoster ? posRoster.max : 1);
-        if (isStarterNeeded) {
-            highlights.push(`<li><strong class="text-indigo-400">📋 Core Starter Requirement:</strong> Secures an essential open starter slot at <strong class="text-indigo-300">${p.Pos}</strong> before viable talent drops into replacement tiers.</li>`);
+        
+        let reasons = [];
+
+        // 1. Lineup Value (+PPW) & Critical Bye-Week Plug
+        if (p._byeFillWeek) {
+            reasons.push(`he acts as a <strong>critical Week ${p._byeFillWeek} bye-week plug</strong>, insulating a major hole on your roster for a projected <strong>+${p._byeFillPts.toFixed(1)} fill points</strong>`);
+        } else if (isStarterNeeded) {
+            reasons.push(`he fills an open starting ${p.Pos} slot, directly boosting your optimal weekly lineup by <strong>+${(p._addedPPW || 0).toFixed(2)} Points Per Week</strong>`);
+        } else if (p._addedPPW && p._addedPPW >= 1.0) {
+            reasons.push(`he forces his way into your starting Flex rotation, adding a massive <strong>+${p._addedPPW.toFixed(2)} Points Per Week</strong> over your current starters`);
         }
 
-        // 4. Stacking & Handcuff Insurance / Lottery Tickets
-        if (p._stackPartner) {
-            highlights.push(`<li><strong class="text-purple-400">⚡ Stacking Multiplier:</strong> Correlates directly with your roster's QB (${p._stackPartner}) for week-winning ceiling outcomes.</li>`);
+        // 2. Positional Scarcity / Tiers
+        if (tierInfo.isLastInTier && tierInfo.tierNum <= 4) {
+            reasons.push(`he is the <strong>last remaining player in ${tierInfo.tierName}</strong>, preventing a steep positional cliff`);
+        } 
+
+        // 3. Market Urgency & Exact Survival Probability %
+        if (p.adp && p._survivalProb !== undefined && p._survivalProb < 0.25) {
+            let survPct = Math.round(p._survivalProb * 100);
+            reasons.push(`board momentum indicates he has only a <strong>${survPct}% chance of surviving</strong> until your next pick (#${nextPick})`);
+        } else if (p.adp && (State.currentPick + 1) - p.adp >= 10) {
+            reasons.push(`he is experiencing a notable draft-day slide past his ADP of ${p.adp.toFixed(0)}, offering huge surplus value`);
         }
 
-        let userOwnsStarter = p.starterName && team.roster.some(r => r._cleanName === State.normalizeName(p.starterName));
-        if (userOwnsStarter) {
-            highlights.push(`<li><strong class="text-blue-400">🔒 Roster Security Handcuff:</strong> Protects your investment in ${p.starterName} by securing his direct handcuff.</li>`);
-        } else if (p.isRBHandcuff) {
-            highlights.push(`<li><strong class="text-emerald-400">🚀 League-Winning Upside:</strong> An elite bench stash who would inherit a massive role if ${p.starterName} misses time.</li>`);
+        if (reasons.length === 0) {
+            narrative += `He offers the highest synthesized blend of safety, median projection, and advanced metrics available.`;
+        } else if (reasons.length === 1) {
+            narrative += `Structurally, ${reasons[0]}.`;
+        } else {
+            narrative += `Structurally, ${reasons[0]}, and importantly, ${reasons[1]}.`;
         }
 
-        // 5. Defensive (DST) Context
-        let overallPosRank = State.allPlayers.filter(x => x.Pos === p.Pos).findIndex(x => x._cleanName === p._cleanName) + 1;
-        if (p.Pos === 'DST') {
-            if (overallPosRank <= 6) {
-                highlights.push(`<li><strong class="text-indigo-400">🛡️ Elite Defense Advantage:</strong> Secures a top-tier defensive unit, avoiding the unpredictable weekly streaming carousel.</li>`);
-            } else {
-                highlights.push(`<li><strong class="text-slate-300">🛡️ Streamable Defense:</strong> A solid situational option if you missed the elite tier of DSTs.</li>`);
-            }
-        }
-
-        // 6. Volume / Ceiling, Flyers & Breakout Stashes
-        if (p._isFlyer && p.upsideScore) {
-            highlights.push(`<li><strong class="text-rose-400">💥 Elite Ceiling:</strong> Provides league-winning upside metrics (Upside Score: ${(p.upsideScore).toFixed(1)}).</li>`);
-        } else if (p.targetShare && p.targetShare >= 20.0) {
-            highlights.push(`<li><strong class="text-blue-400">🎯 Volume Security:</strong> Commands a massive ${p.targetShare}% of his team's targets, insulating him from negative game scripts.</li>`);
-        }
-
-        // 7. Off-Season Scheme Upgrades (Environmental Migration)
-        if (p.isTeamChanger && p._envDelta && p._envDelta >= 0.015) {
-            let note = ['WR', 'TE'].includes(p.Pos) ? "significantly higher QB on-target accuracy and pocket protection" : "a superior run-blocking offensive line (YBC/Att)";
-            highlights.push(`<li><strong class="text-emerald-400">🔄 Lucrative Offseason Scheme Upgrade:</strong> Move from ${p.pastTeam} to ${p.Team} lands him in ${note}, projecting an efficiency surge over past output.</li>`);
-        }
-
-        // 8. Expected Touchdown (xTD) Positive Regression
-        if (p._positiveTdRegression && p.xTD !== undefined && p.pastStats?.totalTd !== undefined) {
-            let diff = p.xTD - p.pastStats.totalTd;
-            highlights.push(`<li><strong class="text-emerald-400">📈 Positive Touchdown Regression:</strong> Scored ${p.pastStats.totalTd} TDs last year, but his underlying red-zone usage warranted <strong class="text-emerald-300">${p.xTD.toFixed(1)} Expected TDs (xTD)</strong>. Math projects ~+${Math.round(diff)} more scores with neutral variance.</li>`);
-        }
-
-        // 9. Comprehensive Running Back Archetype Highlights
-        if (p.Pos === 'RB') {
-            if (p._rbArchetype === 'Bellcow Alpha') {
-                highlights.push(`<li><strong class="text-emerald-400">👑 Three-Down Bellcow Alpha:</strong> Uncontested lead back commanding <strong class="text-emerald-300">${p.hvo || 65}+ High-Value Touches</strong> and complete three-down snap monopoly.</li>`);
-            } else if (p._rbArchetype === '1B Co-Starter') {
-                highlights.push(`<li><strong class="text-indigo-400">⚔️ Designed 1B Co-Starter:</strong> Commands guaranteed weekly standalone volume (<strong class="text-indigo-300">${p.stats?.rushAtt || 0} carries / ${p.stats?.targets || 0} tgts</strong>), providing an immediate Flex floor alongside contingent RB1 upside.</li>`);
-            } else if (p._rbArchetype === 'Handcuff+ Stash') {
-                highlights.push(`<li><strong class="text-purple-400">🔒 Premium Handcuff+:</strong> High-end bench stash with a weekly touch floor to insulate bye weeks, plus league-winning upside if ${p.starterName || 'the starter'} misses time.</li>`);
-            } else if (p._rbArchetype === 'High-Leverage Space Back') {
-                highlights.push(`<li><strong class="text-blue-400">🎯 High-Leverage Space Creator:</strong> Script-proof receiver out of the backfield (${p.targetShare || 13}% target share), providing an elite PPR floor.</li>`);
-            } else if (p._rbArchetype === 'Explosive Chunk Slasher') {
-                highlights.push(`<li><strong class="text-emerald-400">💥 Explosive Chunk Slasher:</strong> Generates independent chunk plays with elite <strong class="text-emerald-300">${p.yacAtt || '3.4'} Yards After Contact</strong> and high big-play burst.</li>`);
-            } else if (p._rbArchetype === '1A Early-Down Hammer') {
-                highlights.push(`<li><strong class="text-amber-400">🔨 Early-Down Power Hammer:</strong> Commands short-yardage and goal-line work, locking in double-digit touchdown equity.</li>`);
-            } else if (p._rbArchetype === 'Rookie Backfield Ascender') {
-                highlights.push(`<li><strong class="text-rose-400">🌱 Rookie Takeover Trajectory:</strong> Dynamic rookie entering an open backfield with an ascending touch trajectory to claim starting duties by midseason.</li>`);
-            } else if (p._rbArchetype === 'Contingent Lottery Ticket') {
-                highlights.push(`<li><strong class="text-purple-400">🎲 Elite Contingent Upside:</strong> Premier bench stash who inherits an immediate workhorse role if ${p.starterName || 'the starter'} misses time.</li>`);
-            }
-        }
-
-        // 10. Tiered WR & TE Archetype Highlights
-        if (p.Pos === 'WR') {
-            if (p._wrArchetype === 'Alpha Target Funnel') {
-                highlights.push(`<li><strong class="text-blue-400">👑 Dominant Alpha WR1:</strong> Commands a massive <strong class="text-blue-300">${p.targetShare}% target share</strong> (${p.wopr ? p.wopr.toFixed(2) + ' WOPR' : 'Alpha WOPR'}), immunizing him from defense bracket schemes.</li>`);
-            } else if (p._wrArchetype === 'High-Volume Slot Magnet') {
-                highlights.push(`<li><strong class="text-indigo-400">📡 High-Volume Slot Engine:</strong> Highly efficient chain-mover (${p.aDOT} aDOT, ${p.trueCatchRate?.toFixed(1)}% Catch Rate) guaranteeing a bulletproof PPR baseline.</li>`);
-            } else if (p._wrArchetype === 'Vertical Spike-Week Weapon') {
-                highlights.push(`<li><strong class="text-rose-400">🚀 Field-Tilting Deep Weapon:</strong> Generates slate-breaking splash plays with an elite <strong class="text-rose-300">${p.aDOT} aDOT</strong>.</li>`);
-            }
-        } else if (p.Pos === 'TE') {
-            if (p._teArchetype === 'Detached Alpha "Big Slot"') {
-                highlights.push(`<li><strong class="text-purple-400">🦄 Detached Alpha TE Weapon:</strong> Runs routes from wide/slot alignments as a primary team receiver, bypassing the TE streaming pack.</li>`);
-            } else if (p._teArchetype === 'Middle-of-Field Chain Mover') {
-                highlights.push(`<li><strong class="text-indigo-400">🛡️ Reliable MOF Chain-Mover:</strong> Secures dependable 3rd-down and intermediate red-zone priority in the passing tree.</li>`);
-            }
-        }
-
-        // 11. Tiered QB Rushing Floor & Escapability Highlights
-        if (p.Pos === 'QB') {
-            if (p._qbSituationScore && p._qbSituationScore > 0.05) {
-                highlights.push(`<li><strong class="text-indigo-400">⚔️ Elite Overall Situation:</strong> Supported by an incredibly strong offensive ecosystem (Grade, O-Line, Weapons) which elevates his floor significantly.</li>`);
-            }
-            
-            const rushYds = p.stats?.rushYds || 0;
-            if (p._qbArchetype === 'Konami Code Alpha' || rushYds >= 650) {
-                highlights.push(`<li><strong class="text-amber-400">🏃 Konami Code Alpha Floor:</strong> Projected for a massive <strong class="text-amber-300">${rushYds} rush yards</strong>, generating elite weekly baseline points that pocket passers cannot match.</li>`);
-            } else if (p._qbArchetype === 'Dynamic Dual-Threat' || rushYds >= 425) {
-                highlights.push(`<li><strong class="text-amber-400">🏃 Dynamic Dual-Threat:</strong> Projected for <strong class="text-amber-300">${rushYds} rushing yards</strong>, creating high-floor rushing insulation.</li>`);
-            } else if (p._qbArchetype === 'Mobile Pocket Scrambler' || rushYds >= 225) {
-                highlights.push(`<li><strong class="text-slate-300">🏃 Scramble Mobility:</strong> Provides functional rushing support (<strong class="text-slate-200">${rushYds} rush yds</strong>) to supplement his passing output.</li>`);
-            }
-
-            if (p.p2s && p.p2s <= 14.0) {
-                highlights.push(`<li><strong class="text-emerald-400">🛡️ Elite Pocket Escapability:</strong> Low ${p.p2s.toFixed(1)}% Pressure-to-Sack rate proves he actively converts collapsing pockets into positive plays.</li>`);
-            }
-        }
-
-        // 12. Ascending Workload Trajectory
-        if (p._isAscendingRole) {
-            highlights.push(`<li><strong class="text-emerald-400">📈 Expanding Featured Role:</strong> Projected for a +${p._growthPct}% surge in workload compared to last season, indicating a true breakout trajectory.</li>`);
-        }
-
-        // Fallback
-        if (highlights.length === 0) {
-            highlights.push(`<li><strong class="text-slate-300">📊 Best Available Value:</strong> Highest synthesized VBD projection remaining on the board.</li>`);
-        }
-
-        return highlights.join('');
+        return narrative;
     },
 
-    generateHeadToHead(topPick, alt, team, nextPick, index) {
-        let prosForAlt = [];
-        let consForAlt = [];
+    generateTopPickHighlights(p) {
+        let highlights = [];
 
-        const currentPickNum = State.currentPick + 1;
-        const currentRound = Math.floor(State.currentPick / State.settings.numTeams) + 1;
+        // Lineup Value / Bye-Week Plug Highlights
+        if (p._byeFillWeek) {
+            highlights.push(`<strong>Bye-Week Insulation:</strong> Bridges a critical roster vacancy in Week ${p._byeFillWeek} (+${p._byeFillPts.toFixed(1)} fill points).`);
+        } else if (p._addedPPW && p._addedPPW >= 1.0) {
+            highlights.push(`<strong>Starting Lineup Maximizer:</strong> Adds +${p._addedPPW.toFixed(2)} Points Per Week directly to your optimal starting score.`);
+        }
 
-        // -------------------------------------------------------------
-        // 1. RAW VALUE VS POSITIONAL NEED (WITH TIEBREAKER BANDS)
-        // -------------------------------------------------------------
+        // Draft Board Urgency
+        if (p._survivalProb !== undefined && p._survivalProb < 0.20 && nextPick) {
+            highlights.push(`<strong>High Draft Urgency:</strong> Only a ${Math.round(p._survivalProb * 100)}% chance to reach your next pick at #${nextPick}.`);
+        }
+
+        // Stacks & Handcuffs
+        if (p._stackPartner) highlights.push(`Drafting him completes a highly correlated passing stack with ${p._stackPartner}, raising your weekly ceiling significantly.`);
+        else if (p.starterName) highlights.push(`He acts as the direct handcuff to your starter (${p.starterName}), securing an impenetrable insurance policy for your backfield.`);
+
+        // Vacated Target/Carry Nuance
+        if (p._vacatedTgts && p._vacatedTgts >= 50) highlights.push(`He enters the season inheriting +${p._vacatedTgts} vacated targets from offseason departures.`);
+        else if (p._vacatedCarries && p._vacatedCarries >= 80) highlights.push(`With +${p._vacatedCarries} vacated carries in the backfield, he is positioned for a massive workload expansion.`);
+
+        // Volume Nuance
+        if (p.targetShare && p.targetShare >= 22.0) highlights.push(`He commands an elite ${p.targetShare}% target share, insulating his floor from negative game scripts.`);
+        else if (p.hvo && p.hvo >= 50) highlights.push(`His profile is built on ${p.hvo} High-Value Opportunities (red-zone touches and targets), which is the exact usage that prints elite fantasy seasons.`);
+
+        // Scheme / Environment Nuance
+        if (p.isTeamChanger && p._envDelta && p._envDelta > 0.02) highlights.push(`His offseason move to ${p.Team} places him in a vastly superior offensive environment.`);
+        else if (p.olTier === 'S' || p.olTier === 'A') highlights.push(`He operates behind a Tier ${p.olTier} Offensive Line, granting him premium blocking leverage.`);
+
+        // Regression / Upside Nuance
+        if (p._positiveTdRegression) highlights.push(`He is mathematically primed for positive touchdown regression based on his actual red-zone usage from last season.`);
+        else if (p._isAscendingRole) highlights.push(`We project a significant workload trajectory bump for him this year as he steps into a larger featured role.`);
+        
+        // QB/TE Specific
+        if (p.Pos === 'QB' && p.stats?.rushYds >= 350) highlights.push(`His dual-threat ability adds ${p.stats.rushYds} projected rushing yards to his passing baseline.`);
+        if (p.Pos === 'TE' && p.aDOT && p.aDOT >= 8.5) highlights.push(`His elite tight end depth-of-target (${p.aDOT} aDOT) generates WR-like upside.`);
+
+        // Multi-Year Proven Command
+        if (p._isProvenMultiYearAlpha) {
+            highlights.push(`He has demonstrated multi-year dominance, sustaining a 24%+ target share across consecutive campaigns rather than relying on a one-year projection spike.`);
+        } else if (p._isAscendingCareerArc) {
+            highlights.push(`His efficiency and per-game opportunity have climbed year-over-year, indicating he is entering the peak breakout window of his career.`);
+        }
+
+        // Deep Route & Pocket Time Synergy
+        if (p._deepRoutePocketSynergy) {
+            highlights.push(`His vertical route tree (${p.aDOT} aDOT) pairs perfectly with an offensive line affording over 2.5s of pocket protection, giving deep concepts time to develop.`);
+        }
+
+        // Hidden Injury PPG Edge
+        if (p._healthyPpg && p._healthyPpg >= ((p.ProjPts || 0) / 17) + 2.0) {
+            highlights.push(`While season totals reflect projected games missed, his underlying ${p._healthyPpg.toFixed(1)} Healthy PPG produces like an elite starter when active.`);
+        }
+
+        // Garbage-Time / Script-Proof PPR Insulation
+        if (p._garbageTimeInsulated) {
+            highlights.push(`His heavy underneath target role creates script-proof garbage time equity, insulating his weekly floor even when trailing.`);
+        }
+
+        if (highlights.length === 0) return `From a pure talent perspective, his underlying metrics support a highly stable baseline for the upcoming season.`;
+
+        return highlights.slice(0, 2).join(' ');
+    },
+
+    generateHeadToHead(topPick, alt, team, nextPick) {
         let topVBD = topPick.AdvVBD || topPick.VBD || 0;
         let altVBD = alt.AdvVBD || alt.VBD || 0;
-        let diff = altVBD - topVBD;
-
+        let vbdGap = topVBD - altVBD;
+        let isTossUp = vbdGap <= 3.5; 
+        
         const altPosLimit = (State.settings.roster[alt.Pos]?.max || 2);
-        const altPosCount = team.counts[alt.Pos] || 0;
-        const topPosCount = team.counts[topPick.Pos] || 0;
+        const topPosLimit = (State.settings.roster[topPick.Pos]?.max || 2);
+        const isAltStarterNeeded = (team.counts[alt.Pos] || 0) < altPosLimit;
+        const isTopStarterNeeded = (team.counts[topPick.Pos] || 0) < topPosLimit;
 
-        let isAltBlocked = altPosCount >= altPosLimit;
-        if (isAltBlocked) {
-            if (['RB', 'WR'].includes(alt.Pos) && team.counts['FlexRBWR'] < (State.settings.roster.FlexRBWR?.max || 0)) isAltBlocked = false;
-            else if (['RB', 'WR', 'TE'].includes(alt.Pos) && team.counts['Flex'] < (State.settings.roster.Flex?.max || 0)) isAltBlocked = false;
-            else if (['QB', 'RB', 'WR', 'TE'].includes(alt.Pos) && team.counts['Superflex'] < (State.settings.roster.Superflex?.max || 0)) isAltBlocked = false;
-        }
-
-        if (diff > 0) {
-            if (diff <= 6.0) {
-                prosForAlt.push(`<strong>Slight Value Edge:</strong> Projects marginally higher (+${diff.toFixed(1)} VBD) in a vacuum, but the difference is small enough that roster needs dictate the pick.`);
-            } else {
-                prosForAlt.push(`<strong>Higher Absolute Value:</strong> In a vacuum, ${alt.Player} has a mathematically higher value (+${diff.toFixed(1)} VBD) regardless of roster needs.`);
-            }
-
-            if (topPick.Pos !== alt.Pos) {
-                if (isAltBlocked) {
-                    consForAlt.push(`<strong>Roster Logjam:</strong> Your starting ${alt.Pos} and Flex slots are already filled. Taking ${topPick.Player} (${topPick.Pos}) addresses an unfilled starting spot rather than adding a bench player.`);
-                } else if (altPosCount > topPosCount && currentPickNum <= 48) {
-                    let remainingAlts = State.availablePlayers.filter(p => p.Pos === alt.Pos && (p.AdvVBD || p.VBD) >= 40).length;
-                    let remainingTops = State.availablePlayers.filter(p => p.Pos === topPick.Pos && (p.AdvVBD || p.VBD) >= 40).length;
-                    
-                    if (remainingAlts >= remainingTops + 3) {
-                        consForAlt.push(`<strong>Positional Scarcity:</strong> The ${alt.Pos} board has a deep plateau (${remainingAlts} quality options remaining), whereas ${topPick.Pos} faces an immediate cliff. Drafting ${topPick.Player} secures an elite ${topPick.Pos} before the tier evaporates.`);
-                    } else {
-                        consForAlt.push(`<strong>Positional Balance:</strong> Having already secured a ${alt.Pos} in earlier rounds, drafting ${topPick.Player} (${topPick.Pos}) builds a more balanced starting foundation.`);
-                    }
-                }
-            }
-        } else if (diff < 0) {
-            let absDiff = Math.abs(diff);
-            if (absDiff <= 6.0) {
-                consForAlt.push(`<strong>Slight Value Edge:</strong> ${topPick.Player} projects marginally higher (+${absDiff.toFixed(1)} VBD) in a vacuum. Combined with roster context, he is the safer mathematical pick.`);
-            } else {
-                consForAlt.push(`<strong>Significant Value Edge:</strong> ${topPick.Player} projects significantly higher (+${absDiff.toFixed(1)} VBD) in a vacuum. Passing on him sacrifices too much baseline value.`);
-            }
-        }
-
-        // -------------------------------------------------------------
-        // 2. DRAFT URGENCY & TRUE ADP VALUE COMPARISON
-        // -------------------------------------------------------------
-        if (alt.adp) {
-            if (currentPickNum - alt.adp >= 8) {
-                prosForAlt.push(`<strong>Extreme Market Value:</strong> The public let ${alt.Player} slide past his ADP (${alt.adp.toFixed(1)}). Capitalizing on this drop presents massive draft value at Pick ${currentPickNum}.`);
-            } else if (alt.adp > nextPick + 4) {
-                consForAlt.push(`<strong>Exploit Public ADP:</strong> The public values ${alt.Player} at pick ${alt.adp.toFixed(1)} (safely past your next pick at #${nextPick}), giving you a high chance of drafting him later.`);
-            }
-        }
-
-        // -------------------------------------------------------------
-        // 3. LINEUP OPTIMIZATION & OPPORTUNITY COST
-        // -------------------------------------------------------------
-        let topPPW = topPick._addedPPW || 0;
-        let altPPW = alt._addedPPW || 0;
-        if (altPPW > topPPW + 0.5) {
-            prosForAlt.push(`<strong>Higher Immediate Lineup Boost:</strong> Adds +${altPPW.toFixed(1)} PPW to your weekly optimal score (vs. +${topPPW.toFixed(1)} PPW for ${topPick.Player}).`);
-        } else if (topPPW > altPPW + 0.5) {
-            let impactLabel = (topPick.Pos === alt.Pos) ? "Slightly Lower Lineup Boost" : (isAltBlocked ? "Bench Warmer Risk" : "Lower Lineup Impact");
-            consForAlt.push(`<strong>${impactLabel}:</strong> Adds +${altPPW.toFixed(1)} PPW to your starters compared to +${topPPW.toFixed(1)} PPW for ${topPick.Player}.`);
-        }
-
-        // -------------------------------------------------------------
-        // 4. SAMPLE SIZE RELIABILITY & MULTI-LEVEL TRAIT CONTEXT
-        // -------------------------------------------------------------
-        const topGp = topPick.pastStats?.gp ?? 17;
-        const altGp = alt.pastStats?.gp ?? 17;
-
-        if (topGp >= 14 && altGp <= 7 && alt.pastPpg >= 14.0 && (alt.pastPpg > (topPick.pastPpg || 0) + 1.0)) {
-            let densityNote = alt._isSmallSampleAlpha ? "with undeniable alpha per-game usage density" : "though heavily skewed by limited sample variance";
-            prosForAlt.push(`<strong>Explosive Per-Game Ceiling:</strong> Outpaced ${topPick.Player} on a per-game basis (${alt.pastPpg.toFixed(1)} vs ${topPick.pastPpg.toFixed(1)} PPG) ${densityNote}.`);
-            consForAlt.push(`<strong>Proven Full-Season Reliability:</strong> ${topPick.Player} sustained high-end production over a full ${topGp}-game slate, carrying far less regression risk.`);
-        } else if (altGp >= 14 && topGp <= 7 && topPick.pastPpg >= 14.0) {
-            // ✅ FIX 2: Cleaned up closing braces
-            prosForAlt.push(`<strong>Full-Season Track Record:</strong> Bankable ${altGp}-game durability and volume baseline vs. ${topPick.Player}'s ${topGp}-game sample.`);
-            consForAlt.push(`<strong>Per-Game Dominance:</strong> ${topPick.Player} flashed league-winning per-game dominance (${topPick.pastPpg.toFixed(1)} PPG) when active.`);
-        }
-
-        if (alt._isIndependentYACCreator) {
-            prosForAlt.push(`<strong>Independent Tackle-Breaker:</strong> Creates high yards after contact independently without relying on elite blocking.`);
-        }
-        if (alt._isSystemDependentRB) {
-            consForAlt.push(`<strong>System-Dependent Rusher:</strong> 2025 efficiency was heavily propped up by massive blocking lanes rather than individual tackle-breaking.`);
-        }
-        if (alt._isFlukeTDScorer) {
-            consForAlt.push(`<strong>TD Fluke Warning:</strong> 2025 TD output lacked underlying red-zone opportunity volume, making high regression likely.`);
-        }
-
-        // -------------------------------------------------------------
-        // 4B. ADVANCED ENGINE FEATURES (HVO, xTD, SCHEME SHIFTS, WOPR)
-        // -------------------------------------------------------------
-        if (topPick.Pos === 'RB' && alt.Pos === 'RB') {
-            // ✅ FIX 3: Declared touch variables properly
-            const topTouches = (topPick.pastStats?.rushAtt || 0) + (topPick.pastStats?.rec || 0);
-            const altTouches = (alt.pastStats?.rushAtt || 0) + (alt.pastStats?.rec || 0);
-            const isTouchMismatch = Math.abs(topTouches - altTouches) >= 80;
-
-            // ✅ FIX 4: Deduped Archetype Clashes
-            if (topPick._rbArchetype && alt._rbArchetype && topPick._rbArchetype !== alt._rbArchetype) {
-                if (topPick._rbArchetype === 'Bellcow Alpha' && alt._rbArchetype !== 'Bellcow Alpha') {
-                    consForAlt.push(`<strong>Lacks Bellcow Monopoly:</strong> ${topPick.Player} holds an uncontested three-down bellcow role, whereas ${alt.Player} operates in a ${alt._rbArchetype} capacity.`);
-                } else if (topPick._rbArchetype === '1B Co-Starter' && alt._rbArchetype === 'Handcuff+ Stash') {
-                    consForAlt.push(`<strong>Lower Standalone Role:</strong> ${alt.Player} operates in a secondary spell role (${alt.ProjPts.toFixed(1)} proj pts), whereas ${topPick.Player} commands an intentional 1B standalone timeshare (${topPick.ProjPts.toFixed(1)} proj pts).`);
-                } else if (alt._rbArchetype === '1B Co-Starter' && topPick._rbArchetype === 'Contingent Lottery Ticket') {
-                    prosForAlt.push(`<strong>Proven Standalone Flex:</strong> Unlike ${topPick.Player} who is unstartable without an injury, ${alt.Player} can be plugged directly into weekly Flex lineups.`);
-                } else if (alt._rbArchetype === 'High-Leverage Space Back' && topPick._rbArchetype === '1A Early-Down Hammer' && State.scoring.ppr >= 0.5) {
-                    prosForAlt.push(`<strong>PPR Scoring Advantage:</strong> High-leverage pass-catching role (${alt.targetShare || 13}% target share) scales far better with PPR rules than ${topPick.Player}'s early-down grinding.`);
-                } else if (alt._rbArchetype === 'Explosive Chunk Slasher' && topPick._rbArchetype === '1A Early-Down Hammer') {
-                    prosForAlt.push(`<strong>Superior Tackle-Breaking Elusiveness:</strong> Creates independent yardage (<strong>${alt.yacAtt || '3.4'} YAC/Att</strong>) without relying entirely on offensive line blocking.`);
-                }
-            }
-
-            // Vacated Opportunity & Role Consolidation
-            if (alt._inheritsGoalLineWork && !topPick._inheritsGoalLineWork) {
-                let depStr = alt._departedBackfieldNames?.length > 0 ? ` (${alt._departedBackfieldNames.join(', ')})` : '';
-                prosForAlt.push(`<strong>Vacated Goal-Line Work:</strong> Enters 2026 with <strong>+${alt._vacatedRzAtt} vacated Red-Zone carries</strong> opening up from departed personnel${depStr}. His touchdown expectation rises significantly.`);
-            } else if (topPick._inheritsGoalLineWork && !alt._inheritsGoalLineWork) {
-                let depStr = topPick._departedBackfieldNames?.length > 0 ? ` (${topPick._departedBackfieldNames.join(', ')})` : '';
-                consForAlt.push(`<strong>Backfield Consolidation Advantage:</strong> ${topPick.Player} inherits <strong>+${topPick._vacatedRzAtt} vacated Red-Zone carries</strong>${depStr}, locking in an elite touchdown ceiling that ${alt.Player} lacks.`);
-            }
-
-            // Backup Threat Assessment
-            if (alt._backupThreatLevel === 'Low Standalone Threat' && topPick._backupThreatLevel === 'Goal-Line Vulture Threat') {
-                prosForAlt.push(`<strong>Clean Backfield Monopoly:</strong> His backup (${alt._backupName || 'depth'}) poses minimal standalone threat, whereas ${topPick.Player} faces goal-line competition from ${topPick._backupName}.`);
-            } else if (topPick._backupThreatLevel === 'Low Standalone Threat' && alt._backupThreatLevel === 'Goal-Line Vulture Threat') {
-                consForAlt.push(`<strong>Goal-Line Vulture Risk:</strong> ${alt.Player} faces short-yardage touchdown competition from ${alt._backupName}, whereas ${topPick.Player} has full three-down control.`);
-            }
-
-            // High-Value Opportunities (HVO) Comparison
-            if (topPick.hvo && alt.hvo && !isTouchMismatch) {
-                if (topPick.hvo >= alt.hvo + 14) {
-                    consForAlt.push(`<strong>Inferior High-Leverage Touches:</strong> ${topPick.Player} commands significantly more High-Value Opportunities (<strong>${topPick.hvo} vs ${alt.hvo} HVO</strong>).`);
-                } else if (alt.hvo >= topPick.hvo + 14) {
-                    prosForAlt.push(`<strong>Superior High-Leverage Touches:</strong> Commands more High-Value Opportunities (<strong>${alt.hvo} vs ${topPick.hvo} HVO</strong>).`);
-                }
-            }
-
-            // PPR Role Clashes
-            if (State.scoring.ppr >= 0.5) {
-                if (topPick._isSatelliteBack && alt._isGoalLineHammer) {
-                    consForAlt.push(`<strong>PPR Scoring Deficit:</strong> ${alt.Player} is a goal-line hammer with virtually zero pass-catching floor. In this PPR format, ${topPick.Player}'s target volume establishes a far safer weekly baseline.`);
-                } else if (alt._isSatelliteBack && topPick._isGoalLineHammer) {
-                    prosForAlt.push(`<strong>PPR Scoring Advantage:</strong> High pass-catching utilization out of the backfield scales perfectly with this league's PPR scoring rules.`);
-                }
-            }
-
-            // Explosive Run Rate
-            if (topPick.err && alt.err) {
-                if (topPick.err >= alt.err + 1.0) {
-                    consForAlt.push(`<strong>Lower Explosive Burst:</strong> Posts a ${alt.err.toFixed(1)}% Explosive Run Rate compared to ${topPick.Player}'s slate-breaking <strong>${topPick.err.toFixed(1)}% ERR</strong>.`);
-                } else if (alt.err >= topPick.err + 1.0) {
-                    prosForAlt.push(`<strong>Higher Explosive Run Rate:</strong> Generates chunk runs at a superior rate (<strong>${alt.err.toFixed(1)}% vs ${topPick.err.toFixed(1)}% ERR</strong>).`);
-                }
-            }
-
-            // Big Plays Comparison
-            let topBig = topPick.pastStats?.bigPlays || 0;
-            let altBig = alt.pastStats?.bigPlays || 0;
-            if (!isTouchMismatch) {
-                if (altBig >= topBig + 2) {
-                    prosForAlt.push(`<strong>More Big-Play Strikes:</strong> Logged <strong>${altBig} explosive plays (20+ yds)</strong> last season vs. ${topPick.Player}'s ${topBig}.`);
-                } else if (topBig >= altBig + 2) {
-                    consForAlt.push(`<strong>Fewer Explosive Plays:</strong> Logged ${altBig} big plays (20+ yds) vs. ${topPick.Player}'s <strong>${topBig}</strong>.`);
-                }
-            }
-
-            // Suppress Backup Bust Rate Penalty if Ascending
-            let altPastTouches = (alt.pastStats?.rushAtt || 0) + (alt.pastStats?.rec || 0);
-            let altHasSignificantPastVolume = alt.Pos === 'RB' && altPastTouches >= 100;
-            let altIsExpansionRB = (alt._isAscendingRole || alt.isNewRole || (alt._vacatedCarries >= 60) || alt._inheritsGoalLineWork) && !altHasSignificantPastVolume;
-            
-            if (alt.boomBust && topPick.boomBust && !altIsExpansionRB) {
-                if (alt.boomBust.bust > topPick.boomBust.bust + 8) {
-                    consForAlt.push(`<strong>Volatile Bust Risk:</strong> Busted in <strong>${alt.boomBust.bust}%</strong> of games last year compared to ${topPick.Player}'s clean <strong>${topPick.boomBust.bust}%</strong> bust rate.`);
-                }
-            }
-
-            // O-Line Blocking Edge
-            let topTeam = State.normalizeTeam(topPick.Team);
-            let altTeam = State.normalizeTeam(alt.Team);
-            let topRushEnv = State.teamAdvRush ? State.teamAdvRush[topTeam] : null;
-            let altRushEnv = State.teamAdvRush ? State.teamAdvRush[altTeam] : null;
-
-            if (topRushEnv && altRushEnv) {
-                let topYbc = topRushEnv.ybcAtt || 0;
-                let altYbc = altRushEnv.ybcAtt || 0;
-                if (altYbc >= topYbc + 0.25) {
-                    prosForAlt.push(`<strong>Superior Blocking Environment:</strong> Runs behind an offensive line creating <strong>${altYbc.toFixed(1)} Yards Before Contact/Att</strong> vs. ${topPick.Player}'s ${topYbc.toFixed(1)} YBC.`);
-                } else if (topYbc >= altYbc + 0.25) {
-                    consForAlt.push(`<strong>Worse Blocking Environment:</strong> Offense generates only ${altYbc.toFixed(1)} YBC/Att vs. ${topPick.Player}'s <strong>${topYbc.toFixed(1)} YBC</strong>.`);
-                }
-            }
-
-            // Schedule Strength Edge
-            if (alt.avgStars && topPick.avgStars) {
-                if (alt.avgStars >= topPick.avgStars + 0.25) {
-                    prosForAlt.push(`<strong>Softer Schedule:</strong> Enjoys a more favorable matchup schedule (⭐<strong>${alt.avgStars.toFixed(2)}</strong> vs. ⭐${topPick.avgStars.toFixed(2)}).`);
-                } else if (topPick.avgStars >= alt.avgStars + 0.25) {
-                    consForAlt.push(`<strong>Tougher Matchup Schedule:</strong> Faces a more difficult SOS (⭐${alt.avgStars.toFixed(2)} vs. ⭐<strong>${topPick.avgStars.toFixed(2)}</strong>).`);
-                }
-            }
-
-            // Ascending Workload Trajectory
-            if (alt._isAscendingRole && !topPick._isAscendingRole) {
-                prosForAlt.push(`<strong>Expanding Featured Role:</strong> Enters 2026 with an ascending workload trajectory (+${alt._growthPct}% touches/g) due to vacated backfield touches.`);
-            }
-        }
-
-        // -------------------------------------------------------------
-        // Wide Receiver / Tight End Air Share, Vacated Targets & Tree Dynamics
-        // -------------------------------------------------------------
-        if (['WR', 'TE'].includes(topPick.Pos) && ['WR', 'TE'].includes(alt.Pos)) {
-            const formatVacatedNote = (player, depList) => {
-                if (player._vacatedRoleType === 'Intermediate MOF & Red-Zone Funnel' || player._inheritsRzFunnel) {
-                    return `inheriting high-leverage <strong>Middle-of-the-Field targets and +${player._vacatedRzTgts || 0} Red-Zone looks</strong>${depList}, expanding his weekly touchdown equity`;
-                } else if (player._vacatedRoleType === 'Detached Hybrid Deep Seam') {
-                    return `inheriting <strong>+${player._vacatedAirYards} deep seam air yards</strong> in a hybrid detached receiver role${depList}`;
-                } else if (player._vacatedRoleType === 'High-Volume Slot Outlet' || player._vacatedRoleType === 'Short-Yardage Safety Valve') {
-                    return `inheriting <strong>+${player._vacatedTgts} underneath targets</strong>${depList} with heavy PPR chain-moving volume`;
-                } else {
-                    return `inheriting <strong>+${player._vacatedAirYards} deep air yards</strong> and <strong>+${player._vacatedTgts} vacated targets</strong>${depList}, securing an alpha downfield role`;
-                }
-            };
-
-            let altHasVacated = alt._inheritsAlphaAirShare || alt._inheritsRzFunnel || alt._inheritsIntermediateVolume || alt._inheritsUnderneathShare;
-            let topHasVacated = topPick._inheritsAlphaAirShare || topPick._inheritsRzFunnel || topPick._inheritsIntermediateVolume || topPick._inheritsUnderneathShare;
-
-            if (altHasVacated && !topHasVacated) {
-                let depList = alt._departedReceiverNames?.length > 0 ? ` (${alt._departedReceiverNames.join(', ')})` : '';
-                prosForAlt.push(`<strong>Vacated Opportunity Surge:</strong> Enters 2026 ${formatVacatedNote(alt, depList)}.`);
-            } else if (topHasVacated && !altHasVacated) {
-                let depList = topPick._departedReceiverNames?.length > 0 ? ` (${topPick._departedReceiverNames.join(', ')})` : '';
-                consForAlt.push(`<strong>Role Consolidation Advantage:</strong> ${topPick.Player} enters 2026 ${formatVacatedNote(topPick, depList)}, locking in a level of opportunity command that ${alt.Player} lacks.`);
-            }
-
-            // Passing Tree Concentration Clashes
-            if (alt._passingTreeType === 'Concentrated 2-Man Funnel' && topPick._passingTreeType === 'Crowded Committee Spread') {
-                prosForAlt.push(`<strong>Concentrated Passing Tree:</strong> Plays in a 2-man target funnel (${alt.Team}), giving him a script-proof floor vs. ${topPick.Player}'s crowded receiver room.`);
-            } else if (topPick._passingTreeType === 'Concentrated 2-Man Funnel' && alt._passingTreeType === 'Crowded Committee Spread') {
-                consForAlt.push(`<strong>Crowded Target Hierarchy:</strong> ${alt.Player} must compete with 3+ viable pass-catchers in ${alt.Team}, whereas ${topPick.Player} commands a concentrated 2-man passing tree.`);
-            }
-
-            // WOPR & Target Share
-            if (topPick.wopr && alt.wopr) {
-                if (topPick.wopr >= alt.wopr + 0.10) {
-                    consForAlt.push(`<strong>Lower Opportunity Command:</strong> Commands a <strong>${alt.wopr.toFixed(2)} WOPR</strong> vs ${topPick.Player}'s alpha <strong>${topPick.wopr.toFixed(2)} WOPR</strong>.`);
-                } else if (alt.wopr >= topPick.wopr + 0.10) {
-                    prosForAlt.push(`<strong>Higher Opportunity Command:</strong> Commands a superior Weighted Opportunity Rating (<strong>${alt.wopr.toFixed(2)} vs ${topPick.wopr.toFixed(2)} WOPR</strong>).`);
-                }
-            }
-
-            if (topPick.targetShare && alt.targetShare) {
-                if (topPick.targetShare >= alt.targetShare + 4.0) {
-                    consForAlt.push(`<strong>Lower Target Command:</strong> Commands ${alt.targetShare}% target share vs. ${topPick.Player}'s dominant <strong>${topPick.targetShare}%</strong>.`);
-                } else if (alt.targetShare >= topPick.targetShare + 4.0) {
-                    prosForAlt.push(`<strong>Higher Target Share:</strong> Commands a higher percentage of team pass attempts (<strong>${alt.targetShare}% vs ${topPick.targetShare}%</strong>).`);
-                }
-            }
-
-            if (topPick.ypt && alt.ypt) {
-                if (topPick.ypt >= 9.0 && alt.ypt <= 7.0) {
-                    consForAlt.push(`<strong>Inefficient Target Profile:</strong> Generates only <strong>${alt.ypt.toFixed(1)} Yards Per Target</strong> vs ${topPick.Player}'s hyper-efficient <strong>${topPick.ypt.toFixed(1)} YPT</strong>.`);
-                } else if (alt.ypt >= 9.0 && topPick.ypt <= 7.0) {
-                    prosForAlt.push(`<strong>Superior Target Efficiency:</strong> Generates <strong>${alt.ypt.toFixed(1)} YPT</strong> vs ${topPick.Player}'s ${topPick.ypt.toFixed(1)} YPT.`);
-                }
-            }
-
-            if (alt._isEmptyCalories) {
-                consForAlt.push(`<strong>'Empty Calories' Warning:</strong> Volume is undermined by dismal per-target efficiency, creating a safe floor with virtually no weekly ceiling.`);
-            }
-            if (alt._isCardioKing) {
-                consForAlt.push(`<strong>'Cardio King' Profile:</strong> High snap share is deceptive; runs decoy routes and blocks rather than earning targeted opportunities.`);
-            }
-        }
-
-        // -------------------------------------------------------------
-        // CROSS-POSITIONAL ADVANCED TRAIT CLASHES (RB vs WR, RB vs TE)
-        // -------------------------------------------------------------
-        if (topPick.Pos === 'RB' && ['WR', 'TE'].includes(alt.Pos)) {
-            if (alt.targetShare && alt.targetShare >= 23.0) {
-                prosForAlt.push(`<strong>Script-Proof Target Priority:</strong> Commands a massive <strong>${alt.targetShare}% target share</strong>, establishing a bulletproof PPR floor that cannot be neutralized by negative game scripts.`);
-            } else if (alt.wopr && alt.wopr >= 0.58) {
-                prosForAlt.push(`<strong>Elite Downfield Opportunity (WOPR):</strong> Commands a dominant <strong>${alt.wopr.toFixed(2)} WOPR</strong> with massive air yards share, giving him multi-touchdown spike week upside.`);
-            }
-
-            if (alt.tps && alt.tps >= 0.21) {
-                prosForAlt.push(`<strong>Elite Route Separation:</strong> Demands targets on <strong>${(alt.tps * 100).toFixed(1)}% of routes run</strong> (TPS), proving elite individual separation skills.`);
-            }
-
-            if (alt._passingTreeType === 'Concentrated 2-Man Funnel') {
-                prosForAlt.push(`<strong>Concentrated Passing Funnel:</strong> Operates in a 2-man target funnel in ${alt.Team}, locking in reliable high-volume weekly pass attempts.`);
-            }
-            if (alt._inheritsAlphaAirShare) {
-                let depList = alt._departedReceiverNames?.length > 0 ? ` (${alt._departedReceiverNames.join(', ')})` : '';
-                prosForAlt.push(`<strong>Inherited Alpha Air Yards:</strong> Inherits <strong>+${alt._vacatedAirYards} deep air yards</strong>${depList}, raising his ceiling.`);
-            }
-
-            if (alt.trueCatchRate && alt.trueCatchRate >= 88.0) {
-                prosForAlt.push(`<strong>Reliable Hands & Quality Targets:</strong> Converted <strong>${alt.trueCatchRate.toFixed(1)}% of catchable passes</strong> into receptions.`);
-            }
-
-            if (alt.avgStars && topPick.avgStars && alt.avgStars >= topPick.avgStars + 0.20) {
-                prosForAlt.push(`<strong>Softer Matchup Schedule:</strong> Faces a more favorable matchup slate (⭐<strong>${alt.avgStars.toFixed(2)}</strong> vs. ⭐${topPick.avgStars.toFixed(2)}).`);
-            }
-
-            let topTouches = (topPick.pastStats?.rushAtt || 0) + (topPick.pastStats?.rec || 0);
-            if (topTouches >= 300) {
-                prosForAlt.push(`<strong>Workload Durability Advantage:</strong> Avoids the severe injury and efficiency cliff that running backs historically face following a 300+ touch season (${topPick.Player} had ${topTouches} touches).`);
-            }
-
-            let altBig = alt.pastStats?.bigPlays || 0;
-            let topBig = topPick.pastStats?.bigPlays || 0;
-            if (altBig >= topBig + 2) {
-                prosForAlt.push(`<strong>Explosive Playmaking:</strong> Generated <strong>${altBig} big plays (20+ yds)</strong> vs. ${topPick.Player}'s ${topBig}.`);
-            }
-
-            if (topPick.hvo && topPick.hvo >= 70) {
-                consForAlt.push(`<strong>Positional Bellcow Scarcity:</strong> True three-down workhorse running backs commanding ${topPick.hvo} High-Value Opportunities are far more scarce than high-volume wide receivers.`);
-            }
-            if (topPick.isRBStarter && topPick.handcuffName) {
-                if (topPick._backupThreatLevel === '1B Committee Threat' || topPick._backupThreatLevel === 'Passing Down Threat') {
-                    consForAlt.push(`<strong>Designated Starter:</strong> ${topPick.Player} holds the primary starting role over ${topPick.handcuffName}, securing the high-leverage early-down volume.`);
-                } else {
-                    consForAlt.push(`<strong>Uncontested Backfield Role:</strong> ${topPick.Player} commands uncontested goal-line and rushing volume in ${topPick.Team}, giving him unmatched weekly touchdown equity.`);
-                }
-            }
-        } else if (['WR', 'TE'].includes(topPick.Pos) && alt.Pos === 'RB') {
-            if (alt.hvo && alt.hvo >= 65) {
-                prosForAlt.push(`<strong>High-Value Touch Scarcity:</strong> Commands <strong>${alt.hvo} High-Value Opportunities</strong> (Targets + RZ carries) in an elite bellcow backfield role.`);
-            }
-            if (alt.isRBStarter && alt.handcuffName) {
-                if (alt._backupThreatLevel === '1B Committee Threat' || alt._backupThreatLevel === 'Passing Down Threat') {
-                    prosForAlt.push(`<strong>Designated Starter:</strong> Holds the primary starting role over ${alt.handcuffName}, securing the high-leverage early-down volume.`);
-                } else {
-                    prosForAlt.push(`<strong>Uncontested Goal-Line Lead:</strong> Monopolizes high-leverage rushing and goal-line work with designated handcuff protection.`);
-                }
-            }
-            if (topPick.targetShare && topPick.targetShare >= 24.0) {
-                consForAlt.push(`<strong>Alpha WR Opportunity Cost:</strong> Passing on ${topPick.Player} sacrifices an elite ${topPick.targetShare}% target share in a position where elite volume is foundational.`);
-            }
-        }
-
-        // Quarterback Dual-Threat, Weapon Room & Escapability Clashes
-        if (topPick.Pos === 'QB' && alt.Pos === 'QB') {
-            if (alt._eliteWeaponCount && topPick._eliteWeaponCount) {
-                if (alt._eliteWeaponCount > topPick._eliteWeaponCount) {
-                    prosForAlt.push(`<strong>Superior Weapon Ecosystem:</strong> Surrounded by ${alt._eliteWeaponCount} elite pass-catchers (${alt._avgWeaponCatchRate}% team catch rate) vs. ${topPick.Player}'s ${topPick._eliteWeaponCount}.`);
-                } else if (topPick._eliteWeaponCount > alt._eliteWeaponCount) {
-                    consForAlt.push(`<strong>Weaker Pass-Catcher Arsenal:</strong> Operates with fewer elite separators (${alt._avgWeaponCatchRate}% team catch rate) compared to ${topPick.Player}'s supporting cast.`);
-                }
-            }
-
-            let topRush = topPick.stats?.rushYds || 0;
-            let altRush = alt.stats?.rushYds || 0;
-            let rushDiff = altRush - topRush;
-
-            if (rushDiff >= 200) {
-                prosForAlt.push(`<strong>Superior Dual-Threat Floor:</strong> Commands a true ${alt._qbArchetype || 'rushing'} profile (<strong>${Math.round(altRush)} vs ${Math.round(topRush)} rush yds</strong>), creating a script-independent weekly floor.`);
-            } else if (rushDiff <= -200) {
-                consForAlt.push(`<strong>Lacks Dual-Threat Floor:</strong> Projected for only ${Math.round(altRush)} rushing yards vs ${topPick.Player}'s <strong>${Math.round(topRush)} rushing yards</strong>.`);
-            }
-
-            if (alt._hasGoalLineRushingEquity && !topPick._hasGoalLineRushingEquity) {
-                prosForAlt.push(`<strong>Goal-Line Rushing Equity:</strong> Directs designed goal-line sneaks/keeper plays, providing immense rushing touchdown upside.`);
-            }
-
-            if (alt.p2s && topPick.p2s) {
-                if (alt.p2s >= topPick.p2s + 8.0) {
-                    let sackContext = (alt._qbArchetype === 'Pure Pocket Passer')
-                        ? "Lacks scrambling ability to offset a disastrous"
-                        : "Extending broken plays leads to an elevated";
-                    consForAlt.push(`<strong>Takes Drive-Killing Sacks:</strong> ${sackContext} <strong>${alt.p2s.toFixed(1)}% Pressure-to-Sack rate</strong>.`);
-                } else if (topPick.p2s >= alt.p2s + 8.0) {
-                    prosForAlt.push(`<strong>Superior Pocket Escapability:</strong> Lower Pressure-to-Sack rate (<strong>${alt.p2s.toFixed(1)}% vs ${topPick.p2s.toFixed(1)}%</strong>) avoids negative plays.`);
-                }
-            }
-        }
-
-        // Environmental Scheme Upgrades
-        if (topPick.isTeamChanger || alt.isTeamChanger) {
-            if (topPick._envDelta && topPick._envDelta >= 0.02 && (!alt._envDelta || alt._envDelta < topPick._envDelta)) {
-                consForAlt.push(`<strong>Hidden Environmental Upgrade:</strong> ${topPick.Player} moved to a significantly improved blocking and accuracy ecosystem; ${alt.Player} lacks this efficiency catalyst.`);
-            } else if (alt._envDelta && alt._envDelta >= 0.02 && (!topPick._envDelta || topPick._envDelta < alt._envDelta)) {
-                prosForAlt.push(`<strong>Scheme Upgrade Catalyst:</strong> Offseason team change lands ${alt.Player} in a superior offensive environment, creating breakout efficiency potential.`);
-            }
-        }
-
-        // Expected Touchdown (xTD) Regression
-        if (topPick._positiveTdRegression && alt._isFlukeTDScorer) {
-            consForAlt.push(`<strong>Severe TD Regression Divergence:</strong> ${topPick.Player} mathematically under-performed his expected touchdowns last year and is primed for positive rebound, while ${alt.Player}'s touchdown rate is unsustainable.`);
-        } else if (alt._positiveTdRegression && topPick._isFlukeTDScorer) {
-            prosForAlt.push(`<strong>Positive TD Progression:</strong> Statistically primed to score more touchdowns this season based on his high-leverage red-zone usage.`);
-        }
-
-        // -------------------------------------------------------------
-        // 5. METRIC-BASED HANDCUFF & ROSTER PROTECTION DYNAMICS
-        // -------------------------------------------------------------
-        let userOwnsAltStarter = alt.starterName && team.roster.some(r => r._cleanName === State.normalizeName(alt.starterName));
-        let userOwnsTopStarter = topPick.starterName && team.roster.some(r => r._cleanName === State.normalizeName(topPick.starterName));
-
-        if (userOwnsAltStarter) {
-            prosForAlt.push(`<strong>🛡️ Direct Roster Insurance:</strong> Protects your early-round investment in ${alt.starterName} by locking down 100% of the team's backfield touches.`);
-        } else if ((alt.isRBHandcuff || alt.depthChart >= 2) && !userOwnsAltStarter && alt.contingentDraftEquity >= 26.0) {
-            prosForAlt.push(`<strong>${alt._contingentTier || '💎 League-Winning Lottery Ticket'}:</strong> Backed by elite underlying metrics (${alt.yacAtt ? alt.yacAtt.toFixed(1) + ' YAC/Att' : 'High Elusiveness'}), he inherits an immediate RB1 role if ${alt.starterName || 'the starter'} misses time.`);
-        } else if (alt._isSplinterRisk) {
-            consForAlt.push(`<strong>⚠️ Committee Splinter Risk:</strong> Lacks standalone efficiency; an injury to ${alt.starterName || 'the starter'} would likely trigger a multi-back rotation rather than a pure workhorse role.`);
-        }
-
-        if (userOwnsTopStarter) {
-            consForAlt.push(`<strong>Missed Roster Insurance:</strong> Passing on ${topPick.Player} leaves your investment in ${topPick.starterName} exposed without handcuff protection.`);
-        } else if ((topPick.isRBHandcuff || topPick.depthChart >= 2) && !userOwnsTopStarter && topPick.contingentDraftEquity >= 26.0) {
-            consForAlt.push(`<strong>Passed True League-Winner:</strong> ${topPick.Player} (${topPick._contingentTier || 'High Upside'}) possesses the specific tackle-breaking and receiving profile to explode if the starter misses time.`);
-        }
-
-        // -------------------------------------------------------------
-        // 6. BOOM/BUST CONSISTENCY & CEILING CHECK
-        // -------------------------------------------------------------
-        if (alt.boomBust && topPick.boomBust) {
-            const checkExpansion = (p) => {
-                let pastTouches = (p.pastStats?.rushAtt || 0) + (p.pastStats?.rec || 0);
-                let pastTargets = p.pastStats?.targets || 0;
-                let pastPassAtt = p.pastStats?.passAtt || 0;
-                let hasSignificantVolume = (p.Pos === 'RB' && pastTouches >= 100) || (['WR', 'TE'].includes(p.Pos) && pastTargets >= 60) || (p.Pos === 'QB' && pastPassAtt >= 200);
-                return (p._isAscendingRole || p.isNewRole || (p._vacatedTgts >= 30) || (p._vacatedCarries >= 60) || p._inheritsGoalLineWork) && !hasSignificantVolume;
-            };
-
-            let altIsExpansion = checkExpansion(alt);
-            let topIsExpansion = checkExpansion(topPick);
-
-            if (alt.boomBust.bust + 8 < topPick.boomBust.bust && !topIsExpansion) {
-                prosForAlt.push(`<strong>Dramatically Safer Floor:</strong> Busted in only <strong>${alt.boomBust.bust}%</strong> of 2025 games vs. ${topPick.Player}'s <strong>${topPick.boomBust.bust}%</strong> bust rate.`);
-            } else if (topPick.boomBust.bust + 8 < alt.boomBust.bust && !altIsExpansion) {
-                consForAlt.push(`<strong>Volatile Bust Risk:</strong> Busted in <strong>${alt.boomBust.bust}%</strong> of games last year compared to ${topPick.Player}'s clean <strong>${topPick.boomBust.bust}%</strong> bust rate.`);
-            }
-
-            if (alt.boomBust.boom > topPick.boomBust.boom + 8) {
-                prosForAlt.push(`<strong>Higher Weekly Ceiling:</strong> Posted a "Boom" week in <strong>${alt.boomBust.boom}%</strong> of games vs. ${topPick.Player}'s ${topPick.boomBust.boom}%.`);
-            } else if (topPick.boomBust.boom > alt.boomBust.boom + 8) {
-                consForAlt.push(`<strong>Higher Weekly Ceiling:</strong> ${topPick.Player} posted a "Boom" week in <strong>${topPick.boomBust.boom}%</strong> of games vs. ${alt.Player}'s ${alt.boomBust.boom}%.`);
-            }
-        }
-
-        let altHasHigherBoom = alt.boomBust && topPick.boomBust && (alt.boomBust.boom > topPick.boomBust.boom + 5);
-        let altHasLowerBust = alt.boomBust && topPick.boomBust && (alt.boomBust.bust + 5 < topPick.boomBust.bust);
-
-        if (alt._isSafeFloor && !topPick._isSafeFloor && !altHasLowerBust) {
-            prosForAlt.push(`<strong>Safer Floor:</strong> Provides more reliable week-to-week stability if you are looking to insulate a risky roster.`);
-        }
-        if (topPick._isFlyer && !alt._isFlyer && !altHasHigherBoom) {
-            consForAlt.push(`<strong>Lower Ceiling:</strong> Lacks the slate-breaking upside and advanced metrics that ${topPick.Player} possesses.`);
-        }
-
-        // -------------------------------------------------------------
-        // 7. ENHANCED POSITIONAL & CROSS-POSITIONAL TIER ANALYSIS
-        // -------------------------------------------------------------
-        let topTier = this.getTierDetails(topPick);
-        let altTier = this.getTierDetails(alt);
-
-        if (topPick.Pos === alt.Pos) {
-            if (topTier.tierNum < altTier.tierNum) {
-                let vbdGap = ((topPick.AdvVBD || topPick.VBD) - (alt.AdvVBD || alt.VBD)).toFixed(1);
-                consForAlt.push(`<strong>Tier Difference:</strong> ${topPick.Player} is in <strong>${topTier.tierName}</strong> while ${alt.Player} falls into <strong>${altTier.tierName}</strong> (-${vbdGap} VBD gap).`);
-            }
-
-            if (topTier.isLastInTier && altTier.tierNum >= topTier.tierNum) {
-                consForAlt.push(`<strong>Tier Cliff Warning:</strong> ${topPick.Player} is the <strong>final player</strong> in ${topTier.tierName}. Drafting ${alt.Player} causes you to completely miss this tier.`);
-            }
-
-            let projDiff = (topPick.ProjPts || 0) - (alt.ProjPts || 0);
-            if (projDiff >= 5.0) {
-                consForAlt.push(`<strong>Higher Total Season Projection:</strong> ${topPick.Player} projects for <strong>+${projDiff.toFixed(1)} more total season points</strong> (${topPick.ProjPts.toFixed(1)} vs ${alt.ProjPts.toFixed(1)}).`);
-            } else if (projDiff <= -5.0) {
-                prosForAlt.push(`<strong>Higher Total Season Projection:</strong> ${alt.Player} projects for <strong>+${Math.abs(projDiff).toFixed(1)} more season points</strong> (${alt.ProjPts.toFixed(1)} vs ${topPick.ProjPts.toFixed(1)}).`);
-            }
-
-            if (topPick.brokenTackles && alt.brokenTackles && (topPick.brokenTackles - alt.brokenTackles >= 3)) {
-                consForAlt.push(`<strong>Elusiveness Edge:</strong> ${topPick.Player} logged <strong>${topPick.brokenTackles} broken tackles</strong> vs ${alt.Player}'s ${alt.brokenTackles}.`);
-            } else if (alt.brokenTackles && topPick.brokenTackles && (alt.brokenTackles - topPick.brokenTackles >= 3)) {
-                prosForAlt.push(`<strong>Elusiveness Edge:</strong> ${alt.Player} logged <strong>${alt.brokenTackles} broken tackles</strong> vs ${topPick.Player}'s ${topPick.brokenTackles}.`);
-            }
+        // =========================================================
+        // 1. THE ANALYST'S TAKE (Macro Rationale)
+        // =========================================================
+        let analystTake = "";
+        if (isTossUp) {
+            analystTake = `The margins here are incredibly thin. Both players offer nearly identical mathematical value at this stage of the draft, making this a true preference play. The engine leans slightly toward ${topPick.Player}, but pivoting to ${alt.Player} is equally sound depending on your specific roster construction.`;
+        } else if (vbdGap >= 12.0) {
+            analystTake = `${topPick.Player} belongs in a different tier of projected value. While ${alt.Player} is a fine player, bypassing ${topPick.Player} here means leaving a significant amount of baseline points on the table (-${vbdGap.toFixed(1)} VBD gap).`;
+        } else if (vbdGap >= 7.0) {
+            analystTake = `The math noticeably favors ${topPick.Player}. Unless you have a desperate positional need or firmly believe in a breakout, the baseline value gap makes ${topPick.Player} the safer investment.`;
         } else {
-            if (topTier.isLastInTier && (topTier.tierNum <= 3 || currentRound <= 8)) {
-                const altTiers = State.getPositionalTiers(alt.Pos);
-                let altSurvivingCount = 0;
-
-                if (altTiers.length >= altTier.tierNum) {
-                    let actualAltTierGroup = altTiers[altTier.tierNum - 1];
-                    altSurvivingCount = actualAltTierGroup.filter(p => (p.adp || 0) > nextPick).length;
-                }
-
-                let survivalNote = altSurvivingCount > 0
-                    ? `(with ~<strong>${altSurvivingCount}</strong> likely to reach your next pick at Pick ${nextPick})`
-                    : `(though <strong>none</strong> are projected to survive to your next pick at Pick ${nextPick})`;
-
-                let scarcityLabel = currentRound <= 6 ? `in ${topTier.tierName}` : `in the ${topTier.tierName} pool`;
-                consForAlt.push(`<strong>Cross-Positional Scarcity:</strong> ${topPick.Player} is the <strong>LAST remaining option</strong> ${scarcityLabel}, whereas ${alt.Pos} has <strong>${altTier.remaining} option(s)</strong> available in ${altTier.tierName} ${survivalNote}.`);
-            }
-        }
-
-        // -------------------------------------------------------------
-        // 8. POSITION & STRATEGY SPECIFIC TRADE-OFFS
-        // -------------------------------------------------------------
-        if (alt.Pos === 'QB' && ['RB', 'WR'].includes(topPick.Pos) && currentRound <= 4) {
-            consForAlt.push(`<strong>1-QB Opportunity Cost:</strong> Drafting a QB in Round ${currentRound} sacrifices elite ${topPick.Pos} positional scarcity when quality QBs remain available later.`);
-        }
-
-        // Fallbacks
-        if (prosForAlt.length === 0) {
-            const pAge = alt.age || alt.Age;
-
-            if (alt.Pos === 'RB' && alt.stats?.rushAtt >= 130) {
-                prosForAlt.push(`<strong>Lead Workload Baseline:</strong> Projected for <strong>${alt.stats.rushAtt} carries</strong> (${alt.ProjPts.toFixed(1)} total points) as a primary backfield contributor.`);
-            } else if (['WR', 'TE'].includes(alt.Pos) && alt.stats?.targets >= 70) {
-                prosForAlt.push(`<strong>Established Target Volume:</strong> Projected for <strong>${alt.stats.targets} targets</strong> (${alt.ProjPts.toFixed(1)} total points) in the ${alt.Team} passing attack.`);
-            } else if (alt.Pos === 'QB' && alt.ProjPts >= 300) {
-                prosForAlt.push(`<strong>Starting QB Baseline:</strong> Projected for <strong>${alt.ProjPts.toFixed(1)} fantasy points</strong> (${(alt.ProjPts / 17).toFixed(1)} PPG) directing the ${alt.Team} offense.`);
-            }
-
-            if (pAge && pAge <= 23) {
-                prosForAlt.push(`<strong>Youth & Durability Runway:</strong> Enters at age ${pAge} with fresh legs and low career workload wear.`);
-            }
-
-            if (alt.depthChart === 1) {
-                prosForAlt.push(`<strong>Starting Depth Chart Role:</strong> Listed as the designated ${alt.Pos}1 on the ${alt.Team} depth chart.`);
-            }
-
-            if (prosForAlt.length === 0) {
-                prosForAlt.push(`Offers functional ${alt.Pos} starting baseline capacity and depth.`);
-            }
-        }
-
-        if (consForAlt.length === 0) {
-            if (topPick.Pos === alt.Pos) {
-                let vbdGap = ((topPick.AdvVBD || topPick.VBD) - (alt.AdvVBD || alt.VBD)).toFixed(1);
-                if (parseFloat(vbdGap) > 0) {
-                    consForAlt.push(`Leans ${topPick.Player} due to a slightly higher overall season projection (+${vbdGap} VBD edge).`);
+            if (topPick.Pos !== alt.Pos) {
+                if (!isAltStarterNeeded && isTopStarterNeeded) {
+                    analystTake = `While ${alt.Player} brings great upside, your ${alt.Pos} room is already well-stocked. ${topPick.Player} gets the nod here because he addresses a more urgent starting need for your lineup.`;
                 } else {
-                    consForAlt.push(`Prioritizes ${topPick.Player}'s ceiling, advanced metrics, or optimal lineup fit over ${alt.Player}'s raw projection.`);
+                    analystTake = `${topPick.Player} gets a slight edge because his projected volume and lineup fit offer slightly more structural stability than ${alt.Player}.`;
                 }
             } else {
-                let vbdGap = ((topPick.AdvVBD || topPick.VBD) - (alt.AdvVBD || alt.VBD)).toFixed(1);
-                if (parseFloat(vbdGap) >= 5.0) {
-                    consForAlt.push(`Significant Projection Advantage: ${topPick.Player} projects for far more baseline value (+${vbdGap} VBD edge) than ${alt.Player}.`);
+                let topTier = this.getTierDetails(topPick);
+                let altTier = this.getTierDetails(alt);
+                if (topTier.tierNum < altTier.tierNum) {
+                    analystTake = `${topPick.Player} resides in a higher overall tier (${topTier.tierName}) than ${alt.Player} (${altTier.tierName}), insulating him against floor-level risk.`;
                 } else {
-                    consForAlt.push(`Prioritizes ${topPick.Player}'s positional scarcity, draft capital urgency, and roster structural balance at ${topPick.Pos}.`);
+                    analystTake = `Both players are in the same positional tier, but ${topPick.Player} edges out ${alt.Player} due to a slightly better combination of expected volume and offensive environment.`;
                 }
             }
         }
 
+        // =========================================================
+        // 2. THE CASE FOR THE TOP PICK (Defending the Math)
+        // =========================================================
+        let topCase = [];
+        
+        // Structural
+        if (topPick.Pos !== alt.Pos && isTopStarterNeeded && !isAltStarterNeeded) {
+            topCase.push(`Addresses an immediate starting need at ${topPick.Pos}, whereas ${alt.Player} would likely begin as a bench or rotational player.`);
+        }
+        if (vbdGap > 5.0) {
+            topCase.push(`Carries a noticeably safer baseline projection (+${vbdGap.toFixed(1)} VBD).`);
+        }
+
+        // Deep Nuance (Floor, Efficiency, Scheme)
+        if (topPick.boomBust && alt.boomBust && topPick.boomBust.bust < alt.boomBust.bust - 8.0) {
+            topCase.push(`Offers a much safer weekly floor; he busted in only ${topPick.boomBust.bust}% of games last year compared to a volatile ${alt.boomBust.bust}% for ${alt.Player}.`);
+        }
+        if (topPick._positiveTdRegression && alt._isFlukeTDScorer) {
+            topCase.push(`Primed for positive touchdown regression based on his actual red-zone usage, whereas ${alt.Player}'s scoring rate last year was mathematically unsustainable.`);
+        }
+        if (topPick.olTier === 'S' || (topPick.olTier === 'A' && ['D', 'F'].includes(alt.olTier))) {
+            topCase.push(`Benefits from elite trench play behind a Tier ${topPick.olTier} offensive line, while ${alt.Player} faces severe blocking concerns.`);
+        }
+
+        // RB specific nuances
+        if (topPick.Pos === 'RB' && alt.Pos === 'RB') {
+            if (topPick._rbArchetype === 'Bellcow Alpha' && alt._rbArchetype !== 'Bellcow Alpha') {
+                topCase.push(`Operates as a true three-down bellcow, insulating his floor with guaranteed volume that ${alt.Player} lacks in a ${alt._rbArchetype || 'shared'} role.`);
+            } else if (topPick.hvo && alt.hvo && topPick.hvo > alt.hvo + 15) {
+                topCase.push(`Commands significantly more High-Value Opportunities (${topPick.hvo} vs ${alt.hvo} HVO), which are the primary driver of elite RB scoring.`);
+            } else if (topPick._inheritsGoalLineWork && !alt._inheritsGoalLineWork) {
+                topCase.push(`Inherits massive vacated goal-line work from offseason departures, unlocking a touchdown ceiling that ${alt.Player} doesn't have.`);
+            }
+        }
+        
+        // WR/TE specific nuances
+        if (['WR', 'TE'].includes(topPick.Pos) && ['WR', 'TE'].includes(alt.Pos)) {
+            if (topPick.targetShare > (alt.targetShare || 0) + 6.0) {
+                topCase.push(`Commands a significantly larger slice of his team's passing attack (${topPick.targetShare}% vs ${alt.targetShare || 0}%).`);
+            } else if (topPick.wopr && alt.wopr && topPick.wopr > alt.wopr + 0.15) {
+                topCase.push(`Dominates his team's passing tree with an elite ${topPick.wopr.toFixed(2)} WOPR, guaranteeing a safer target floor.`);
+            } else if (topPick._passingTreeType === 'Concentrated 2-Man Funnel' && alt._passingTreeType !== 'Concentrated 2-Man Funnel') {
+                topCase.push(`Operates in a highly concentrated passing attack, avoiding the target-share volatility that ${alt.Player} faces in a crowded receiver room.`);
+            }
+        }
+
+        // QB specific nuances
+        if (topPick.Pos === 'QB' && alt.Pos === 'QB') {
+            if (topPick.p2s && alt.p2s && topPick.p2s < alt.p2s - 8.0) {
+                topCase.push(`Possesses far superior pocket escapability, converting pressure into positive plays rather than taking the drive-killing sacks that plague ${alt.Player}.`);
+            }
+        }
+
+        // 1. Efficiency & Opportunity Quality (YPT / RACR / Catch Rate)
+        if (topPick.ypt && alt.ypt && topPick.ypt >= alt.ypt + 2.0 && (topPick.targetShare || 0) >= 16) {
+            topCase.push(`Generates far more yardage per look (${topPick.ypt.toFixed(1)} vs ${alt.ypt.toFixed(1)} YPT), maximizing his opportunities rather than relying on empty volume.`);
+        }
+        if (topPick.trueCatchRate && alt.dropRate && topPick.trueCatchRate >= 90.0 && alt.dropRate >= 8.0) {
+            topCase.push(`Displays elite hands (${topPick.trueCatchRate.toFixed(1)}% catch rate on catchable balls), while ${alt.Player} has struggled with drive-killing drops (${alt.dropRate.toFixed(1)}% drop rate).`);
+        }
+
+        // 2. Tackle Breaking & Run Creation (YAC / ERR)
+        if (topPick.Pos === 'RB' && alt.Pos === 'RB') {
+            if (topPick.err && alt.err && topPick.err >= alt.err + 1.8) {
+                topCase.push(`Possesses superior big-play burst with a ${topPick.err.toFixed(1)}% Explosive Run Rate compared to ${alt.Player}'s ${alt.err.toFixed(1)}% mark.`);
+            }
+            if (topPick.fumbleRate && alt._fumbleRisk) {
+                topCase.push(`Carries far lower benching risk; ${alt.Player} has shown persistent ball-security issues that could cost him high-leverage touches.`);
+            }
+        }
+
+        // 3. Quarterback Supporting Cast & Protection
+        if (topPick.Pos === 'QB' && alt.Pos === 'QB') {
+            if (topPick._eliteWeaponCount > (alt._eliteWeaponCount || 0)) {
+                topCase.push(`Operates with a much stronger pass-catching arsenal (${topPick._eliteWeaponCount} elite separators), allowing him to sustain drives and red-zone efficiency better than ${alt.Player}.`);
+            }
+            if (alt._shortLeashRisk && !topPick._shortLeashRisk) {
+                topCase.push(`Enjoys total job security as an uncontested franchise starter, whereas ${alt.Player} carries in-season benching risk with a high-pedigree backup behind him.`);
+            }
+        }
+
+        // 4. Offensive Environment & Blocking Lanes (YBC)
+        let topTeam = State.normalizeTeam(topPick.Team);
+        let altTeam = State.normalizeTeam(alt.Team);
+        let topRush = State.teamAdvRush?.[topTeam];
+        let altRush = State.teamAdvRush?.[altTeam];
+
+        if (topPick.Pos === 'RB' && alt.Pos === 'RB' && topRush?.ybcAtt && altRush?.ybcAtt) {
+            if (topRush.ybcAtt >= altRush.ybcAtt + 0.5) {
+                topCase.push(`Runs behind a significantly more dominant run-blocking unit, getting ${topRush.ybcAtt.toFixed(1)} Yards Before Contact per attempt vs just ${altRush.ybcAtt.toFixed(1)} for ${alt.Player}.`);
+            }
+        }
+
+        // 5. Multi-Year Track Record vs. Projection Fluke
+        if (topPick._isProvenMultiYearAlpha && !alt._isProvenMultiYearAlpha) {
+            topCase.push(`Brings a verified multi-year track record of commanding high-volume target share, carrying far less projection risk than ${alt.Player}.`);
+        }
+        if (alt._isSystemDependentRB && topPick._isIndependentYACCreator) {
+            topCase.push(`Creates his own yardage after contact (${topPick.yacAtt?.toFixed(1)} YAC), whereas ${alt.Player}'s historical production was heavily propped up by system blocking lanes.`);
+        }
+
+        if (topCase.length === 0) topCase.push(`Provides a slightly better overall blend of usage metrics and matchup stability.`);
+        
+        // Non-PPR / Standard Scoring Ground Dominance
+        if (State.scoring.ppr === 0 && topPick.Pos === 'RB' && (topPick.stats?.rushAtt || 0) > (alt.stats?.rushAtt || 0) + 40) {
+            topCase.push(`In Standard (Non-PPR) scoring, his heavy carry volume (${Math.round(topPick.stats.rushAtt)} proj carries) is vastly more valuable than ${alt.Player}'s catch-dependent profile.`);
+        }
+
+        // TE-Premium Advantage
+        if ((State.scoring.tePremium || 0) > 0 && topPick.Pos === 'TE' && ['WR', 'RB'].includes(alt.Pos)) {
+            topCase.push(`Capitalizes directly on your league's TE-Premium rule (+${State.scoring.tePremium} pts/rec), mathematically elevating his receptions above standard skill-position scoring.`);
+        }
+
+        // Prototype Workhorse Frame vs Slight Frame
+        if (topPick.Pos === 'RB' && topPick.bmi && topPick.bmi >= 31.0 && alt.weight && parseInt(alt.weight, 10) < 200) {
+            topCase.push(`Carries a prototypical workhorse frame (${topPick.weight} lbs, ${topPick.bmi.toFixed(1)} BMI) built to absorb full-season contact, while ${alt.Player}'s lighter build carries durability concerns.`);
+        }
+
+        // 1st Round NFL Capital vs Late-Round Pick
+        if (topPick.nflDraftPick && topPick.nflDraftPick <= 32 && alt.draftRound && alt.draftRound >= 4) {
+            topCase.push(`Backed by 1st-round NFL draft capital and long-term organizational commitment, securing him a much longer leash during slumps than ${alt.Player}.`);
+        }
+
+        // Uncontested Route Monopoly vs 12-Personnel Timeshare (TEs)
+        if (topPick.Pos === 'TE' && alt._teCommitteeThreat) {
+            topCase.push(`Commands complete route participation, whereas ${alt.Player} splits routes in heavy 12-personnel formations with a capable secondary tight end.`);
+        }
+
+        // Alpha Focus vs Target Compression (WRs)
+        if (topPick.Pos === 'WR' && alt._targetCompressionRisk) {
+            topCase.push(`Operates as the clear focal point of his offense, avoiding the target-cannibalization that ${alt.Player} faces alongside another elite teammate.`);
+        }
+
+        // Clean Backfield Lead vs 3-Back Committee Drag (RBs)
+        if (topPick.Pos === 'RB' && alt._rb3ThreatNote) {
+            topCase.push(`Has a clean grasp on backfield volume, while ${alt.Player}'s touch ceiling is actively threatened by multiple rotational backs.`);
+        }
+
+        // Early-Season Soft Schedule (Weeks 1-4)
+        let topEarlySos = 0, topWeeks = 0;
+        [1, 2, 3, 4].forEach(w => {
+            if (topPick.sosWeeks?.[`W${w}`] && topPick.sosWeeks[`W${w}`] !== 'BYE') {
+                topEarlySos += Number(topPick.sosWeeks[`W${w}`]);
+                topWeeks++;
+            }
+        });
+        topEarlySos = topWeeks > 0 ? topEarlySos / topWeeks : 3.0;
+
+        let altEarlySos = 0, altWeeks = 0;
+        [1, 2, 3, 4].forEach(w => {
+            if (alt.sosWeeks?.[`W${w}`] && alt.sosWeeks[`W${w}`] !== 'BYE') {
+                altEarlySos += Number(alt.sosWeeks[`W${w}`]);
+                altWeeks++;
+            }
+        });
+        altEarlySos = altWeeks > 0 ? altEarlySos / altWeeks : 3.0;
+
+        if (topEarlySos >= 3.6 && altEarlySos <= 2.5) {
+            topCase.push(`Enjoys a soft opening schedule (⭐${topEarlySos.toFixed(1)} SOS in Wks 1–4), providing immediate starting production while ${alt.Player} navigates a difficult early gauntlet.`);
+        }
+
+        // Avoiding Bye Week Stacking
+        if (alt.byeWeek && alt.byeWeek !== 'N/A') {
+            let sameByeCount = team.roster.filter(r => String(r.byeWeek) === String(alt.byeWeek)).length;
+            if (sameByeCount >= 3) {
+                topCase.push(`Drafting him avoids creating a severe Week ${alt.byeWeek} bye-week hole (${sameByeCount} of your players are already off that week).`);
+            }
+        }
+
+        // Tight Variance Band (High Floor Security)
+        if (topPick.floorPpg && alt.floorPpg && topPick.floorPpg >= alt.floorPpg + 2.5) {
+            topCase.push(`Establishes a rock-solid floor (${topPick.floorPpg.toFixed(1)} Floor PPG vs ${alt.floorPpg.toFixed(1)} for ${alt.Player}), giving you reliable weekly output without dud risk.`);
+        }
+
+        // Clean Bill of Health vs Post-Surgery Pitch Count
+        if (topPick._isFullyCleared && alt._isMajorReturn) {
+            topCase.push(`Enters the season with 100% health, whereas ${alt.Player} is returning from a major procedure and may see managed snap counts early on.`);
+        }
+
+        // =========================================================
+        // 3. THE CASE FOR THE ALTERNATIVE (When to Pivot)
+        // =========================================================
+        let altCase = [];
+        
+        // Positional & Scarcity Pivots
+        if (topPick.Pos !== alt.Pos && isAltStarterNeeded) {
+            altCase.push(`If securing your starting ${alt.Pos} slot feels more urgent to you right now than taking the raw value at ${topPick.Pos}.`);
+        }
+        const altTier = this.getTierDetails(alt);
+        const topTier = this.getTierDetails(topPick);
+        if (altTier.isLastInTier && altTier.tierNum <= 4 && !topTier.isLastInTier) {
+            altCase.push(`<strong>Positional Scarcity:</strong> ${alt.Player} is the LAST remaining player in ${altTier.tierName}. The ${topPick.Pos} board is deeper, allowing you to wait.`);
+        }
+
+        // Synergy Pivots
+        if (alt._stackPartner) {
+            altCase.push(`<strong>Correlation Stacking:</strong> You want to complete the ${alt.Team} passing stack with ${alt._stackPartner}, exponentially raising your weekly ceiling.`);
+        }
+        let userOwnsAltStarter = alt.starterName && team.roster.some(r => r._cleanName === State.normalizeName(alt.starterName));
+        if (userOwnsAltStarter) {
+            altCase.push(`<strong>Roster Insurance:</strong> He is the direct handcuff to your starter (${alt.starterName}), securing your backfield from injury risk.`);
+        }
+
+        // Deep Nuance Pivots (Archetypes & Traits)
+        if (alt.Pos === 'RB' && topPick.Pos === 'RB') {
+            if (alt.targetShare > (topPick.targetShare || 0) + 5.0 && State.scoring.ppr >= 0.5) {
+                altCase.push(`<strong>PPR Scoring Rules:</strong> You want to heavily exploit PPR scoring, as ${alt.Player} commands elite pass-catching volume compared to ${topPick.Player}'s ground-heavy role.`);
+            } else if (alt._isGoalLineHammer && !topPick._isGoalLineHammer) {
+                altCase.push(`<strong>Touchdown Equity:</strong> You prefer a back who monopolizes high-leverage goal-line carries over a between-the-20s grinder.`);
+            } else if (alt.yacAtt && topPick.yacAtt && alt.yacAtt > topPick.yacAtt + 0.5) {
+                altCase.push(`<strong>Independent Creator:</strong> You trust ${alt.Player}'s elite tackle-breaking ability (${alt.yacAtt.toFixed(1)} YAC/Att) over ${topPick.Player}'s scheme dependence.`);
+            } else if (alt._isAscendingRole && !topPick._isAscendingRole) {
+                altCase.push(`<strong>Breakout Trajectory:</strong> You are betting on ${alt.Player}'s rapidly expanding mid-season role over ${topPick.Player}'s static workload.`);
+            }
+        } 
+        else if (['WR', 'TE'].includes(alt.Pos) && ['WR', 'TE'].includes(topPick.Pos)) {
+            if (alt._isShortAdotOperator && topPick._isSpikeWeekWeapon && State.scoring.ppr >= 0.5) {
+                altCase.push(`<strong>PPR Consistency:</strong> You want to avoid weekly volatility and prefer a safe, high-volume underneath chain-mover over a boom/bust deep threat.`);
+            } else if (alt._isSpikeWeekWeapon && topPick._isShortAdotOperator) {
+                altCase.push(`<strong>Slate-Breaking Ceiling:</strong> You need ceiling and are willing to trade target consistency for ${alt.Player}'s massive depth-of-target (${alt.aDOT} aDOT) and splash-play upside.`);
+            } else if (alt._vacatedTgts && alt._vacatedTgts >= 60 && (!topPick._vacatedTgts || topPick._vacatedTgts < 30)) {
+                altCase.push(`<strong>Vacated Volume:</strong> You are betting on ${alt.Player} absorbing the massive +${alt._vacatedTgts} targets vacated by his team's offseason departures.`);
+            }
+        }
+        else if (alt.Pos === 'QB' && topPick.Pos === 'QB') {
+            if (alt.stats?.rushYds && topPick.stats?.rushYds && alt.stats.rushYds > topPick.stats.rushYds + 200) {
+                altCase.push(`<strong>Konami Code Upside:</strong> You want to chase the elite dual-threat rushing floor that ${alt.Player} provides over a traditional pocket passer.`);
+            }
+        }
+
+        // Market / Macro Pivots
+        if (alt.adp && alt.adp < currentPickNum - 10) {
+            altCase.push(`<strong>Draft Value Slide:</strong> ${alt.Player} has fallen noticeably past his ADP (${alt.adp.toFixed(0)}), and you want to catch the falling value.`);
+        }
+        if (alt.age && topPick.age && alt.age <= 23 && topPick.age >= 28) {
+            altCase.push(`<strong>Youth & Fresh Legs:</strong> You want to avoid the looming age cliff of ${topPick.Player} and bet on the ascending physical prime of ${alt.Player}.`);
+        }
+        
+        let altUpside = alt.upsideScore || altVBD;
+        let topUpside = topPick.upsideScore || topVBD;
+        if (altUpside > topUpside + 6.0) {
+            altCase.push(`<strong>Swinging for the Fences:</strong> ${alt.Player} possesses mathematical, week-winning upside that ${topPick.Player} currently lacks.`);
+        }
+
+        // Fallback Pivot
+        if (altCase.length === 0) altCase.push(`You simply prefer ${alt.Player}'s offensive environment, scheme fit, and talent profile.`);
+
+        // 1. Unrealized Air Yards & RACR Positive Regression
+        if (alt.unrealizedAirYards && alt.unrealizedAirYards >= 600 && alt.racr && alt.racr < 0.70) {
+            altCase.push(`<strong>Unrealized Air Yards:</strong> ${alt.Player} is sitting on ${alt.unrealizedAirYards} unrealized air yards with an artificially low ${alt.racr.toFixed(2)} RACR; if his target conversion regresses positively, he has slate-breaking upside.`);
+        }
+
+        // 2. Per-Route Target Command (TPS)
+        if (alt.tps && alt.tps >= 0.22 && (!topPick.tps || alt.tps > topPick.tps + 0.04)) {
+            altCase.push(`<strong>Elite Route Separation:</strong> He commands targets on ${(alt.tps * 100).toFixed(1)}% of his snaps (TPS), proving his individual separation skills create independent opportunity.`);
+        }
+
+        // 3. Environmental Scheme & Play-Action / RPO Upgrades
+        let altPass = State.teamAdvPass?.[altTeam];
+        let topPass = State.teamAdvPass?.[topTeam];
+        
+        if (['WR', 'TE'].includes(alt.Pos) && altPass?.playActionYds >= 950 && (topPass?.playActionYds || 0) < 700) {
+            altCase.push(`<strong>Play-Action Scheme Boost:</strong> He plays in a scheme generating ${altPass.playActionYds} passing yards off play-action, creating wide-open chunk targets compared to ${topPick.Player}'s drop-back heavy offense.`);
+        }
+
+        // 4. O-Line & Yards Before Contact Edge
+        if (alt.Pos === 'RB' && altRush?.ybcAtt && topRush?.ybcAtt && altRush.ybcAtt >= topRush.ybcAtt + 0.4) {
+            altCase.push(`<strong>Superior Blocking Lanes:</strong> His offensive line creates ${altRush.ybcAtt.toFixed(1)} Yards Before Contact per carry, allowing him to reach the second level before taking contact.`);
+        }
+
+        // 5. Tight End Route Detachment & Alignment
+        if (alt.Pos === 'TE' && topPick.Pos === 'TE') {
+            if (alt._teArchetype === 'Detached Alpha "Big Slot"' && topPick._teArchetype !== 'Detached Alpha "Big Slot"') {
+                altCase.push(`<strong>Hybrid Slot Alignment:</strong> He runs routes detached from the line like a wide receiver, avoiding the inline blocking responsibilities that cap ${topPick.Player}'s route participation.`);
+            }
+        }
+
+        // 6. Playoff Matchup & Weather Insulation
+        if (alt.playoffSOS && topPick.playoffSOS && alt.playoffSOS >= topPick.playoffSOS + 0.5) {
+            altCase.push(`<strong>Championship Schedule:</strong> He enjoys a significantly softer matchup slate during the fantasy playoffs (⭐${alt.playoffSOS.toFixed(1)} vs ⭐${topPick.playoffSOS.toFixed(1)} SOS in Weeks 15–17).`);
+        }
+        if (topPick._coldWeatherRisk && !alt._coldWeatherRisk) {
+            altCase.push(`<strong>Climate-Controlled Schedule:</strong> He avoids the severe cold-weather December matchups that could drag down ${topPick.Player}'s late-season passing/kicking environment.`);
+        }
+
+        // 7. Healthy PPG Valuation on Injured Players
+        if (alt._healthyPpg && alt.Min_Missed_26 > 0 && alt._healthyPpg > ((topPick.ProjPts || 0) / 17)) {
+            altCase.push(`<strong>Per-Game Dominance:</strong> If you have early-season roster depth, his ${alt._healthyPpg.toFixed(1)} Healthy PPG provides elite, championship-winning production the moment he returns.`);
+        }
+
+        // 8. Goal-Line & Red-Zone Monopoly
+        if (alt.Pos === 'RB' && alt._inheritsGoalLineWork && !topPick._inheritsGoalLineWork) {
+            altCase.push(`<strong>Goal-Line Monopoly:</strong> He inherits vacated short-yardage carries from departed personnel, giving him direct multi-touchdown upside on a weekly basis.`);
+        }
+
+        // TE-Premium Pivot
+        if ((State.scoring.tePremium || 0) > 0 && alt.Pos === 'TE' && ['WR', 'RB'].includes(topPick.Pos)) {
+            altCase.push(`<strong>TE-Premium Arbitrage:</strong> In this format (+${State.scoring.tePremium} TE bonus), ${alt.Player}'s target volume scales with premium value, giving him an structural edge over standard flex options.`);
+        }
+
+        // Big-Play Milestone Bonuses
+        if (State.scoring.useMilestones && alt._isSpikeWeekWeapon && !topPick._isSpikeWeekWeapon) {
+            altCase.push(`<strong>Milestone Hunter:</strong> His vertical profile (${alt.aDOT} aDOT) makes him far more likely to trigger your league's 100-yard and 20+ yard bonus thresholds for slate-breaking scores.`);
+        }
+
+        // Elite Speed Score Athlete
+        if (alt.speedScore && alt.speedScore >= 110.0 && (!topPick.speedScore || alt.speedScore > topPick.speedScore + 8.0)) {
+            altCase.push(`<strong>Elite Athletic Profile:</strong> Boasts a rare ${alt.speedScore} Speed Score (${alt.fortyTime}s at ${alt.weight} lbs), giving him the breakaway gear to turn routine touches into 50+ yard touchdowns.`);
+        }
+
+        // Imposing Boundary WR Size (Red-Zone Box-Out)
+        if (alt.Pos === 'WR' && alt.height && alt.weight && parseInt(alt.weight, 10) >= 215 && (topPick.weight || 200) < 190) {
+            altCase.push(`<strong>Red-Zone Box-Out Frame:</strong> Offers imposing boundary size (${alt.height}, ${alt.weight} lbs) that creates natural mismatch and touchdown leverage near the goal line.`);
+        }
+
+        // Heavy RPO & Play-Action Attack
+        if (alt.Pos === 'QB' && State.teamAdvPass?.[altTeam]?.rpoPlays >= 75) {
+            altCase.push(`<strong>RPO Scheme Engine:</strong> Operates in a heavy RPO offense (${State.teamAdvPass[altTeam].rpoPlays} RPO designs) that freezes second-level defenders and creates wide-open passing lanes.`);
+        }
+
+        // Trailing-Script PPR Garbage Time Insulation
+        if (alt._garbageTimeInsulated && !topPick._garbageTimeInsulated) {
+            altCase.push(`<strong>Garbage-Time Equity:</strong> His underneath target role provides built-in script insulation, keeping his PPR floor active even when his team is trailing in negative game scripts.`);
+        }
+
+        // Soft Opening Schedule
+        if (altEarlySos >= 3.6 && topEarlySos <= 2.6) {
+            altCase.push(`<strong>Fast-Start Schedule:</strong> He steps into a favorable opening month (⭐${altEarlySos.toFixed(1)} SOS in Weeks 1–4), giving your starting lineup an immediate early-season boost.`);
+        }
+
+        // Sky-High Ceiling Scenario
+        if (alt.ceilingPpg && topPick.ceilingPpg && alt.ceilingPpg >= topPick.ceilingPpg + 3.0) {
+            altCase.push(`<strong>Slate-Breaking Ceiling:</strong> In maximum-efficiency scenarios, his ceiling reaches ${alt.ceilingPpg.toFixed(1)} PPG, offering the week-winning upside that ${topPick.Player} lacks.`);
+        }
+
+        // Post-Suspension / Late-Season Fresh Legs
+        if (alt._isSuspended) {
+            altCase.push(`<strong>Playoff Freshness:</strong> While he misses early games, he will return with full health and fresh legs for the stretch run and fantasy playoffs.`);
+        }
+
+         // Ensure only the top 3 most distinct arguments are displayed
+        let finalTopCase = topCase.slice(0, 4);
+        let finalAltCase = altCase.slice(0, 4);
+
+
+        // =========================================================
+        // 4. RENDER THE CARD
+        // =========================================================
         return `
-            <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm mb-4">
-                <div class="flex justify-between items-center mb-3 pb-2 border-b border-gray-100">
-                    <h5 class="font-bold text-gray-900 flex items-center">
-                        <span class="bg-gray-100 text-gray-500 rounded-full w-5 h-5 flex items-center justify-center text-[10px] mr-2">VS</span>
-                        ${alt.Player} <span class="text-xs text-gray-400 font-normal ml-1">(${alt.Pos})</span>
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm mb-5">
+                <!-- HEADER -->
+                <div class="flex items-center gap-3 mb-3 pb-3 border-b border-slate-100">
+                    <h5 class="font-black text-slate-900 text-lg">
+                        ${alt.Player} <span class="text-sm text-slate-500 font-semibold ml-1">(${alt.Pos} • ${alt.Team})</span>
                     </h5>
-                    <span class="text-xs font-bold text-gray-500">${(alt.AdvVBD || alt.VBD).toFixed(1)} Adv VBD</span>
                 </div>
                 
+                <!-- THE ANALYST'S TAKE -->
+                <div class="mb-5">
+                    <h6 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5">The Analyst's Take</h6>
+                    <p class="text-sm text-slate-700 leading-relaxed">${analystTake}</p>
+                </div>
+                
+                <!-- PROS AND CONS DISCUSSION -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <h6 class="text-[10px] font-extrabold uppercase tracking-wider text-emerald-600 mb-1">Why pick ${alt.Player.split(' ').slice(1).join(' ') || alt.Player}?</h6>
-                        <ul class="text-xs text-gray-700 space-y-1.5">
-                            ${prosForAlt.map(p => `<li class="flex items-start"><span class="text-emerald-500 mr-1.5">•</span> <span>${p}</span></li>`).join('')}
+                    <div class="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                        <h6 class="text-[11px] font-extrabold uppercase tracking-wider text-slate-800 mb-2 flex items-center gap-1.5">
+                            <span class="text-indigo-500">🛡️</span> The Case for ${topPick.Player.split(' ').slice(-1)[0]}
+                        </h6>
+                        <ul class="text-xs text-slate-600 space-y-2">
+                            ${topCase.slice(0, 3).map(c => `<li class="flex items-start"><span class="text-indigo-400 mr-2 font-black">•</span> <span class="leading-snug">${c}</span></li>`).join('')}
                         </ul>
                     </div>
                     
-                    <div>
-                        <h6 class="text-[10px] font-extrabold uppercase tracking-wider text-rose-600 mb-1">Why ${topPick.Player.split(' ').slice(1).join(' ') || topPick.Player} wins</h6>
-                        <ul class="text-xs text-gray-700 space-y-1.5">
-                            ${consForAlt.map(c => `<li class="flex items-start"><span class="text-rose-500 mr-1.5">•</span> <span>${c}</span></li>`).join('')}
+                    <div class="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                        <h6 class="text-[11px] font-extrabold uppercase tracking-wider text-slate-800 mb-2 flex items-center gap-1.5">
+                            <span class="text-emerald-500">🔄</span> Why Pivot to ${alt.Player.split(' ').slice(-1)[0]}?
+                        </h6>
+                        <ul class="text-xs text-slate-600 space-y-2">
+                            ${altCase.slice(0, 3).map(c => `<li class="flex items-start"><span class="text-emerald-400 mr-2 font-black">•</span> <span class="leading-snug">${c}</span></li>`).join('')}
                         </ul>
                     </div>
                 </div>
