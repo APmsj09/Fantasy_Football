@@ -477,7 +477,7 @@ window.Compare = {
                 altCase.push(`<strong>PPR Scoring Rules:</strong> You want to heavily exploit PPR scoring, as ${alt.Player} commands elite pass-catching volume compared to ${topPick.Player}'s ground-heavy role.`);
             } else if (alt._isGoalLineHammer && !topPick._isGoalLineHammer) {
                 altCase.push(`<strong>Touchdown Equity:</strong> You prefer a back who monopolizes high-leverage goal-line carries over a between-the-20s grinder.`);
-            } else if (alt.yacAtt && alt.yacAtt >= 3.0 && (!topPick.yacAtt || alt.yacAtt > topPick.yacAtt + 0.4))
+            } else if (alt.yacAtt && alt.yacAtt >= 3.0 && (!topPick.yacAtt || alt.yacAtt > topPick.yacAtt + 0.4)) {
                 altCase.push(`<strong>Independent Creator:</strong> You trust ${alt.Player}'s elite tackle-breaking ability (${alt.yacAtt.toFixed(1)} YAC/Att) over ${topPick.Player}'s scheme dependence.`);
             } else if (alt._isAscendingRole && !topPick._isAscendingRole) {
                 altCase.push(`<strong>Breakout Trajectory:</strong> You are betting on ${alt.Player}'s rapidly expanding mid-season role over ${topPick.Player}'s static workload.`);
