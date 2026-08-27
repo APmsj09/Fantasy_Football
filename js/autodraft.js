@@ -6,7 +6,7 @@ window.AutoDraft = {
         if (State.settings.draftMode === 'live') return;
 
         const teamId = State.draftOrder[State.currentPick];
-        const team = State.teamsById[teamId];
+        const team = State.teamsById[teamId];F
 
         if (team && team.isCPU) {
             this.isDrafting = true;
@@ -130,20 +130,19 @@ window.AutoDraft = {
                 if (isStarterOpen) {
                     if (p.Pos === 'QB' && team.counts['QB'] === 0) {
                         let qbDiff = round - (Math.floor(profile.qbAvgRound) - 1);
-                        // +6.0 VBD base panic, +5.0 per round delayed. (Caps around a 1.5 round reach)
-                        if (qbDiff >= 0) p._cpuReachBonus += 6.0 + (qbDiff * 5.0); 
+                        if (qbDiff >= 0) p._cpuReachBonus += Math.min(20.0, 6.0 + (qbDiff * 5.0)); 
                     }
                     if (p.Pos === 'TE' && team.counts['TE'] === 0) {
                         let teDiff = round - (Math.floor(profile.teAvgRound) - 1);
-                        if (teDiff >= 0) p._cpuReachBonus += 5.0 + (teDiff * 4.0);
+                        if (teDiff >= 0) p._cpuReachBonus += Math.min(20.0, 5.0 + (teDiff * 4.0));
                     }
                     if (p.Pos === 'PK' && profile.reachesForKicker) {
                         let pkDiff = round - (Math.floor(profile.pkAvgRound) - 1);
-                        if (pkDiff >= 0) p._cpuReachBonus += 15.0 + (pkDiff * 8.0);
+                        if (pkDiff >= 0) p._cpuReachBonus += Math.min(15.0, 5.0 + (pkDiff * 4.0));
                     }
                     if (p.Pos === 'DST' && profile.reachesForDST) {
                         let dstDiff = round - (Math.floor(profile.dstAvgRound) - 1);
-                        if (dstDiff >= 0) p._cpuReachBonus += 15.0 + (dstDiff * 8.0);
+                        if (dstDiff >= 0) p._cpuReachBonus += Math.min(15.0, 5.0 + (dstDiff * 4.0));
                     }
                 }
 
@@ -254,9 +253,9 @@ window.AutoDraft = {
                     let roundScale = Math.min(1.0, (round - 6) * 0.20);
 
                     // Draft Handcuffs and sleeper breakouts with realistic market-scaled value
-                    if (userOwnsStarter && p.Pos === 'RB') rawVbd += (14.0 * roundScale);
-                    else if (p.isRBHandcuff) rawVbd += (8.5 * roundScale);
-                    else if (p.depthChart === 2 && p.isNewRole) rawVbd += (7.5 * roundScale);
+                    if (userOwnsStarter && p.Pos === 'RB') rawVbd += (8.0 * roundScale);
+                    else if (p.isRBHandcuff) rawVbd += (5.0 * roundScale);
+                    else if (p.depthChart === 2 && p.isNewRole) rawVbd += (4.5 * roundScale);
                     else if (p.age && p.age <= 23) rawVbd += (6.5 * roundScale);
                     else if (p.targetShare && p.targetShare >= 15) rawVbd += (6.0 * roundScale);
                     else if (p.aDOT && p.aDOT >= 12.0) rawVbd += (5.5 * roundScale);
@@ -340,9 +339,19 @@ window.AutoDraft = {
         if (selectedPlayer) {
             this.executeDraft(selectedPlayer, team, slottedPos);
         } else {
-            let fallback = cpuSorted[0];
+            // Fallback to the best player that ACTUALLY fits the remaining roster limits
+            let fallback = validPlayers[0]; 
             if (fallback) {
-                this.executeDraft(fallback, team, 'Bench');
+                let fPos = fallback.Pos;
+                let posRoster = State.settings.roster[fPos];
+                let fallbackSlot = 'Bench';
+                
+                if ((team.counts[fPos] || 0) < (posRoster ? posRoster.max : 0)) fallbackSlot = fPos;
+                else if (['RB', 'WR'].includes(fPos) && team.counts['FlexRBWR'] < (State.settings.roster.FlexRBWR?.max || 0)) fallbackSlot = 'FlexRBWR';
+                else if (['RB', 'WR', 'TE'].includes(fPos) && team.counts['Flex'] < (State.settings.roster.Flex?.max || 0)) fallbackSlot = 'Flex';
+                else if (['QB', 'RB', 'WR', 'TE'].includes(fPos) && team.counts['Superflex'] < (State.settings.roster.Superflex?.max || 0)) fallbackSlot = 'Superflex';
+
+                this.executeDraft(fallback, team, fallbackSlot);
             } else {
                 State.currentPick++;
             }
