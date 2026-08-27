@@ -3403,6 +3403,13 @@ const State = {
                         p._isZeroYardTDTrap = true;
                     }
                 }
+
+                // Featured Workhorse / Lead Back (Depth 1 with heavy volume)
+                else if (p.depthChart === 1 && (projCarries >= 180 || (p.stats?.rushAtt || 0) >= 180)) {
+                    p._rbArchetype = isPowerFrame ? '1A Early-Down Hammer' : 'Featured Workhorse Lead';
+                    adjMultiplier += 0.035;
+                    upsideMultiplier += 0.12;
+                }
                 // 7. Ambiguous Backfield Rookie Ascender (Midseason Takeover)
                 else if (pAge <= 23 && (p.depthChart === 2 || p.depthChart === 3) && (p._vacatedCarries >= 50 || p.isNewRole)) {
                     p._rbArchetype = 'Rookie Backfield Ascender';
