@@ -625,6 +625,8 @@ const UI = {
             pastStatsContext = ` ${pronoun} coming off a 2025 campaign averaging <strong>${p.pastPpg.toFixed(1)} PPG</strong> over ${ps.gp || 17} games (${tdText})${sampleCaveat}.`;
         }
 
+        
+
         let statProof = "";
         if (isOffense) {
             let specificStats = [];
@@ -723,6 +725,14 @@ const UI = {
 
         let isReceivingSpecialist = (p.targetShare && p.targetShare >= 10) || (p.pastStats && p.pastStats.rec >= 35);
         let isGoalLineVulture = (p.rzAtt && p.rzAtt >= 25) || (p.pastStats && p.pastStats.rushTd >= 8);
+
+        // ENGINEERED PRO: Elite Per-Game Value hidden by Injury
+            if (p._healthyPpg && p._healthyPpg > ((p.ProjPts || 0) / 17)) {
+                let diff = p._healthyPpg - ((p.ProjPts || 0) / 17);
+                if (diff >= 2.0) {
+                    pros.push(`<strong>Hidden Elite Ceiling:</strong> Projections suppress his total points assuming an injury absence. However, when active, his <strong>${p._healthyPpg.toFixed(1)} Healthy PPG</strong> paces like an absolute superstar.`);
+                }
+            }
 
         if (isOffense) {
             // 1. Past Stats Block (ONLY runs if player has 2025 historical data)
@@ -1041,6 +1051,18 @@ const UI = {
         let riskScore = 0;
         let hasScriptDependencyCon = false;
         let hasLowVolumeCon = false;
+
+        // ENGINEERED CON: Timeline Volatility
+            if (p.Min_Missed_26 !== undefined && p.Max_Missed_26 !== undefined) {
+                let gap = Number(p.Max_Missed_26) - Number(p.Min_Missed_26);
+                if (gap >= 3) {
+                    cons.push(`<strong>Recovery Volatility:</strong> Massive uncertainty surrounds his timeline (projected to miss between ${p.Min_Missed_26} and ${p.Max_Missed_26} games). This wide variance makes him a high-risk IR stash.`);
+                    riskScore += 2;
+                } else if (Number(p.Max_Missed_26) >= 4) {
+                    cons.push(`<strong>Roster Clog:</strong> Expected to miss significant time (up to ${p.Max_Missed_26} games). Will burn a valuable bench/IR spot for multiple weeks before contributing.`);
+                    riskScore += 1;
+                }
+            }
 
         if (isOffense) {
             if (p.pastStats) {
@@ -2983,7 +3005,7 @@ const UI = {
             htmlStr += `
             <button onclick="Compare.showComparison()" class="w-full mt-2 py-1.5 bg-indigo-900/50 hover:bg-indigo-800/70 border border-indigo-700/60 rounded-lg text-[11px] font-bold text-indigo-200 transition-colors flex items-center justify-center gap-1.5 shadow-sm">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
-                Compare Top ${Math.min(finalRecs.length, 5)} Targets
+                Compare Top ${Math.min(finalRecs.length, 10)} Targets
             </button>`;
         }
 
