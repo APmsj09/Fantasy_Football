@@ -517,6 +517,8 @@ const State = {
             let reason = vals[headers.indexOf('Absence_Reason')] || '';
             let when = vals[headers.indexOf('When_Occurred')] || '';
             let status = vals[headers.indexOf('Status_26')] || '';
+            let minMissed = parseInt(vals[headers.indexOf('Min_Missed_26')], 10);
+            let maxMissed = parseInt(vals[headers.indexOf('Max_Missed_26')], 10);
 
             // Categorize timing recency
             let timing = 'camp_recent';
@@ -606,7 +608,7 @@ const State = {
 
             if (player) {
                 parsed.push({
-                    player, pos, team, reason, when, status: formattedStatus, penalty, timing, gamesSuspended, missed25
+                    player, pos, team, reason, when, status: formattedStatus, penalty, timing, gamesSuspended, missed25, minMissed, maxMissed
                 });
             }
         }
@@ -623,6 +625,8 @@ const State = {
                 p._gamesSuspended = inj.gamesSuspended || 0;
                 p._missed25 = inj.missed25 || 0;
                 p._isPastNonInjury = (inj.penalty === 'past_non_injury');
+                p.Min_Missed_26 = !isNaN(inj.minMissed) ? inj.minMissed : undefined;
+                p.Max_Missed_26 = !isNaN(inj.maxMissed) ? inj.maxMissed : undefined;
             }
         });
     },
@@ -3885,6 +3889,40 @@ const State = {
 
             // Upside Score measures their Potential Ceiling against the starting baseline
             p.upsideScore = Math.max(0, p.ceilingProjPts - rawBasePts);
+
+            // 🚑 ADVANCED INJURY FEATURE ENGINEERING (Hidden Value & Volatility)
+            if (p.Min_Missed_26 !== undefined && p.Max_Missed_26 !== undefined) {
+                let minMissed = Number(p.Min_Missed_26);
+                let maxMissed = Number(p.Max_Missed_26);
+                let expectedMissed = (minMissed + maxMissed) / 2;
+
+                if (expectedMissed > 0) {
+                    let expectedGames = Math.max(1, 17 - expectedMissed);
+                    let bestCaseGames = Math.max(1, 17 - minMissed);
+                    let worstCaseGames = Math.max(1, 17 - maxMissed);
+
+                    // 1. Feature: True Healthy PPG
+                    p._healthyPpg = (p.ProjPts || 0) / expectedGames;
+
+                    // 2. Feature: Hidden Ceiling (Upside Score Boost)
+                    let hiddenCeilingPts = p._healthyPpg * bestCaseGames;
+                    if (hiddenCeilingPts > p.ProjPts) {
+                        let ceilingDelta = hiddenCeilingPts - p.ProjPts;
+                        p.upsideScore = (p.upsideScore || 0) + (ceilingDelta * 0.65); 
+                    }
+
+                    // 3. Feature: Timeline Volatility (Bust Risk Penalty)
+                    let injuryUncertainty = maxMissed - minMissed;
+                    if (injuryUncertainty >= 3) {
+                        if (!p.boomBust) p.boomBust = { boom: 0, bust: 20, top12: 0, games: 17 };
+                        p.boomBust.bust = Math.min(100, p.boomBust.bust + (injuryUncertainty * 4));
+                    }
+
+                    // 4. Feature: Adjusted Floor
+                    let expectedFloorPts = p._healthyPpg * worstCaseGames;
+                    p.floorPpg = (expectedFloorPts / 17);
+                }
+            }
 
             // =============================================================
             // DYNAMIC VARIANCE SPREAD (Floor/Ceiling Bounds)
