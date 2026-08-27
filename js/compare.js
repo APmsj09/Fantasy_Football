@@ -592,7 +592,7 @@ window.Compare = {
                             <span class="text-indigo-500">🛡️</span> The Case for ${topPick.Player.split(' ').slice(-1)[0]}
                         </h6>
                         <ul class="text-xs text-slate-600 space-y-2">
-                            ${topCase.map(c => `<li class="flex items-start"><span class="text-indigo-400 mr-2 font-black">•</span> <span class="leading-snug">${c}</span></li>`).join('')}
+                            ${topCase.slice(0, 3).map(c => `<li class="flex items-start"><span class="text-indigo-400 mr-2 font-black">•</span> <span class="leading-snug">${c}</span></li>`).join('')}
                         </ul>
                     </div>
                     
@@ -601,7 +601,7 @@ window.Compare = {
                             <span class="text-emerald-500">🔄</span> Why Pivot to ${alt.Player.split(' ').slice(-1)[0]}?
                         </h6>
                         <ul class="text-xs text-slate-600 space-y-2">
-                            ${altCase.map(c => `<li class="flex items-start"><span class="text-emerald-400 mr-2 font-black">•</span> <span class="leading-snug">${c}</span></li>`).join('')}
+                            ${altCase.slice(0, 3).map(c => `<li class="flex items-start"><span class="text-emerald-400 mr-2 font-black">•</span> <span class="leading-snug">${c}</span></li>`).join('')}
                         </ul>
                     </div>
                 </div>
