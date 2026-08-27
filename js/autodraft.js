@@ -182,7 +182,14 @@ window.AutoDraft = {
                 starterBonus = 15;
             } else {
                 let totalPosCount = team.roster.filter(r => r.Pos === p.Pos).length;
-                let overage = Math.max(0, totalPosCount - starterMax);
+                
+                // ⚡ FIX: Allow Flex spots to absorb players BEFORE triggering "Bench Overage" penalties
+                let effectiveStarterMax = starterMax;
+                if (['RB', 'WR'].includes(p.Pos)) effectiveStarterMax += (State.settings.roster.FlexRBWR?.max || 0) + (State.settings.roster.Flex?.max || 0);
+                if (p.Pos === 'TE') effectiveStarterMax += (State.settings.roster.Flex?.max || 0);
+                if (['QB', 'RB', 'WR', 'TE'].includes(p.Pos)) effectiveStarterMax += (State.settings.roster.Superflex?.max || 0);
+
+                let overage = Math.max(0, totalPosCount - effectiveStarterMax);
                 
                 // Evaluate the strength of the player(s) already drafted at this position by the CPU
                 let draftedAtPos = team.roster.filter(r => r.Pos === p.Pos);
