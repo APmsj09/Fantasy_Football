@@ -533,15 +533,17 @@ const State = {
                 timing = 'camp_recent'; // Acute right before Week 1
             }
 
+            let lowerReason = reason.toLowerCase();
+
             // Non-Injury Absences (Suspensions, Holdouts, Personal, etc.)
             const nonInjuryKeywords = ['suspension', 'holdout', 'benched', 'inactive', 'personal', 'illness', 'legal', 'leave'];
             let isNonInjury = nonInjuryKeywords.some(kw => lowerReason.includes(kw));
 
             // Categorize the penalty type based on status & keywords
             let penalty = 'minor';
-            let lowerReason = reason.toLowerCase();
             let upperStatus = status.toUpperCase();
             let gamesSuspended = 0;
+
 
             if (isNonInjury) {
                 if (upperStatus.includes('SUS') || upperStatus === 'OUT') {
