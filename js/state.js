@@ -4057,7 +4057,6 @@ const State = {
             // Bound environmental multipliers safely between 0.70 and 1.35
             adjMultiplier = Math.max(0.70, Math.min(1.35, adjMultiplier));
 
-            let rawBasePts = baselines[p.Pos] || 0;
             let baseVBD = p.ProjPts - rawBasePts;
 
             // 1. Logarithmic Dampener for Elite Players (Threshold shifted to 75.0 VBD)
