@@ -4077,59 +4077,56 @@ const State = {
             if (isNaN(p.VBD)) p.VBD = 0;
             if (isNaN(p.AdvVBD)) p.AdvVBD = p.VBD;
 
-            // 11. INJURY PENALTIES & PHYSICAL ATTRIBUTES (BMI) - Sign-Aware Adjustments
+            // 11. INJURY PENALTIES & PHYSICAL ATTRIBUTES (BMI) - Single-Penalty Model
             const applySignedFactor = (val, factor) => val >= 0 ? val * factor : (factor >= 1 ? val / factor : val * (1 / factor));
 
-            if (p._isMajorReturn) {
-                // Year-1 Return post-major 2025 surgery (Cleared on Sleeper):
-                varianceSpread += 0.04; 
-                p.AdvVBD = applySignedFactor(p.AdvVBD, 0.96); // 4% realistic Year-1 efficiency adjustment
-                ceilingTags.push("📈 Year-1 Major Injury Return (Second-Half Surge)");
-            } else if (p._isFullyCleared) {
-                // Sleeper says Healthy and no major prior reconstruction: Full baseline
-                varianceSpread += 0.01; 
-                p.AdvVBD = applySignedFactor(p.AdvVBD, 1.0); 
-            } else if (p._isSuspended) {
-                let games = s.gp || 13;
-                let activeRatio = games / 17.0;
-                p.AdvVBD = applySignedFactor(p.AdvVBD, activeRatio * 0.96);
-                ceilingTags.push(`⚖️ Serving ${p._gamesSuspended || 4}-Game Suspension`);
-            } else if (p._isSeasonIR) {
+            if (p._isSeasonIR) {
+                // Out for the entire season
                 p.AdvVBD = -999;
                 p.ProjPts = 0;
                 p.floorPpg = 0;
                 p.ceilingPpg = 0;
                 ceilingTags.push("🚨 Out for Season (IR)");
-            } else if (p._isShortIR) {
-                varianceSpread += 0.05;
-                p.AdvVBD = applySignedFactor(p.AdvVBD, 0.74); 
-                ceilingTags.push("🏥 Starting Season on Short-Term IR");
-            } else if (p._isSoftTissueRisk) {
-                varianceSpread += 0.08;
-                p.AdvVBD = applySignedFactor(p.AdvVBD, 0.90);
-                ceilingTags.push("⚠️ Live Soft Tissue Re-Injury Risk");
-            } else if (p._isPupList) {
+            } else if (p._isMajorReturn) {
+                // Year-1 Return post-major 2025 surgery (e.g. ACL, Achilles): slight early-season pitch count
+                varianceSpread += 0.04; 
+                p.AdvVBD = applySignedFactor(p.AdvVBD, 0.96); 
+                ceilingTags.push("📈 Year-1 Major Injury Return (Second-Half Surge)");
+            } else if (p._isFullyCleared) {
+                // Fully cleared with no restrictions
+                p.AdvVBD = applySignedFactor(p.AdvVBD, 1.0); 
+            } else if (p._isSuspended) {
+                // Games missed are ALREADY deducted in ProjPts. Only apply a small bench-stash friction discount.
+                p.AdvVBD = applySignedFactor(p.AdvVBD, 0.95);
+                ceilingTags.push(`⚖️ Serving ${p._gamesSuspended || 4}-Game Suspension`);
+            } else if (p._isShortIR || p._isPupList) {
+                // Games missed are ALREADY deducted in ProjPts. Apply bench-stash friction & ramp-up discount.
                 varianceSpread += 0.06;
-                p.AdvVBD = applySignedFactor(p.AdvVBD, 0.72); 
-                ceilingTags.push("🚨 Starting Season on PUP List");
+                p.AdvVBD = applySignedFactor(p.AdvVBD, 0.94); 
+                ceilingTags.push(p._isPupList ? "🚨 Starting Season on PUP List" : "🏥 Starting Season on Short-Term IR");
+            } else if (p._isSoftTissueRisk) {
+                // Live in-camp soft-tissue re-injury risk
+                varianceSpread += 0.08;
+                p.AdvVBD = applySignedFactor(p.AdvVBD, 0.92);
+                ceilingTags.push("⚠️ Live Soft Tissue Re-Injury Risk");
             } else if (p._isSlowRampUp) {
                 let isMajor = p._injuryPenalty === 'major_recovery';
-                varianceSpread += isMajor ? 0.09 : 0.05; 
-                p.AdvVBD = applySignedFactor(p.AdvVBD, isMajor ? 0.78 : 0.91);
+                varianceSpread += isMajor ? 0.08 : 0.04; 
+                p.AdvVBD = applySignedFactor(p.AdvVBD, isMajor ? 0.92 : 0.96);
             } else if (p._isMissedTime) {
                 varianceSpread += 0.05;
-                p.AdvVBD = applySignedFactor(p.AdvVBD, 0.88);
+                p.AdvVBD = applySignedFactor(p.AdvVBD, 0.94);
                 ceilingTags.push("⚠️ Expected to Miss Time");
             } else if (p.injuryStatus && !p._isSuspended) {
-                // Sleeper says injured, but player is NOT in your TSV file (Generic fallback)
-                if (['IR', 'PUP', 'SUS', 'NA', 'COV'].includes(p.injuryStatus.toUpperCase())) {
-                    p.AdvVBD = applySignedFactor(p.AdvVBD, 0.70); 
+                // Generic fallback for live tags not in TSV
+                if (['IR', 'PUP', 'NA', 'COV'].includes(p.injuryStatus.toUpperCase())) {
+                    p.AdvVBD = applySignedFactor(p.AdvVBD, 0.92); 
                 } else if (p.injuryStatus === 'Out') {
-                    p.AdvVBD = applySignedFactor(p.AdvVBD, 0.85);
+                    p.AdvVBD = applySignedFactor(p.AdvVBD, 0.94);
                 } else if (p.injuryStatus === 'Doubtful') {
-                    p.AdvVBD = applySignedFactor(p.AdvVBD, 0.92);
-                } else if (p.injuryStatus === 'Questionable') {
                     p.AdvVBD = applySignedFactor(p.AdvVBD, 0.96);
+                } else if (p.injuryStatus === 'Questionable') {
+                    p.AdvVBD = applySignedFactor(p.AdvVBD, 0.98);
                 }
             }
 
