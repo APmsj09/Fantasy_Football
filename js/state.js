@@ -30,6 +30,14 @@ const State = {
     olRankings: [],
     draftSortKey: 'AdvVBD',
     draftSortAsc: false,
+    
+    weights: {
+        starterNeed: 25,
+        flexNeed: 15,
+        survivalUrgency: 8,
+        stackBoost: 1.05,
+        maxStash: 20
+    },
 
     _simCache: { qb: [], rb: [], wr: [], te: [], pk: [], dst: [], flex: [] },
 
@@ -143,15 +151,15 @@ const State = {
 
     buildPlayerIndex() {
         this._playerIndex.clear();
+        this._fallbackIndex = new Map(); // Dedicated fallback map
+
         this.allPlayers.forEach(p => {
-            // Create exact lookup key
-            const key = `${p._noSpaceName}_${p._cleanTeam}_${p._cleanPos}`;
-            this._playerIndex.set(key, p);
-            
-            // Create fallback key without team (for players who were traded)
+            const exactKey = `${p._noSpaceName}_${p._cleanTeam}_${p._cleanPos}`;
+            this._playerIndex.set(exactKey, p);
+        
             const fallbackKey = `${p._noSpaceName}_${p._cleanPos}`;
-            if (!this._playerIndex.has(fallbackKey)) {
-                this._playerIndex.set(fallbackKey, p);
+            if (!this._fallbackIndex.has(fallbackKey)) {
+                this._fallbackIndex.set(fallbackKey, p);
             }
         });
     },
@@ -270,15 +278,15 @@ const State = {
 
         if (!this.allPlayers || !this.allPlayers.length) return null;
 
-        // $O(1)$ Hash Map Lookup (Catches 95%+ of players instantly)
         if (nPos !== 'DST' && nPos !== 'PK') {
+            // Check exact map first
             let exactMatch = this._playerIndex.get(`${noSpaceName}_${nTeam}_${nPos}`);
             if (exactMatch) return exactMatch;
 
-            let fallbackMatch = this._playerIndex.get(`${noSpaceName}_${nPos}`);
+            // Check fallback map without contaminating exact indices
+            let fallbackMatch = this._fallbackIndex.get(`${noSpaceName}_${nPos}`);
             if (fallbackMatch) return fallbackMatch;
         }
-
         // Fallback to fuzzy loop for DSTs and edge cases
         if (nPos === 'DST') {
             return this.allPlayers.find(p => {
@@ -912,6 +920,7 @@ const State = {
 
                 // Assign clean sequential hierarchy
                 teamPlayers.forEach((p, index) => {
+                    if (p.depthChartPos) p.officialDepthChart = p.depthChartPos; // Preserve "LWR" / "SWR"
                     p.depthChart = index + 1; // 1, 2, 3, 4...
                 });
             });
@@ -1430,25 +1439,156 @@ const State = {
         });
     },
 
+    evaluateDraftValue(player, team, context) {
+        const { currentRound, currentOverallPick, nextActiveWindowPick, isCPU } = context;
+        const profile = team.profile;
+        
+        let baseVBD = player.AdvVBD ?? player.VBD ?? 0;
+        let pos = player.Pos;
+        let posRoster = this.settings.roster[pos];
+        let starterMax = posRoster ? posRoster.max : 0;
+        let currentCount = team.counts[pos] || 0;
+        let isStarterOpen = currentCount < starterMax;
+        
+        let isFlexRBWROpen = ['RB', 'WR'].includes(pos) && (team.counts['FlexRBWR'] < (this.settings.roster.FlexRBWR?.max || 0));
+        let isFlexOpen = ['RB', 'WR', 'TE'].includes(pos) && (team.counts['Flex'] < (this.settings.roster.Flex?.max || 0));
+        let isSuperflexOpen = ['QB', 'RB', 'WR', 'TE'].includes(pos) && (team.counts['Superflex'] < (this.settings.roster.Superflex?.max || 0));
+        let isBenchOpen = team.counts['Bench'] < (this.settings.roster.Bench?.max || 6);
+
+        let isAnyStartingSlotOpen = isStarterOpen || isFlexRBWROpen || isFlexOpen || isSuperflexOpen;
+
+        if (!isStarterOpen && !isAnyStartingSlotOpen && !isBenchOpen) {
+            return { totalDraftValue: -999, isDraftable: false }; 
+        }
+
+        let starterBonus = 0;
+        if (isStarterOpen) starterBonus = this.weights.starterNeed;
+        else if (isFlexRBWROpen || isFlexOpen || isSuperflexOpen) starterBonus = this.weights.flexNeed;
+
+        // Scarcity Tier Cliff bonus
+        let scarcityBonus = 0;
+        let tiers = this.getPositionalTiers(pos);
+        if (tiers.length > 1 && tiers[0].length <= 3) {
+            let posRankInAvail = this.availablePlayers.filter(x => x.Pos === pos).findIndex(x => x._cleanName === player._cleanName);
+            if (posRankInAvail < 3) {
+                let lastInTopTier = tiers[0][tiers[0].length - 1];
+                let firstInNextTier = tiers[1][0];
+                let drop = (lastInTopTier.AdvVBD ?? lastInTopTier.VBD ?? 0) - (firstInNextTier.AdvVBD ?? firstInNextTier.VBD ?? 0);
+                let urgencyMult = tiers[0].length === 1 ? 1.0 : (tiers[0].length === 2 ? 0.7 : 0.4);
+                scarcityBonus = Math.max(0, drop) * urgencyMult;
+            }
+        }
+
+        // Roster Overage Penalty
+        let rosterOveragePenalty = 1.0;
+        if (!isAnyStartingSlotOpen) {
+            let effectiveStarterMax = starterMax;
+            if (['RB', 'WR'].includes(pos)) effectiveStarterMax += (this.settings.roster.FlexRBWR?.max || 0) + (this.settings.roster.Flex?.max || 0);
+            if (pos === 'TE') effectiveStarterMax += (this.settings.roster.Flex?.max || 0);
+            if (['QB', 'RB', 'WR', 'TE'].includes(pos)) effectiveStarterMax += (this.settings.roster.Superflex?.max || 0);
+            let totalPosCount = team.roster.filter(r => r.Pos === pos).length;
+            let overage = Math.max(0, totalPosCount - effectiveStarterMax);
+
+            if (['RB', 'WR'].includes(pos)) rosterOveragePenalty = Math.pow(0.75, overage + 1);
+            else if (pos === 'TE') rosterOveragePenalty = overage === 0 ? 0.25 : 0.05;
+            else if (pos === 'QB') rosterOveragePenalty = (this.settings.roster.Superflex?.max || 0) > 0 ? Math.pow(0.70, overage + 1) : (overage === 0 ? 0.15 : 0.05);
+            else rosterOveragePenalty = overage === 0 ? 0.15 : 0.05;
+        }
+
+        // CPU Empirical Tendency Application (Safely clamped)
+        let personalityAdjustment = 0;
+        if (isCPU && profile && profile.empirical) {
+            if (currentRound <= 3) {
+                if (pos === 'RB') personalityAdjustment += (profile.empirical.earlyRBRate - 0.40) * 12.0; 
+                if (pos === 'WR') personalityAdjustment += (profile.empirical.earlyWRRate - 0.40) * 12.0;
+                if (pos === 'QB') personalityAdjustment += (profile.empirical.earlyQBRate - 0.10) * 15.0;
+                if (pos === 'TE') personalityAdjustment += (profile.empirical.earlyTERate - 0.10) * 15.0;
+            }
+
+            if (['QB', 'TE', 'PK', 'DST'].includes(pos)) {
+                let targetRound = profile.empirical[`${pos.toLowerCase()}TargetRound`] || 10;
+                let roundDiff = currentRound - targetRound;
+                if (roundDiff >= 0) {
+                    personalityAdjustment += Math.min(12.0, (roundDiff + 1) * 3.0); 
+                } else if (roundDiff < -2) {
+                    personalityAdjustment -= 15.0; 
+                }
+            }
+
+            if (profile.teamBias === this.normalizeTeam(player.Team)) personalityAdjustment += 4.0;
+            if (profile.playerCrushes?.includes(player._cleanName)) personalityAdjustment += 6.0;
+
+            const totalRounds = this.settings.roster.totalSize;
+            const canDraftPK = profile.reachesForKicker && currentRound >= Math.floor(profile.pkAvgRound);
+            const canDraftDST = profile.reachesForDST && currentRound >= Math.floor(profile.dstAvgRound);
+            if (pos === 'PK' && currentRound <= totalRounds - 2 && !canDraftPK) personalityAdjustment -= 999;
+            if (pos === 'DST' && currentRound <= totalRounds - 2 && !canDraftDST) personalityAdjustment -= 999;
+
+            personalityAdjustment = Math.max(-15, Math.min(15, personalityAdjustment));
+        }
+
+        // ADP Reach / Slide evaluation
+        let adpPenalty = 0, adpBonus = 0;
+        if (player.adp) {
+            let adpDiff = player.adp - currentOverallPick;
+            let allowedReach = Math.round(4.0 + Math.pow(currentRound, 1.4) * 0.8);
+            if (adpDiff > allowedReach) {
+                adpPenalty = Math.min(22.0, (adpDiff - allowedReach) * Math.max(0.35, 1.2 - currentRound * 0.08));
+                if (isCPU && personalityAdjustment > 0) adpPenalty *= 0.5; // Fan favorites mitigate reach penalty
+            } else if (adpDiff < -12) {
+                adpBonus = Math.min(12, Math.abs(adpDiff + 12) * 0.35);
+            }
+        }
+
+        // Late Round Upside
+        let upsideBonus = 0;
+        if (currentRound >= 7 && player.upsideScore > 0) {
+            let roundScale = Math.min(1.0, Math.max(0, currentRound - 6) * 0.15);
+            let ceilingDelta = Math.max(0, player.upsideScore - Math.max(0, baseVBD));
+            upsideBonus = Math.min(12.0, ceilingDelta * 0.18) * roundScale;
+        }
+
+        // Bye Week Multiplier
+        let byePenaltyMultiplier = 1.0;
+        if (player.byeWeek && player.byeWeek !== 'N/A') {
+            const sameByePlayers = team.roster.filter(r => String(r.byeWeek) === String(player.byeWeek));
+            const posByeCollisions = sameByePlayers.filter(r => r.Pos === pos).length;
+            if (['QB', 'TE', 'PK', 'DST'].includes(pos) && team.counts[pos] >= 1 && posByeCollisions >= 1) {
+                byePenaltyMultiplier = 0.20;
+            } else if (posByeCollisions >= 2) {
+                byePenaltyMultiplier = 0.65;
+            } else if (sameByePlayers.length >= 3) {
+                byePenaltyMultiplier = 0.50;
+            }
+        }
+
+        let stackBonus = 0;
+        let userQBs = team.roster.filter(r => r.Pos === 'QB');
+        let matchingQB = userQBs.find(qb => qb._cleanTeam === player._cleanTeam);
+        if (matchingQB && ['WR', 'TE'].includes(pos)) {
+            stackBonus = 2.0;
+        }
+
+        let ppwBonus = (!isCPU && isAnyStartingSlotOpen && player._addedPPW && player._addedPPW >= 0.5) ? player._addedPPW * 2 : 0;
+
+        let rawScore = baseVBD + starterBonus + scarcityBonus + adpBonus - adpPenalty + upsideBonus + ppwBonus + stackBonus + personalityAdjustment;
+        let totalDraftValue = (rawScore >= 0 ? rawScore * rosterOveragePenalty * byePenaltyMultiplier : rawScore / Math.max(0.05, (rosterOveragePenalty * byePenaltyMultiplier)));
+
+        return { totalDraftValue, isDraftable: true };
+    },
+
     calculateWeeklyProjections(player) {
         player.weeklyProjections = {};
         if (!player.ProjPts || player.ProjPts <= 0) return;
 
-        let activeWeeks = 0;
-        for (let w = 1; w <= 18; w++) {
-            let weekVal = player.sosWeeks ? player.sosWeeks[`W${w}`] : 3.0;
-            if (weekVal !== 'BYE') activeWeeks++;
-        }
-        if (activeWeeks === 0) activeWeeks = 17;
+        let expectedGames = player.stats?.gp || 17;
+        if (!Number.isFinite(expectedGames) || expectedGames <= 0) expectedGames = 17;
 
-        // Fetch expected missed games to properly sequence zeros
-        let expectedMissed = 0;
-        if (player.Min_Missed_26 !== undefined && player.Max_Missed_26 !== undefined) {
-            expectedMissed = Math.round((Number(player.Min_Missed_26) + Number(player.Max_Missed_26)) / 2);
-        }
+        // ProjPts already factors in missed games. Derive true per-game rate:
+        player._healthyPpg = player.ProjPts / expectedGames;
 
-        // Base points per active game (uses true Healthy PPG if available)
-        const baseWeeklyPts = player._healthyPpg ? player._healthyPpg : (player.ProjPts / Math.max(1, activeWeeks - expectedMissed));
+        let isEarlyAbsence = player._isSuspended || player._isSeasonIR || player._isShortIR || player._isPupList;
+        let expectedMissed = Math.max(0, 17 - expectedGames);
         let missedCount = 0;
 
         for (let w = 1; w <= 18; w++) {
@@ -1459,30 +1599,25 @@ const State = {
                 continue;
             }
 
-            // Only front-load the zeroes if it's a guaranteed early absence
-            let hasEarlyAbsence = player._isSuspended || player._isSeasonIR || player._isShortIR || player._isPupList;
-            
-            if (hasEarlyAbsence && missedCount < expectedMissed) {
+            // Front-load zeros for suspensions / PUP / early IR
+            if (isEarlyAbsence && missedCount < expectedMissed) {
                 player.weeklyProjections[`W${w}`] = 0;
                 missedCount++;
                 continue;
             }
 
-            // For general durability (expected to miss 2 games randomly in the year), 
-            // we spread the penalty mathematically across all active weeks instead of zeroing out September.
-            let durabilityDecay = hasEarlyAbsence ? 1.0 : ((activeWeeks - expectedMissed) / activeWeeks);
-
             let ratingVal = (typeof weekRating === 'number') ? weekRating : 3.0;
-            let starDiff = ratingVal - 3.0;
-            let multiplier = 1 + (starDiff * 0.08);
+            let multiplier = 1 + ((ratingVal - 3.0) * 0.08);
 
-            // 📈 Rookie Ramp-Up Factor (Weeks 1-6 = ~80%, Weeks 14-17 = ~125%)
             let rookieGrowthFactor = 1.0;
             if (player.isRookie) {
-                rookieGrowthFactor = 0.75 + (0.50 * ((w - 1) / 17)); // Wk 1 = 75%, Wk 18 = 125%
+                rookieGrowthFactor = 0.75 + (0.50 * ((w - 1) / 17));
             }
 
-            player.weeklyProjections[`W${w}`] = Math.max(0, baseWeeklyPts * multiplier * rookieGrowthFactor * durabilityDecay);
+            // If absence is scattered randomly, spread points evenly without double discounting:
+            let spreadFactor = isEarlyAbsence ? 1.0 : (expectedGames / 17);
+
+            player.weeklyProjections[`W${w}`] = Math.max(0, player._healthyPpg * multiplier * rookieGrowthFactor * spreadFactor);
         }
     },
 
@@ -4052,28 +4187,45 @@ const State = {
             p.ceilingPpg = baselinePpg * maxMultiplier;
 
             // ===========================================================
-            // FINAL CALCULATIONS
+            // FINAL CALCULATIONS: PROJECTION EDGE ENGINE
             // ===========================================================
-            // Bound environmental multipliers safely between 0.70 and 1.35
             adjMultiplier = Math.max(0.70, Math.min(1.35, adjMultiplier));
 
-            let baseVBD = p.ProjPts - rawBasePts;
+            // 1. Freeze the Professional Consensus
+            p.ConsensusPts = p.ProjPts;
+            let baseVBD = p.ConsensusPts - rawBasePts;
 
-            // 1. Logarithmic Dampener for Elite Players (Threshold shifted to 75.0 VBD)
-            // A 30% boost on a 300-point player is game-breaking (+90 points). 
-            // This dampens the multiplier so elite superstars don't get artificial VBD explosions.
+            // 2. Apply feature engineering to generate Model Expectation
             let dampenedMultiplier = adjMultiplier;
             if (baseVBD > 75.0) {
                 const dampeningFactor = Math.max(0.20, 75.0 / baseVBD);
                 dampenedMultiplier = 1 + ((adjMultiplier - 1) * dampeningFactor);
             }
+            p.ModelPts = p.ConsensusPts * dampenedMultiplier;
+            
+            // 3. Calculate The Edge (Deviation from Consensus)
+            p.Edge = p.ModelPts - p.ConsensusPts;
 
-            // 2. Calculate Scheme-Adjusted Points (AdvProjPts)
-            p.AdvProjPts = p.ProjPts * dampenedMultiplier;
+            // 4. Probability Engine: Z-Score conversion using player's volatility
+            // We model the expected outcome as a normal distribution where standard deviation = ModelPts * varianceSpread
+            let stdDev = Math.max(5.0, p.ModelPts * p.varianceSpread);
+            let zScore = p.Edge / stdDev;
+            
+            // Approximation function for Cumulative Distribution Function (CDF)
+            const getNormProb = (z) => {
+                let sign = z < 0 ? -1 : 1;
+                let x = Math.abs(z) / Math.sqrt(2.0);
+                let t = 1.0 / (1.0 + 0.3275911 * x);
+                let erf = 1.0 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x);
+                return 0.5 * (1.0 + sign * erf);
+            };
+            
+            // Probability that actual outcome > ConsensusPts
+            p.OverProb = getNormProb(zScore);
 
-            // 3. Derive Standard and Advanced VBD
+            // 5. Derive Standard and Model VBD
             p.VBD = baseVBD;
-            p.AdvVBD = p.AdvProjPts - rawBasePts;
+            p.AdvVBD = p.ModelPts - rawBasePts;
 
             // 3. Gentle Compression for Streaming / Replaceable Positions
             if (p.Pos === 'PK') {
@@ -4387,26 +4539,36 @@ const State = {
             p.draftsBackupQB = (totalQBs / draftsCount) >= 1.5; // Do they average > 1.5 QBs a year?
             p.draftsBackupTE = (totalTEs / draftsCount) >= 1.5;
 
-            // Analyze Opening 2-Round Combinations
-            let wrWrStarts = 0, rbRbStarts = 0, heroStarts = 0;
-            Object.values(p.yearlyPicks).forEach(combo => {
-                if (combo.r1 === 'WR' && combo.r2 === 'WR') wrWrStarts++;
-                else if (combo.r1 === 'RB' && combo.r2 === 'RB') rbRbStarts++;
-                else if ((combo.r1 === 'RB' && combo.r2 === 'WR') || (combo.r1 === 'WR' && combo.r2 === 'RB')) heroStarts++;
-            });
+            // =========================================================
+            // EMPIRICAL BEHAVIOR MATRIX
+            // =========================================================
+            let r1r3Picks = p.earlyRBs + p.earlyWRs + (p.qbAvgRound <= 3 ? 1 : 0) + (p.teAvgRound <= 3 ? 1 : 0);
+            let totalEarlyPicks = Math.max(1, r1r3Picks);
 
-            // Core Strategy Determination
-            if (wrWrStarts / draftsCount >= 0.5 || (avgEarlyWRs >= 2.0 && avgEarlyRBs <= 0.5)) {
-                p.strategy = "Zero-RB";
-            } else if (rbRbStarts / draftsCount >= 0.5 || avgEarlyRBs >= 1.8) {
-                p.strategy = "Robust-RB";
-            } else if (heroStarts / draftsCount >= 0.5 || (avgEarlyRBs >= 0.8 && avgEarlyWRs >= 1.2)) {
-                p.strategy = "Hero-RB";
-            } else if (p.draftsEarlyQB && p.draftsEarlyTE) {
-                p.strategy = "Double-Elite";
-            } else {
-                p.strategy = "Balanced";
-            }
+            p.empirical = {
+                // Historical Positional Distribution in Rounds 1-3
+                earlyRBRate: p.earlyRBs / totalEarlyPicks,
+                earlyWRRate: p.earlyWRs / totalEarlyPicks,
+                earlyQBRate: (p.qbAvgRound <= 3 ? 1 : 0) / draftsCount,
+                earlyTERate: (p.teAvgRound <= 3 ? 1 : 0) / draftsCount,
+                
+                // Target acquisition horizons
+                qbTargetRound: p.qbAvgRound,
+                teTargetRound: p.teAvgRound,
+                pkTargetRound: p.pkAvgRound,
+                dstTargetRound: p.dstAvgRound,
+                
+                // Behaviors
+                handcuffRate: p.likesHandcuffs ? 0.75 : 0.20,
+                backupQBRate: p.draftsBackupQB ? 0.80 : 0.15,
+                backupTERate: p.draftsBackupTE ? 0.80 : 0.15
+            };
+            
+            // To maintain UI badge compatibility, derive a dynamic label from the empirical math
+            if (p.empirical.earlyRBRate >= 0.60) p.strategy = "Robust-RB";
+            else if (p.empirical.earlyWRRate >= 0.60) p.strategy = "Zero-RB";
+            else if (p.empirical.earlyRBRate > 0.3 && p.empirical.earlyWRRate > 0.3) p.strategy = "Hero-RB";
+            else p.strategy = "Balanced";
 
             p.likesHandcuffs = avgMidRBs >= 1.5;
             p.reachesForKicker = p.pkAvgRound <= 12;
