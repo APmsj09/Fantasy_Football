@@ -744,32 +744,6 @@ const UI = {
             }
         }
 
-        let overProb = p.OverProb ? Math.round(p.OverProb * 100) : 50;
-        let edgeVal = p.Edge ?? 0;
-        
-        let verdictBadge, verdictText, verdictBg;
-        if (overProb >= 65) {
-            verdictBadge = '🚀 Strong OVER';
-            verdictText = `The model projects significant market inefficiency. Underlying usage, efficiency, and environmental metrics indicate a high probability of beating consensus.`;
-            verdictBg = 'bg-emerald-950 border-emerald-800 text-emerald-100';
-        } else if (overProb >= 55) {
-            verdictBadge = '🟢 Lean OVER';
-            verdictText = `The model favors his profile. Scheme fit and volume trajectory suggest he will mildly outperform consensus projections.`;
-            verdictBg = 'bg-emerald-900 border-emerald-700 text-emerald-50';
-        } else if (overProb >= 45) {
-            verdictBadge = '⚪ Fair Value';
-            verdictText = `Consensus pricing is accurate. His professional projection aligns closely with his expected role and environmental baseline.`;
-            verdictBg = 'bg-slate-800 border-slate-700 text-slate-200';
-        } else if (overProb >= 31) {
-            verdictBadge = '🟠 Lean UNDER';
-            verdictText = `The model flags caution. Target competition, age-cliff, or TD regression indicators point to mild downside risk.`;
-            verdictBg = 'bg-amber-900 border-amber-700 text-amber-50';
-        } else {
-            verdictBadge = '🔴 Strong UNDER';
-            verdictText = `The model aggressively fades this projection. Historical durability, touch competition, or scheme risks present high bust probability.`;
-            verdictBg = 'bg-rose-950 border-rose-800 text-rose-100';
-        }
-
         // -------------------------------------------------------------
         // DYNAMIC BULL CASE (PROS)
         // -------------------------------------------------------------
