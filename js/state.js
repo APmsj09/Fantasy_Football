@@ -1370,7 +1370,7 @@ const State = {
         let baseSeasonScore = 0;
         for (let w = startW; w <= endW; w++) {
             // Evaluates using optimal baselines so empty slots aren't treated as zero
-            let pts = this.calculateOptimalWeeklyScore(team.roster, w);
+            let pts = this.calculateActualWeeklyScore(team.roster, w);
             baseWeeklyScores[w] = pts;
             baseSeasonScore += pts;
         }
@@ -1398,7 +1398,7 @@ const State = {
             team.roster.push(p);
             for (let w = startW; w <= endW; w++) {
                 // Now accurately tracks Value Over Replacement Player (VORP)
-                let newScore = this.calculateOptimalWeeklyScore(team.roster, w);
+                let newScore = this.calculateActualWeeklyScore(team.roster, w);
                 simSeasonScore += newScore;
 
                 let weekDiff = newScore - baseWeeklyScores[w];
@@ -1459,12 +1459,18 @@ const State = {
                 continue;
             }
 
-            // If they are projected to miss games, zero out the early weeks
-            if (missedCount < expectedMissed) {
+            // Only front-load the zeroes if it's a guaranteed early absence
+            let hasEarlyAbsence = p._isSuspended || p._isSeasonIR || p._isShortIR || p._isPupList;
+            
+            if (hasEarlyAbsence && missedCount < expectedMissed) {
                 player.weeklyProjections[`W${w}`] = 0;
                 missedCount++;
                 continue;
             }
+
+            // For general durability (expected to miss 2 games randomly in the year), 
+            // we spread the penalty mathematically across all active weeks instead of zeroing out September.
+            let durabilityDecay = hasEarlyAbsence ? 1.0 : ((activeWeeks - expectedMissed) / activeWeeks);
 
             let ratingVal = (typeof weekRating === 'number') ? weekRating : 3.0;
             let starDiff = ratingVal - 3.0;
@@ -1476,7 +1482,7 @@ const State = {
                 rookieGrowthFactor = 0.75 + (0.50 * ((w - 1) / 17)); // Wk 1 = 75%, Wk 18 = 125%
             }
 
-            player.weeklyProjections[`W${w}`] = Math.max(0, baseWeeklyPts * multiplier * rookieGrowthFactor);
+            player.weeklyProjections[`W${w}`] = Math.max(0, baseWeeklyPts * multiplier * rookieGrowthFactor * durabilityDecay);
         }
     },
 
@@ -1798,6 +1804,12 @@ const State = {
                 s.qbSacks = sl.pass_sack || 0;
                 s.retYds  = (sl.kr_yd || 0) + (sl.pr_yd || 0);
                 s.retTd   = (sl.kr_td || 0) + (sl.pr_td || 0);
+            }
+
+            // 🛠️ SANITY CLAMP: Ensure blended targets are never fewer than receptions
+            if (s.rec && (!s.targets || s.rec > s.targets)) {
+                // If receptions exceed targets, scale targets up to maintain a realistic ~85% catch rate ceiling
+                s.targets = Math.round(s.rec * 1.18);
             }
 
             // =========================================================
@@ -4042,23 +4054,26 @@ const State = {
             // ===========================================================
             // FINAL CALCULATIONS
             // ===========================================================
-            // Expanded bounds from 0.80-1.20 to 0.70-1.35. Professional engines allow 
-            // extreme separation for perfect environment combinations vs terrible ones.
+            // Bound environmental multipliers safely between 0.70 and 1.35
             adjMultiplier = Math.max(0.70, Math.min(1.35, adjMultiplier));
 
-            if (p.VBD >= 0) {
-                // 2. Logarithmic Dampener for Elite Players (Threshold shifted to 75.0 VBD)
-                // Allows mid-tier superstars to fully capture their analytical upgrades without being muted
-                let dampenedMultiplier = adjMultiplier;
-                if (p.VBD > 75.0) {
-                    const dampeningFactor = Math.max(0.25, 75.0 / p.VBD);
-                    dampenedMultiplier = 1 + ((adjMultiplier - 1) * dampeningFactor);
-                }
-                p.AdvVBD = p.VBD * dampenedMultiplier;
-            } else {
-                p.AdvVBD = p.VBD / adjMultiplier;
+            // 1. Calculate Scheme-Adjusted Points (AdvProjPts) directly on raw output
+            p.AdvProjPts = p.ProjPts * adjMultiplier;
+
+            // 2. Derive Standard and Advanced VBD from the positional baseline
+            p.VBD = p.ProjPts - rawBasePts;
+            p.AdvVBD = p.AdvProjPts - rawBasePts;
+
+            // 3. Gentle Compression for Streaming / Replaceable Positions
+            if (p.Pos === 'PK') {
+                p.VBD *= 0.35;
+                p.AdvVBD *= 0.35;
+            } else if (p.Pos === 'DST') {
+                p.VBD *= 0.40;
+                p.AdvVBD *= 0.40;
             }
 
+            // 4. NaN Safety Guards
             if (isNaN(p.VBD)) p.VBD = 0;
             if (isNaN(p.AdvVBD)) p.AdvVBD = p.VBD;
 
