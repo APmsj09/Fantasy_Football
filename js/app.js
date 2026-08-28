@@ -200,6 +200,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const PREV_DATA_DIR = `./data/20${PREV_SEASON}`;
             const HIST_DATA_DIR = `./data/20${HIST_SEASON}`;
 
+            State.dataErrors = []; // Track failed files
+
             const fetchTSV = async (fileName, parser, merger) => {
                 try {
                     const res = await fetch(fileName, fetchOpts);
@@ -207,8 +209,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         const parsed = parser(await res.text());
                         if (merger) merger(parsed);
                         return parsed;
+                    } else {
+                        State.dataErrors.push(fileName);
                     }
                 } catch (e) {
+                    State.dataErrors.push(fileName);
                     console.warn(`Failed to load ${fileName}`, e);
                 }
             };
@@ -270,10 +275,16 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (loadBtn) {
-                loadBtn.textContent = `✓ Auto-Loaded ${State.allPlayers.length} Players + Advanced Stats!`;
-                loadBtn.classList.replace('bg-slate-900', 'bg-emerald-600');
+                if (State.dataErrors.length > 0) {
+                    loadBtn.textContent = `⚠️ Loaded with errors in ${State.dataErrors.length} file(s)`;
+                    loadBtn.classList.replace('bg-slate-900', 'bg-amber-600');
+                } else {
+                    loadBtn.textContent = `✓ Auto-Loaded ${State.allPlayers.length} Players + Advanced Stats!`;
+                    loadBtn.classList.replace('bg-slate-900', 'bg-emerald-600');
+                }
                 loadBtn.disabled = true;
             }
+
 
             renderTeamTargets('WR');
             renderMetricLeaders('TGT %');
@@ -496,18 +507,25 @@ document.addEventListener('DOMContentLoaded', () => {
         State.settings.draftMode = document.getElementById('setting-draft-type').value;
         State.settings.userTeamIndex = parseInt(document.getElementById('setting-user-pick').value) || 1;
 
-        let r = State.settings.roster;
-        r.QB.max = parseInt(document.getElementById('pos-qb').value) || 1;
-        r.RB.max = parseInt(document.getElementById('pos-rb').value) || 2;
-        r.WR.max = parseInt(document.getElementById('pos-wr').value) || 2;
-        r.TE.max = parseInt(document.getElementById('pos-te').value) || 1;
-        r.FlexRBWR = { max: parseInt(document.getElementById('pos-flex-rbwr').value) || 0 };
-        r.Flex = { max: parseInt(document.getElementById('pos-flex').value) || 0 };
-        r.Superflex = { max: parseInt(document.getElementById('pos-superflex').value) || 0 };
-        r.PK.max = parseInt(document.getElementById('pos-pk').value) || 1;
-        r.DST.max = parseInt(document.getElementById('pos-dst').value) || 1;
-        r.Bench.max = parseInt(document.getElementById('pos-bn').value) || 6;
+        // Safe integer parser that explicitly allows 0
+        const getInt = (id, fallback) => {
+            const el = document.getElementById(id);
+            if (!el || el.value === '' || el.value === undefined) return fallback;
+            const val = parseInt(el.value, 10);
+            return Number.isFinite(val) ? val : fallback;
+        };
 
+        let r = State.settings.roster;
+        r.QB.max = getInt('pos-qb', 1);
+        r.RB.max = getInt('pos-rb', 2);
+        r.WR.max = getInt('pos-wr', 2);
+        r.TE.max = getInt('pos-te', 1);
+        r.FlexRBWR = { max: getInt('pos-flex-rbwr', 0) };
+        r.Flex = { max: getInt('pos-flex', 0) };
+        r.Superflex = { max: getInt('pos-superflex', 0) };
+        r.PK.max = getInt('pos-pk', 1);
+        r.DST.max = getInt('pos-dst', 1);
+        r.Bench.max = getInt('pos-bn', 6);
         r.totalSize = r.QB.max + r.RB.max + r.WR.max + r.TE.max + r.FlexRBWR.max + r.Flex.max + r.Superflex.max + r.PK.max + r.DST.max + r.Bench.max;
 
         const getNum = (id, fallback) => {
