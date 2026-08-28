@@ -3360,7 +3360,7 @@ const State = {
                 // 1. Uncontested 3-Down Bellcow Alpha
                 if ((snap >= 68 || (p.depthChart === 1 && projCarries >= 220)) && hvo >= 65 && (tgtShare >= 9.5 || projTgts >= 45)) {
                     p._rbArchetype = 'Bellcow Alpha';
-                    adjMultiplier += 0.065;
+                    adjMultiplier += 0.035; // 🛠️ Reduced from 0.065 (prevents double-dipping)
                     p._isFlyer = true;
                     upsideMultiplier += 0.20;
                     ceilingTags.push("Three-Down Bellcow Monopoly");
@@ -3466,7 +3466,7 @@ const State = {
                 // Tier 1: Dominant Alpha Target Funnel (Jefferson, Lamb, Chase, Amon-Ra)
                 if (tgtShare >= 25.0 || wopr >= 0.60 || (p.depthChart === 1 && (p.stats?.targets || 0) >= 135)) {
                     p._wrArchetype = 'Alpha Target Funnel';
-                    adjMultiplier += 0.065;
+                    adjMultiplier += 0.025; // 🛠️ Reduced from 0.065 (prevents double-dipping with Z-scores)
                     p._isFlyer = true;
                     upsideMultiplier += 0.20;
                     ceilingTags.push("Dominant Alpha Target Funnel");
@@ -4057,11 +4057,23 @@ const State = {
             // Bound environmental multipliers safely between 0.70 and 1.35
             adjMultiplier = Math.max(0.70, Math.min(1.35, adjMultiplier));
 
-            // 1. Calculate Scheme-Adjusted Points (AdvProjPts) directly on raw output
-            p.AdvProjPts = p.ProjPts * adjMultiplier;
+            let rawBasePts = baselines[p.Pos] || 0;
+            let baseVBD = p.ProjPts - rawBasePts;
 
-            // 2. Derive Standard and Advanced VBD from the positional baseline
-            p.VBD = p.ProjPts - rawBasePts;
+            // 1. Logarithmic Dampener for Elite Players (Threshold shifted to 75.0 VBD)
+            // A 30% boost on a 300-point player is game-breaking (+90 points). 
+            // This dampens the multiplier so elite superstars don't get artificial VBD explosions.
+            let dampenedMultiplier = adjMultiplier;
+            if (baseVBD > 75.0) {
+                const dampeningFactor = Math.max(0.20, 75.0 / baseVBD);
+                dampenedMultiplier = 1 + ((adjMultiplier - 1) * dampeningFactor);
+            }
+
+            // 2. Calculate Scheme-Adjusted Points (AdvProjPts)
+            p.AdvProjPts = p.ProjPts * dampenedMultiplier;
+
+            // 3. Derive Standard and Advanced VBD
+            p.VBD = baseVBD;
             p.AdvVBD = p.AdvProjPts - rawBasePts;
 
             // 3. Gentle Compression for Streaming / Replaceable Positions
