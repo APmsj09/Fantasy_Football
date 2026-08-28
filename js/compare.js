@@ -359,6 +359,10 @@ window.Compare = {
         const topPpg = ((topPick.ProjPts || 0) / 17).toFixed(1);
         const altPpg = ((alt.ProjPts || 0) / 17).toFixed(1);
 
+        const topSurname = getPlayerLastName(topPick.Player);
+        const altSurname = getPlayerLastName(alt.Player);
+
+
         // =========================================================
         // 1. THE ANALYST'S TAKE (Macro Context)
         // =========================================================
