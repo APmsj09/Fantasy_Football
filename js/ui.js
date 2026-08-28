@@ -744,73 +744,30 @@ const UI = {
             }
         }
 
-        let narrativeBlurb = "";
-        if (isDST || isPK) {
-            if (posRank <= 5) {
-                narrativeBlurb = pickVar([
-                    `${p.Player} stands as a premier option, offering weekly stability at a highly volatile position. Projected for ${ppg} PPG, they bring immense floor to your lineup.`,
-                    `Locking in ${p.Player} gives you an elite advantage at a position where most managers stream. Expect a reliable ${ppg} PPG baseline.`,
-                    `Ranked as an elite unit, ${p.Player} minimizes weekly headache at the position and projects for a robust ${ppg} PPG.`
-                ]) + pastStatsContext + " " + archetypeNote;
-            } else if (posRank <= 12) {
-                narrativeBlurb = pickVar([
-                    `${p.Player} projects as a reliable starting option that you can confidently plug into your weekly lineup (${ppg} PPG proj).`,
-                    `Providing steady positional value, ${p.Player} is a rock-solid starter for your roster (${ppg} PPG proj).`,
-                    `You can draft ${p.Player} as an every-week starter without having to play the waiver wire (${ppg} PPG proj).`
-                ]) + pastStatsContext + " " + archetypeNote;
-            } else {
-                narrativeBlurb = pickVar([
-                    `${p.Player} enters the year as a matchup-dependent streaming option (${ppg} PPG proj). You will likely need to rotate based on schedule.`,
-                    `View ${p.Player} as a situational play. They project for ${ppg} PPG and will require careful matchup management.`,
-                    `Drafting ${p.Player} means playing the matchups week-to-week, as their ${ppg} PPG projection lacks elite safety.`
-                ]) + pastStatsContext + " " + archetypeNote;
-            }
+        let overProb = p.OverProb ? Math.round(p.OverProb * 100) : 50;
+        let edgeVal = p.Edge ?? 0;
+        
+        let verdictBadge, verdictText, verdictBg;
+        if (overProb >= 65) {
+            verdictBadge = '🚀 Strong OVER';
+            verdictText = `The model projects significant market inefficiency. Underlying usage, efficiency, and environmental metrics indicate a high probability of beating consensus.`;
+            verdictBg = 'bg-emerald-950 border-emerald-800 text-emerald-100';
+        } else if (overProb >= 55) {
+            verdictBadge = '🟢 Lean OVER';
+            verdictText = `The model favors his profile. Scheme fit and volume trajectory suggest he will mildly outperform consensus projections.`;
+            verdictBg = 'bg-emerald-900 border-emerald-700 text-emerald-50';
+        } else if (overProb >= 45) {
+            verdictBadge = '⚪ Fair Value';
+            verdictText = `Consensus pricing is accurate. His professional projection aligns closely with his expected role and environmental baseline.`;
+            verdictBg = 'bg-slate-800 border-slate-700 text-slate-200';
+        } else if (overProb >= 31) {
+            verdictBadge = '🟠 Lean UNDER';
+            verdictText = `The model flags caution. Target competition, age-cliff, or TD regression indicators point to mild downside risk.`;
+            verdictBg = 'bg-amber-900 border-amber-700 text-amber-50';
         } else {
-            if (isUltraElite) {
-                const ultraIntros = [
-                    `${p.Player} stands as a crown-jewel fantasy selection, commanding an undeniable role as the ${posRankStr} (#${overallRank} overall).`,
-                    `Few players match the combination of raw ceiling and floor that ${p.Player} brings as the ${posRankStr} (#${overallRank} overall).`,
-                    `Anchor your draft with ${p.Player}, a top-tier centerpiece in the ${p.Team} attack projected for ${ppg} PPG.`
-                ];
-                narrativeBlurb = `${pickVar(ultraIntros)}${pastStatsContext} ${archetypeNote}${statProof} Fantasy managers can construct rosters around his bulletproof baseline.`;
-            } else if (posRank <= 12) {
-                const starterIntros = [
-                    `${p.Player} headlines the ${p.Team} skill group as a premier ${tierLabel} candidate.`,
-                    `Locking in ${p.Player} gives fantasy managers a foundational weekly starter projected for ${ppg} PPG.`,
-                    `The ${p.Team} offense relies heavily on ${p.Player}, positioning him firmly in the ${tierLabel} tier.`
-                ];
-                narrativeBlurb = `${pickVar(starterIntros)}${pastStatsContext} ${archetypeNote}${statProof}`;
-            } else if (posRank <= 24) {
-                const solidIntros = [
-                    `${p.Player} offers reliable weekly starting value as a ${tierLabel} for ${p.Team}.`,
-                    `Expect a steady diet of opportunities for ${p.Player}, who projects for ${ppg} PPG (${proj.toFixed(1)} total points).`,
-                    `Navigating the middle rounds with ${p.Player} secures a functional ${tierLabel} with manageable variance.`
-                ];
-                narrativeBlurb = `${pickVar(solidIntros)}${pastStatsContext} ${archetypeNote}${statProof}`;
-            } else if (posRank <= 36) {
-                const flexIntros = [
-                    `${p.Player} enters the conversation as a viable ${tierLabel} with situational starting appeal.`,
-                    `Drafting ${p.Player} secures a functional ${tierLabel} who projects for ${ppg} PPG in the ${p.Team} offense.`,
-                    `While he may lack elite every-week certainty, ${p.Player} provides strong ${tierLabel} value projected for ${ppg} PPG.`
-                ];
-                narrativeBlurb = `${pickVar(flexIntros)}${pastStatsContext} ${archetypeNote}${statProof}`;
-            } else {
-                if (age && age >= 30) {
-                    const veteranIntros = [
-                        `A seasoned veteran, ${p.Player} provides experienced depth for ${p.Team}, though his weekly ceiling may be restricted by age-related volume decline (${ppg} PPG proj).`,
-                        `While long past his physical prime, ${p.Player} remains a functional piece of the ${p.Team} offense and a viable bench stash (${ppg} PPG proj).`,
-                        `${p.Player} offers veteran savvy and depth for your roster, though fantasy managers should temper expectations for explosive upside (${ppg} PPG proj).`
-                    ];
-                    narrativeBlurb = `${pickVar(veteranIntros)}${pastStatsContext} ${archetypeNote}${statProof}`;
-                } else {
-                    const depthIntros = [
-                        `${p.Player} fits the mold of an upside bench stash on ${p.Team}.`,
-                        `Drafting ${p.Player} is a bet on contingent volume and match-up-dependent flexibility (${ppg} PPG proj).`,
-                        `${p.Player} enters the year as a depth option with potential for expanded usage should injury strike.`
-                    ];
-                    narrativeBlurb = `${pickVar(depthIntros)}${pastStatsContext} ${archetypeNote}${statProof}`;
-                }
-            }
+            verdictBadge = '🔴 Strong UNDER';
+            verdictText = `The model aggressively fades this projection. Historical durability, touch competition, or scheme risks present high bust probability.`;
+            verdictBg = 'bg-rose-950 border-rose-800 text-rose-100';
         }
 
         // -------------------------------------------------------------
@@ -1708,47 +1665,93 @@ const UI = {
             }
         }
 
+        let overProb = p.OverProb ? Math.round(p.OverProb * 100) : 50;
+        let edgeVal = p.Edge ?? 0;
+        
+        let verdictBadge, verdictText, verdictBg;
+        if (overProb >= 65) {
+            verdictBadge = '🚀 Strong OVER';
+            verdictText = `The model projects major market inefficiency (+${edgeVal.toFixed(1)} pts). Underlying usage, scheme environment, and efficiency metrics indicate a high probability of outperforming consensus projections.`;
+            verdictBg = 'bg-gradient-to-r from-emerald-950 to-teal-950 border-emerald-700 text-emerald-100';
+        } else if (overProb >= 55) {
+            verdictBadge = '🟢 Lean OVER';
+            verdictText = `The model favors his profile (+${edgeVal.toFixed(1)} pts). Offensive line continuity, target distribution, and workload trajectory suggest he will mildly beat market consensus.`;
+            verdictBg = 'bg-gradient-to-r from-emerald-900 to-slate-900 border-emerald-700 text-emerald-50';
+        } else if (overProb >= 45) {
+            verdictBadge = '⚪ Fair Value';
+            verdictText = `Consensus pricing is highly accurate (${edgeVal >= 0 ? '+' : ''}${edgeVal.toFixed(1)} pts). His professional projection accurately reflects his role and historical baseline.`;
+            verdictBg = 'bg-slate-900 border-slate-700 text-slate-200';
+        } else if (overProb >= 31) {
+            verdictBadge = '🟠 Lean UNDER';
+            verdictText = `The model flags caution (${edgeVal.toFixed(1)} pts). Touch competition, age curve, or negative touchdown regression point to mild downside risk.`;
+            verdictBg = 'bg-gradient-to-r from-amber-950 to-slate-900 border-amber-700 text-amber-50';
+        } else {
+            verdictBadge = '🔴 Strong UNDER';
+            verdictText = `The model aggressively fades this projection (${edgeVal.toFixed(1)} pts). Committee timeshares, poor trench blocking, or high bust volatility present severe downside risk.`;
+            verdictBg = 'bg-gradient-to-r from-rose-950 to-slate-900 border-rose-800 text-rose-100';
+        }
+
         return `
             <div class="space-y-4 text-xs leading-relaxed">
-                <!-- Executive Summary Box -->
-                <div class="bg-indigo-950 text-indigo-100 p-4 rounded-xl border border-indigo-800 shadow-sm">
+                <!-- 1. THE MARKET PROJECTION EDGE VERDICT -->
+                <div class="${verdictBg} p-4 rounded-xl border shadow-sm">
+                    <div class="flex justify-between items-center mb-3 pb-3 border-b border-white/10">
+                        <div>
+                            <span class="text-[10px] font-extrabold uppercase tracking-widest opacity-60">Consensus Proj</span>
+                            <div class="text-xl font-bold">${(p.ConsensusPts || p.ProjPts).toFixed(1)} <span class="text-xs font-medium opacity-60">pts</span></div>
+                        </div>
+                        <div class="text-center">
+                            <span class="text-[10px] font-extrabold uppercase tracking-widest opacity-60">Model Expectation</span>
+                            <div class="text-xl font-black">${(p.ModelPts || p.ProjPts).toFixed(1)} <span class="text-xs font-medium opacity-60">pts</span></div>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-[10px] font-extrabold uppercase tracking-widest opacity-60">Model Edge</span>
+                            <div class="text-xl font-black ${edgeVal >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${edgeVal >= 0 ? '+' : ''}${edgeVal.toFixed(1)}</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-base font-black tracking-tight">${verdictBadge} (${overProb}% Probability)</span>
+                        ${riskBadge}
+                    </div>
+                    <p class="mt-2 text-xs opacity-90 leading-relaxed">${verdictText}</p>
+                </div>
+
+                <!-- 2. EXECUTIVE SCOUTING REPORT (Full Nuance Narrative) -->
+                <div class="bg-indigo-950 text-indigo-100 p-4 rounded-xl border border-indigo-800/80 shadow-sm">
                     <div class="flex justify-between items-center mb-2 flex-wrap gap-2">
                         <div class="flex items-center space-x-2">
-                            <span class="font-extrabold text-white text-sm uppercase tracking-wider">${posRankStr} (${tierLabel})</span>
-                            <span class="bg-indigo-800/80 text-indigo-200 px-2 py-0.5 rounded text-[10px] font-bold">Rank #${overallRank} Overall</span>
+                            <span class="font-extrabold text-white text-xs uppercase tracking-wider">${posRankStr} • ${tierLabel}</span>
+                            <span class="bg-indigo-800/80 text-indigo-200 px-2 py-0.5 rounded text-[10px] font-bold">Ovr Rank #${overallRank}</span>
                         </div>
-                        <div>${riskBadge}</div>
+                        ${p._isProvenMultiYearAlpha ? '<span class="bg-indigo-500/30 text-indigo-200 border border-indigo-400/40 px-2 py-0.5 rounded text-[10px] font-bold">⭐ Proven Multi-Year Alpha</span>' : ''}
                     </div>
                     <p class="text-indigo-200 text-xs leading-relaxed mt-1">
                         ${narrativeBlurb}
                     </p>
                 </div>
 
-                <!-- Inherited Role & Scheme Analysis -->
+                <!-- 3. INHERITED ROLE & SCHEME TARGET FUNNEL -->
                 ${inheritedContextHTML}
 
-                <!-- Supporting Cast & Touch Competition Matrix -->
+                <!-- 4. SUPPORTING CAST & TOUCH COMPETITION MATRIX -->
                 ${situationMatrixHTML}
 
-                <!-- Algorithm Verdict & Market Check -->
-                ${algorithmVerdictHTML}
+                <!-- 5. MARKET VALUE & DRAFT ARBITRAGE -->
                 ${marketValueHTML}
 
-                <!-- Pros & Cons Grid -->
+                <!-- 6. THE DRIVERS & DOWNSIDE (PROS & CONS) -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <!-- Bull Case -->
                     <div class="bg-emerald-50/70 border border-emerald-200 p-4 rounded-xl">
                         <h5 class="font-extrabold text-emerald-900 text-xs uppercase tracking-wider mb-2.5 flex items-center">
-                            <span class="mr-1.5">🚀</span> Bull Case (Good Points)
+                            <span class="mr-1.5">📈</span> The Drivers (Why Model is High)
                         </h5>
                         <ul class="space-y-2 text-emerald-950">
                             ${pros.map(pro => `<li class="flex items-start"><span class="text-emerald-600 mr-2 font-bold">•</span><div>${pro}</div></li>`).join('')}
                         </ul>
                     </div>
-                    <!-- Bear Case -->
                     <div class="bg-rose-50/70 border border-rose-200 p-4 rounded-xl">
                         <h5 class="font-extrabold text-rose-900 text-xs uppercase tracking-wider mb-2.5 flex items-center">
-                            <span class="mr-1.5">⚠️</span> Bear Case (Risks & Flaws)
+                            <span class="mr-1.5">📉</span> The Downside (Structural Risks)
                         </h5>
                         <ul class="space-y-2 text-rose-950">
                             ${cons.map(con => `<li class="flex items-start"><span class="text-rose-600 mr-2 font-bold">•</span><div>${con}</div></li>`).join('')}
@@ -1756,24 +1759,24 @@ const UI = {
                     </div>
                 </div>
 
-                <!-- Range of Outcomes -->
+                <!-- 7. 3-TIER RANGE OF OUTCOMES (PPG) -->
                 <div class="bg-slate-900 text-white p-4 rounded-xl border border-slate-800">
-                    <h4 class="font-extrabold text-xs uppercase tracking-wider mb-3 text-amber-400">Range of Outcomes (Weekly Floor / Ceiling)</h4>
+                    <h4 class="font-extrabold text-xs uppercase tracking-wider mb-3 text-amber-400">Range of Outcomes (Weekly PPG Trajectory)</h4>
                     <div class="grid grid-cols-3 gap-3 text-center">
                         <div class="bg-slate-800/80 p-2.5 rounded-lg border border-slate-700">
                             <span class="text-[10px] text-slate-400 uppercase font-bold block">Floor Scenario</span>
                             <span class="text-base font-extrabold text-rose-400">${floorPpg} PPG</span>
-                            <span class="text-[9px] text-slate-400 block mt-0.5">Role shrinkage / Injury risk</span>
+                            <span class="text-[9px] text-slate-400 block mt-0.5">Role shrinkage / Low TDs</span>
                         </div>
                         <div class="bg-slate-800/80 p-2.5 rounded-lg border border-indigo-500/50">
-                            <span class="text-[10px] text-indigo-300 uppercase font-bold block">Median Projection</span>
+                            <span class="text-[10px] text-indigo-300 uppercase font-bold block">Median Expectation</span>
                             <span class="text-base font-extrabold text-white">${ppg} PPG</span>
                             <span class="text-[9px] text-indigo-200 block mt-0.5">Base expected volume</span>
                         </div>
                         <div class="bg-slate-800/80 p-2.5 rounded-lg border border-slate-700">
                             <span class="text-[10px] text-slate-400 uppercase font-bold block">Ceiling Scenario</span>
                             <span class="text-base font-extrabold text-emerald-400">${ceilingPpg} PPG</span>
-                            <span class="text-[9px] text-slate-400 block mt-0.5">TD Luck & Max Efficiency</span>
+                            <span class="text-[9px] text-slate-400 block mt-0.5">Max TD Luck & YAC burst</span>
                         </div>
                     </div>
                 </div>
@@ -2298,7 +2301,6 @@ const UI = {
         const tbody = document.getElementById('draft-players-body');
         if (!tbody) return;
 
-        // ✅ FIX: Hoist userTeam & userRoster to the top of the function
         const userTeam = State.teamsById[State.userTeamId];
         const userRoster = userTeam?.roster || [];
 
@@ -2331,7 +2333,7 @@ const UI = {
             previousVBD = currentVBD;
 
             if (isTierDrop && (State.draftSortKey === 'AdvVBD' || !State.draftSortKey) && !search && !filterPos) {
-                htmlStr += `<tr><td colspan="10" class="px-3 py-1 bg-rose-50 text-rose-700 text-[10px] font-bold text-center border-y border-rose-200 tracking-widest uppercase">⬇️ Significant Value Drop-Off ⬇️</td></tr>`;
+                htmlStr += `<tr><td colspan="14" class="px-3 py-1 bg-rose-50 text-rose-700 text-[10px] font-bold text-center border-y border-rose-200 tracking-widest uppercase">⬇️ Significant Value Drop-Off ⬇️</td></tr>`;
             }
 
             let btnHtml = "";
@@ -2343,10 +2345,9 @@ const UI = {
                 btnHtml = `<button class="bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 text-[11px] font-bold shadow-sm draft-btn transition-colors" data-player="${safeName}">Draft</button>`;
             }
 
-            let adpStr = p.adp ? p.adp.toFixed(1) : '-';
             let depthStr = p.depthChart ? `#${p.depthChart}` : '-';
 
-            // ⚡ INTELLIGENT BYE WEEK UI CONFLICT DETECTOR
+            // Intelligent Bye Week Detector
             let byeStr = '-';
             if (p.byeWeek && p.byeWeek !== 'N/A') {
                 const sameByeRoster = userRoster.filter(r => String(r.byeWeek) === String(p.byeWeek));
@@ -2362,56 +2363,58 @@ const UI = {
                 } else if (totalByeCount >= 3 || posByeCount >= 2) {
                     byeStr = `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-black bg-rose-100 text-rose-700 border border-rose-200" title="Heavy Collision: ${totalByeCount} drafted player(s) already on Week ${p.byeWeek} bye">Wk ${p.byeWeek} (${totalByeCount} 🚨)</span>`;
                 } else if (totalByeCount === 2 || posByeCount === 1) {
-                    byeStr = `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200" title="Caution: ${totalByeCount} player(s) sharing Week ${p.byeWeek} bye (${sameByeRoster.map(x=>x.Player).join(', ')})">Wk ${p.byeWeek} (${totalByeCount} ⚠️)</span>`;
+                    byeStr = `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200" title="Caution: ${totalByeCount} player(s) sharing Week ${p.byeWeek} bye">Wk ${p.byeWeek} (${totalByeCount} ⚠️)</span>`;
                 } else if (totalByeCount === 1) {
-                    byeStr = `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-700 border border-slate-200" title="1 player on roster on Week ${p.byeWeek} bye">Wk ${p.byeWeek} <span class="text-[9px] text-slate-400 ml-0.5">(1)</span></span>`;
+                    byeStr = `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-700 border border-slate-200">Wk ${p.byeWeek} <span class="text-[9px] text-slate-400 ml-0.5">(1)</span></span>`;
                 } else {
                     byeStr = `<span class="text-slate-600 font-medium">Wk ${p.byeWeek}</span>`;
                 }
             }
 
-            let advTags = [];
+            // Market Edge & Probability Styling
+            let edgeVal = p.Edge ?? 0;
+            let edgeStr = edgeVal >= 0 
+                ? `<span class="text-[10px] font-black text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">+${edgeVal.toFixed(1)}</span>` 
+                : `<span class="text-[10px] font-bold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">${edgeVal.toFixed(1)}</span>`;
 
-            if (p.isNewRole && p.depthChart) {
-                advTags.push(`<span class="bg-indigo-100 text-indigo-800 px-1.5 py-0.5 rounded font-bold">📋 ${p.Team} ${p.Pos}${p.depthChart} Role</span>`);
-            }
-            if (p.targetShare && p.targetShare > 22) advTags.push(`<span class="bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">${p.targetShare}% Tgts</span>`);
-            if (p.aDOT && p.aDOT > 12) advTags.push(`<span class="bg-rose-100 text-rose-700 px-1.5 py-0.5 rounded">${p.aDOT} aDOT</span>`);
-            if (p.brokenTackles && p.brokenTackles > 15) advTags.push(`<span class="bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded">${p.brokenTackles} B-Tkl</span>`);
+            let overProb = p.OverProb ? Math.round(p.OverProb * 100) : 50;
+            let probColor = overProb >= 65 ? 'text-emerald-600 font-black' : (overProb <= 35 ? 'text-rose-600 font-bold' : 'text-slate-500 font-semibold');
+            let probStr = `<span class="text-[11px] ${probColor}">${overProb}%</span>`;
 
-            const userOwnsStarter = p.starterName && userRoster.some(r => r._cleanName === State.normalizeName(p.starterName));
+            // Floor & Ceiling PPG Range
+            let floorVal = (p.floorPpg !== undefined ? p.floorPpg : (p.ProjPts / 17) * 0.78).toFixed(1);
+            let ceilVal = (p.ceilingPpg !== undefined ? p.ceilingPpg : (p.ProjPts / 17) * 1.25).toFixed(1);
+            let rangeDisplay = `<span class="text-[10px] font-semibold text-slate-700 whitespace-nowrap"><span class="text-rose-500 font-bold">${floorVal}</span> - <span class="text-emerald-600 font-bold">${ceilVal}</span></span>`;
 
-            if (userOwnsStarter) {
-                advTags.push(`<span class="bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded">🔒 Handcuff for ${p.starterName}</span>`);
-            } else if (p.isRBHandcuff) {
-                advTags.push(`<span class="bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">Handcuff (${p.starterName})</span>`);
-            }
-
-            let tagHTML = advTags.length > 0 ? `<div class="flex gap-1 mt-1 text-[9px] font-bold">${advTags.join('')}</div>` : '';
-
+            // Lineup Impact (+PPW / Bye Fill)
             let ppwVal = (p._addedPPW !== undefined && p._addedPPW > 0) ? p._addedPPW : 0;
             let ppwStr = '';
             if (ppwVal >= 0.5 || (ppwVal > 0 && !p._byeFillWeek)) {
-                ppwStr = `<span class="font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200/80">+${ppwVal.toFixed(1)}/wk</span>`;
+                ppwStr = `<span class="font-extrabold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200/80 text-[10px]">+${ppwVal.toFixed(1)}/wk</span>`;
             } else if (p._byeFillWeek) {
-                ppwStr = `<span class="font-extrabold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200/80">Wk ${p._byeFillWeek} Fill</span>`;
+                ppwStr = `<span class="font-extrabold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200/80 text-[10px]">Wk ${p._byeFillWeek} Fill</span>`;
             } else {
                 ppwStr = `<span class="text-gray-300 text-[10px] font-mono">0.0</span>`;
             }
 
-            // 1. Floor & Ceiling PPG Calculation (Using unified State values)
-            let floorVal = (p.floorPpg !== undefined ? p.floorPpg : (p.ProjPts / 17) * 0.78).toFixed(1);
-            let ceilVal = (p.ceilingPpg !== undefined ? p.ceilingPpg : (p.ProjPts / 17) * 1.25).toFixed(1);
-            let rangeDisplay = `<span class="text-[10px] font-semibold text-slate-700 whitespace-nowrap"><span class="text-rose-500">${floorVal}</span> - <span class="text-emerald-600 font-bold">${ceilVal}</span></span>`;
-
-            // 2. Survival % on ADP Column
+            // ADP & Survival Probability
             let survPct = p._survivalProb !== undefined ? Math.round(p._survivalProb * 100) : (p.adp ? 50 : 100);
-            let survColor = survPct < 25 ? 'text-rose-600 font-bold' : (survPct > 75 ? 'text-slate-400' : 'text-amber-600');
-            let adpDisplayStr = p.adp ? `${p.adp.toFixed(0)} <span class="text-[9px] ${survColor}">(${survPct}%)</span>` : '-';
+            let survColor = survPct < 25 ? 'text-rose-600 font-bold' : (survPct > 75 ? 'text-slate-400' : 'text-amber-600 font-semibold');
+            let adpDisplayStr = p.adp ? `${p.adp.toFixed(0)}` : '-';
+            let survDisplayStr = `<span class="${survColor} text-[11px]">${survPct}%</span>`;
 
-            // 3. Upside Score Badge (VBD Delta)
-            let upsideVal = p.upsideScore ? p.upsideScore.toFixed(0) : (p.AdvVBD || 0).toFixed(0);
-            let upsideStr = `<span class="text-[10px] font-black text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-200/80">+${upsideVal}</span>`;
+            // Rich Tactical Badges
+            let advTags = [];
+            if (p._rbArchetype) advTags.push(`<span class="bg-indigo-50 text-indigo-700 border border-indigo-200/60 px-1.5 py-0.5 rounded text-[9px] font-bold">${p._rbArchetype}</span>`);
+            else if (p._wrArchetype) advTags.push(`<span class="bg-blue-50 text-blue-700 border border-blue-200/60 px-1.5 py-0.5 rounded text-[9px] font-bold">${p._wrArchetype}</span>`);
+            else if (p._teArchetype) advTags.push(`<span class="bg-purple-50 text-purple-700 border border-purple-200/60 px-1.5 py-0.5 rounded text-[9px] font-bold">${p._teArchetype}</span>`);
+            else if (p._qbArchetype) advTags.push(`<span class="bg-amber-50 text-amber-700 border border-amber-200/60 px-1.5 py-0.5 rounded text-[9px] font-bold">${p._qbArchetype}</span>`);
+
+            if (p._contingentTier && p._contingentTier.includes('Diamond')) advTags.push(`<span class="bg-purple-100 text-purple-800 font-bold px-1.5 py-0.5 rounded text-[9px]">${p._contingentTier}</span>`);
+            if (p._positiveTdRegression) advTags.push(`<span class="bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.5 rounded text-[9px]">📈 +xTD Rebound</span>`);
+            if (p.isTeamChanger && p._envDelta && p._envDelta >= 0.02) advTags.push(`<span class="bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.5 rounded text-[9px]">🔄 Scheme Upgrade</span>`);
+
+            let tagHTML = advTags.length > 0 ? `<div class="flex flex-wrap gap-1 mt-1">${advTags.join('')}</div>` : '';
 
             let isOffense = !['DST', 'PK'].includes(p.Pos);
             let playerAge = UI.getPlayerAge(p);
@@ -2430,7 +2433,7 @@ const UI = {
             let keyStatsHTML = '';
             if (p.stats) {
                 let st = p.stats;
-                const r = (val) => Math.round(Number(val) || 0); // ⚡ Helper to round clean integers
+                const r = (val) => Math.round(Number(val) || 0);
 
                 if (p.Pos === 'QB') keyStatsHTML = `<span class="text-slate-500">${r(st.passAtt)} Pass Att • ${r(st.passYds)} Pass Yds • ${r(st.rushAtt)} Rush Att • ${r(st.rushYds)} Rush Yds</span>`;
                 else if (p.Pos === 'RB') keyStatsHTML = `<span class="text-slate-500">${r(st.rushAtt)} Rush Att • ${r(st.rushYds)} Rush Yds • ${r(st.targets)} Tgt • ${r(st.rec)} Rec</span>`;
@@ -2446,7 +2449,7 @@ const UI = {
                         <span class="font-extrabold text-gray-900">#${p.ovrRank}</span><br>
                         <span class="font-bold text-gray-400">${p.posRank}</span>
                     </td>
-                    <td class="px-3 py-2 text-[11px] font-bold text-gray-900 min-w-[200px]">
+                    <td class="px-3 py-2 text-[11px] font-bold text-gray-900 min-w-[210px]">
                         <div class="flex items-center">
                             <span>${p.Player}</span>
                             <span class="font-normal text-gray-400 ml-1.5">${p.Team}</span>
@@ -2456,12 +2459,14 @@ const UI = {
                         ${tagHTML}
                     </td>
                     <td class="px-2 py-2 text-center text-[11px] text-gray-600 font-medium">${p.Pos}</td>
-                    <td class="px-2 py-2 text-right text-[11px] font-bold text-indigo-600">${p.ProjPts.toFixed(1)}</td>
-                    <td class="px-2 py-2 text-right text-[11px] font-extrabold text-indigo-900">${(p.AdvVBD || p.VBD).toFixed(1)}</td>
-                    <td class="px-2 py-2 text-center">${upsideStr}</td>
+                    <td class="px-2 py-2 text-right text-[11px] font-medium text-slate-400">${(p.ConsensusPts || p.ProjPts).toFixed(1)}</td>
+                    <td class="px-2 py-2 text-right text-[11px] font-extrabold text-indigo-900">${(p.ModelPts || p.ProjPts).toFixed(1)}</td>
+                    <td class="px-2 py-2 text-center">${edgeStr}</td>
+                    <td class="px-2 py-2 text-center">${probStr}</td>
                     <td class="px-2 py-2 text-center">${rangeDisplay}</td>
-                    <td class="px-2 py-2 text-center text-[11px]">${ppwStr}</td>
-                    <td class="px-2 py-2 text-center text-[11px] text-gray-600">${adpStr}</td>
+                    <td class="px-2 py-2 text-center">${ppwStr}</td>
+                    <td class="px-2 py-2 text-center text-[11px] text-gray-600">${adpDisplayStr}</td>
+                    <td class="px-2 py-2 text-center">${survDisplayStr}</td>
                     <td class="px-2 py-2 text-center text-[11px]">${byeStr}</td>
                     <td class="px-2 py-2 text-center text-[11px] text-gray-600">${depthStr}</td>
                     <td class="px-3 py-2 text-right">${btnHtml}</td>
@@ -2478,11 +2483,14 @@ const UI = {
             else { State.draftSortKey = key; State.draftSortAsc = false; }
 
             const getSortVal = (player, k) => {
+                if (k === 'Edge') return Number(player.Edge ?? 0);
+                if (k === 'OverProb') return Number(player.OverProb ?? 0.5);
+                if (k === 'ModelPts') return Number(player.ModelPts ?? player.ProjPts ?? 0);
+                if (k === 'ConsensusPts' || k === 'ProjPts') return Number(player.ConsensusPts ?? player.ProjPts ?? 0);
                 if (k === 'AdvVBD') return Number(player.AdvVBD ?? player.VBD ?? 0);
                 if (k === 'upsideScore') return Number(player.upsideScore ?? player.AdvVBD ?? 0);
-                if (k === 'floorPpg') return Number(player.floorPpg ?? 0);       // 👈 ADD THIS
-                if (k === 'ceilingPpg') return Number(player.ceilingPpg ?? 0);   // 👈 ADD THIS
-                if (k === 'ProjPts') return Number(player.ProjPts ?? 0);
+                if (k === 'floorPpg') return Number(player.floorPpg ?? 0);
+                if (k === 'ceilingPpg') return Number(player.ceilingPpg ?? 0);
                 if (k === 'adp' || k === 'depthChart' || k === 'byeWeek') {
                     const raw = player[k];
                     const num = Number(raw);
@@ -2698,278 +2706,19 @@ const UI = {
             return false;
         });
 
-        const applyFactor = (s, f) => s >= 0 ? s * f : (f >= 1 ? s / f : s * (1 / f));
+        // ===========================================================
+        // CANONICAL EVALUATION ENGINE CALL
+        // ===========================================================
+        let context = {
+            currentRound,
+            currentOverallPick,
+            nextActiveWindowPick,
+            isCPU: false
+        };
 
-        // ===========================================================
-        // LOOP: EVALUATE INDIVIDUAL PLAYERS
-        // ===========================================================
         viablePlayers.forEach(p => {
-            let score = p.AdvVBD || p.VBD;
-
-            // Delay Kickers and non-elite DSTs via score suppression rather than array filtering
-            if (p.Pos === 'PK' && currentRound <= totalRounds - 2) score = -999;
-            if (p.Pos === 'DST') {
-                let posRankInt = parseInt(p.posRank?.replace(/\D/g, '') || 99);
-                if (posRankInt > 6 && currentRound <= totalRounds - 2) score = -999;
-            }
-
-            p._tierCliffTag = null;
-            let posRankInAvail = State.availablePlayers.filter(x => x.Pos === p.Pos).findIndex(x => x._cleanName === p._cleanName);
-            if (posRankInAvail < 3 && scarcity[p.Pos] > 0) {
-                score += scarcity[p.Pos];
-                p._tierCliffTag = `⚡ Tier Cliff: ${p.Pos}`;
-            }
-
-            // 1. Lineup Need & Starter Openings
-            let posRoster = State.settings.roster[p.Pos];
-            let starterMax = posRoster ? posRoster.max : 0;
-            let currentCount = userTeam.counts[p.Pos] || 0;
-            let totalPosCount = userRoster.filter(r => r.Pos === p.Pos).length;
-
-            let isPrimaryStarterOpen = currentCount < starterMax;
-            let isFlexRBWROpen = ['RB', 'WR'].includes(p.Pos) && (userTeam.counts['FlexRBWR'] < (State.settings.roster.FlexRBWR?.max || 0));
-            let isFlexOpen = ['RB', 'WR', 'TE'].includes(p.Pos) && (userTeam.counts['Flex'] < (State.settings.roster.Flex?.max || 0));
-            let isSuperflexOpen = ['QB', 'RB', 'WR', 'TE'].includes(p.Pos) && (userTeam.counts['Superflex'] < (State.settings.roster.Superflex?.max || 0));
-            let isAnyStartingSlotOpen = isPrimaryStarterOpen || isFlexRBWROpen || isFlexOpen || isSuperflexOpen;
-
-            // Evaluating Board Scarcity and Opportunity Cost instead of blind flat bonuses
-            if (isPrimaryStarterOpen) {
-                let positionalDropoff = scarcity[p.Pos] || 0;
-                let survival = p._survivalProb !== undefined ? p._survivalProb : 0.5;
-                
-                // If a positional tier is dropping off BEFORE our next pick, apply urgency
-                if (survival < 0.60 && positionalDropoff > 0) {
-                    score += Math.min(6.0, positionalDropoff * 1.5);
-                }
-
-                // Gentle nudge to fill starters in the early/mid rounds, scaling down so we don't blindly reach for QB/TE later
-                let roundNudge = Math.max(0, 4.0 - (currentRound * 0.4));
-                score += roundNudge;
-            }
-
-            // 2. Lineup Value (+PPW) -> Scaled dynamically (BPA matters more early, PPW matters more late)
-            if (isAnyStartingSlotOpen && p._addedPPW && p._addedPPW >= 0.5) {
-                let roundWeight = Math.min(1.0, currentRound / 8); 
-                let ppwWeight = (isPrimaryStarterOpen ? 0.70 : 0.45) * roundWeight;
-                score += (p._addedPPW * ppwWeight);
-            }
-
-            // 3. Early-Round Anti-Bust Shield (Rounds 1-5)
-            if (currentRound <= 5) {
-                let ascensionDampener = (p._isAscendingRole && p._growthPct >= 40) ? 0.50 : 1.0;
-                if (p.boomBust && p.boomBust.bust >= 45) {
-                    score -= Math.min(10.0, (p.boomBust.bust - 40) * 0.4) * ascensionDampener;
-                }
-                if (p._isFlukeTDScorer) score -= (6.0 * ascensionDampener);
-            }
-
-            // 4. Correlated Stacking
-            let matchingQB = userQBs.find(qb => qb._cleanTeam === p._cleanTeam);
-            let userReceivers = userRoster.filter(r => ['WR', 'TE'].includes(r.Pos));
-            let matchingReceiver = userReceivers.find(r => r._cleanTeam === p._cleanTeam);
-
-            if (matchingQB && ['WR', 'TE'].includes(p.Pos) && score > 0) {
-                let qbQualityMult = Math.min(1.10, Math.max(1.0, (matchingQB.ProjPts / 300)));
-                let stackBoost = 1.02 * qbQualityMult;
-                if (p.targetShare) stackBoost += (Math.min(30, p.targetShare) * 0.004);
-                else if (p.depthChart === 1) stackBoost += 0.08;
-                score = applyFactor(score, stackBoost);
-                p._stackPartner = matchingQB.Player;
-            } else if (matchingReceiver && p.Pos === 'QB' && score > 0) {
-                let isAlphaRec = matchingReceiver.targetShare >= 22 || matchingReceiver.depthChart === 1;
-                score = applyFactor(score, isAlphaRec ? 1.12 : 1.05);
-                p._stackPartner = matchingReceiver.Player;
-            } else {
-                p._stackPartner = null;
-            }
-
-            // ===========================================================
-            // 5. LATE-ROUND UPSIDE & CONTINGENT VALUE
-            // ===========================================================
-            p._sleeperBadge = null;
-            let roundScale = Math.min(1.0, Math.max(0, currentRound - 6) * 0.15);
-
-            if (currentRound >= 7) {
-                let playerAge = p.age || p.Age;
-                let userOwnsStarter = p.starterName && userRoster.some(r => r._cleanName === State.normalizeName(p.starterName));
-                let baseSleeperBadge = null;
-                let rawStashPoints = 0;
-
-                if (userOwnsStarter && p.Pos === 'RB') {
-                    let starter = userRoster.find(r => r._cleanName === State.normalizeName(p.starterName));
-                    let starterQuality = starter ? (starter.ProjPts * 0.04) : 10.0;
-                    rawStashPoints += starterQuality + ((p.ProjPts && p.ProjPts >= 110) ? 4.0 : 0);
-                    baseSleeperBadge = `🔒 Handcuff for ${p.starterName}`;
-                } else if (p.isRBHandcuff || (p.depthChart >= 2 && p.Pos === 'RB')) {
-                    let contingentBoost = p.contingentDraftEquity ? (p.contingentDraftEquity * 0.35) : 6.0;
-                    rawStashPoints += contingentBoost;
-                    baseSleeperBadge = p._contingentTier || `🎲 Lottery Ticket (${p.starterName || 'Starter'}'s Backup)`;
-                }
-
-                if (p.depthChart === 2 && p.isNewRole) {
-                    rawStashPoints += 4.0;
-                    if (!baseSleeperBadge) baseSleeperBadge = `📈 Breakout Stash (1 Injury Away)`;
-                }
-                if (playerAge && playerAge <= 24) {
-                    rawStashPoints += Math.max(0, (24 - playerAge) * 2.5);
-                    if (!baseSleeperBadge && playerAge <= 23) baseSleeperBadge = `🌱 Youth Breakout (Age ${playerAge})`;
-                }
-                if (p.targetShare && p.targetShare >= 12.0) {
-                    rawStashPoints += (p.targetShare - 12.0) * 0.5;
-                    if (!baseSleeperBadge && p.targetShare >= 15.0) baseSleeperBadge = `🎯 ${p.targetShare}% Tgt Share Sleeper`;
-                }
-                if (p.aDOT && p.aDOT >= 10.0) {
-                    rawStashPoints += (p.aDOT - 10.0) * 1.2;
-                    if (!baseSleeperBadge && p.aDOT >= 12.0) baseSleeperBadge = `🚀 Deep Threat (${p.aDOT} aDOT)`;
-                }
-                if (p.hvo && p.hvo >= 30) {
-                    rawStashPoints += (p.hvo - 30) * 0.2;
-                    if (!baseSleeperBadge && p.hvo >= 40) baseSleeperBadge = `💎 High Value Touch Profile`;
-                }
-
-                p._sleeperBadge = baseSleeperBadge;
-                const maxStashVBD = 20.0;
-                const scalePacing = 0.065;
-                let smoothedStashBonus = maxStashVBD * (1 - Math.exp(-scalePacing * rawStashPoints));
-                score += (smoothedStashBonus * roundScale);
-
-                if (p.upsideScore && p.upsideScore > 0) {
-                    let ceilingDelta = Math.max(0, p.upsideScore - Math.max(0, p.AdvVBD || p.VBD || 0));
-                    let ceilingWeight = (p.depthChart >= 2 || p.isRBHandcuff) ? 0.06 : 0.18;
-                    let cappedCeilingGain = Math.min(12.0, ceilingDelta * ceilingWeight);
-                    score += (cappedCeilingGain * roundScale);
-                }
-            }
-
-            // ===========================================================
-            // 6. VALUE OVER NEXT AVAILABLE (VONA) & AVAILABILITY DELAY
-            // ===========================================================
-            if (p.adp) {
-                let survivalProb = getSurvivalProb(p);
-                p._survivalProb = survivalProb;
-                let reachDistance = p.adp - currentOverallPick; 
-                let turnGap = nextActiveWindowPick - currentOverallPick;
-                let allowedReach = Math.round(4.0 + (Math.pow(currentRound, 1.4) * 0.8)) + (turnGap >= 18 ? 4 : 0);
-
-                if (score > 0 || (p.AdvVBD || p.VBD) > -15.0) {
-                    if (reachDistance <= -6) {
-                        let slideValue = Math.min(25.0, Math.abs(reachDistance) * 0.85);
-                        score += slideValue;
-                    } else if (survivalProb < 0.25 && reachDistance <= allowedReach) {
-                        let urgencyBonus = Math.min(8.0, (1 - survivalProb) * 8.0);
-                        score += urgencyBonus;
-                    }
-                    if (reachDistance > 0 && survivalProb >= 0.65) {
-                        let delayDiscount = (survivalProb - 0.50) * Math.min(20.0, reachDistance * 0.50);
-                        score -= delayDiscount;
-                    }
-                    if (reachDistance > allowedReach) {
-                        let excessReach = reachDistance - allowedReach;
-                        let penaltyWeight = Math.max(0.25, 1.1 - (currentRound * 0.04));
-                        score -= (excessReach * penaltyWeight);
-                    }
-                }
-            }
-
-            // ===========================================================
-            // 7. CONTINUOUS PLAYOFF MATCHUP & STREAMING SHIFT
-            // ===========================================================
-            if (p.Pos === 'DST' || p.Pos === 'PK') {
-                let isLateStreamingRound = currentRound >= totalRounds - 2;
-                let w1Rating = typeof p.sosWeeks?.W1 === 'number' ? p.sosWeeks.W1 : (p.avgStars || 3.0);
-
-                if (isLateStreamingRound) {
-                    let w1Proj = p.weeklyProjections?.W1 || (p.ProjPts / 17) || 0;
-                    let w1Shift = (w1Proj * 3.5); 
-                    score += w1Shift;
-                    if (w1Rating >= 3.5 && w1Proj >= 6.5) {
-                        p._sleeperBadge = `🎯 Top Week 1 Streamer (⭐${w1Rating.toFixed(1)} Matchup)`;
-                    }
-                } else if (p.playoffSOS) {
-                    score += (p.playoffSOS - 3.0) * 2.5;
-                }
-            } else if (p.playoffSOS) {
-                score += (p.playoffSOS - 3.0) * 3.0; 
-                if (!p._sleeperBadge && p.playoffSOS >= 4.0 && currentRound >= 8) {
-                    p._sleeperBadge = `🏆 Soft Playoff Schedule (⭐${p.playoffSOS.toFixed(1)})`;
-                }
-            }
-
-            // ===========================================================
-            // 8. BALANCED BYE-WEEK CLUSTERING (PENALTY MULTIPLIERS)
-            // ===========================================================
-            p._byeWarningTag = null;
-            if (p.byeWeek && p.byeWeek !== 'N/A') {
-                const sameByePlayers = userRoster.filter(r => String(r.byeWeek) === String(p.byeWeek));
-                const samePosByePlayers = sameByePlayers.filter(r => r.Pos === p.Pos);
-                const totalByeCollisions = sameByePlayers.length;
-                const posByeCollisions = samePosByePlayers.length;
-
-                const isOnesie = ['QB', 'TE', 'PK', 'DST'].includes(p.Pos);
-
-                if (isOnesie && userTeam.counts[p.Pos] >= 1 && posByeCollisions >= 1) {
-                    const existingStarter = samePosByePlayers[0];
-                    score = applyFactor(score, 0.20); // 80% penalty - functionally kills the pick
-                    p._byeWarningTag = `🚨 Same Wk ${p.byeWeek} Bye as ${existingStarter.Player}`;
-                } else if (posByeCollisions >= 2) {
-                    score = applyFactor(score, 0.65); // 35% penalty for hoarding same position byes
-                    p._byeWarningTag = `🚨 3rd ${p.Pos} on Wk ${p.byeWeek} Bye`;
-                } else if (totalByeCollisions >= 3) {
-                    score = applyFactor(score, 0.50); // 50% penalty to avoid guaranteed punt weeks
-                    p._byeWarningTag = `⚠️ Wk ${p.byeWeek} Pileup (${totalByeCollisions} drafted)`;
-                } else if (totalByeCollisions === 2 && posByeCollisions === 1 && currentRound <= 8) {
-                    score -= 1.5;
-                    p._byeWarningTag = `⚠️ 2nd ${p.Pos} on Wk ${p.byeWeek} Bye`;
-                }
-            }
-
-            // ===========================================================
-            // 9. BENCH VS. STARTER THRESHOLD PENALTIES (ROSTER LOCK)
-            // ===========================================================
-            if (!isAnyStartingSlotOpen) {
-                let overage = totalPosCount - starterMax;
-                let penalty;
-
-                let emptyStarterHoles = 0;
-                ['QB', 'WR', 'TE'].forEach(k => {
-                    if ((userTeam.counts[k] || 0) < (State.settings.roster[k]?.max || 1)) emptyStarterHoles++;
-                });
-
-                let draftedAtPos = userRoster.filter(r => r.Pos === p.Pos);
-                let bestStarterRank = draftedAtPos.length > 0 ? Math.min(...draftedAtPos.map(r => parseInt(r.posRank?.replace(/\D/g, '') || 99))) : 99;
-
-                if (['RB', 'WR'].includes(p.Pos)) {
-                    // Less punishing for RB/WR bench spots. Opportunity cost is low, value is high.
-                    let decayBase = emptyStarterHoles > 0 ? 0.75 : 0.90; 
-                    penalty = Math.pow(decayBase, overage + 1);
-                } else if (p.Pos === 'TE') {
-                    if (overage === 0) penalty = bestStarterRank <= 5 ? 0.05 : (bestStarterRank <= 10 ? 0.25 : 0.60);
-                    else penalty = 0.05;
-                } else if (p.Pos === 'QB') {
-                    if ((State.settings.roster.Superflex?.max || 0) > 0) penalty = Math.pow(0.70, overage + 1);
-                    else {
-                        if (overage === 0) penalty = bestStarterRank <= 6 ? 0.05 : (bestStarterRank <= 12 ? 0.15 : 0.45);
-                        else penalty = 0.05;
-                    }
-                } else penalty = overage === 0 ? 0.05 : 0.01;
-                
-                score = applyFactor(score, penalty);
-            }
-
-            // Portfolio Risk Balancing
-            if (coreStarters.length >= 2) {
-                let pBust = p.boomBust?.bust || 20.0;
-                let pBoom = p.boomBust?.boom || 10.0;
-                if (avgRosterBustRate > 28.0 && pBust > 30.0) {
-                    score = applyFactor(score, 0.85); 
-                    p._rosterContextBadge = "⚠️ High Roster Volatility (Needs Floor)";
-                } else if (avgRosterBustRate < 16.0 && pBoom > 15.0) {
-                    score = applyFactor(score, 1.10); 
-                    p._rosterContextBadge = "💥 Safe Roster (Needs Upside)";
-                }
-            }
-
-            p._recScore = score;
+            let evalResult = State.evaluateDraftValue(p, userTeam, context);
+            p._recScore = evalResult.totalDraftValue;
         });
         
         // ===========================================================
