@@ -1,3 +1,13 @@
+function getPlayerLastName(fullName) {
+    if (!fullName) return '';
+    let parts = fullName.trim().split(/\s+/);
+    const suffixes = new Set(['jr', 'jr.', 'sr', 'sr.', 'ii', 'iii', 'iv', 'v']);
+    if (parts.length > 1 && suffixes.has(parts[parts.length - 1].toLowerCase())) {
+        parts.pop();
+    }
+    return parts[parts.length - 1] || fullName;
+}
+
 window.Compare = {
     getTierDetails(player) {
         if (!player) return { tierNum: 1, tierName: 'Tier 1', remaining: 1, isLastInTier: false };
@@ -97,6 +107,7 @@ window.Compare = {
         const posRoster = State.settings.roster[p.Pos];
         const isStarterNeeded = (team.counts[p.Pos] || 0) < (posRoster ? posRoster.max : 1);
         
+        const pronoun = p.Pos === 'DST' ? 'this defense' : 'he';
         let narrative = `The engine recommends selecting <strong>${p.Player}</strong> (${p.Pos} • ${p.Team}) here. `;
         let reasons = [];
 
@@ -133,8 +144,8 @@ window.Compare = {
                 reasons.push(`he represents a <strong>league-winning contingent lottery ticket (${p._contingentTier || 'Diamond Stash'})</strong> who inherits an RB1 workload if ${p.starterName || 'the starter'} misses time`);
             } else if (p._isFlyer && p.upsideScore >= 20.0) {
                 reasons.push(`he offers pure <strong>right-tail ceiling metrics (${p.upsideScore.toFixed(0)} Upside Score)</strong> to stash on your bench`);
-            } else if (['PK', 'DST'].includes(p.Pos)) {
-                reasons.push(`he offers a premier <strong>Week 1 streaming matchup (⭐${(p.sosWeeks?.W1 || p.avgStars || 3.0).toFixed(1)} SOS)</strong> to open the season`);
+            } if (['PK', 'DST'].includes(p.Pos)) {
+                reasons.push(`${pronoun} offers a premier <strong>Week 1 streaming matchup (⭐${(p.sosWeeks?.W1 || p.avgStars || 3.0).toFixed(1)} SOS)</strong> to open the season`);
             }
         }
 
@@ -220,6 +231,7 @@ window.Compare = {
 
         // 8. Comprehensive Running Back Archetypes & Backfield Competition
         if (p.Pos === 'RB') {
+            let rzText = (p._vacatedRzAtt && p._vacatedRzAtt > 0) ? ` and <strong>+${p._vacatedRzAtt} red-zone looks</strong>` : '';
             if (p._rbArchetype === 'Bellcow Alpha') {
                 highlights.push(`<li><strong class="text-emerald-700">👑 Three-Down Bellcow Alpha:</strong> Uncontested lead back commanding <strong>${p.hvo || 65}+ High-Value Touches</strong> and complete snap monopoly.</li>`);
             } else if (p._rbArchetype === '1B Co-Starter') {
@@ -236,7 +248,7 @@ window.Compare = {
                 highlights.push(`<li><strong class="text-emerald-700">🛡️ Uncontested Backfield Lead:</strong> Backfield depth behind him is graded as Low Threat, guaranteeing unshared goal-line and third-down snaps.</li>`);
             }
             if (p._vacatedCarries && p._vacatedCarries >= 40) {
-                highlights.push(`<li><strong class="text-indigo-700">📦 Inherited Vacated Touches:</strong> Absorbs <strong>+${p._vacatedCarries} vacated carries</strong> and <strong>+${p._vacatedRzAtt || 0} red-zone looks</strong> from departed personnel.</li>`);
+                highlights.push(`<li><strong class="text-indigo-700">📦 Inherited Vacated Touches:</strong> Absorbs <strong>+${p._vacatedCarries} vacated carries</strong>${rzText}...</li>`);
             }
         }
 
@@ -262,8 +274,9 @@ window.Compare = {
         // 10. QB Rushing Floor & Escapability
         if (p.Pos === 'QB') {
             const rushYds = p.stats?.rushYds || 0;
+            const cleanRushYds = Math.round(p.stats?.rushYds || 0);
             if (p._qbArchetype === 'Konami Code Alpha' || rushYds >= 650) {
-                highlights.push(`<li><strong class="text-amber-700">🏃 Konami Code Alpha Floor:</strong> Projected for <strong>${rushYds} rush yards</strong>, creating an elite baseline that pocket passers cannot match.</li>`);
+                highlights.push(`<li><strong class="text-amber-700">🏃 Konami Code Alpha Floor:</strong> Projected for <strong>${cleanRushYds} rush yards</strong>...</li>`);
             } else if (p._qbArchetype === 'Dynamic Dual-Threat' || rushYds >= 425) {
                 highlights.push(`<li><strong class="text-amber-700">🏃 Dynamic Dual-Threat:</strong> Projected for <strong>${rushYds} rushing yards</strong> of weekly insulation.</li>`);
             }
@@ -306,10 +319,10 @@ window.Compare = {
         const currentPickNum = State.currentPick + 1;
         team = team || State.teamsById[State.userTeamId] || { counts: {}, roster: [] };
         
-        let topVBD = topPick.AdvVBD || topPick.VBD || 0;
-        let altVBD = alt.AdvVBD || alt.VBD || 0;
+        let topVBD = topPick.AdvVBD ?? topPick.VBD ?? 0;
+        let altVBD = alt.AdvVBD ?? alt.VBD ?? 0;
         let vbdGap = topVBD - altVBD;
-        let isTossUp = vbdGap <= 3.5; 
+        let isTossUp = Math.abs(vbdGap) <= 3.5;
         
         const altPosLimit = (State.settings.roster[alt.Pos]?.max || 2);
         const topPosLimit = (State.settings.roster[topPick.Pos]?.max || 2);
@@ -549,13 +562,16 @@ window.Compare = {
             altCase.push(`<strong>Roster Insurance:</strong> He is the direct handcuff to your starter (${alt.starterName}), securing your backfield from injury risk.`);
         }
 
+        const topCarries = Math.round(topPick.stats?.rushAtt || 0);
+        const altCarries = Math.round(alt.stats?.rushAtt || 0);
+
         // --- D. DEEP RB NUANCE ---
         if (alt.Pos === 'RB' && topPick.Pos === 'RB') {
             if ((alt.targetShare || 0) > (topPick.targetShare || 0) + 4.0 && State.scoring.ppr >= 0.5) {
                 altCase.push(`<strong>PPR Scoring Rules:</strong> You want to heavily exploit PPR scoring, as ${alt.Player} commands elite pass-catching volume (${alt.targetShare}% vs ${topPick.targetShare || 0}%) compared to ${topPick.Player}'s ground-heavy role.`);
             }
-            if ((alt.stats?.rushAtt || 0) >= (topPick.stats?.rushAtt || 0) + 15 || (alt.stats?.rushAtt || 0) >= 210) {
-                altCase.push(`<strong>Pure Rushing Workload:</strong> Projects for a heavier pure carry volume (<strong>${Math.round(alt.stats.rushAtt)} carries</strong> vs ${Math.round(topPick.stats?.rushAtt || 0)} for ${topPick.Player}), providing immense game-script protection when nursing leads.`);
+            if (altCarries >= topCarries + 15) {
+                altCase.push(`<strong>Pure Rushing Workload:</strong> Projects for a heavier pure carry volume (<strong>${altCarries} carries</strong> vs ${topCarries} for ${topPick.Player}), providing immense game-script protection when nursing leads.`);
             }
             if (alt._isGoalLineHammer && !topPick._isGoalLineHammer) {
                 altCase.push(`<strong>Touchdown Equity:</strong> You prefer a back who monopolizes high-leverage goal-line carries over a between-the-20s grinder.`);
@@ -698,7 +714,7 @@ window.Compare = {
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div class="bg-indigo-50/40 rounded-xl p-4 border border-indigo-100">
                         <h6 class="text-[11px] font-extrabold uppercase tracking-wider text-indigo-950 mb-2 flex items-center gap-1.5">
-                            <span>🛡️</span> The Case for ${topPick.Player.split(' ').slice(-1)[0]}
+                            <span>🛡️</span> The Case for ${topSurname}
                         </h6>
                         <ul class="text-xs text-slate-700 space-y-2">
                             ${topCase.slice(0, 5).map(c => `<li class="flex items-start"><span class="text-indigo-500 mr-2 font-black">•</span> <span class="leading-snug">${c}</span></li>`).join('')}
@@ -707,7 +723,7 @@ window.Compare = {
                     
                     <div class="bg-emerald-50/40 rounded-xl p-4 border border-emerald-100">
                         <h6 class="text-[11px] font-extrabold uppercase tracking-wider text-emerald-950 mb-2 flex items-center gap-1.5">
-                            <span>🔄</span> Why Pivot to ${alt.Player.split(' ').slice(-1)[0]}?
+                            <span>🔄</span> Why Pivot to ${altSurname}?
                         </h6>
                         <ul class="text-xs text-slate-700 space-y-2">
                             ${altCase.slice(0, 5).map(c => `<li class="flex items-start"><span class="text-emerald-500 mr-2 font-black">•</span> <span class="leading-snug">${c}</span></li>`).join('')}
