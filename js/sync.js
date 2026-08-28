@@ -1,5 +1,18 @@
 window.DraftSync = {
-    // 1. Generate the Save Data
+    // 🛡️ Safe Base64 encoder that won't crash on emojis or special characters
+    toSafeBase64(str) {
+        return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, (match, p1) => {
+            return String.fromCharCode('0x' + p1);
+        }));
+    },
+
+    // 🛡️ Safe Base64 decoder
+    fromSafeBase64(str) {
+        return decodeURIComponent(atob(str).split('').map((c) => {
+            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+    },
+
     generateExportData() {
         return {
             timestamp: Date.now(),
@@ -23,22 +36,19 @@ window.DraftSync = {
         };
     },
 
-    // 2. Show the Export Modal
     showExportModal() {
         if (!State.draftStarted || State.draftHistory.length === 0) {
             return UI.showMessage("Export Failed", "There is no active draft progress to save.");
         }
         
-        // Convert to Base64 to make it look like a clean "Save Code" instead of a messy JSON string
         const data = this.generateExportData();
-        const saveCode = btoa(JSON.stringify(data));
+        const saveCode = this.toSafeBase64(JSON.stringify(data));
         
         const html = `
-            <p class="text-sm text-slate-600 mb-3">Copy the code below to save your draft progress. You can paste it into the Import tool later to resume exactly where you left off.</p>
+            <p class="text-sm text-slate-600 mb-3">Copy the code below to save your draft. You can paste it back in later to resume where you left off.</p>
             <textarea id="export-draft-data" class="w-full h-32 p-3 text-[10px] text-slate-500 font-mono border border-slate-300 rounded-lg bg-slate-50 focus:outline-none break-all" readonly>${saveCode}</textarea>
             <button onclick="DraftSync.copyToClipboard()" class="mt-3 w-full bg-indigo-600 text-white font-bold py-2.5 rounded-xl hover:bg-indigo-700 transition shadow-sm flex items-center justify-center gap-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                Copy Save Code
+                📋 Copy Save Code
             </button>
         `;
         UI.showMessage("💾 Save Draft Progress", html);
@@ -62,47 +72,48 @@ window.DraftSync = {
         }, 2000);
     },
 
-    // 3. Show the Import Modal
     showImportModal() {
         const html = `
-            <p class="text-sm text-slate-600 mb-3">Paste your previously saved draft code below to instantly restore your league settings, scoring rules, and draft board.</p>
+            <p class="text-sm text-slate-600 mb-3">Paste your saved code below to restore league settings, scoring rules, and draft progress.</p>
             <textarea id="import-draft-data" class="w-full h-32 p-3 text-xs font-mono border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-inner text-slate-700" placeholder="Paste your save code here..."></textarea>
             <button onclick="DraftSync.processImport()" class="mt-3 w-full bg-emerald-600 text-white font-bold py-2.5 rounded-xl hover:bg-emerald-700 transition shadow-sm flex items-center justify-center gap-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
-                Restore & Resume Draft
+                🚀 Restore & Resume Draft
             </button>
         `;
         UI.showMessage("📂 Load Saved Draft", html);
     },
 
-    // 4. Process the Import and Rebuild the App State
     processImport() {
+        // 🛡️ Data Guard: Ensure player base data is ready
+        if (!State.allPlayers || State.allPlayers.length === 0) {
+            return alert("Base player data is still loading. Please wait a moment and try again.");
+        }
+
         const input = document.getElementById('import-draft-data').value.trim();
         if (!input) return alert("Please paste a save code first.");
 
         try {
-            // Decode Base64 and parse JSON
-            const jsonStr = atob(input);
+            const jsonStr = this.fromSafeBase64(input);
             const data = JSON.parse(jsonStr);
 
             if (!data.history || !data.teams) throw new Error("Invalid Save File Structure");
 
-            // 1. Restore Core Settings & Scoring
+            // 1. Restore Settings & Scoring
             State.settings = data.settings;
             State.scoring = data.scoring;
             State.userTeamId = data.userTeamId;
 
-            // 2. Recalculate VBD/Projections to match the imported scoring settings
+            // 2. Recalculate Projections for scoring rules
             State.calculateProjections();
             State.applyDynamicDSTSOS();
             State.calculateVBD();
 
-            // 3. Re-initialize the Draft Board
+            // 3. Reset and Rebuild Draft State
             State.teamsById = {};
             State.draftOrder = [];
             State.draftHistory = [];
             State.currentPick = 0;
-            State.availablePlayers = [...State.allPlayers]; // Reset board fully
+            State.availablePlayers = [...State.allPlayers];
 
             data.teams.forEach(t => {
                 let profile = null;
@@ -126,7 +137,7 @@ window.DraftSync = {
                 State.draftOrder.push(...roundOrder);
             }
 
-            // 4. Ghost-Draft the History to rebuild rosters and the available player pool
+            // 4. Replay Pick History
             data.history.forEach(h => {
                 let team = State.teamsById[h.teamId];
                 let playerIndex = State.availablePlayers.findIndex(p => p._cleanName === h.cleanName && p.Pos === h.pos && p.Team === h.team);
@@ -145,14 +156,12 @@ window.DraftSync = {
             // 5. Finalize UI State
             State.draftStarted = true;
             
-            // Close Modal
-            document.getElementById('message-modal-close').click(); 
+            const closeBtn = document.getElementById('message-modal-close');
+            if (closeBtn) closeBtn.click();
             
-            // Switch tabs and update board
             UI.switchTab('drafting-screen');
             UI.updateDraftBoard();
 
-            // Resume Auto-Draft if the bot was on the clock
             if (State.settings.draftMode === 'mock') {
                 AutoDraft.processQueue();
             }
