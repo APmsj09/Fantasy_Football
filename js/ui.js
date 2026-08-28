@@ -322,7 +322,8 @@ const UI = {
                         } else if (p._vacatedRoleType === 'Short-Yardage Safety Valve') {
                             opportunityBullets.push(`<strong>Underneath Outlet Volume:</strong> Offseason departures${depList} vacated <strong>+${p._vacatedTgts} targets</strong>. He absorbs high-percentage short-yardage and checkdown targets <span class="text-indigo-800 font-bold">[PPR FLOOR]</span>.`);
                         } else {
-                            opportunityBullets.push(`<strong>Vacated Red-Zone & MOF Funnel:</strong> Offseason departures${depList} vacated <strong>+${p._vacatedTgts} targets</strong> and <strong>+${p._vacatedRzTgts || 0} Red-Zone targets</strong>. As an inline/intermediate weapon (aDOT ${p.aDOT || 7.2} yds), he absorbs high-percentage 3rd-down and goal-line targets rather than boundary deep shots <span class="text-emerald-800 font-bold">[TOUCHDOWN & MOF RE-ALLOCATION]</span>.`);
+                            let vacRzStr = (p._vacatedRzTgts && p._vacatedRzTgts > 0) ? ` and <strong>+${p._vacatedRzTgts} Red-Zone targets</strong>` : '';
+                            opportunityBullets.push(`<strong>Vacated Red-Zone & MOF Funnel:</strong> Offseason departures${depList} vacated <strong>+${p._vacatedTgts} targets</strong>${vacRzStr}. As an inline/intermediate weapon (aDOT ${p.aDOT || 7.2} yds), he absorbs high-percentage 3rd-down and goal-line targets rather than boundary deep shots <span class="text-emerald-800 font-bold">[TOUCHDOWN & MOF RE-ALLOCATION]</span>.`);
                         }
                     } else {
                         if (p._vacatedRoleType === 'Perimeter Alpha Air Yards') {
@@ -372,7 +373,11 @@ const UI = {
                     opportunityBullets.push(`<strong>QB Accuracy Context:</strong> ${p.Team} QBs delivered on-target passes <strong>${acc}%</strong> of the time <span class="text-indigo-800 font-bold">${grade}</span>.`);
                 }
                 if (opportunityBullets.length === 0 || (opportunityBullets.length === 1 && showPastStatsInBox)) {
-                    opportunityBullets.push(`<strong>Target Opportunity:</strong> ${p.Player} enters the ${p.Team} passing attack with starting route potential.`);
+                    if (p.depthChart && p.depthChart <= 3) {
+                        opportunityBullets.push(`<strong>Target Opportunity:</strong> ${p.Player} enters the ${p.Team} passing attack with starting route potential.`);
+                    } else {
+                        opportunityBullets.push(`<strong>Depth Role:</strong> Operates primarily as a rotational depth piece in the ${p.Team} passing attack.`);
+                    }
                 }
             } else if (pos === 'QB') {
                 if (p._totalWeaponProj) {
@@ -445,7 +450,8 @@ const UI = {
                     competitionBullets.push(`<strong>Backfield Hierarchy:</strong> Backup <strong>${p._backupName || 'depth'}</strong> is graded as a <strong class="${alertColor}">${p._backupThreatLevel}</strong>. ${p._backupThreatNote || ''}`);
                 }
                 if (p._vacatedCarries && p._vacatedCarries >= 30) {
-                    competitionBullets.push(`<strong>Vacated Volume:</strong> Offseason departures (${p._departedBackfieldNames?.slice(0, 3).join(', ') || 'departures'}) vacated <strong>+${p._vacatedCarries} carries</strong> and <strong>+${p._vacatedRzAtt || 0} Red-Zone carries</strong>.`);
+                    let rzCarriesStr = (p._vacatedRzAtt && p._vacatedRzAtt > 0) ? ` and <strong>+${p._vacatedRzAtt} Red-Zone carries</strong>` : '';
+                    competitionBullets.push(`<strong>Vacated Volume:</strong> Offseason departures (${p._departedBackfieldNames?.slice(0, 3).join(', ') || 'departures'}) vacated <strong>+${p._vacatedCarries} carries</strong>${rzCarriesStr}.`);
                 }
                 if (p._rb3ThreatNote) {
                     competitionBullets.push(`<strong>Rotational Risk:</strong> ${p._rb3ThreatNote}`);
@@ -458,7 +464,8 @@ const UI = {
                     competitionBullets.push(`<strong>Passing Tree Hierarchy:</strong> Graded as a <strong>${p._passingTreeType}</strong>. ${p._treeDescription || ''}`);
                 }
                 if (p._vacatedTgts && p._vacatedTgts >= 40) {
-                    competitionBullets.push(`<strong>Vacated Air Yards/Targets:</strong> Departures (${p._departedReceiverNames?.slice(0, 3).join(', ') || 'departures'}) opened up <strong>+${p._vacatedTgts} targets</strong> and <strong>+${p._vacatedAirYards || 0} air yards</strong>.`);
+                    let vacAirStr = (p._vacatedAirYards && p._vacatedAirYards > 0) ? ` and <strong>+${p._vacatedAirYards} air yards</strong>` : '';
+                    competitionBullets.push(`<strong>Vacated Target Share:</strong> Departures (${p._departedReceiverNames?.slice(0, 3).join(', ') || 'departures'}) opened up <strong>+${p._vacatedTgts} targets</strong>${vacAirStr}.`);
                 }
                 if (p._incomingCompetitionNote) {
                     competitionBullets.push(`<strong>Incoming Competition:</strong> ${p._incomingCompetitionNote}`);
@@ -472,8 +479,10 @@ const UI = {
             } else if (pos === 'QB') {
                 if (p._shortLeashRisk) {
                     competitionBullets.push(`<strong>Job Security Warning:</strong> ${p._shortLeashNote || 'Bridge starter risk: could face benching pressure if the team struggles.'}`);
-                } else {
+                } else if (p.depthChart === 1) {
                     competitionBullets.push(`<strong>Franchise Job Security:</strong> Uncontested franchise starter with full scheme command.`);
+                } else {
+                    competitionBullets.push(`<strong>Backup / Developmental Role:</strong> Currently slotted behind the starter, requiring an injury, benching, or developmental timeline to see the field.`);
                 }
             }
 
@@ -1035,8 +1044,11 @@ const UI = {
             }
 
             if (p._isAscendingRole) {
-                let growthDisplay = (p._growthPct !== undefined && !isNaN(p._growthPct)) ? `+${p._growthPct}%` : 'significant';
-                pros.push(`<strong>📈 Ascending Workload Leap:</strong> Projected for a <strong>${growthDisplay} surge in touches per game</strong> compared to 2025 actuals, reflecting an expanding featured role rather than a restricted split.`);
+                if (p.isNewRole || !p._growthPct) {
+                    pros.push(`<strong>📈 Emerging Workload:</strong> Steps into a highly prominent offensive role as an ascending prospect. His projection reflects a clean-slate infusion of high-value touches based on vacated team volume.`);
+                } else {
+                    pros.push(`<strong>📈 Ascending Workload Leap:</strong> Projected for a <strong>+${p._growthPct}% surge in touches per game</strong> compared to 2025 actuals, reflecting an expanding featured role rather than a restricted split.`);
+                }
             }
 
             if (p.isTeamChanger && p._envDelta && p._envDelta >= 0.015) {
@@ -1077,7 +1089,11 @@ const UI = {
                 pros.push(`<strong>High-Volume Scheme:</strong> Directing a pass-heavy attack naturally pads his fantasy floor with raw volume and increased touchdown opportunities.`);
             }
             if (pos === 'RB' && offensePace === 'run-heavy') {
-                pros.push(`<strong>Run-Heavy Offense:</strong> Operating in a run-first system ensures a massive baseline of rushing attempts and positive game scripts to churn out the clock.`);
+                if (p.depthChart === 1 || p.isRBStarter) {
+                    pros.push(`<strong>Run-Heavy Offense:</strong> Operating as the lead back in a run-first system ensures a massive baseline of rushing attempts and positive game scripts to churn out the clock.`);
+                } else {
+                    pros.push(`<strong>Run-Heavy Environment:</strong> Plays in a run-first scheme that generates elevated total backfield volume, increasing touch opportunities for rotational backs.`);
+                }
             }
             if (pos === 'RB' && rushEnv && rushEnv.ybcAtt >= 2.9) {
                 pros.push(`<strong>Elite YBC Scheme Boost:</strong> Elite run-blocking scheme generates ${rushEnv.ybcAtt} Yards Before Contact (YBC) per carry, giving him massive open space before taking a hit.`);
@@ -1783,7 +1799,11 @@ const UI = {
         // Environmental Badges
         if (isOffense) {
             if (p._isAscendingRole) {
-                envBadges.push(`<span class="bg-emerald-100 text-emerald-800 text-xs font-bold px-2.5 py-1 rounded-full border border-emerald-200">📈 Ascending Role (+${p._growthPct}% Touches)</span>`);
+                if (p.isNewRole || !p._growthPct) {
+                    envBadges.push(`<span class="bg-emerald-100 text-emerald-800 text-xs font-bold px-2.5 py-1 rounded-full border border-emerald-200" title="Inheriting vacated team volume">📈 Emerging Role (Inherited Volume)</span>`);
+                } else {
+                    envBadges.push(`<span class="bg-emerald-100 text-emerald-800 text-xs font-bold px-2.5 py-1 rounded-full border border-emerald-200">📈 Ascending Role (+${p._growthPct}% Touches)</span>`);
+                }
             } else if (p._isDecliningRole) {
                 envBadges.push(`<span class="bg-rose-100 text-rose-800 text-xs font-bold px-2.5 py-1 rounded-full border border-rose-200">📉 Contracting Role (-${p._declinePct}% Touches)</span>`);
             }
@@ -1964,7 +1984,7 @@ const UI = {
         let statsDashboard = '';
         if (isOffense) {
             let isQB = p.Pos === 'QB';
-            let opps = isQB ? ((s.passAtt || 0) + (s.rushAtt || 0)) : ((s.rushAtt || 0) + (s.targets || 0));
+            let opps = Math.round(isQB ? ((s.passAtt || 0) + (s.rushAtt || 0)) : ((s.rushAtt || 0) + (s.targets || 0)));
             let oppsLabel = isQB ? 'Pass Att + Rush Att' : 'Touches / Tgts';
 
             statsDashboard = `
