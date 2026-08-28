@@ -1460,7 +1460,7 @@ const State = {
             }
 
             // Only front-load the zeroes if it's a guaranteed early absence
-            let hasEarlyAbsence = p._isSuspended || p._isSeasonIR || p._isShortIR || p._isPupList;
+            let hasEarlyAbsence = player._isSuspended || player._isSeasonIR || player._isShortIR || player._isPupList;
             
             if (hasEarlyAbsence && missedCount < expectedMissed) {
                 player.weeklyProjections[`W${w}`] = 0;
