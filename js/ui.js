@@ -414,6 +414,93 @@ const UI = {
             }
         }
 
+        // =========================================================================
+        // TEAM SITUATION, SUPPORTING CAST & USAGE COMPETITION MATRIX
+        // =========================================================================
+        let situationMatrixHTML = "";
+        if (isOffense) {
+            let supportingCastBullets = [];
+            let competitionBullets = [];
+
+            // Supporting Cast Analysis
+            if (pos === 'RB') {
+                if (p.olTier) {
+                    supportingCastBullets.push(`<strong>Offensive Line:</strong> Graded as <strong>Tier ${p.olTier}</strong> (Run Block #${p.olRunBlk || 16}, Pass Block #${p.olPassBlk || 16}), generating <strong>${rushEnv?.ybcAtt || 2.4} Yards Before Contact</strong> per carry.`);
+                }
+                supportingCastBullets.push(`<strong>Quarterback Gravity:</strong> Handing off from <strong>${qbName}</strong> in a <strong>${offensePace}</strong> system (${passVolume} team pass attempts).`);
+            } else if (['WR', 'TE'].includes(pos)) {
+                supportingCastBullets.push(`<strong>Quarterback Connection:</strong> Catching passes from <strong>${qbName}</strong> (${passEnv?.onTgtPct || 74}% on-target accuracy, ${passEnv?.pktTime || 2.4}s pocket protection time).`);
+                if (passEnv?.playActionYds && passEnv.playActionYds >= 800) {
+                    supportingCastBullets.push(`<strong>Play-Action Scheme:</strong> Scheme generates <strong>${passEnv.playActionYds} yards off Play-Action</strong>, creating open intermediate passing lanes.`);
+                }
+            } else if (pos === 'QB') {
+                supportingCastBullets.push(`<strong>Pass Protection:</strong> Protected by a <strong>Tier ${p.olTier || 'C'} offensive line</strong> (${passEnv?.pktTime || 2.4}s pocket time, ${passEnv?.prssPct || 22}% pressure rate).`);
+                supportingCastBullets.push(`<strong>Receiving Arsenal:</strong> Backed by <strong>${p._eliteWeaponCount || 0} elite separator(s)</strong> (${Math.round(p._totalWeaponProj || 0)} combined projected weapon points).`);
+            }
+
+            // Touch & Target Competition Analysis
+            if (pos === 'RB') {
+                if (p._backupThreatLevel) {
+                    let alertColor = p._backupThreatLevel.includes('Threat') ? 'text-amber-700' : 'text-emerald-700';
+                    competitionBullets.push(`<strong>Backfield Hierarchy:</strong> Backup <strong>${p._backupName || 'depth'}</strong> is graded as a <strong class="${alertColor}">${p._backupThreatLevel}</strong>. ${p._backupThreatNote || ''}`);
+                }
+                if (p._vacatedCarries && p._vacatedCarries >= 30) {
+                    competitionBullets.push(`<strong>Vacated Volume:</strong> Offseason departures (${p._departedBackfieldNames?.slice(0, 3).join(', ') || 'departures'}) vacated <strong>+${p._vacatedCarries} carries</strong> and <strong>+${p._vacatedRzAtt || 0} Red-Zone carries</strong>.`);
+                }
+                if (p._rb3ThreatNote) {
+                    competitionBullets.push(`<strong>Rotational Risk:</strong> ${p._rb3ThreatNote}`);
+                }
+                if (p._qbSneakContext) {
+                    competitionBullets.push(`<strong>Goal-Line Dynamics:</strong> ${p._qbSneakContext}`);
+                }
+            } else if (['WR', 'TE'].includes(pos)) {
+                if (p._passingTreeType) {
+                    competitionBullets.push(`<strong>Passing Tree Hierarchy:</strong> Graded as a <strong>${p._passingTreeType}</strong>. ${p._treeDescription || ''}`);
+                }
+                if (p._vacatedTgts && p._vacatedTgts >= 40) {
+                    competitionBullets.push(`<strong>Vacated Air Yards/Targets:</strong> Departures (${p._departedReceiverNames?.slice(0, 3).join(', ') || 'departures'}) opened up <strong>+${p._vacatedTgts} targets</strong> and <strong>+${p._vacatedAirYards || 0} air yards</strong>.`);
+                }
+                if (p._incomingCompetitionNote) {
+                    competitionBullets.push(`<strong>Incoming Competition:</strong> ${p._incomingCompetitionNote}`);
+                }
+                if (p._wr2Note) {
+                    competitionBullets.push(`<strong>Target Distribution:</strong> ${p._wr2Note}`);
+                }
+                if (p._teCommitteeNote) {
+                    competitionBullets.push(`<strong>Route Split Risk:</strong> ${p._teCommitteeNote}`);
+                }
+            } else if (pos === 'QB') {
+                if (p._shortLeashRisk) {
+                    competitionBullets.push(`<strong>Job Security Warning:</strong> ${p._shortLeashNote || 'Bridge starter risk: could face benching pressure if the team struggles.'}`);
+                } else {
+                    competitionBullets.push(`<strong>Franchise Job Security:</strong> Uncontested franchise starter with full scheme command.`);
+                }
+            }
+
+            if (supportingCastBullets.length > 0 || competitionBullets.length > 0) {
+                situationMatrixHTML = `
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3 text-xs">
+                        <div class="bg-slate-50 border border-slate-200 p-3.5 rounded-xl">
+                            <h6 class="font-extrabold uppercase text-[10px] text-slate-500 tracking-wider mb-2 flex items-center gap-1.5">
+                                <span class="text-indigo-600">🛡️</span> Supporting Cast & Trench Quality
+                            </h6>
+                            <ul class="space-y-1.5 text-slate-700">
+                                ${supportingCastBullets.map(b => `<li class="flex items-start"><span class="text-indigo-500 mr-1.5 font-bold">•</span><div>${b}</div></li>`).join('')}
+                            </ul>
+                        </div>
+                        <div class="bg-slate-50 border border-slate-200 p-3.5 rounded-xl">
+                            <h6 class="font-extrabold uppercase text-[10px] text-slate-500 tracking-wider mb-2 flex items-center gap-1.5">
+                                <span class="text-amber-600">⚔️</span> Touch Competition & Hierarchy
+                            </h6>
+                            <ul class="space-y-1.5 text-slate-700">
+                                ${competitionBullets.map(b => `<li class="flex items-start"><span class="text-amber-500 mr-1.5 font-bold">•</span><div>${b}</div></li>`).join('')}
+                            </ul>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
         // -------------------------------------------------------------
         // SEED HASH (Deterministic Variety)
         // -------------------------------------------------------------
@@ -1623,6 +1710,9 @@ const UI = {
 
                 <!-- Inherited Role & Scheme Analysis -->
                 ${inheritedContextHTML}
+
+                <!-- Supporting Cast & Touch Competition Matrix -->
+                ${situationMatrixHTML}
 
                 <!-- Algorithm Verdict & Market Check -->
                 ${algorithmVerdictHTML}
@@ -2957,21 +3047,25 @@ const UI = {
             if (p._byeWarningTag) {
                 highlight = `<span class="text-rose-300 font-extrabold">${p._byeWarningTag}</span>`;
             } else if (p === bpaPlayer) {
-                highlight = `<span class="text-fuchsia-300 font-extrabold tracking-wide">💎 Highest Actual Value (BPA)</span>`;
+                highlight = `<span class="text-fuchsia-300 font-extrabold tracking-wide">💎 Highest Raw Value (BPA)</span>`;
+            } else if (p.contingentDraftEquity && p.contingentDraftEquity >= 25.0) {
+                highlight = `<span class="text-purple-300 font-black">👑 ${p._contingentTier || 'Diamond Stash'}</span>`;
             } else if (p._sleeperBadge) {
                 highlight = `<span class="text-emerald-300 font-bold">${p._sleeperBadge}</span>`;
             } else if (p._rosterContextBadge) {
                 highlight = `<span class="text-amber-300 font-bold">${p._rosterContextBadge}</span>`;
+            } else if (p._positiveTdRegression) {
+                highlight = `<span class="text-emerald-300 font-bold">📈 Positive TD Rebound (~${p.xTD ? p.xTD.toFixed(0) : 'High'} xTD)</span>`;
             } else if (p.adp && p._survivalProb < 0.20 && (isStarterNeeded || hasPositiveValue)) {
                 highlight = `<span class="text-rose-300 font-bold">⚡ Last Chance (ADP ${p.adp.toFixed(0)})</span>`;
-            } else if (p.adp && p._survivalProb > 0.80 && currentRound <= 9) {
+            } else if (p.adp && (currentOverallPick - p.adp >= 10)) {
+                highlight = `<span class="text-emerald-300 font-bold">🔥 Value Slide (+${Math.round(currentOverallPick - p.adp)} past ADP)</span>`;
+            } else if (p.adp && p._survivalProb > 0.75 && currentRound <= 9) {
                 highlight = `<span class="text-slate-400 font-medium">⏳ Exploit Public ADP (${p.adp.toFixed(0)})</span>`;
-            } else if (p.adp && (currentOverallPick - p.adp >= 12)) {
-                highlight = `<span class="text-emerald-300 font-bold">🔥 Public Sliding vs ADP (${p.adp.toFixed(0)})</span>`;
             } else if (isStarterNeeded) {
-                highlight = `<span class="text-amber-300">Positional Need</span>`;
+                highlight = `<span class="text-amber-300 font-semibold">📋 Core Starter </span>`;
             } else {
-                highlight = `Depth / Value`;
+                highlight = `<span class="text-slate-400">Depth</span>`;
             }
 
             let ppwVal = '';
