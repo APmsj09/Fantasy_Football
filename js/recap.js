@@ -31,20 +31,21 @@ window.DraftRecap = {
             }
 
             let floorRoster = team.roster.map(p => {
-                let variance = p.boomBust && p.boomBust.bust ? (p.boomBust.bust / 100) : 0.25;
+                let variance = p.varianceSpread || (p.boomBust?.bust ? p.boomBust.bust / 100 : 0.22);
                 let mapped = { ...p, weeklyProjections: {} };
                 for (let week = 1; week <= 18; week++) {
                     let baseProj = p.weeklyProjections?.[`W${week}`] || 0;
-                    mapped.weeklyProjections[`W${week}`] = baseProj * (1 - (variance * 0.65));
+                    mapped.weeklyProjections[`W${week}`] = baseProj * (1 - (variance * 0.70));
                 }
                 return mapped;
             });
 
             let ceilRoster = team.roster.map(p => {
-                let maxMultiplier = 1.25;
-                if (p.upsideScore > 0 && p.AdvVBD > 0) {
+                let variance = p.varianceSpread || 0.22;
+                let maxMultiplier = 1 + (variance * 1.2);
+                if (p.upsideScore > 0 && (p.AdvVBD || 0) > 0) {
                     let ratio = p.upsideScore / p.AdvVBD;
-                    if (ratio > 1.0) maxMultiplier = Math.min(1.45, ratio);
+                    if (ratio > 1.0) maxMultiplier = Math.min(1.42, 1 + ((ratio - 1) * 0.45));
                 }
                 let mapped = { ...p, weeklyProjections: {} };
                 for (let week = 1; week <= 18; week++) {
@@ -1167,8 +1168,8 @@ window.DraftRecap = {
                                     <td class="px-4 py-2.5 font-extrabold text-slate-900">${p.Player}</td>
                                     <td class="px-4 py-2.5 text-slate-500 font-semibold">${p.Team} • ${p.Pos}</td>
                                     <td class="px-4 py-2.5 text-center text-slate-500 font-medium">${p.byeWeek !== 'N/A' ? 'Wk ' + p.byeWeek : '-'}</td>
-                                    <td class="px-4 py-2.5 text-right font-black text-slate-900">${p.ProjPts.toFixed(1)}</td>
-                                    <td class="px-4 py-2.5 text-right font-bold text-emerald-600">${(p.ProjPts / 17).toFixed(1)}</td>
+                                    <td class="px-4 py-2.5 text-right font-black text-indigo-900">${(p.ModelPts || p.ProjPts).toFixed(1)}</td>
+                                    <td class="px-4 py-2.5 text-right font-bold text-emerald-600">${((p.ModelPts || p.ProjPts) / 17).toFixed(1)}</td>
                                     <td class="px-4 py-2.5">
                                         <span class="bg-slate-100 text-slate-700 border border-slate-200 px-2 py-0.5 rounded text-[10px] font-bold">
                                             ${p._rbArchetype || p._wrArchetype || p._teArchetype || p._qbArchetype || 'Starter'}
