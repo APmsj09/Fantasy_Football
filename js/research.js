@@ -319,9 +319,14 @@ window.TeamResearch = {
                                         </div>` : ''}
                                     </div>
 
-                                    <div class="mt-2 pt-2 border-t border-gray-100 flex justify-between items-center text-[10px] text-gray-400 font-semibold">
-                                        <span>Adv VBD: ${(p.AdvVBD || p.VBD || 0).toFixed(1)}</span>
-                                        <span class="text-indigo-600 font-bold hover:underline">Full Analytics Card &rarr;</span>
+                                    <div class="mt-2 pt-2 border-t border-gray-100 flex justify-between items-center text-[10px] font-semibold">
+                                        <div>
+                                            <span class="text-slate-400">Model Edge: </span>
+                                            <span class="${(p.Edge || 0) >= 0 ? 'text-emerald-600 font-black' : 'text-rose-600 font-bold'}">
+                                                ${(p.Edge || 0) >= 0 ? '+' : ''}${(p.Edge || 0).toFixed(1)} (${Math.round((p.OverProb || 0.5) * 100)}% Over)
+                                            </span>
+                                        </div>
+                                        <span class="text-indigo-600 font-bold hover:underline">Scout Card &rarr;</span>
                                     </div>
                                 </div>
                             `;
