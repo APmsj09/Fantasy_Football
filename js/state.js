@@ -1632,7 +1632,14 @@ const State = {
             stackBonus = 2.0;
         }
 
-        let ppwBonus = (!isCPU && isAnyStartingSlotOpen && player._addedPPW && player._addedPPW >= 0.5) ? player._addedPPW * 2 : 0;
+        // Only apply the Lineup Optimization (PPW) bonus in Round 5 or later.
+        // In Rounds 1-4, VBD, Scarcity, and Tier Drops must dictate the draft.
+        let ppwBonus = 0;
+        if (!isCPU && isAnyStartingSlotOpen && player._addedPPW && player._addedPPW >= 0.5) {
+            // Polynomial Phase Scaling: Transitions draft weight from pure VBD to Roster Fit
+            let phaseScale = Math.min(1.0, Math.pow(Math.max(0, currentRound - 1) / 4, 1.5));
+            ppwBonus = (player._addedPPW * 2) * phaseScale;
+        }
 
         let rawScore = baseVBD + starterBonus + scarcityBonus + adpBonus - adpPenalty + upsideBonus + ppwBonus + stackBonus + personalityAdjustment;
         let totalDraftValue = (rawScore >= 0 ? rawScore * rosterOveragePenalty * byePenaltyMultiplier : rawScore / Math.max(0.05, (rosterOveragePenalty * byePenaltyMultiplier)));
