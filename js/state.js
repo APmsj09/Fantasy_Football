@@ -1474,7 +1474,20 @@ const State = {
                 let lastInTopTier = tiers[0][tiers[0].length - 1];
                 let firstInNextTier = tiers[1][0];
                 let drop = (lastInTopTier.AdvVBD ?? lastInTopTier.VBD ?? 0) - (firstInNextTier.AdvVBD ?? firstInNextTier.VBD ?? 0);
+                
                 let urgencyMult = tiers[0].length === 1 ? 1.0 : (tiers[0].length === 2 ? 0.7 : 0.4);
+                
+                // ✨ 3-LAYERS DEEP FIX: Onesie Position Scarcity Dampening
+                // If a position only requires 1 starter (QB/TE), the panic of a tier cliff 
+                // is naturally mitigated because market demand is capped at 1 per team.
+                let maxStarters = this.settings.roster[pos]?.max || 1;
+                let isStrictOnesie = ['QB', 'TE', 'PK', 'DST'].includes(pos) && maxStarters === 1;
+                
+                if (isStrictOnesie) {
+                    if (pos === 'QB' && !isSuperflexOpen) urgencyMult *= 0.20; 
+                    else if (pos === 'TE' && (this.scoring.tePremium || 0) === 0) urgencyMult *= 0.35;
+                }
+
                 scarcityBonus = Math.max(0, drop) * urgencyMult;
             }
         }
