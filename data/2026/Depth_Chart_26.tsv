@@ -1,708 +1,744 @@
 Team	Player	Position	Depth	ECR
-ARI	Jacoby Brissett	QB	1	27
-ARI	Carson Beck	QB	2	37
-ARI	Gardner Minshew II	QB	3	48
-ARI	Jeremiyah Love	RB	1	17
-ARI	Tyler Allgeier	RB	2	43
-ARI	James Conner	RB	3	66
-ARI	Trey Benson	RB	4	84
-ARI	Bam Knight	RB	5	103
-ARI	Marvin Harrison Jr.	WR	1	31
-ARI	Michael Wilson	WR	2	39
-ARI	Kendrick Bourne	WR	3	125
-ARI	Reggie Virgil	WR	4	163
-ARI	Jalen Brooks	WR	5	184
-ARI	Simi Fehoko	WR	6	233
-ARI	Xavier Weaver	WR	7	241
-ARI	Trey McBride	TE	1	2
-ARI	Elijah Higgins	TE	2	61
-ARI	Tip Reiman	TE	3	109
-ARI	Teagan Quitoriano	TE	4	130
-ARI	Rivaldo Fairweather	TE	5	149
-ARI	Jameson Geers	TE	6	153
-ARI	Chad Ryland	PK	1	23
-ATL	Tua Tagovailoa	QB	1	31
-ATL	Michael Penix Jr.	QB	2	32
-ATL	Cooper Rush	QB	3	79
-ATL	Bijan Robinson	RB	1	2
-ATL	Brian Robinson Jr.	RB	2	52
-ATL	Tyler Goodson	RB	3	119
-ATL	Nathan Carter	RB	4	141
-ATL	Cash Jones	RB	5	147
-ATL	Drake London	WR	1	9
-ATL	Zachariah Branch	WR	2	82
-ATL	Jahan Dotson	WR	3	111
-ATL	Olamide Zaccheaus	WR	4	121
-ATL	Juice Wells Jr.	WR	5	165
-ATL	Chris Blair	WR	6	185
-ATL	Dylan Drummond	WR	7	240
-ATL	Kyle Pitts Sr.	TE	1	8
-ATL	Austin Hooper	TE	2	60
-ATL	Charlie Woerner	TE	3	116
-ATL	Joshua Simon	TE	4	127
-ATL	Jack Velling	TE	5	140
-ATL	Nick Folk	PK	1	24
-BAL	Lamar Jackson	QB	1	2
-BAL	Tyler Huntley	QB	2	55
-BAL	Skylar Thompson	QB	3	100
-BAL	Joe Fagnano	QB	4	102
-BAL	Derrick Henry	RB	1	6
-BAL	Justice Hill	RB	2	71
-BAL	Adam Randall	RB	3	85
-BAL	Rasheen Ali	RB	4	112
-BAL	Elijah Tau-Tolliver	RB	5	126
-BAL	Dontae McMillan	RB	6	170
-BAL	Zay Flowers	WR	1	14
-BAL	Rashod Bateman	WR	2	72
-BAL	Ja'Kobi Lane	WR	3	92
-BAL	Elijah Sarratt	WR	4	94
-BAL	Devontez Walker	WR	5	143
-BAL	DeAndre Hopkins	WR	6	160
-BAL	Mark Andrews	TE	1	13
-BAL	Matt Hibner	TE	2	64
-BAL	Durham Smythe	TE	3	78
-BAL	Josh Cuevas	TE	4	87
-BAL	Ty Pezza	TE	5	122
-BAL	Tyler Loop	PK	1	7
-BUF	Josh Allen	QB	1	1
-BUF	Kyle Allen	QB	2	68
-BUF	Shane Buechele	QB	3	96
-BUF	James Cook III	RB	1	4
-BUF	Ray Davis	RB	2	60
-BUF	Ty Johnson	RB	3	77
-BUF	Frank Gore Jr.	RB	4	123
-BUF	DJ Moore	WR	1	29
-BUF	Khalil Shakir	WR	2	54
-BUF	Keon Coleman	WR	3	88
-BUF	Skyler Bell	WR	4	105
-BUF	Joshua Palmer	WR	5	127
-BUF	Mecole Hardman Jr.	WR	6	197
-BUF	Dante Pettis	WR	7	209
-BUF	Quentin Skinner	WR	8	223
-BUF	Tyrell Shavers	WR	9	225
-BUF	Dalton Kincaid	TE	1	10
-BUF	Dawson Knox	TE	2	47
-BUF	Jackson Hawes	TE	3	65
-BUF	Tyler Bass	PK	1	20
-CAR	Bryce Young	QB	1	26
-CAR	Kenny Pickett	QB	2	64
-CAR	Haynes King	QB	3	82
-CAR	Jonathon Brooks	RB	1	32
-CAR	Chuba Hubbard	RB	2	36
-CAR	Trevor Etienne	RB	3	91
-CAR	Miles Davis	RB	4	137
-CAR	AJ Dillon	RB	5	149
-CAR	Tetairoa McMillan	WR	1	17
-CAR	Jalen Coker	WR	2	53
-CAR	Xavier Legette	WR	3	100
-CAR	Chris Brazzell II	WR	4	123
-CAR	John Metchie III	WR	5	135
-CAR	Jimmy Horn Jr.	WR	6	167
-CAR	Brycen Tremayne	WR	7	186
-CAR	Casey Washington	WR	8	206
-CAR	David Moore	WR	9	244
-CAR	Darren Waller	TE	1	41
-CAR	Ja'Tavion Sanders	TE	2	50
-CAR	Tommy Tremble	TE	3	56
-CAR	Mitchell Evans	TE	4	57
-CAR	James Mitchell	TE	5	146
-CAR	Ryan Fitzgerald	PK	1	25
-CHI	Caleb Williams	QB	1	7
-CHI	Tyson Bagent	QB	2	52
-CHI	Case Keenum	QB	3	93
-CHI	D'Andre Swift	RB	1	19
-CHI	Kyle Monangai	RB	2	37
-CHI	Roschon Johnson	RB	3	109
-CHI	Brittain Brown	RB	4	161
-CHI	Salvon Ahmed	RB	5	171
-CHI	Rome Odunze	WR	1	26
-CHI	Luther Burden III	WR	2	27
-CHI	Kalif Raymond	WR	3	131
-CHI	Zavion Thomas	WR	4	137
-CHI	Jahdae Walker	WR	5	151
-CHI	Scotty Miller	WR	6	169
-CHI	Maurice Alexander	WR	7	204
-CHI	Ray-Ray McCloud III	WR	8	231
-CHI	Colston Loveland	TE	1	3
-CHI	Cole Kmet	TE	2	43
-CHI	Sam Roush	TE	3	74
-CHI	Cairo Santos	PK	1	10
-CIN	Joe Burrow	QB	1	4
-CIN	Joe Flacco	QB	2	42
-CIN	Josh Johnson	QB	3	83
-CIN	Chase Brown	RB	1	9
-CIN	Samaje Perine	RB	2	76
-CIN	Tahj Brooks	RB	3	94
-CIN	Jamal Haynes	RB	4	154
-CIN	Gary Brightwell	RB	5	173
-CIN	Kentrel Bullock	RB	6	177
-CIN	Ja'Marr Chase	WR	1	1
-CIN	Tee Higgins	WR	2	16
-CIN	Andrei Iosivas	WR	3	109
-CIN	Colbie Young	WR	4	144
-CIN	Mitch Tinsley	WR	5	159
-CIN	Dohnte Meyers	WR	6	192
-CIN	Mike Gesicki	TE	1	37
-CIN	Erick All Jr.	TE	2	49
-CIN	Jack Endries	TE	3	77
-CIN	Drew Sample	TE	4	82
-CIN	Tanner Hudson	TE	5	98
-CIN	Evan McPherson	PK	1	9
-CLE	Shedeur Sanders	QB	1	33
-CLE	Deshaun Watson	QB	2	35
-CLE	Taylen Green	QB	3	59
-CLE	Dillon Gabriel	QB	4	75
-CLE	Quinshon Judkins	RB	1	20
-CLE	Dylan Sampson	RB	2	54
-CLE	Raheim Sanders	RB	3	108
-CLE	Ahmani Marshall	RB	4	144
-CLE	Michael Burton	RB	5	157
-CLE	KC Concepcion	WR	1	51
-CLE	Denzel Boston	WR	2	58
-CLE	Jerry Jeudy	WR	3	63
-CLE	Isaiah Bond	WR	4	104
-CLE	Cedric Tillman	WR	5	114
-CLE	Malachi Corley	WR	6	224
-CLE	Jamari Thrash	WR	7	243
-CLE	Harold Fannin Jr.	TE	1	7
-CLE	Joe Royer	TE	2	86
-CLE	Jack Stoll	TE	3	103
-CLE	Blake Whiteheart	TE	4	113
-CLE	Carsen Ryan	TE	5	123
-CLE	Brenden Bates	TE	6	143
-CLE	Andre Szmyt	PK	1	32
-DAL	Dak Prescott	QB	1	10
-DAL	Joe Milton III	QB	2	46
-DAL	Sam Howell	QB	3	70
-DAL	Javonte Williams	RB	1	14
-DAL	Jaydon Blue	RB	2	65
-DAL	Malik Davis	RB	3	79
-DAL	Phil Mafah	RB	4	105
-DAL	Hunter Luepke	RB	5	134
-DAL	CeeDee Lamb	WR	1	5
-DAL	George Pickens	WR	2	10
-DAL	Ryan Flournoy	WR	3	71
-DAL	KaVontae Turpin	WR	4	136
-DAL	Marquez Valdes-Scantling	WR	5	162
-DAL	Tyler Johnson	WR	6	198
-DAL	Jonathan Mingo	WR	7	214
-DAL	Jake Ferguson	TE	1	15
-DAL	Luke Schoonmaker	TE	2	70
-DAL	Michael Trigg	TE	3	73
-DAL	Brevyn Spann-Ford	TE	4	107
-DAL	Princeton Fant	TE	5	136
-DAL	DJ Rogers	TE	6	161
-DAL	Brandon Aubrey	PK	1	1
-DEN	Bo Nix	QB	1	12
-DEN	Jarrett Stidham	QB	2	58
-DEN	Sam Ehlinger	QB	3	85
-DEN	J.K. Dobbins	RB	1	31
-DEN	RJ Harvey	RB	2	39
-DEN	Jonah Coleman	RB	3	49
-DEN	Jaleel McLaughlin	RB	4	97
-DEN	Tyler Badie	RB	5	143
-DEN	Adam Prentice	RB	6	163
-DEN	Jaylen Waddle	WR	1	20
-DEN	Courtland Sutton	WR	2	35
-DEN	Pat Bryant	WR	3	74
-DEN	Troy Franklin	WR	4	78
-DEN	Marvin Mims Jr.	WR	5	99
-DEN	Lil'Jordan Humphrey	WR	6	161
-DEN	Michael Woods II	WR	7	191
-DEN	Michael Bandy	WR	8	210
-DEN	Evan Engram	TE	1	29
-DEN	Justin Joly	TE	2	51
-DEN	Adam Trautman	TE	3	76
-DEN	Nate Adkins	TE	4	93
-DEN	Lucas Krull	TE	5	134
-DEN	Caleb Lohner	TE	6	166
-DEN	Wil Lutz	PK	1	17
-DET	Jared Goff	QB	1	16
-DET	Joshua Dobbs	QB	2	78
-DET	Luke Altmyer	QB	3	89
-DET	Jahmyr Gibbs	RB	1	1
-DET	Isiah Pacheco	RB	2	50
-DET	Sione Vaki	RB	3	113
-DET	Jacob Saylors	RB	4	139
-DET	Kye Robichaux	RB	5	151
-DET	Jabari Small	RB	6	159
-DET	Amon-Ra St. Brown	WR	1	4
-DET	Jameson Williams	WR	2	22
-DET	Isaac TeSlaa	WR	3	77
-DET	Greg Dortch	WR	4	148
-DET	Cedrick Wilson Jr.	WR	5	171
-DET	Kendrick Law	WR	6	187
-DET	Tom Kennedy	WR	7	227
-DET	Sam LaPorta	TE	1	6
-DET	Tyler Conklin	TE	2	72
-DET	Brock Wright	TE	3	92
-DET	Thomas Gordon	TE	4	147
-DET	Zach Horton	TE	5	150
-DET	Jake Bates	PK	1	8
-GB	Jordan Love	QB	1	19
-GB	Tyrod Taylor	QB	2	51
-GB	Kyle McCord	QB	3	91
-GB	Josh Jacobs	RB	1	15
-GB	MarShawn Lloyd	RB	2	56
-GB	Chris Brooks	RB	3	73
-GB	Damien Martinez	RB	4	110
-GB	Pierre Strong Jr.	RB	5	179
-GB	Christian Watson	WR	1	25
-GB	Jayden Reed	WR	2	41
-GB	Matthew Golden	WR	3	49
-GB	Savion Williams	WR	4	128
-GB	Skyy Moore	WR	5	203
-GB	J. Michael Sturdivant	WR	6	216
-GB	Bo Melton	WR	7	217
-GB	Tucker Kraft	TE	1	4
-GB	Luke Musgrave	TE	2	54
-GB	Josh Whyle	TE	3	85
-GB	Drake Dabney	TE	4	125
-GB	Trey Smack	PK	1	26
-HOU	C.J. Stroud	QB	1	23
-HOU	Davis Mills	QB	2	50
-HOU	David Montgomery	RB	1	22
-HOU	Woody Marks	RB	2	44
-HOU	Jawhar Jordan	RB	3	104
-HOU	Noah Whittington	RB	4	122
-HOU	British Brooks	RB	5	150
-HOU	Nico Collins	WR	1	8
-HOU	Tank Dell	WR	2	75
-HOU	Jaylin Noel	WR	3	76
-HOU	Xavier Hutchinson	WR	4	122
-HOU	Jared Wayne	WR	5	175
-HOU	Justin Watson	WR	6	193
-HOU	Dalton Schultz	TE	1	20
-HOU	Marlin Klein	TE	2	62
-HOU	Foster Moreau	TE	3	79
-HOU	Cade Stover	TE	4	84
-HOU	Brevin Jordan	TE	5	137
-HOU	Layne Pryor	TE	6	162
-HOU	Ka'imi Fairbairn	PK	1	3
-IND	Daniel Jones	QB	1	24
-IND	Anthony Richardson Sr.	QB	2	41
-IND	Riley Leonard	QB	3	49
-IND	Jonathan Taylor	RB	1	3
-IND	DJ Giddens	RB	2	80
-IND	Seth McGowan	RB	3	83
-IND	Ulysses Bentley IV	RB	4	148
-IND	Anderson Castle	RB	5	155
-IND	Alec Pierce	WR	1	37
-IND	Josh Downs	WR	2	45
-IND	Keenan Allen	WR	3	80
-IND	Nick Westbrook-Ikhine	WR	4	138
-IND	Ashton Dulin	WR	5	146
-IND	Deion Burks	WR	6	147
-IND	Coleman Owen	WR	7	194
-IND	Laquon Treadwell	WR	8	236
-IND	Anthony Gould	WR	9	239
-IND	Tyler Warren	TE	1	5
-IND	Mo Alie-Cox	TE	2	81
-IND	Will Mallory	TE	3	117
-IND	Drew Ogletree	TE	4	121
-IND	Sean McKeon	TE	5	168
-IND	Blake Grupe	PK	1	21
-IND	Spencer Shrader	PK	2	34
-JAX	Trevor Lawrence	QB	1	9
-JAX	Nick Mullens	QB	2	76
-JAX	Bhayshul Tuten	RB	1	24
-JAX	Chris Rodriguez Jr.	RB	2	41
-JAX	LeQuint Allen Jr.	RB	3	78
-JAX	J'Mari Taylor	RB	4	106
-JAX	Ameer Abdullah	RB	5	152
-JAX	DeeJay Dallas	RB	6	180
-JAX	Parker Washington	WR	1	30
-JAX	Brian Thomas Jr.	WR	2	32
-JAX	Jakobi Meyers	WR	3	44
-JAX	Travis Hunter	WR	4	70
-JAX	Josh Cameron	WR	5	173
-JAX	Michael Wortham	WR	6	190
-JAX	Brenton Strange	TE	1	18
-JAX	Tanner Koziol	TE	2	63
-JAX	Nate Boerkircher	TE	3	67
-JAX	Hunter Long	TE	4	129
-JAX	Quintin Morris	TE	5	145
-JAX	Cam Little	PK	1	4
-KC	Patrick Mahomes II	QB	1	14
-KC	Justin Fields	QB	2	39
-KC	Garrett Nussmeier	QB	3	69
-KC	Kenneth Walker III	RB	1	10
-KC	Emmett Johnson	RB	2	59
-KC	Emari Demercado	RB	3	88
-KC	Brashard Smith	RB	4	90
-KC	Jaydn Ott	RB	5	136
-KC	Rashee Rice	WR	1	13
-KC	Xavier Worthy	WR	2	46
-KC	Tyquan Thornton	WR	3	96
-KC	Cyrus Allen	WR	4	107
-KC	Jalen Royals	WR	5	118
-KC	Nikko Remigio	WR	6	215
-KC	Jeff Caldwell	WR	7	226
-KC	Travis Kelce	TE	1	11
-KC	Noah Gray	TE	2	48
-KC	Jared Wiley	TE	3	97
-KC	Jake Briningstool	TE	4	118
-KC	John Michael Gyllenborg	TE	5	126
-KC	Tre Watson	TE	6	154
-KC	Harrison Butker	PK	1	15
-LAC	Justin Herbert	QB	1	8
-LAC	Trey Lance	QB	2	56
-LAC	DJ Uiagalelei	QB	3	95
-LAC	Omarion Hampton	RB	1	11
-LAC	Keaton Mitchell	RB	2	48
-LAC	Kimani Vidal	RB	3	62
-LAC	Jaret Patterson	RB	4	140
-LAC	Alec Ingold	RB	5	169
-LAC	Ladd McConkey	WR	1	19
-LAC	Quentin Johnston	WR	2	36
-LAC	Tre' Harris	WR	3	65
-LAC	Brenen Thompson	WR	4	124
-LAC	KeAndre Lambert-Smith	WR	5	166
-LAC	Derius Davis	WR	6	178
-LAC	Dalevon Campbell	WR	7	228
-LAC	Oronde Gadsden II	TE	1	22
-LAC	David Njoku	TE	2	30
-LAC	Charlie Kolar	TE	3	52
-LAC	Cameron Dicker	PK	1	2
-LAR	Matthew Stafford	QB	1	15
-LAR	Ty Simpson	QB	2	40
-LAR	Jimmy Garoppolo	QB	3	66
-LAR	Stetson Bennett IV	QB	4	94
-LAR	Kyren Williams	RB	1	13
-LAR	Blake Corum	RB	2	33
-LAR	Jarquez Hunter	RB	3	95
-LAR	Ronnie Rivers	RB	4	127
-LAR	Jordan Waters	RB	5	168
-LAR	Dean Connors	RB	6	175
-LAR	Puka Nacua	WR	1	2
-LAR	Davante Adams	WR	2	21
-LAR	Konata Mumpfield	WR	3	117
-LAR	CJ Daniels	WR	4	141
-LAR	Jordan Whittington	WR	5	142
-LAR	Xavier Smith	WR	6	158
-LAR	Terrance Ferguson	TE	1	23
-LAR	Colby Parkinson	TE	2	31
-LAR	Tyler Higbee	TE	3	44
-LAR	Max Klare	TE	4	45
-LAR	Davis Allen	TE	5	96
-LAR	Harrison Mevis	PK	1	11
-LV	Fernando Mendoza	QB	1	30
-LV	Kirk Cousins	QB	2	34
-LV	Aidan O'Connell	QB	3	77
-LV	Ashton Jeanty	RB	1	8
-LV	Mike Washington Jr.	RB	2	57
-LV	Dylan Laube	RB	3	120
-LV	Roman Hemby	RB	4	129
-LV	Raheem Mostert	RB	5	146
-LV	Tre Tucker	WR	1	60
-LV	Jalen Nailor	WR	2	64
-LV	Jack Bech	WR	3	89
-LV	Malik Benson	WR	4	130
-LV	Dont'e Thornton Jr.	WR	5	133
-LV	Tyler Lockett	WR	6	172
-LV	Noah Brown	WR	7	180
-LV	Shedrick Jackson	WR	8	219
-LV	Dareke Young	WR	9	235
-LV	Brock Bowers	TE	1	1
-LV	Michael Mayer	TE	2	40
-LV	Ian Thomas	TE	3	99
-LV	Albert Okwuegbunam Jr.	TE	4	114
-LV	Daniel Carlson	PK	1	28
-LV	Matt Gay	PK	2	36
-MIA	Malik Willis	QB	1	21
-MIA	Quinn Ewers	QB	2	47
-MIA	Cam Miller	QB	3	98
-MIA	De'Von Achane	RB	1	12
-MIA	Jaylen Wright	RB	2	67
-MIA	Ollie Gordon II	RB	3	68
-MIA	Donovan Edwards	RB	4	133
-MIA	Malik Washington	WR	1	73
-MIA	Chris Bell	WR	2	93
-MIA	Caleb Douglas	WR	3	101
-MIA	Jalen Tolbert	WR	4	113
-MIA	Kevin Coleman Jr.	WR	5	129
-MIA	Tutu Atwell	WR	6	134
-MIA	Jalen Reagor	WR	7	168
-MIA	Theo Wease Jr.	WR	8	170
-MIA	Tahj Washington	WR	9	196
-MIA	Greg Dulcich	TE	1	36
-MIA	Will Kacmarek	TE	2	68
-MIA	Seydou Traore	TE	3	90
-MIA	Ben Sims	TE	4	102
-MIA	Cole Turner	TE	5	138
-MIA	Riley Patterson	PK	1	37
-MIN	Kyler Murray	QB	1	17
-MIN	J.J. McCarthy	QB	2	36
-MIN	Carson Wentz	QB	3	67
-MIN	Max Brosmer	QB	4	101
-MIN	Jordan Mason	RB	1	35
-MIN	Aaron Jones Sr.	RB	2	42
-MIN	Demond Claiborne	RB	3	70
-MIN	Zavier Scott	RB	4	116
-MIN	Max Bredeson	RB	5	158
-MIN	Jermar Jefferson	RB	6	160
-MIN	Justin Jefferson	WR	1	6
-MIN	Jordan Addison	WR	2	40
-MIN	Jauan Jennings	WR	3	62
-MIN	Tai Felton	WR	4	150
-MIN	Myles Price	WR	5	201
-MIN	Jeshaun Jones	WR	6	208
-MIN	Michael Briscoe	WR	7	222
-MIN	T.J. Hockenson	TE	1	24
-MIN	Josh Oliver	TE	2	66
-MIN	Ben Yurosek	TE	3	120
-MIN	Gavin Bartholomew	TE	4	128
-MIN	Bryson Nesbit	TE	5	133
-MIN	Will Reichard	PK	1	16
-NE	Drake Maye	QB	1	3
-NE	Tommy DeVito	QB	2	63
-NE	Behren Morton	QB	3	87
-NE	TreVeyon Henderson	RB	1	26
-NE	Rhamondre Stevenson	RB	2	27
-NE	Jam Miller	RB	3	107
-NE	Reggie Gilliam	RB	4	135
-NE	Hassan Haskins	RB	5	174
-NE	Lan Larison	RB	6	176
-NE	A.J. Brown	WR	1	7
-NE	Romeo Doubs	WR	2	52
-NE	Kayshon Boutte	WR	3	69
-NE	Kyle Williams	WR	4	103
-NE	Mack Hollins	WR	5	106
-NE	DeMario Douglas	WR	6	112
-NE	Efton Chism III	WR	7	189
-NE	Hunter Henry	TE	1	17
-NE	Eli Raridon	TE	2	46
-NE	Julian Hill	TE	3	115
-NE	CJ Dippre	TE	4	152
-NE	Jack Westover	TE	5	155
-NE	Tanner Arkin	TE	6	164
-NE	Andy Borregales	PK	1	12
-NO	Tyler Shough	QB	1	20
-NO	Spencer Rattler	QB	2	54
-NO	Zach Wilson	QB	3	80
-NO	Travis Etienne Jr.	RB	1	18
-NO	Alvin Kamara	RB	2	53
-NO	Devin Neal	RB	3	82
-NO	Kendre Miller	RB	4	86
-NO	Audric Estime	RB	5	98
-NO	Ty Chandler	RB	6	130
-NO	CJ Donaldson	RB	7	166
-NO	Chris Olave	WR	1	11
-NO	Jordyn Tyson	WR	2	48
-NO	Devaughn Vele	WR	3	95
-NO	Bryce Lance	WR	4	119
-NO	Barion Brown	WR	5	149
-NO	Kevin Austin Jr.	WR	6	181
-NO	Mason Tipton	WR	7	205
-NO	Ronnie Bell	WR	8	213
-NO	Bub Means	WR	9	218
-NO	Juwan Johnson	TE	1	16
-NO	Oscar Delp	TE	2	32
-NO	Noah Fant	TE	3	53
-NO	Moliki Matavao	TE	4	88
-NO	Charlie Smyth	PK	1	18
-NYG	Jaxson Dart	QB	1	13
-NYG	Jameis Winston	QB	2	44
-NYG	Brandon Allen	QB	3	88
-NYG	Cam Skattebo	RB	1	21
-NYG	Tyrone Tracy Jr.	RB	2	45
-NYG	Najee Harris	RB	3	81
-NYG	Devin Singletary	RB	4	87
-NYG	Eric Gray	RB	5	162
-NYG	Patrick Ricard	RB	6	172
-NYG	Malik Nabers	WR	1	12
-NYG	Darnell Mooney	WR	2	79
-NYG	Malachi Fields	WR	3	91
-NYG	Darius Slayton	WR	4	98
-NYG	Calvin Austin III	WR	5	116
-NYG	Odell Beckham Jr.	WR	6	154
-NYG	Isaiah Hodgins	WR	7	195
-NYG	Gunner Olszewski	WR	8	230
-NYG	Jalin Hyatt	WR	9	237
-NYG	Braxton Berrios	WR	10	238
-NYG	Isaiah Likely	TE	1	14
-NYG	Theo Johnson	TE	2	34
-NYG	Thomas Fidone II	TE	3	91
-NYG	Tanner Conner	TE	4	135
-NYG	Chris Manhertz	TE	5	159
-NYG	Ben Sauls	PK	1	29
-NYG	Dominic Zvada	PK	2	39
-NYJ	Geno Smith	QB	1	28
-NYJ	Cade Klubnik	QB	2	45
-NYJ	Brady Cook	QB	3	81
-NYJ	Bailey Zappe	QB	4	103
-NYJ	Breece Hall	RB	1	16
-NYJ	Braelon Allen	RB	2	55
-NYJ	Isaiah Davis	RB	3	72
-NYJ	Sam Scott	RB	4	178
-NYJ	Garrett Wilson	WR	1	24
-NYJ	Adonai Mitchell	WR	2	59
-NYJ	Omar Cooper Jr.	WR	3	66
-NYJ	Tim Patrick	WR	4	152
-NYJ	Isaiah Williams	WR	5	153
-NYJ	Arian Smith	WR	6	229
-NYJ	Kenyon Sadiq	TE	1	25
-NYJ	Mason Taylor	TE	2	35
-NYJ	Jelani Woods	TE	3	89
-NYJ	Jeremy Ruckert	TE	4	94
-NYJ	Chase Curtis	TE	5	151
-NYJ	Jason Sanders	PK	1	30
-NYJ	Cade York	PK	2	38
-PHI	Jalen Hurts	QB	1	6
-PHI	Tanner McKee	QB	2	71
-PHI	Andy Dalton	QB	3	74
-PHI	Cole Payton	QB	4	99
-PHI	Saquon Barkley	RB	1	7
-PHI	Tank Bigsby	RB	2	46
-PHI	Will Shipley	RB	3	96
-PHI	Dameon Pierce	RB	4	114
-PHI	DeVonta Smith	WR	1	15
-PHI	Makai Lemon	WR	2	43
-PHI	Dontayvion Wicks	WR	3	67
-PHI	Hollywood Brown	WR	4	102
-PHI	Elijah Moore	WR	5	156
-PHI	Darius Cooper	WR	6	211
-PHI	Dallas Goedert	TE	1	12
-PHI	Eli Stowers	TE	2	33
-PHI	Grant Calcaterra	TE	3	101
-PHI	Stone Smartt	TE	4	105
-PHI	Cameron Latu	TE	5	131
-PHI	Johnny Mundt	TE	6	139
-PHI	Jake Elliott	PK	1	19
-PIT	Aaron Rodgers	QB	1	29
-PIT	Drew Allar	QB	2	57
-PIT	Will Howard	QB	3	61
-PIT	Mason Rudolph	QB	4	65
-PIT	Jaylen Warren	RB	1	29
-PIT	Rico Dowdle	RB	2	30
-PIT	Kaleb Johnson	RB	3	89
-PIT	Eli Heidenreich	RB	4	101
-PIT	Lew Nichols III	RB	5	132
-PIT	Travis Homer	RB	6	145
-PIT	DK Metcalf	WR	1	34
-PIT	Michael Pittman Jr.	WR	2	42
-PIT	Germie Bernard	WR	3	84
-PIT	Roman Wilson	WR	4	140
-PIT	Kaden Wetjen	WR	5	202
-PIT	Jakobie Keeney-James	WR	6	207
-PIT	Ben Skowronek	WR	7	232
-PIT	Pat Freiermuth	TE	1	26
-PIT	Darnell Washington	TE	2	39
-PIT	Jaheim Bell	TE	3	119
-PIT	Robert Tonyan	TE	4	156
-PIT	Lance Mason	TE	5	157
-PIT	Lake McRee	TE	6	160
-PIT	Chris Boswell	PK	1	14
-SEA	Sam Darnold	QB	1	22
-SEA	Jalen Milroe	QB	2	53
-SEA	Drew Lock	QB	3	72
-SEA	Jadarian Price	RB	1	25
-SEA	Zach Charbonnet	RB	2	47
-SEA	Emanuel Wilson	RB	3	64
-SEA	George Holani	RB	4	69
-SEA	Jacardia Wright	RB	5	181
-SEA	Jaxon Smith-Njigba	WR	1	3
-SEA	Rashid Shaheed	WR	2	56
-SEA	Cooper Kupp	WR	3	83
-SEA	Tory Horton	WR	4	90
-SEA	Jake Bobo	WR	5	182
-SEA	Velus Jones Jr.	WR	6	188
-SEA	Cody White	WR	7	212
-SEA	Emmanuel Henderson Jr.	WR	8	242
-SEA	AJ Barner	TE	1	21
-SEA	Elijah Arroyo	TE	2	42
-SEA	Eric Saubert	TE	3	104
-SEA	Nick Kallerup	TE	4	163
-SEA	Jason Myers	PK	1	5
-SF	Brock Purdy	QB	1	11
-SF	Mac Jones	QB	2	38
-SF	Kurtis Rourke	QB	3	86
-SF	Adrian Martinez	QB	4	97
-SF	Christian McCaffrey	RB	1	5
-SF	Kaelon Black	RB	2	74
-SF	Jordan James	RB	3	75
-SF	Isaac Guerendo	RB	4	93
-SF	Kyle Juszczyk	RB	5	117
-SF	Khalil Herbert	RB	6	125
-SF	Sincere McCormick	RB	7	165
-SF	Patrick Taylor Jr.	RB	8	167
-SF	Mike Evans	WR	1	28
-SF	De'Zhaun Stribling	WR	2	55
-SF	Deebo Samuel Sr.	WR	3	57
-SF	Christian Kirk	WR	4	97
-SF	Brandon Aiyuk	WR	5	108
-SF	Demarcus Robinson	WR	6	139
-SF	Jacob Cowing	WR	7	155
-SF	Jordan Watkins	WR	8	177
-SF	George Kittle	TE	1	9
-SF	Jake Tonges	TE	2	38
-SF	Luke Farrell	TE	3	106
-SF	Brayden Willis	TE	4	124
-SF	Hayden Rucci	TE	5	148
-SF	Eddy Pineiro	PK	1	6
-TB	Baker Mayfield	QB	1	18
-TB	Jake Browning	QB	2	62
-TB	Bucky Irving	RB	1	23
-TB	Kenny Gainwell	RB	2	40
-TB	Sean Tucker	RB	3	61
-TB	Emeka Egbuka	WR	1	18
-TB	Chris Godwin Jr.	WR	2	38
-TB	Jalen McMillan	WR	3	61
-TB	Ted Hurst III	WR	4	87
-TB	Tez Johnson	WR	5	115
-TB	David Sills V	WR	6	174
-TB	Cade Otton	TE	1	27
-TB	Bauer Sharp	TE	2	80
-TB	Payne Durham	TE	3	100
-TB	Devin Culp	TE	4	132
-TB	Ko Kieft	TE	5	144
-TB	Kenny Fletcher Jr.	TE	6	158
-TB	Chase McLaughlin	PK	1	13
-TB	B.T. Potter	PK	2	40
-TEN	Cam Ward	QB	1	25
-TEN	Will Levis	QB	2	60
-TEN	Mitchell Trubisky	QB	3	73
-TEN	Hendon Hooker	QB	4	84
-TEN	Tony Pollard	RB	1	28
-TEN	Tyjae Spears	RB	2	51
-TEN	Nicholas Singleton	RB	3	58
-TEN	Michael Carter	RB	4	102
-TEN	Kalel Mullings	RB	5	138
-TEN	Carnell Tate	WR	1	33
-TEN	Wan'Dale Robinson	WR	2	47
-TEN	Calvin Ridley	WR	3	68
-TEN	Chimere Dike	WR	4	85
-TEN	Elic Ayomanor	WR	5	86
-TEN	Xavier Restrepo	WR	6	157
-TEN	K.J. Osborn	WR	7	220
-TEN	Gunnar Helm	TE	1	28
-TEN	Daniel Bellinger	TE	2	58
-TEN	Kylen Granson	TE	3	111
-TEN	Joel Wilson	TE	4	112
-TEN	David Martin-Robinson	TE	5	141
-TEN	Jaren Kanak	TE	6	165
-TEN	Joey Slye	PK	1	22
-WAS	Jayden Daniels	QB	1	5
-WAS	Marcus Mariota	QB	2	43
-WAS	Athan Kaliakmanis	QB	3	90
-WAS	Sam Hartman	QB	4	92
-WAS	Jacory Croskey-Merritt	RB	1	34
-WAS	Rachaad White	RB	2	38
-WAS	Kaytron Allen	RB	3	63
-WAS	Jerome Ford	RB	4	92
-WAS	Robert Henry Jr.	RB	5	115
-WAS	Jeremy McNichols	RB	6	118
-WAS	Terry McLaurin	WR	1	23
-WAS	Stefon Diggs	WR	2	50
-WAS	Antonio Williams	WR	3	81
-WAS	Luke McCaffrey	WR	4	120
-WAS	Treylon Burks	WR	5	126
-WAS	Jaylin Lane	WR	6	132
-WAS	Dyami Brown	WR	7	145
-WAS	Van Jefferson	WR	8	164
-WAS	Chig Okonkwo	TE	1	19
-WAS	Ben Sinnott	TE	2	55
-WAS	John Bates	TE	3	59
-WAS	Colson Yankoff	TE	4	142
-WAS	Quentin Moore	TE	5	167
-WAS	Drew Stevens	PK	1	35
+Arizona Cardinals	Jacoby Brissett	QB	1	27
+Arizona Cardinals	Carson Beck	QB	2	36
+Arizona Cardinals	Gardner Minshew II	QB	3	49
+Arizona Cardinals	Jeremiyah Love	RB	1	18
+Arizona Cardinals	Tyler Allgeier	RB	2	43
+Arizona Cardinals	James Conner	RB	3	65
+Arizona Cardinals	Trey Benson	RB	4	91
+Arizona Cardinals	Bam Knight	RB	5	101
+Arizona Cardinals	Corey Kiner	RB	6	194
+Arizona Cardinals	Marvin Harrison Jr.	WR	1	31
+Arizona Cardinals	Michael Wilson	WR	2	39
+Arizona Cardinals	Kendrick Bourne	WR	3	124
+Arizona Cardinals	Reggie Virgil	WR	4	160
+Arizona Cardinals	Jalen Brooks	WR	5	171
+Arizona Cardinals	Xavier Weaver	WR	6	214
+Arizona Cardinals	Devin Duvernay	WR	7	215
+Arizona Cardinals	Simi Fehoko	WR	8	233
+Arizona Cardinals	Trey McBride	TE	1	2
+Arizona Cardinals	Elijah Higgins	TE	2	59
+Arizona Cardinals	Tip Reiman	TE	3	104
+Arizona Cardinals	Teagan Quitoriano	TE	4	126
+Arizona Cardinals	Rivaldo Fairweather	TE	5	144
+Arizona Cardinals	Jameson Geers	TE	6	165
+Arizona Cardinals	Chad Ryland	K	1	22
+Atlanta Falcons	Tua Tagovailoa	QB	1	31
+Atlanta Falcons	Michael Penix Jr.	QB	2	32
+Atlanta Falcons	Cooper Rush	QB	3	78
+Atlanta Falcons	Jack Strand	QB	4	79
+Atlanta Falcons	Bijan Robinson	RB	1	2
+Atlanta Falcons	Brian Robinson Jr.	RB	2	53
+Atlanta Falcons	Tyler Goodson	RB	3	118
+Atlanta Falcons	Cash Jones	RB	4	139
+Atlanta Falcons	Nathan Carter	RB	5	150
+Atlanta Falcons	Drake London	WR	1	9
+Atlanta Falcons	Zachariah Branch	WR	2	81
+Atlanta Falcons	Jahan Dotson	WR	3	112
+Atlanta Falcons	Olamide Zaccheaus	WR	4	121
+Atlanta Falcons	Chris Blair	WR	5	189
+Atlanta Falcons	Dylan Drummond	WR	6	232
+Atlanta Falcons	Kyle Pitts Sr.	TE	1	9
+Atlanta Falcons	Austin Hooper	TE	2	60
+Atlanta Falcons	Charlie Woerner	TE	3	107
+Atlanta Falcons	Joshua Simon	TE	4	122
+Atlanta Falcons	Jack Velling	TE	5	133
+Atlanta Falcons	Nick Folk	K	1	24
+Baltimore Ravens	Lamar Jackson	QB	1	2
+Baltimore Ravens	Tyler Huntley	QB	2	52
+Baltimore Ravens	Joe Fagnano	QB	3	100
+Baltimore Ravens	Skylar Thompson	QB	4	101
+Baltimore Ravens	Derrick Henry	RB	1	6
+Baltimore Ravens	Justice Hill	RB	2	71
+Baltimore Ravens	Adam Randall	RB	3	86
+Baltimore Ravens	Rasheen Ali	RB	4	110
+Baltimore Ravens	Elijah Tau-Tolliver	RB	5	152
+Baltimore Ravens	Dontae McMillan	RB	6	164
+Baltimore Ravens	Zay Flowers	WR	1	14
+Baltimore Ravens	Rashod Bateman	WR	2	73
+Baltimore Ravens	Ja'Kobi Lane	WR	3	83
+Baltimore Ravens	Elijah Sarratt	WR	4	98
+Baltimore Ravens	Devontez Walker	WR	5	143
+Baltimore Ravens	DeAndre Hopkins	WR	6	168
+Baltimore Ravens	LaJohntay Wester	WR	7	240
+Baltimore Ravens	Chris Moore	WR	8	255
+Baltimore Ravens	Mark Andrews	TE	1	14
+Baltimore Ravens	Matt Hibner	TE	2	66
+Baltimore Ravens	Durham Smythe	TE	3	73
+Baltimore Ravens	Josh Cuevas	TE	4	88
+Baltimore Ravens	Ty Pezza	TE	5	118
+Baltimore Ravens	Tyler Loop	K	1	7
+Buffalo Bills	Josh Allen	QB	1	1
+Buffalo Bills	Kyle Allen	QB	2	66
+Buffalo Bills	Shane Buechele	QB	3	95
+Buffalo Bills	James Cook III	RB	1	4
+Buffalo Bills	Ray Davis	RB	2	61
+Buffalo Bills	Ty Johnson	RB	3	79
+Buffalo Bills	Frank Gore Jr.	RB	4	138
+Buffalo Bills	DJ Moore	WR	1	28
+Buffalo Bills	Khalil Shakir	WR	2	56
+Buffalo Bills	Keon Coleman	WR	3	86
+Buffalo Bills	Skyler Bell	WR	4	106
+Buffalo Bills	Joshua Palmer	WR	5	126
+Buffalo Bills	Tyrell Shavers	WR	6	192
+Buffalo Bills	Mecole Hardman Jr.	WR	7	206
+Buffalo Bills	Dante Pettis	WR	8	220
+Buffalo Bills	Trent Sherfield Sr.	WR	9	253
+Buffalo Bills	Dalton Kincaid	TE	1	10
+Buffalo Bills	Dawson Knox	TE	2	48
+Buffalo Bills	Jackson Hawes	TE	3	63
+Buffalo Bills	Shane Zylstra	TE	4	166
+Buffalo Bills	Keleki Latu	TE	5	177
+Buffalo Bills	Tyler Bass	K	1	21
+Carolina Panthers	Bryce Young	QB	1	26
+Carolina Panthers	Kenny Pickett	QB	2	63
+Carolina Panthers	Haynes King	QB	3	94
+Carolina Panthers	Jonathon Brooks	RB	1	30
+Carolina Panthers	Chuba Hubbard	RB	2	36
+Carolina Panthers	Trevor Etienne	RB	3	90
+Carolina Panthers	Miles Davis	RB	4	141
+Carolina Panthers	AJ Dillon	RB	5	155
+Carolina Panthers	Tetairoa McMillan	WR	1	17
+Carolina Panthers	Jalen Coker	WR	2	52
+Carolina Panthers	Xavier Legette	WR	3	101
+Carolina Panthers	Chris Brazzell II	WR	4	125
+Carolina Panthers	John Metchie III	WR	5	142
+Carolina Panthers	Jimmy Horn Jr.	WR	6	162
+Carolina Panthers	Brycen Tremayne	WR	7	185
+Carolina Panthers	David Moore	WR	8	205
+Carolina Panthers	Casey Washington	WR	9	213
+Carolina Panthers	Darren Waller	TE	1	41
+Carolina Panthers	Ja'Tavion Sanders	TE	2	51
+Carolina Panthers	Tommy Tremble	TE	3	55
+Carolina Panthers	Mitchell Evans	TE	4	58
+Carolina Panthers	James Mitchell	TE	5	167
+Carolina Panthers	Ryan Fitzgerald	K	1	25
+Chicago Bears	Caleb Williams	QB	1	7
+Chicago Bears	Tyson Bagent	QB	2	53
+Chicago Bears	Case Keenum	QB	3	99
+Chicago Bears	D'Andre Swift	RB	1	19
+Chicago Bears	Kyle Monangai	RB	2	37
+Chicago Bears	Roschon Johnson	RB	3	109
+Chicago Bears	Salvon Ahmed	RB	4	182
+Chicago Bears	Luther Burden III	WR	1	26
+Chicago Bears	Rome Odunze	WR	2	27
+Chicago Bears	Kalif Raymond	WR	3	130
+Chicago Bears	Zavion Thomas	WR	4	135
+Chicago Bears	Jahdae Walker	WR	5	149
+Chicago Bears	Scotty Miller	WR	6	183
+Chicago Bears	Maurice Alexander	WR	7	207
+Chicago Bears	Ray-Ray McCloud III	WR	8	230
+Chicago Bears	Colston Loveland	TE	1	3
+Chicago Bears	Cole Kmet	TE	2	43
+Chicago Bears	Sam Roush	TE	3	82
+Chicago Bears	Cairo Santos	K	1	10
+Cincinnati Bengals	Joe Burrow	QB	1	4
+Cincinnati Bengals	Joe Flacco	QB	2	41
+Cincinnati Bengals	Josh Johnson	QB	3	82
+Cincinnati Bengals	Chase Brown	RB	1	8
+Cincinnati Bengals	Samaje Perine	RB	2	72
+Cincinnati Bengals	Tahj Brooks	RB	3	94
+Cincinnati Bengals	Jamal Haynes	RB	4	134
+Cincinnati Bengals	Kentrel Bullock	RB	5	163
+Cincinnati Bengals	Gary Brightwell	RB	6	165
+Cincinnati Bengals	Ja'Marr Chase	WR	1	1
+Cincinnati Bengals	Tee Higgins	WR	2	15
+Cincinnati Bengals	Andrei Iosivas	WR	3	109
+Cincinnati Bengals	Colbie Young	WR	4	137
+Cincinnati Bengals	Mitch Tinsley	WR	5	151
+Cincinnati Bengals	Dohnte Meyers	WR	6	173
+Cincinnati Bengals	Ke'Shawn Williams	WR	7	204
+Cincinnati Bengals	Charlie Jones	WR	8	226
+Cincinnati Bengals	Kendric Pryor	WR	9	227
+Cincinnati Bengals	Mike Gesicki	TE	1	36
+Cincinnati Bengals	Erick All Jr.	TE	2	47
+Cincinnati Bengals	Tanner Hudson	TE	3	80
+Cincinnati Bengals	Drew Sample	TE	4	84
+Cincinnati Bengals	Jack Endries	TE	5	89
+Cincinnati Bengals	Cam Grandy	TE	6	158
+Cincinnati Bengals	Evan McPherson	K	1	9
+Cleveland Browns	Shedeur Sanders	QB	1	34
+Cleveland Browns	Deshaun Watson	QB	2	35
+Cleveland Browns	Taylen Green	QB	3	60
+Cleveland Browns	Dillon Gabriel	QB	4	69
+Cleveland Browns	Quinshon Judkins	RB	1	21
+Cleveland Browns	Dylan Sampson	RB	2	56
+Cleveland Browns	Raheim Sanders	RB	3	105
+Cleveland Browns	Michael Burton	RB	4	143
+Cleveland Browns	Ahmani Marshall	RB	5	145
+Cleveland Browns	Davon Booth	RB	6	193
+Cleveland Browns	KC Concepcion	WR	1	49
+Cleveland Browns	Denzel Boston	WR	2	58
+Cleveland Browns	Jerry Jeudy	WR	3	63
+Cleveland Browns	Isaiah Bond	WR	4	105
+Cleveland Browns	Malachi Corley	WR	5	209
+Cleveland Browns	Gage Larvadain	WR	6	223
+Cleveland Browns	Tylan Wallace	WR	7	237
+Cleveland Browns	Harold Fannin Jr.	TE	1	8
+Cleveland Browns	Joe Royer	TE	2	86
+Cleveland Browns	Blake Whiteheart	TE	3	93
+Cleveland Browns	Carsen Ryan	TE	4	131
+Cleveland Browns	Andre Szmyt	K	1	32
+Dallas Cowboys	Dak Prescott	QB	1	9
+Dallas Cowboys	Joe Milton III	QB	2	45
+Dallas Cowboys	Sam Howell	QB	3	73
+Dallas Cowboys	Javonte Williams	RB	1	14
+Dallas Cowboys	Jaydon Blue	RB	2	63
+Dallas Cowboys	Malik Davis	RB	3	78
+Dallas Cowboys	Phil Mafah	RB	4	106
+Dallas Cowboys	Hunter Luepke	RB	5	119
+Dallas Cowboys	Israel Abanikanda	RB	6	191
+Dallas Cowboys	CeeDee Lamb	WR	1	5
+Dallas Cowboys	George Pickens	WR	2	10
+Dallas Cowboys	Ryan Flournoy	WR	3	70
+Dallas Cowboys	KaVontae Turpin	WR	4	134
+Dallas Cowboys	Marquez Valdes-Scantling	WR	5	164
+Dallas Cowboys	Jonathan Mingo	WR	6	174
+Dallas Cowboys	Tyler Johnson	WR	7	212
+Dallas Cowboys	Camden Brown	WR	8	235
+Dallas Cowboys	Jake Ferguson	TE	1	15
+Dallas Cowboys	Luke Schoonmaker	TE	2	70
+Dallas Cowboys	Michael Trigg	TE	3	94
+Dallas Cowboys	Brevyn Spann-Ford	TE	4	96
+Dallas Cowboys	Princeton Fant	TE	5	139
+Dallas Cowboys	DJ Rogers	TE	6	170
+Dallas Cowboys	Brandon Aubrey	K	1	1
+Denver Broncos	Bo Nix	QB	1	12
+Denver Broncos	Jarrett Stidham	QB	2	56
+Denver Broncos	Sam Ehlinger	QB	3	86
+Denver Broncos	J.K. Dobbins	RB	1	32
+Denver Broncos	RJ Harvey	RB	2	38
+Denver Broncos	Jonah Coleman	RB	3	48
+Denver Broncos	Jaleel McLaughlin	RB	4	98
+Denver Broncos	Adam Prentice	RB	5	132
+Denver Broncos	Tyler Badie	RB	6	144
+Denver Broncos	Cody Schrader	RB	7	187
+Denver Broncos	Jaylen Waddle	WR	1	19
+Denver Broncos	Courtland Sutton	WR	2	35
+Denver Broncos	Pat Bryant	WR	3	71
+Denver Broncos	Troy Franklin	WR	4	84
+Denver Broncos	Marvin Mims Jr.	WR	5	100
+Denver Broncos	Lil'Jordan Humphrey	WR	6	158
+Denver Broncos	Michael Woods II	WR	7	193
+Denver Broncos	Michael Bandy	WR	8	198
+Denver Broncos	Evan Engram	TE	1	29
+Denver Broncos	Justin Joly	TE	2	52
+Denver Broncos	Adam Trautman	TE	3	69
+Denver Broncos	Nate Adkins	TE	4	91
+Denver Broncos	Lucas Krull	TE	5	143
+Denver Broncos	Dallen Bentley	TE	6	175
+Denver Broncos	Wil Lutz	K	1	17
+Detroit Lions	Jared Goff	QB	1	16
+Detroit Lions	Joshua Dobbs	QB	2	77
+Detroit Lions	Luke Altmyer	QB	3	89
+Detroit Lions	Jahmyr Gibbs	RB	1	1
+Detroit Lions	Isiah Pacheco	RB	2	50
+Detroit Lions	Sione Vaki	RB	3	114
+Detroit Lions	Jacob Saylors	RB	4	128
+Detroit Lions	Jabari Small	RB	5	167
+Detroit Lions	Trayveon Williams	RB	6	185
+Detroit Lions	Amon-Ra St. Brown	WR	1	4
+Detroit Lions	Jameson Williams	WR	2	22
+Detroit Lions	Isaac TeSlaa	WR	3	78
+Detroit Lions	Greg Dortch	WR	4	146
+Detroit Lions	Kendrick Law	WR	5	197
+Detroit Lions	Tom Kennedy	WR	6	245
+Detroit Lions	Sam LaPorta	TE	1	6
+Detroit Lions	Brock Wright	TE	2	77
+Detroit Lions	Tyler Conklin	TE	3	81
+Detroit Lions	Zach Horton	TE	4	136
+Detroit Lions	Thomas Gordon	TE	5	163
+Detroit Lions	Jake Bates	K	1	8
+Green Bay Packers	Jordan Love	QB	1	18
+Green Bay Packers	Tyrod Taylor	QB	2	48
+Green Bay Packers	Kyle McCord	QB	3	91
+Green Bay Packers	Josh Jacobs	RB	1	15
+Green Bay Packers	MarShawn Lloyd	RB	2	49
+Green Bay Packers	Chris Brooks	RB	3	77
+Green Bay Packers	Damien Martinez	RB	4	115
+Green Bay Packers	Pierre Strong Jr.	RB	5	148
+Green Bay Packers	Jaden Nixon	RB	6	183
+Green Bay Packers	Christian Watson	WR	1	25
+Green Bay Packers	Jayden Reed	WR	2	41
+Green Bay Packers	Matthew Golden	WR	3	50
+Green Bay Packers	Savion Williams	WR	4	127
+Green Bay Packers	Skyy Moore	WR	5	176
+Green Bay Packers	Bo Melton	WR	6	208
+Green Bay Packers	J. Michael Sturdivant	WR	7	228
+Green Bay Packers	Tucker Kraft	TE	1	5
+Green Bay Packers	Luke Musgrave	TE	2	54
+Green Bay Packers	Jonnu Smith	TE	3	76
+Green Bay Packers	Josh Whyle	TE	4	83
+Green Bay Packers	Drake Dabney	TE	5	114
+Green Bay Packers	Messiah Swinson	TE	6	172
+Green Bay Packers	Trey Smack	K	1	26
+Houston Texans	C.J. Stroud	QB	1	24
+Houston Texans	Davis Mills	QB	2	55
+Houston Texans	David Montgomery	RB	1	23
+Houston Texans	Woody Marks	RB	2	44
+Houston Texans	Jawhar Jordan	RB	3	102
+Houston Texans	Noah Whittington	RB	4	123
+Houston Texans	British Brooks	RB	5	137
+Houston Texans	Nico Collins	WR	1	8
+Houston Texans	Kayshon Boutte	WR	2	61
+Houston Texans	Jaylin Noel	WR	3	75
+Houston Texans	Tank Dell	WR	4	76
+Houston Texans	Xavier Hutchinson	WR	5	115
+Houston Texans	Justin Watson	WR	6	165
+Houston Texans	Jared Wayne	WR	7	194
+Houston Texans	Sterling Shepard	WR	8	242
+Houston Texans	Zay Jones	WR	9	246
+Houston Texans	Dalton Schultz	TE	1	21
+Houston Texans	Marlin Klein	TE	2	62
+Houston Texans	Foster Moreau	TE	3	71
+Houston Texans	Cade Stover	TE	4	79
+Houston Texans	Brevin Jordan	TE	5	123
+Houston Texans	Ka'imi Fairbairn	K	1	3
+Indianapolis Colts	Daniel Jones	QB	1	23
+Indianapolis Colts	Anthony Richardson Sr.	QB	2	42
+Indianapolis Colts	Riley Leonard	QB	3	50
+Indianapolis Colts	Jonathan Taylor	RB	1	3
+Indianapolis Colts	Seth McGowan	RB	2	81
+Indianapolis Colts	DJ Giddens	RB	3	82
+Indianapolis Colts	Ulysses Bentley IV	RB	4	156
+Indianapolis Colts	Anderson Castle	RB	5	178
+Indianapolis Colts	Alec Pierce	WR	1	37
+Indianapolis Colts	Josh Downs	WR	2	44
+Indianapolis Colts	Keenan Allen	WR	3	79
+Indianapolis Colts	Nick Westbrook-Ikhine	WR	4	141
+Indianapolis Colts	Ashton Dulin	WR	5	144
+Indianapolis Colts	Deion Burks	WR	6	147
+Indianapolis Colts	Anthony Gould	WR	7	196
+Indianapolis Colts	Coleman Owen	WR	8	211
+Indianapolis Colts	Laquon Treadwell	WR	9	256
+Indianapolis Colts	Tyler Warren	TE	1	4
+Indianapolis Colts	Mo Alie-Cox	TE	2	72
+Indianapolis Colts	Drew Ogletree	TE	3	105
+Indianapolis Colts	Will Mallory	TE	4	124
+Indianapolis Colts	Pharaoh Brown	TE	5	152
+Indianapolis Colts	Blake Grupe	K	1	20
+Indianapolis Colts	Spencer Shrader	K	2	36
+Jacksonville Jaguars	Trevor Lawrence	QB	1	10
+Jacksonville Jaguars	Nick Mullens	QB	2	70
+Jacksonville Jaguars	Bhayshul Tuten	RB	1	24
+Jacksonville Jaguars	Chris Rodriguez Jr.	RB	2	41
+Jacksonville Jaguars	LeQuint Allen Jr.	RB	3	80
+Jacksonville Jaguars	J'Mari Taylor	RB	4	107
+Jacksonville Jaguars	Ameer Abdullah	RB	5	149
+Jacksonville Jaguars	DeeJay Dallas	RB	6	154
+Jacksonville Jaguars	Parker Washington	WR	1	30
+Jacksonville Jaguars	Brian Thomas Jr.	WR	2	32
+Jacksonville Jaguars	Jakobi Meyers	WR	3	45
+Jacksonville Jaguars	Travis Hunter	WR	4	74
+Jacksonville Jaguars	Josh Cameron	WR	5	166
+Jacksonville Jaguars	Michael Wortham	WR	6	179
+Jacksonville Jaguars	Austin Trammell	WR	7	247
+Jacksonville Jaguars	Brenton Strange	TE	1	18
+Jacksonville Jaguars	Nate Boerkircher	TE	2	64
+Jacksonville Jaguars	Tanner Koziol	TE	3	68
+Jacksonville Jaguars	Hunter Long	TE	4	129
+Jacksonville Jaguars	Quintin Morris	TE	5	157
+Jacksonville Jaguars	Patrick Herbert	TE	6	164
+Jacksonville Jaguars	Cam Little	K	1	4
+Kansas City Chiefs	Patrick Mahomes II	QB	1	14
+Kansas City Chiefs	Justin Fields	QB	2	39
+Kansas City Chiefs	Garrett Nussmeier	QB	3	71
+Kansas City Chiefs	Kenneth Walker III	RB	1	9
+Kansas City Chiefs	Emmett Johnson	RB	2	58
+Kansas City Chiefs	Emari Demercado	RB	3	84
+Kansas City Chiefs	Brashard Smith	RB	4	87
+Kansas City Chiefs	Jaydn Ott	RB	5	135
+Kansas City Chiefs	EJ Smith	RB	6	196
+Kansas City Chiefs	Rashee Rice	WR	1	13
+Kansas City Chiefs	Xavier Worthy	WR	2	46
+Kansas City Chiefs	Tyquan Thornton	WR	3	92
+Kansas City Chiefs	Cyrus Allen	WR	4	104
+Kansas City Chiefs	Jalen Royals	WR	5	120
+Kansas City Chiefs	Nikko Remigio	WR	6	191
+Kansas City Chiefs	Jason Brownlee	WR	7	239
+Kansas City Chiefs	Andrew Armstrong	WR	8	250
+Kansas City Chiefs	Travis Kelce	TE	1	11
+Kansas City Chiefs	Noah Gray	TE	2	50
+Kansas City Chiefs	Jared Wiley	TE	3	101
+Kansas City Chiefs	Jake Briningstool	TE	4	121
+Kansas City Chiefs	John Michael Gyllenborg	TE	5	134
+Kansas City Chiefs	Tre Watson	TE	6	156
+Kansas City Chiefs	Harrison Butker	K	1	16
+Los Angeles Chargers	Justin Herbert	QB	1	8
+Los Angeles Chargers	Trey Lance	QB	2	54
+Los Angeles Chargers	DJ Uiagalelei	QB	3	92
+Los Angeles Chargers	Omarion Hampton	RB	1	10
+Los Angeles Chargers	Keaton Mitchell	RB	2	47
+Los Angeles Chargers	Kimani Vidal	RB	3	60
+Los Angeles Chargers	Alec Ingold	RB	4	133
+Los Angeles Chargers	Jaret Patterson	RB	5	136
+Los Angeles Chargers	Amar Johnson	RB	6	179
+Los Angeles Chargers	Ladd McConkey	WR	1	20
+Los Angeles Chargers	Quentin Johnston	WR	2	36
+Los Angeles Chargers	Tre' Harris	WR	3	65
+Los Angeles Chargers	Brenen Thompson	WR	4	122
+Los Angeles Chargers	KeAndre Lambert-Smith	WR	5	157
+Los Angeles Chargers	Derius Davis	WR	6	195
+Los Angeles Chargers	Dalevon Campbell	WR	7	224
+Los Angeles Chargers	Oronde Gadsden II	TE	1	23
+Los Angeles Chargers	David Njoku	TE	2	30
+Los Angeles Chargers	Charlie Kolar	TE	3	44
+Los Angeles Chargers	Cameron Dicker	K	1	2
+Los Angeles Rams	Matthew Stafford	QB	1	15
+Los Angeles Rams	Ty Simpson	QB	2	40
+Los Angeles Rams	Jimmy Garoppolo	QB	3	72
+Los Angeles Rams	Stetson Bennett IV	QB	4	88
+Los Angeles Rams	Kyren Williams	RB	1	13
+Los Angeles Rams	Blake Corum	RB	2	33
+Los Angeles Rams	Ronnie Rivers	RB	3	127
+Los Angeles Rams	Jordan Waters	RB	4	175
+Los Angeles Rams	Dean Connors	RB	5	180
+Los Angeles Rams	Puka Nacua	WR	1	2
+Los Angeles Rams	Davante Adams	WR	2	21
+Los Angeles Rams	Konata Mumpfield	WR	3	119
+Los Angeles Rams	Tutu Atwell	WR	4	133
+Los Angeles Rams	CJ Daniels	WR	5	138
+Los Angeles Rams	Jordan Whittington	WR	6	139
+Los Angeles Rams	Xavier Smith	WR	7	154
+Los Angeles Rams	Tyler Scott	WR	8	234
+Los Angeles Rams	Alex Bachman	WR	9	251
+Los Angeles Rams	Terrance Ferguson	TE	1	20
+Los Angeles Rams	Colby Parkinson	TE	2	31
+Los Angeles Rams	Tyler Higbee	TE	3	45
+Los Angeles Rams	Max Klare	TE	4	49
+Los Angeles Rams	Davis Allen	TE	5	87
+Los Angeles Rams	Harrison Mevis	K	1	13
+Las Vegas Raiders	Fernando Mendoza	QB	1	30
+Las Vegas Raiders	Kirk Cousins	QB	2	33
+Las Vegas Raiders	Aidan O'Connell	QB	3	85
+Las Vegas Raiders	Ashton Jeanty	RB	1	12
+Las Vegas Raiders	Mike Washington Jr.	RB	2	55
+Las Vegas Raiders	Roman Hemby	RB	3	121
+Las Vegas Raiders	Dylan Laube	RB	4	126
+Las Vegas Raiders	Dare Ogunbowale	RB	5	188
+Las Vegas Raiders	Raheem Mostert	RB	6	189
+Las Vegas Raiders	Tre Tucker	WR	1	60
+Las Vegas Raiders	Jalen Nailor	WR	2	69
+Las Vegas Raiders	Jack Bech	WR	3	94
+Las Vegas Raiders	Malik Benson	WR	4	128
+Las Vegas Raiders	Dont'e Thornton Jr.	WR	5	131
+Las Vegas Raiders	Tyler Lockett	WR	6	187
+Las Vegas Raiders	Dareke Young	WR	7	222
+Las Vegas Raiders	Shedrick Jackson	WR	8	243
+Las Vegas Raiders	Brock Bowers	TE	1	1
+Las Vegas Raiders	Michael Mayer	TE	2	39
+Las Vegas Raiders	Albert Okwuegbunam Jr.	TE	3	116
+Las Vegas Raiders	Ian Thomas	TE	4	120
+Las Vegas Raiders	Connor Heyward	TE	5	169
+Las Vegas Raiders	Matt Gay	K	1	34
+Las Vegas Raiders	Kansei Matsuzawa	K	2	40
+Miami Dolphins	Malik Willis	QB	1	21
+Miami Dolphins	Quinn Ewers	QB	2	47
+Miami Dolphins	Cam Miller	QB	3	96
+Miami Dolphins	De'Von Achane	RB	1	11
+Miami Dolphins	Jaylen Wright	RB	2	69
+Miami Dolphins	Ollie Gordon II	RB	3	70
+Miami Dolphins	Jarquez Hunter	RB	4	96
+Miami Dolphins	Donovan Edwards	RB	5	158
+Miami Dolphins	Malik Washington	WR	1	72
+Miami Dolphins	Chris Bell	WR	2	93
+Miami Dolphins	Caleb Douglas	WR	3	96
+Miami Dolphins	Jalen Tolbert	WR	4	113
+Miami Dolphins	Kevin Coleman Jr.	WR	5	129
+Miami Dolphins	Theo Wease Jr.	WR	6	169
+Miami Dolphins	Jalen Reagor	WR	7	170
+Miami Dolphins	Greg Dulcich	TE	1	32
+Miami Dolphins	Will Kacmarek	TE	2	65
+Miami Dolphins	Seydou Traore	TE	3	90
+Miami Dolphins	Ben Sims	TE	4	97
+Miami Dolphins	Cole Turner	TE	5	137
+Miami Dolphins	Ethan Conner	TE	6	168
+Miami Dolphins	Riley Patterson	K	1	37
+Minnesota Vikings	Kyler Murray	QB	1	17
+Minnesota Vikings	J.J. McCarthy	QB	2	37
+Minnesota Vikings	Carson Wentz	QB	3	61
+Minnesota Vikings	Max Brosmer	QB	4	104
+Minnesota Vikings	Jordan Mason	RB	1	35
+Minnesota Vikings	Aaron Jones Sr.	RB	2	42
+Minnesota Vikings	Demond Claiborne	RB	3	75
+Minnesota Vikings	Zavier Scott	RB	4	122
+Minnesota Vikings	Max Bredeson	RB	5	146
+Minnesota Vikings	Jermar Jefferson	RB	6	157
+Minnesota Vikings	Justin Jefferson	WR	1	6
+Minnesota Vikings	Jordan Addison	WR	2	40
+Minnesota Vikings	Jauan Jennings	WR	3	64
+Minnesota Vikings	Tai Felton	WR	4	152
+Minnesota Vikings	Myles Price	WR	5	172
+Minnesota Vikings	Michael Briscoe	WR	6	200
+Minnesota Vikings	Jeshaun Jones	WR	7	202
+Minnesota Vikings	T.J. Hockenson	TE	1	25
+Minnesota Vikings	Josh Oliver	TE	2	67
+Minnesota Vikings	Ben Yurosek	TE	3	112
+Minnesota Vikings	Gavin Bartholomew	TE	4	130
+Minnesota Vikings	Bryson Nesbit	TE	5	140
+Minnesota Vikings	Will Reichard	K	1	15
+New England Patriots	Drake Maye	QB	1	3
+New England Patriots	Tommy DeVito	QB	2	64
+New England Patriots	Behren Morton	QB	3	83
+New England Patriots	TreVeyon Henderson	RB	1	26
+New England Patriots	Rhamondre Stevenson	RB	2	27
+New England Patriots	Jam Miller	RB	3	108
+New England Patriots	Lan Larison	RB	4	130
+New England Patriots	Reggie Gilliam	RB	5	142
+New England Patriots	JaMycal Hasty	RB	6	166
+New England Patriots	Hassan Haskins	RB	7	181
+New England Patriots	A.J. Brown	WR	1	7
+New England Patriots	Romeo Doubs	WR	2	48
+New England Patriots	Kyle Williams	WR	3	103
+New England Patriots	Mack Hollins	WR	4	107
+New England Patriots	DeMario Douglas	WR	5	111
+New England Patriots	Efton Chism III	WR	6	175
+New England Patriots	Hunter Henry	TE	1	17
+New England Patriots	Eli Raridon	TE	2	46
+New England Patriots	Julian Hill	TE	3	100
+New England Patriots	CJ Dippre	TE	4	142
+New England Patriots	Tanner Arkin	TE	5	161
+New England Patriots	Jack Westover	TE	6	171
+New England Patriots	Andy Borregales	K	1	12
+New Orleans Saints	Tyler Shough	QB	1	20
+New Orleans Saints	Spencer Rattler	QB	2	51
+New Orleans Saints	Zach Wilson	QB	3	80
+New Orleans Saints	Travis Etienne Jr.	RB	1	17
+New Orleans Saints	Alvin Kamara	RB	2	57
+New Orleans Saints	Kendre Miller	RB	3	83
+New Orleans Saints	Devin Neal	RB	4	85
+New Orleans Saints	Audric Estime	RB	5	95
+New Orleans Saints	CJ Donaldson	RB	6	159
+New Orleans Saints	Zamir White	RB	7	160
+New Orleans Saints	Chris Olave	WR	1	11
+New Orleans Saints	Jordyn Tyson	WR	2	53
+New Orleans Saints	Devaughn Vele	WR	3	87
+New Orleans Saints	Bryce Lance	WR	4	114
+New Orleans Saints	Barion Brown	WR	5	148
+New Orleans Saints	Mason Tipton	WR	6	180
+New Orleans Saints	Kevin Austin Jr.	WR	7	184
+New Orleans Saints	Ronnie Bell	WR	8	225
+New Orleans Saints	Bub Means	WR	9	229
+New Orleans Saints	Juwan Johnson	TE	1	16
+New Orleans Saints	Oscar Delp	TE	2	38
+New Orleans Saints	Noah Fant	TE	3	53
+New Orleans Saints	Moliki Matavao	TE	4	103
+New Orleans Saints	Treyton Welch	TE	5	173
+New Orleans Saints	Zaire Mitchell-Paden	TE	6	174
+New Orleans Saints	Charlie Smyth	K	1	19
+New Orleans Saints	Daniel Carlson	K	2	27
+New Orleans Saints	Tanner Brown	K	3	41
+New York Giants	Jaxson Dart	QB	1	13
+New York Giants	Jameis Winston	QB	2	44
+New York Giants	Brandon Allen	QB	3	90
+New York Giants	Cam Skattebo	RB	1	20
+New York Giants	Tyrone Tracy Jr.	RB	2	54
+New York Giants	Najee Harris	RB	3	76
+New York Giants	Devin Singletary	RB	4	88
+New York Giants	Patrick Ricard	RB	5	147
+New York Giants	Malik Nabers	WR	1	12
+New York Giants	Darnell Mooney	WR	2	80
+New York Giants	Malachi Fields	WR	3	88
+New York Giants	Darius Slayton	WR	4	97
+New York Giants	Odell Beckham Jr.	WR	5	150
+New York Giants	Isaiah Hodgins	WR	6	201
+New York Giants	Jalin Hyatt	WR	7	248
+New York Giants	Xavier Gipson	WR	8	252
+New York Giants	Dalen Cambre	WR	9	254
+New York Giants	Isaiah Likely	TE	1	13
+New York Giants	Theo Johnson	TE	2	34
+New York Giants	Thomas Fidone II	TE	3	115
+New York Giants	Tanner Conner	TE	4	125
+New York Giants	Chris Manhertz	TE	5	127
+New York Giants	Josiah Deguara	TE	6	154
+New York Giants	Ben Sauls	K	1	29
+New York Giants	Dominic Zvada	K	2	38
+New York Jets	Geno Smith	QB	1	29
+New York Jets	Cade Klubnik	QB	2	46
+New York Jets	Brady Cook	QB	3	81
+New York Jets	Bailey Zappe	QB	4	105
+New York Jets	Breece Hall	RB	1	16
+New York Jets	Braelon Allen	RB	2	52
+New York Jets	Isaiah Davis	RB	3	73
+New York Jets	Kene Nwangwu	RB	4	131
+New York Jets	Chip Trayanum	RB	5	161
+New York Jets	Dominic Richardson	RB	6	192
+New York Jets	Garrett Wilson	WR	1	23
+New York Jets	Adonai Mitchell	WR	2	59
+New York Jets	Omar Cooper Jr.	WR	3	67
+New York Jets	Isaiah Williams	WR	4	153
+New York Jets	Tim Patrick	WR	5	156
+New York Jets	Arian Smith	WR	6	190
+New York Jets	Kenyon Sadiq	TE	1	24
+New York Jets	Mason Taylor	TE	2	33
+New York Jets	Jeremy Ruckert	TE	3	75
+New York Jets	Jelani Woods	TE	4	95
+New York Jets	Andrew Beck	TE	5	150
+New York Jets	Chase Curtis	TE	6	160
+New York Jets	Jason Sanders	K	1	30
+Philadelphia Eagles	Jalen Hurts	QB	1	6
+Philadelphia Eagles	Andy Dalton	QB	2	68
+Philadelphia Eagles	Tanner McKee	QB	3	76
+Philadelphia Eagles	Cole Payton	QB	4	102
+Philadelphia Eagles	Saquon Barkley	RB	1	7
+Philadelphia Eagles	Tank Bigsby	RB	2	45
+Philadelphia Eagles	Will Shipley	RB	3	97
+Philadelphia Eagles	Dameon Pierce	RB	4	111
+Philadelphia Eagles	Carson Steele	RB	5	186
+Philadelphia Eagles	DeVonta Smith	WR	1	16
+Philadelphia Eagles	Makai Lemon	WR	2	43
+Philadelphia Eagles	Dontayvion Wicks	WR	3	66
+Philadelphia Eagles	Hollywood Brown	WR	4	102
+Philadelphia Eagles	Elijah Moore	WR	5	155
+Philadelphia Eagles	Darius Cooper	WR	6	199
+Philadelphia Eagles	Britain Covey	WR	7	218
+Philadelphia Eagles	Tahj Washington	WR	8	219
+Philadelphia Eagles	Dallas Goedert	TE	1	12
+Philadelphia Eagles	Eli Stowers	TE	2	35
+Philadelphia Eagles	Grant Calcaterra	TE	3	102
+Philadelphia Eagles	Stone Smartt	TE	4	109
+Philadelphia Eagles	Johnny Mundt	TE	5	128
+Philadelphia Eagles	Cameron Latu	TE	6	148
+Philadelphia Eagles	E.J. Jenkins	TE	7	149
+Philadelphia Eagles	Jake Elliott	K	1	18
+Pittsburgh Steelers	Aaron Rodgers	QB	1	28
+Pittsburgh Steelers	Drew Allar	QB	2	58
+Pittsburgh Steelers	Mason Rudolph	QB	3	65
+Pittsburgh Steelers	Will Howard	QB	4	75
+Pittsburgh Steelers	Jaylen Warren	RB	1	29
+Pittsburgh Steelers	Rico Dowdle	RB	2	31
+Pittsburgh Steelers	Kaleb Johnson	RB	3	89
+Pittsburgh Steelers	Eli Heidenreich	RB	4	103
+Pittsburgh Steelers	Lew Nichols III	RB	5	129
+Pittsburgh Steelers	Travis Homer	RB	6	170
+Pittsburgh Steelers	DK Metcalf	WR	1	34
+Pittsburgh Steelers	Michael Pittman Jr.	WR	2	42
+Pittsburgh Steelers	Germie Bernard	WR	3	82
+Pittsburgh Steelers	Roman Wilson	WR	4	136
+Pittsburgh Steelers	Kaden Wetjen	WR	5	177
+Pittsburgh Steelers	Ben Skowronek	WR	6	181
+Pittsburgh Steelers	Pat Freiermuth	TE	1	26
+Pittsburgh Steelers	Darnell Washington	TE	2	40
+Pittsburgh Steelers	Lance Mason	TE	3	147
+Pittsburgh Steelers	Lake McRee	TE	4	155
+Pittsburgh Steelers	Robert Tonyan	TE	5	162
+Pittsburgh Steelers	Chris Boswell	K	1	14
+Seattle Seahawks	Sam Darnold	QB	1	22
+Seattle Seahawks	Jalen Milroe	QB	2	59
+Seattle Seahawks	Drew Lock	QB	3	67
+Seattle Seahawks	Jadarian Price	RB	1	25
+Seattle Seahawks	Zach Charbonnet	RB	2	46
+Seattle Seahawks	Emanuel Wilson	RB	3	66
+Seattle Seahawks	George Holani	RB	4	67
+Seattle Seahawks	Jacardia Wright	RB	5	190
+Seattle Seahawks	Jaxon Smith-Njigba	WR	1	3
+Seattle Seahawks	Rashid Shaheed	WR	2	54
+Seattle Seahawks	Cooper Kupp	WR	3	77
+Seattle Seahawks	Tory Horton	WR	4	95
+Seattle Seahawks	Velus Jones Jr.	WR	5	186
+Seattle Seahawks	Jake Bobo	WR	6	210
+Seattle Seahawks	Cody White	WR	7	221
+Seattle Seahawks	Montorie Foster Jr.	WR	8	231
+Seattle Seahawks	Ricky White III	WR	9	241
+Seattle Seahawks	Emmanuel Henderson Jr.	WR	10	249
+Seattle Seahawks	AJ Barner	TE	1	22
+Seattle Seahawks	Elijah Arroyo	TE	2	42
+Seattle Seahawks	Eric Saubert	TE	3	98
+Seattle Seahawks	Nick Kallerup	TE	4	176
+Seattle Seahawks	Jason Myers	K	1	5
+San Francisco 49ers	Brock Purdy	QB	1	11
+San Francisco 49ers	Mac Jones	QB	2	38
+San Francisco 49ers	Kurtis Rourke	QB	3	84
+San Francisco 49ers	Adrian Martinez	QB	4	98
+San Francisco 49ers	Christian McCaffrey	RB	1	5
+San Francisco 49ers	Kaelon Black	RB	2	68
+San Francisco 49ers	Jordan James	RB	3	74
+San Francisco 49ers	Isaac Guerendo	RB	4	93
+San Francisco 49ers	Kyle Juszczyk	RB	5	112
+San Francisco 49ers	Khalil Herbert	RB	6	125
+San Francisco 49ers	Sincere McCormick	RB	7	171
+San Francisco 49ers	Mike Evans	WR	1	29
+San Francisco 49ers	De'Zhaun Stribling	WR	2	55
+San Francisco 49ers	Deebo Samuel Sr.	WR	3	57
+San Francisco 49ers	Christian Kirk	WR	4	99
+San Francisco 49ers	Brandon Aiyuk	WR	5	108
+San Francisco 49ers	Demarcus Robinson	WR	6	140
+San Francisco 49ers	Jacob Cowing	WR	7	163
+San Francisco 49ers	Jordan Watkins	WR	8	178
+San Francisco 49ers	George Kittle	TE	1	7
+San Francisco 49ers	Jake Tonges	TE	2	37
+San Francisco 49ers	Luke Farrell	TE	3	99
+San Francisco 49ers	Khalil Dinkins	TE	4	111
+San Francisco 49ers	Hayden Rucci	TE	5	132
+San Francisco 49ers	Brayden Willis	TE	6	138
+San Francisco 49ers	Eddy Pineiro	K	1	6
+Tampa Bay Buccaneers	Baker Mayfield	QB	1	19
+Tampa Bay Buccaneers	Jake Browning	QB	2	57
+Tampa Bay Buccaneers	Jalon Daniels	QB	3	97
+Tampa Bay Buccaneers	Bucky Irving	RB	1	22
+Tampa Bay Buccaneers	Kenny Gainwell	RB	2	40
+Tampa Bay Buccaneers	Sean Tucker	RB	3	64
+Tampa Bay Buccaneers	Josh Williams	RB	4	140
+Tampa Bay Buccaneers	Emeka Egbuka	WR	1	18
+Tampa Bay Buccaneers	Chris Godwin Jr.	WR	2	38
+Tampa Bay Buccaneers	Jalen McMillan	WR	3	62
+Tampa Bay Buccaneers	Ted Hurst III	WR	4	89
+Tampa Bay Buccaneers	Tez Johnson	WR	5	118
+Tampa Bay Buccaneers	Kameron Johnson	WR	6	188
+Tampa Bay Buccaneers	David Sills V	WR	7	203
+Tampa Bay Buccaneers	Cade Otton	TE	1	28
+Tampa Bay Buccaneers	Bauer Sharp	TE	2	85
+Tampa Bay Buccaneers	Payne Durham	TE	3	92
+Tampa Bay Buccaneers	Devin Culp	TE	4	108
+Tampa Bay Buccaneers	Ko Kieft	TE	5	146
+Tampa Bay Buccaneers	Kenny Fletcher Jr.	TE	6	159
+Tampa Bay Buccaneers	Chase McLaughlin	K	1	11
+Tampa Bay Buccaneers	B.T. Potter	K	2	42
+Tennessee Titans	Cam Ward	QB	1	25
+Tennessee Titans	Mitchell Trubisky	QB	2	62
+Tennessee Titans	Will Levis	QB	3	74
+Tennessee Titans	Hendon Hooker	QB	4	103
+Tennessee Titans	Tony Pollard	RB	1	28
+Tennessee Titans	Tyjae Spears	RB	2	51
+Tennessee Titans	Nicholas Singleton	RB	3	59
+Tennessee Titans	Michael Carter	RB	4	104
+Tennessee Titans	Kalel Mullings	RB	5	169
+Tennessee Titans	Julius Chestnut	RB	6	184
+Tennessee Titans	Carnell Tate	WR	1	33
+Tennessee Titans	Wan'Dale Robinson	WR	2	47
+Tennessee Titans	Calvin Ridley	WR	3	68
+Tennessee Titans	Chimere Dike	WR	4	90
+Tennessee Titans	Elic Ayomanor	WR	5	91
+Tennessee Titans	Xavier Restrepo	WR	6	167
+Tennessee Titans	Mason Kinsey	WR	7	217
+Tennessee Titans	Gunnar Helm	TE	1	27
+Tennessee Titans	Daniel Bellinger	TE	2	57
+Tennessee Titans	Kylen Granson	TE	3	106
+Tennessee Titans	Joel Wilson	TE	4	117
+Tennessee Titans	David Martin-Robinson	TE	5	141
+Tennessee Titans	Joey Slye	K	1	23
+Washington Commanders	Jayden Daniels	QB	1	5
+Washington Commanders	Marcus Mariota	QB	2	43
+Washington Commanders	Athan Kaliakmanis	QB	3	87
+Washington Commanders	Sam Hartman	QB	4	93
+Washington Commanders	Jacory Croskey-Merritt	RB	1	34
+Washington Commanders	Rachaad White	RB	2	39
+Washington Commanders	Kaytron Allen	RB	3	62
+Washington Commanders	Jerome Ford	RB	4	92
+Washington Commanders	Jeremy McNichols	RB	5	117
+Washington Commanders	Robert Henry Jr.	RB	6	120
+Washington Commanders	Craig Reynolds	RB	7	168
+Washington Commanders	Terry McLaurin	WR	1	24
+Washington Commanders	Stefon Diggs	WR	2	51
+Washington Commanders	Antonio Williams	WR	3	85
+Washington Commanders	Luke McCaffrey	WR	4	116
+Washington Commanders	Treylon Burks	WR	5	123
+Washington Commanders	Jaylin Lane	WR	6	132
+Washington Commanders	Dyami Brown	WR	7	145
+Washington Commanders	Van Jefferson	WR	8	159
+Washington Commanders	Chig Okonkwo	TE	1	19
+Washington Commanders	Ben Sinnott	TE	2	56
+Washington Commanders	John Bates	TE	3	61
+Washington Commanders	Quentin Moore	TE	4	151
+Washington Commanders	Colson Yankoff	TE	5	153
+Washington Commanders	Drew Stevens	K	1	31
