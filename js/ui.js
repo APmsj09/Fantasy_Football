@@ -1213,7 +1213,7 @@ const UI = {
             // 10. ARCHETYPE RISK WARNINGS (SAFE FOR ALL PLAYERS / ROOKIES)
             // ===========================================================
 
-            // Satellite Back in Standard Scoring
+            // Satellite Back in Standard Scoring (Unique Single Check)
             if (p._isSatelliteBack && State.scoring.ppr === 0) {
                 cons.push(`<strong>Lacks Rushing Floor:</strong> Barely utilized in the traditional running game, making him incredibly difficult to start in Standard (Non-PPR) scoring formats.`);
                 riskScore += 2;
@@ -1237,7 +1237,7 @@ const UI = {
                 riskScore += 1;
             }
 
-            // NEW: Short-aDOT PPR Operator
+            // Short-aDOT PPR Operator
             if (p._isShortAdotOperator && State.scoring.ppr === 0) {
                 cons.push(`<strong>Capped Downfield Ceiling:</strong> Low aDOT (<strong>${p.aDOT || '6.5'} yds</strong>) limits explosive play upside; relies entirely on PPR catch volume to remain fantasy relevant.`);
                 riskScore += 1;
@@ -1254,7 +1254,7 @@ const UI = {
                 riskScore += 1;
             }
 
-            // NEW: Red Zone Vulture
+            // Red Zone Vulture
             if (p._isRedZoneVulture) {
                 cons.push(`<strong>Game-Script Sensitive Vulture:</strong> Low snap share (<strong>${p.snapShare || '40'}%</strong>) makes his weekly baseline heavily dependent on the team reaching the red zone.`);
                 riskScore += 1;
@@ -1266,7 +1266,7 @@ const UI = {
                 riskScore += 2;
             }
 
-            // NEW: Play-Action Merchant Drop-Back Risk
+            // Play-Action Merchant Drop-Back Risk
             if (p._isPlayActionMerchant) {
                 cons.push(`<strong>Drop-Back Passing Risk:</strong> Highly dependent on play-action designs; can struggle when trailing and forced into obvious drop-back passing situations.`);
             }
@@ -1551,11 +1551,14 @@ const UI = {
         if (pAge && pAge <= 24) riskScore = Math.max(0, riskScore - 2);
         if (p.boomBust && p.boomBust.bust <= 10) riskScore = Math.max(0, riskScore - 2);
 
-        // 🛡️ RISK BADGE (DECLARED ONCE HERE)
+        // 🛡️ RISK BADGE
         let riskBadge = `<span class="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2.5 py-0.5 rounded-full font-bold">🛡️ LOW RISK</span>`;
         if (riskScore >= 6) riskBadge = `<span class="bg-rose-500/20 text-rose-300 border border-rose-500/30 px-2.5 py-0.5 rounded-full font-bold">🚨 HIGH RISK</span>`;
         else if (riskScore >= 4) riskBadge = `<span class="bg-rose-500/20 text-rose-300 border border-rose-500/30 px-2.5 py-0.5 rounded-full font-bold">⚠️ ELEVATED RISK</span>`;
         else if (riskScore >= 2) riskBadge = `<span class="bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2.5 py-0.5 rounded-full font-bold">⚡ MODERATE RISK</span>`;
+
+        // 📝 SYNTHESIZE FULL NARRATIVE BLURB
+        const narrativeBlurb = `${archetypeNote}${pastStatsContext}${statProof}`.trim();
 
         // -------------------------------------------------------------
         // RANGE OF OUTCOMES (Reads pre-computed State values)
