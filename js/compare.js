@@ -375,6 +375,10 @@ window.Compare = {
         // 1. THE ANALYST'S TAKE (Macro Context)
         // =========================================================
         let analystTake = "";
+        let vbdAbs = Math.abs(vbdGap).toFixed(1); // Get the absolute value for clean text
+        let leadVerb = vbdGap >= 0 ? "outpaces" : "trails";
+        let leadAdv = vbdGap >= 0 ? "providing superior lineup insulation" : "sacrificing baseline mathematical value";
+
         if (isTossUp) {
             if (topPick.Pos === alt.Pos) {
                 analystTake = `This is a virtual dead-heat at ${topPick.Pos} (${topPick.Player}: ${topPpg} PPG vs ${alt.Player}: ${altPpg} PPG). Both players offer nearly identical mathematical value at this stage of the draft (~${topVBD.toFixed(1)} Adv VBD). The engine leans slightly toward ${topPick.Player} on usage metrics, but pivoting to ${alt.Player} is completely sound based on personal risk tolerance.`;
@@ -383,19 +387,19 @@ window.Compare = {
             }
         } else if (topPick.Pos !== alt.Pos) {
             if (topPick.Pos === 'RB' && ['WR', 'TE'].includes(alt.Pos)) {
-                analystTake = `Structural positional clash: ${topPick.Player} offers a higher mathematical edge over replacement (+${vbdGap.toFixed(1)} Adv VBD gap) and locks down scarce lead-back touches. However, choosing ${alt.Player} secures an elite ${alt.Pos} anchor with lower in-season injury volatility.`;
+                analystTake = `Structural positional clash: ${topPick.Player} offers a different positional edge, but mathematically ${leadVerb} ${alt.Player} by ${vbdAbs} Adv VBD points. Choosing ${alt.Player} secures an elite ${alt.Pos} anchor with lower in-season injury volatility.`;
             } else if (['WR', 'TE'].includes(topPick.Pos) && alt.Pos === 'RB') {
-                analystTake = `${topPick.Player} holds a significant baseline value edge (+${vbdGap.toFixed(1)} Adv VBD) as an elite target earner. Pivoting to ${alt.Player} is only recommended if you fear backfield scarcity and prioritize securing guaranteed early-round rushing volume.`;
+                analystTake = `${topPick.Player} ${leadVerb} ${alt.Player} by ${vbdAbs} Adv VBD as an elite target earner. Pivoting to ${alt.Player} is only recommended if you fear backfield scarcity and prioritize securing guaranteed early-round rushing volume.`;
             } else {
-                analystTake = `${topPick.Player} (${topPick.Pos}) currently outpaces ${alt.Player} (${alt.Pos}) by +${vbdGap.toFixed(1)} Adv VBD points, providing superior lineup insulation over baseline replacement.`;
+                analystTake = `${topPick.Player} (${topPick.Pos}) currently ${leadVerb} ${alt.Player} (${alt.Pos}) by ${vbdAbs} Adv VBD points, ${leadAdv} over baseline replacement.`;
             }
         } else {
             let topTier = this.getTierDetails(topPick);
             let altTier = this.getTierDetails(alt);
             if (topTier.tierNum < altTier.tierNum) {
-                analystTake = `${topPick.Player} projects for ${topPpg} PPG vs ${altPpg} PPG for ${alt.Player}, placing him in a higher positional tier (${topTier.tierName}). While ${alt.Player} has paths to spike production, bypassing ${topPick.Player} leaves +${vbdGap.toFixed(1)} baseline VBD on the board.`;
+                analystTake = `${topPick.Player} projects for ${topPpg} PPG vs ${altPpg} PPG for ${alt.Player}, placing him in a higher positional tier (${topTier.tierName}). While ${alt.Player} has paths to spike production, bypassing ${topPick.Player} leaves ${vbdAbs} baseline VBD on the board.`;
             } else {
-                analystTake = `Both players reside in ${topTier.tierName}, but ${topPick.Player} (${topPpg} PPG) edges out ${alt.Player} (${altPpg} PPG) due to superior high-value touch/target density (+${vbdGap.toFixed(1)} Adv VBD advantage).`;
+                analystTake = `Both players reside in ${topTier.tierName}, but ${topPick.Player} (${topPpg} PPG) ${leadVerb} ${alt.Player} (${altPpg} PPG) by ${vbdAbs} Adv VBD points.`;
             }
         }
 
