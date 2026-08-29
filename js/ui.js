@@ -2291,11 +2291,15 @@ const UI = {
         } else {
             document.getElementById('on-the-clock').textContent = "Complete";
             document.getElementById('drafting-for-badge').textContent = "Draft Complete";
-            this.renderStandings();
             
-            // ⚡ Trigger the Season Preview & Draft Recap Engine
+            // ⚡ MUST BE IN THIS EXACT ORDER:
+            // 1. Generate the advanced analytics, Monte Carlo sims, and grades first
             if (window.DraftRecap) window.DraftRecap.generateRecaps();
             
+            // 2. Render the standings using the advanced data
+            this.renderStandings();
+            
+            // 3. Flip to the screen
             this.switchTab('summary-screen');
         }
 
@@ -3136,29 +3140,66 @@ const UI = {
 
     renderStandings() {
         const list = document.getElementById('standings-list');
-        const startW = State.settings.startWeek || 1;
-        const endW = State.settings.endWeek || 17;
-        const decimals = State.settings.decimalPlaces || 2;
-
-        let totals = Object.values(State.teamsById).map(team => {
-            let seasonStartingPts = 0;
-            for (let w = startW; w <= endW; w++) {
-                seasonStartingPts += State.calculateOptimalWeeklyScore(team.roster, w);
-            }
-            return { name: team.name, pts: seasonStartingPts, isUser: team.id === State.userTeamId };
-        }).sort((a, b) => b.pts - a.pts);
-
         let htmlStr = '';
-        totals.forEach((t, i) => {
-            let bg = t.isUser ? 'bg-indigo-50 border-indigo-200' : 'bg-gray-50 border-gray-100';
-            let text = t.isUser ? 'text-indigo-900' : 'text-gray-900';
-            htmlStr += `
-                <div class="flex justify-between items-center p-4 border rounded-xl ${bg} mb-3">
-                    <span class="text-lg font-bold ${text}"><span class="text-gray-400 mr-2">#${i + 1}</span> ${t.name}</span>
-                    <span class="text-lg text-emerald-600 font-extrabold">${t.pts.toFixed(decimals)} pts</span>
-                </div>
-            `;
-        });
+
+        // Check if DraftRecap has generated the advanced data
+        if (window.DraftRecap && DraftRecap.sortedTeams && DraftRecap.sortedTeams.length > 0) {
+            DraftRecap.sortedTeams.forEach((t, i) => {
+                let isUser = t.id === State.userTeamId;
+                
+                // Highlight the user's team with a pop of color
+                let bg = isUser ? 'bg-indigo-50 border-indigo-300 ring-2 ring-indigo-500/30 shadow-md' : 'bg-white border-slate-200 hover:border-slate-300 shadow-sm hover:shadow-md';
+                let text = isUser ? 'text-indigo-900' : 'text-slate-900';
+                
+                htmlStr += `
+                    <div class="${bg} p-4 sm:p-5 rounded-2xl mb-3 transition-all cursor-pointer group" 
+                         onclick="document.getElementById('recap-team-select').value='${t.id}'; document.getElementById('recap-team-select').dispatchEvent(new Event('change')); document.getElementById('recap-team-select').scrollIntoView({behavior: 'smooth', block: 'start'})">
+                        
+                        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                            
+                            <!-- Left: Rank, Name, Grade & Odds -->
+                            <div class="flex items-center gap-4">
+                                <div class="w-10 h-10 rounded-full ${isUser ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500'} flex items-center justify-center font-black text-lg shrink-0 group-hover:scale-105 transition-transform">
+                                    ${i + 1}
+                                </div>
+                                <div>
+                                    <div class="flex items-center gap-2">
+                                        <h3 class="text-lg sm:text-xl font-black ${text}">${t.name}</h3>
+                                        ${isUser ? '<span class="px-2 py-0.5 bg-indigo-200 text-indigo-800 text-[10px] font-bold uppercase tracking-wider rounded">Your Team</span>' : ''}
+                                    </div>
+                                    <div class="text-xs font-medium text-slate-500 mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+                                        <span>Grade: <span class="${t.analysis.color} font-black text-sm drop-shadow-sm">${t.analysis.grade}</span></span>
+                                        <span class="w-1 h-1 rounded-full bg-slate-300 hidden sm:block"></span>
+                                        <span class="font-semibold text-slate-600">Proj: ${t.simRecord}</span>
+                                        <span class="w-1 h-1 rounded-full bg-slate-300 hidden sm:block"></span>
+                                        <span class="text-emerald-600 font-bold">${t.playoffOdds}% Playoffs</span>
+                                        <span class="w-1 h-1 rounded-full bg-slate-300 hidden sm:block"></span>
+                                        <span>${t.analysis.persona.icon} ${t.analysis.persona.label}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Right: The 3-Tier Range (Floor / Median / Ceiling) -->
+                            <div class="flex items-center gap-3 sm:gap-6 bg-slate-50 px-4 py-2.5 rounded-xl border border-slate-200/60 shrink-0">
+                                <div class="text-center">
+                                    <span class="block text-[10px] uppercase font-bold text-rose-500 mb-0.5 tracking-wider">Floor</span>
+                                    <span class="font-bold text-slate-600 text-xs">${t.floorPts.toFixed(1)}</span>
+                                </div>
+                                <div class="text-center px-3 sm:px-4 border-l border-r border-slate-200">
+                                    <span class="block text-[10px] uppercase font-bold text-indigo-600 mb-0.5 tracking-wider">Median</span>
+                                    <span class="font-black text-indigo-700 text-lg sm:text-xl">${t.basePts.toFixed(1)}</span>
+                                </div>
+                                <div class="text-center">
+                                    <span class="block text-[10px] uppercase font-bold text-emerald-500 mb-0.5 tracking-wider">Ceiling</span>
+                                    <span class="font-bold text-slate-600 text-xs">${t.ceilingPts.toFixed(1)}</span>
+                                </div>
+                            </div>
+                            
+                        </div>
+                    </div>
+                `;
+            });
+        } 
         list.innerHTML = htmlStr;
     }
 };
