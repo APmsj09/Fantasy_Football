@@ -2542,7 +2542,9 @@ const UI = {
         const totalRounds = State.settings.roster.totalSize;
         const currentOverallPick = State.currentPick + 1;
 
-        // 1. Multi-Window Draft Lookahead Engine
+        // =========================================================================
+        // UNIVERSAL MULTI-WINDOW DRAFT LOOKAHEAD ENGINE
+        // =========================================================================
         let userRemainingPicks = [];
         State.draftOrder.forEach((teamId, idx) => {
             if (idx >= State.currentPick && teamId === State.userTeamId) {
@@ -2626,7 +2628,9 @@ const UI = {
             return Math.max(0.0, Math.min(1.0, baseProb));
         };
 
-        // 2. 4-Tier Roster Fragility & Dynamic Strategy Banner Engine
+        // =========================================================================
+        // 🎯 4-TIER ROSTER FRAGILITY & DYNAMIC STRUCTURAL STRATEGY ENGINE
+        // =========================================================================
         let userRoster = userTeam.roster;
         let earlyRBs = userRoster.filter(p => p.Pos === 'RB' && (p.draftPickNum || 99) <= 60).length;
         let earlyWRs = userRoster.filter(p => p.Pos === 'WR' && (p.draftPickNum || 99) <= 60).length;
@@ -2643,33 +2647,35 @@ const UI = {
         let strategyBanner = "";
         if (currentRound <= 9) {
             let fragilityTag = isGlassCannon 
-                ? `<span class="bg-rose-950 text-rose-300 border border-rose-700 px-2 py-0.5 rounded font-bold ml-1.5">🚨 Fragile Build</span>` 
+                ? `<span class="bg-rose-950 text-rose-300 border border-rose-700 px-2 py-0.5 rounded font-bold ml-1.5">🚨 Fragile 'Glass Cannon' Build</span>` 
                 : `<span class="bg-emerald-950 text-emerald-300 border border-emerald-700 px-2 py-0.5 rounded font-bold ml-1.5">🛡️ Solid Foundation</span>`;
 
             if (earlyRBs === 0 && userRoster.length >= 2) {
-                strategyBanner = `<div class="p-1.5 mb-1.5 bg-indigo-950 border border-indigo-700 rounded-lg text-[9px] text-indigo-200 flex justify-between items-center shadow-sm">
-                    <span>📡 <strong>Zero-RB Build:</strong> Hammering WR/TE alphas. Target high-HVO backs in R7–R11.</span>
+                strategyBanner = `<div class="p-2 mb-2 bg-indigo-950 border border-indigo-700 rounded-xl text-[10px] text-indigo-200 flex justify-between items-center shadow-sm">
+                    <span>📡 <strong>Zero-RB Build:</strong> Hammering WR/TE alphas. Target high-HVO space backs & handcuffs in R7–R11.</span>
                     ${fragilityTag}
                 </div>`;
             } else if (earlyRBs === 1 && earlyWRs >= 2) {
-                strategyBanner = `<div class="p-1.5 mb-1.5 bg-emerald-950 border border-emerald-700 rounded-lg text-[9px] text-emerald-200 flex justify-between items-center shadow-sm">
-                    <span>🦸 <strong>Hero-RB Build:</strong> Anchor RB secured. Evaluating Best Player Available.</span>
+                strategyBanner = `<div class="p-2 mb-2 bg-emerald-950 border border-emerald-700 rounded-xl text-[10px] text-emerald-200 flex justify-between items-center shadow-sm">
+                    <span>🦸 <strong>Hero-RB Build:</strong> Anchor RB secured. Evaluating Best Player Available across WR/TE/Flex.</span>
                     ${fragilityTag}
                 </div>`;
             } else if (earlyRBs >= 2) {
-                strategyBanner = `<div class="p-1.5 mb-1.5 bg-amber-950 border border-amber-700 rounded-lg text-[9px] text-amber-200 flex justify-between items-center shadow-sm">
-                    <span>🚜 <strong>Robust-RB Ground Attack:</strong> Backfield secured. Flex optimizing dynamically.</span>
+                strategyBanner = `<div class="p-2 mb-2 bg-amber-950 border border-amber-700 rounded-xl text-[10px] text-amber-200 flex justify-between items-center shadow-sm">
+                    <span>🚜 <strong>Robust-RB Ground Attack:</strong> Backfield foundation established. Flex slots optimizing dynamically.</span>
                     ${fragilityTag}
                 </div>`;
             } else if (isGlassCannon) {
-                strategyBanner = `<div class="p-1.5 mb-1.5 bg-rose-950 border border-rose-700 rounded-lg text-[9px] text-rose-200 flex justify-between items-center shadow-sm">
-                    <span>⚠️ <strong>Volatility Warning:</strong> High-bust starters detected. Prioritizing floor assets.</span>
+                strategyBanner = `<div class="p-2 mb-2 bg-rose-950 border border-rose-700 rounded-xl text-[10px] text-rose-200 flex justify-between items-center shadow-sm">
+                    <span>⚠️ <strong>Volatility Warning:</strong> Multiple high-bust starters detected. Prioritizing high-floor insulation assets.</span>
                     ${fragilityTag}
                 </div>`;
             }
         }
 
-        // 3. Positional Scarcity Panic (Tier Cliffs)
+        let userQBs = userRoster.filter(r => r.Pos === 'QB');
+
+        // ⚡ Calculate Positional Scarcity Panic (Tier Cliffs)
         let scarcity = {};
         ['QB', 'RB', 'WR', 'TE'].forEach(pos => {
             let tiers = State.getPositionalTiers(pos);
@@ -2684,7 +2690,7 @@ const UI = {
             }
         });
 
-        // 4. Filter Roster-Eligible Players
+        // Filter roster-eligible players
         let viablePlayers = State.availablePlayers.filter(p => {
             let pos = p.Pos;
             let posRoster = State.settings.roster[pos];
@@ -2698,6 +2704,7 @@ const UI = {
             return false;
         });
 
+        // Canonical Evaluation Engine Call
         let context = {
             currentRound,
             currentOverallPick,
@@ -2710,7 +2717,7 @@ const UI = {
             p._recScore = evalResult.totalDraftValue;
         });
 
-        // 5. Positional Slots Allocation
+        // Positional Slots Allocation
         let pkMax = State.settings.roster.PK?.max ?? 0;
         let dstMax = State.settings.roster.DST?.max ?? 0;
         let needsPK = pkMax > 0 && (userTeam.counts['PK'] || 0) < pkMax;
@@ -2724,19 +2731,26 @@ const UI = {
 
         let finalRecs = [];
 
+        // 1. Fill top slots with skill positions first (up to 9)
         for (let p of skillPlayers) {
             if (finalRecs.length >= 9) break;
             if (!finalRecs.includes(p)) finalRecs.push(p);
         }
 
+        // 2. In final 2 rounds, promote needed DST and PK straight to the top of list
         if (currentRound >= totalRounds - 2) {
             let bestDST = kDstPlayers.find(p => p.Pos === 'DST');
             let bestPK = kDstPlayers.find(p => p.Pos === 'PK');
 
-            if (needsDST && bestDST && !finalRecs.includes(bestDST)) finalRecs.unshift(bestDST);
-            if (needsPK && bestPK && !finalRecs.includes(bestPK)) finalRecs.splice(1, 0, bestPK);
+            if (needsDST && bestDST && !finalRecs.includes(bestDST)) {
+                finalRecs.unshift(bestDST);
+            }
+            if (needsPK && bestPK && !finalRecs.includes(bestPK)) {
+                finalRecs.splice(1, 0, bestPK);
+            }
         }
 
+        // 3. Fill remaining slots up to 10 recommendations
         for (let p of [...viablePlayers].sort((a, b) => b._recScore - a._recScore)) {
             if (finalRecs.length >= 10) break;
             if (!finalRecs.includes(p)) finalRecs.push(p);
@@ -2757,9 +2771,9 @@ const UI = {
             } else if (bestFit._byeFillWeek) {
                 ppwText = `Wk ${bestFit._byeFillWeek} Fill`;
             } else if (isStarterNeeded) {
-                ppwText = `Core Starter (${bestFit.Pos})`;
+                ppwText = `Core Starter Need (${bestFit.Pos})`;
             } else {
-                ppwText = `Bench Stash`;
+                ppwText = `Bench Stash / Upside`;
             }
 
             let stackBadge = bestFit._stackPartner ? ` • ⚡ Stack w/ ${bestFit._stackPartner}` : '';
@@ -2770,22 +2784,22 @@ const UI = {
 
             let recBadgeTitle = (bestFit._addedPPW && bestFit._addedPPW >= 1.0) ? "#1 Lineup Fit" : "#1 Recommended Pick";
             htmlStr += `
-            <div class="p-2 bg-gradient-to-br from-emerald-800 to-teal-950 rounded-xl border border-emerald-500/50 flex justify-between items-center shadow-md cursor-pointer hover:brightness-110 transition mb-1.5 shrink-0" onclick="UI.showPlayerCard('${bestFit._cleanName}')">
+            <div class="p-3 bg-gradient-to-br from-emerald-800 to-teal-950 rounded-2xl border border-emerald-500/50 flex justify-between items-center shadow-md cursor-pointer hover:brightness-110 transition mb-2 shrink-0" onclick="UI.showPlayerCard('${bestFit._cleanName}')">
                 <div class="min-w-0 pr-2">
-                    <div class="flex items-center gap-1.5 leading-none mb-0.5">
-                        <span class="text-[8px] font-black uppercase tracking-wider text-emerald-300">${recBadgeTitle}</span>
-                        <span class="text-[8px] text-emerald-200 font-bold">(${bestFit.Pos})</span>
+                    <div class="flex items-center gap-1.5 leading-none mb-1">
+                        <span class="text-[9px] font-black uppercase tracking-wider text-emerald-300">${recBadgeTitle}</span>
+                        <span class="text-[9px] text-emerald-200 font-bold">(${bestFit.Pos})</span>
                     </div>
-                    <h4 class="font-black text-xs text-white truncate leading-tight">${bestFit.Player} <span class="text-[10px] font-normal text-emerald-200">(${bestFit.Team})</span></h4>
-                    <p class="text-[9px] text-emerald-100 font-medium truncate mt-0.5">${ppwText}${stackBadge}${cliffBadge}</p>
+                    <h4 class="font-black text-sm text-white truncate leading-tight">${bestFit.Player} <span class="text-[11px] font-normal text-emerald-200">(${bestFit.Team})</span></h4>
+                    <p class="text-[10px] text-emerald-100 font-medium truncate mt-0.5">${ppwText}${stackBadge}${cliffBadge}</p>
                 </div>
                 <div class="text-right shrink-0">
-                    <span class="text-[9px] font-black text-emerald-300 bg-emerald-950/80 border border-emerald-700/80 px-1.5 py-0.5 rounded">${(bestFit.AdvVBD || bestFit.VBD).toFixed(1)} VBD</span>
+                    <span class="text-[10px] font-black text-emerald-300 bg-emerald-950/80 border border-emerald-700/80 px-2 py-0.5 rounded">${(bestFit.AdvVBD || bestFit.VBD).toFixed(1)} VBD</span>
                 </div>
             </div>`;
         }
 
-        // 7. #2–#10 Recommendations (Full Analytical Hierarchy Preserved)
+        // 7. #2–#10 Recommendations (Every Badge & Calculation Restored)
         htmlStr += vbdRecs.map((p, i) => {
             let stackBadge = p._stackPartner ? ` • ⚡ ${p._stackPartner}` : '';
             let survivalProb = p._survivalProb !== undefined ? p._survivalProb : getSurvivalProb(p);
@@ -2798,30 +2812,30 @@ const UI = {
             if (p._byeWarningTag) {
                 highlight = `<span class="text-rose-300 font-extrabold">${p._byeWarningTag}</span>`;
             } else if (p === bpaPlayer) {
-                highlight = `<span class="text-fuchsia-300 font-extrabold">💎 BPA</span>`;
+                highlight = `<span class="text-fuchsia-300 font-extrabold tracking-wide">💎 Highest Raw Value (BPA)</span>`;
             } else if (p.contingentDraftEquity && p.contingentDraftEquity >= 25.0) {
-                highlight = `<span class="text-purple-300 font-bold">👑 ${p._contingentTier || 'Stash'}</span>`;
+                highlight = `<span class="text-purple-300 font-black">👑 ${p._contingentTier || 'Diamond Stash'}</span>`;
             } else if (p._sleeperBadge) {
                 highlight = `<span class="text-emerald-300 font-bold">${p._sleeperBadge}</span>`;
             } else if (p._rosterContextBadge) {
                 highlight = `<span class="text-amber-300 font-bold">${p._rosterContextBadge}</span>`;
             } else if (p._positiveTdRegression) {
-                highlight = `<span class="text-emerald-300 font-bold">📈 +xTD</span>`;
+                highlight = `<span class="text-emerald-300 font-bold">📈 Positive TD Rebound (~${p.xTD ? p.xTD.toFixed(0) : 'High'} xTD)</span>`;
             } else if (p.adp && p._survivalProb < 0.20 && (isStarterNeeded || hasPositiveValue)) {
                 highlight = `<span class="text-rose-300 font-bold">⚡ Last Chance (ADP ${p.adp.toFixed(0)})</span>`;
             } else if (p.adp && (currentOverallPick - p.adp >= 10)) {
-                highlight = `<span class="text-emerald-300 font-bold">🔥 Value Slide (+${Math.round(currentOverallPick - p.adp)})</span>`;
+                highlight = `<span class="text-emerald-300 font-bold">🔥 Value Slide (+${Math.round(currentOverallPick - p.adp)} past ADP)</span>`;
             } else if (p.adp && p._survivalProb > 0.75 && currentRound <= 9) {
-                highlight = `<span class="text-slate-400 font-medium">⏳ Exploit ADP (${p.adp.toFixed(0)})</span>`;
+                highlight = `<span class="text-slate-400 font-medium">⏳ Exploit Public ADP (${p.adp.toFixed(0)})</span>`;
             } else if (isStarterNeeded) {
-                highlight = `<span class="text-amber-300 font-semibold">📋 Starter</span>`;
+                highlight = `<span class="text-amber-300 font-semibold">📋 Core Starter</span>`;
             } else {
                 highlight = `<span class="text-slate-400">Depth</span>`;
             }
 
             let ppwVal = '';
             if (p._addedPPW >= 0.5 || (p._addedPPW > 0 && !p._byeFillWeek)) {
-                ppwVal = `+${p._addedPPW.toFixed(1)}`;
+                ppwVal = `+${p._addedPPW.toFixed(1)}/wk`;
             } else if (p._byeFillWeek) {
                 ppwVal = `Wk ${p._byeFillWeek}`;
             } else {
@@ -2830,15 +2844,15 @@ const UI = {
             }
 
             return `
-            <div class="py-1 px-2 bg-indigo-950/70 rounded-lg border border-indigo-800/60 flex justify-between items-center cursor-pointer hover:bg-indigo-900/80 transition mb-1" onclick="UI.showPlayerCard('${p._cleanName}')">
-                <div class="min-w-0 pr-1 flex items-center gap-1.5 truncate">
-                    <span class="text-indigo-400 font-black text-[10px] w-3.5 shrink-0">${bestFit ? i + 2 : i + 1}.</span>
-                    <span class="font-bold text-[11px] text-white truncate">${p.Player}</span>
-                    <span class="text-[9px] text-indigo-300 shrink-0 font-medium">${p.Pos}</span>
-                    <span class="text-[9px] shrink-0 font-medium">${highlight}${stackBadge}</span>
+            <div class="py-2 px-3 bg-indigo-950/70 rounded-xl border border-indigo-800/60 flex justify-between items-center cursor-pointer hover:bg-indigo-900/80 transition mb-1.5" onclick="UI.showPlayerCard('${p._cleanName}')">
+                <div class="min-w-0 pr-2 flex items-center gap-2 truncate">
+                    <span class="text-indigo-400 font-black text-xs w-4 shrink-0">${bestFit ? i + 2 : i + 1}.</span>
+                    <span class="font-bold text-xs text-white truncate">${p.Player}</span>
+                    <span class="text-[10px] text-indigo-300 shrink-0 font-medium">(${p.Pos} • ${p.Team})</span>
+                    <span class="text-[10px] shrink-0 font-medium">${highlight}${stackBadge}</span>
                 </div>
                 <div class="text-right shrink-0">
-                    <span class="text-[9px] font-black text-emerald-300 bg-emerald-950/90 border border-emerald-800/80 px-1 py-0.5 rounded leading-none">${ppwVal}</span>
+                    <span class="text-[10px] font-black text-emerald-300 bg-emerald-950/90 border border-emerald-800/80 px-2 py-0.5 rounded leading-none">${ppwVal}</span>
                 </div>
             </div>`;
         }).join('');
@@ -2846,7 +2860,7 @@ const UI = {
         State.currentRecommendations = finalRecs;
         container.innerHTML = htmlStr;
 
-        // 8. Sync Pinned Compare Button
+        // 📌 Sync Pinned Compare Button
         const compWrapper = document.getElementById('compare-button-wrapper');
         const compCount = document.getElementById('compare-target-count');
         if (compWrapper) {
