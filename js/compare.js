@@ -375,7 +375,7 @@ window.Compare = {
         // 1. THE ANALYST'S TAKE (Macro Context)
         // =========================================================
         let analystTake = "";
-        let vbdAbs = Math.abs(vbdGap).toFixed(1); // Get the absolute value for clean text
+        let vbdAbs = Math.abs(vbdGap).toFixed(1);
         let leadVerb = vbdGap >= 0 ? "outpaces" : "trails";
         let leadAdv = vbdGap >= 0 ? "providing superior lineup insulation" : "sacrificing baseline mathematical value";
 
@@ -402,7 +402,7 @@ window.Compare = {
                 analystTake = `Both players reside in ${topTier.tierName}, but ${topPick.Player} (${topPpg} PPG) ${leadVerb} ${alt.Player} (${altPpg} PPG) by ${vbdAbs} Adv VBD points.`;
             }
         }
-
+        
         // =========================================================
         // 2. THE CASE FOR THE TOP PICK (Defending the Choice)
         // =========================================================
