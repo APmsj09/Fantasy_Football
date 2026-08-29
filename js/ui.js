@@ -1201,7 +1201,7 @@ const UI = {
                 }
             }
 
-            let teamTopTargetShare = Math.max(...State.allPlayers.filter(x => x._cleanTeam === tTeam).map(x => x.targetShare || 0));
+            let teamTopTargetShare = Math.max(0, ...State.allPlayers.filter(x => x._cleanTeam === tTeam).map(x => x.targetShare || 0));
 
             // Only flag Lack of Alpha Target Share if the player is NOT projected for high volume (≥ 110 targets)
             if (['WR', 'TE'].includes(pos) && teamTopTargetShare > 0 && teamTopTargetShare < 20.0 && (!p.targetShare || p.targetShare < 20.0) && (!p.stats || p.stats.targets < 110)) {
@@ -1284,12 +1284,6 @@ const UI = {
                 }
             }
 
-            // ADD THIS SATELLITE BACK STANDARD SCORING PENALTY HERE:
-            if (p._isSatelliteBack && State.scoring.ppr === 0) {
-                cons.push(`<strong>Lacks Rushing Floor:</strong> Barely utilized in the traditional running game, making him incredibly difficult to start in Standard (Non-PPR) scoring formats.`);
-                riskScore += 2;
-            }
-
             // Suppress the Low-Volume Passing Attack penalty if the receiver is a projected Alpha target hog (≥23% Tgt Share or ≥125 Proj Targets)
             let isAlphaVolumeWR = (p.targetShare && p.targetShare >= 23) || (p.stats && p.stats.targets >= 125);
             if (['WR', 'TE'].includes(pos) && offensePace === 'run-heavy' && !isAlphaVolumeWR) {
@@ -1351,8 +1345,8 @@ const UI = {
                 riskScore += 2;
             } else if (['WR', 'TE'].includes(pos) && p.ypt && p.ypt < 7.2) {
                 // ADD THIS FOR THE EMPTY CALORIE TIER:
-                if (p._isEmptyCalories) {
-                    cons.push(`<strong>Empty Calories Trap:</strong> Despite seeing heavy volume, his atrocious <strong>${p.ypt.toFixed(1)} YPT</strong> mathematically destroys his fantasy ceiling.`);
+                if (!p._isEmptyCalories) {
+                    cons.push(`<strong>Low Target Efficiency:</strong> Generated only <strong>${p.ypt.toFixed(1)} Yards Per Target</strong> last season.`);
                     riskScore += 1;
                 } else {
                     cons.push(`<strong>Low Target Efficiency:</strong> Generated only <strong>${p.ypt.toFixed(1)} Yards Per Target</strong> last season.`);
@@ -1639,6 +1633,8 @@ const UI = {
             }
         }
 
+        const narrativeBlurb = `${archetypeNote}${pastStatsContext}${statProof}`.trim();
+
         let overProb = p.OverProb ? Math.round(p.OverProb * 100) : 50;
         let edgeVal = p.Edge ?? 0;
         
@@ -1702,7 +1698,7 @@ const UI = {
                     <p class="text-indigo-200 text-xs leading-relaxed mt-1">
                         ${narrativeBlurb}
                     </p>
-                </div>
+                </div>    
 
                 <!-- 3. INHERITED ROLE & SCHEME TARGET FUNNEL -->
                 ${inheritedContextHTML}
@@ -2698,8 +2694,10 @@ const UI = {
         // ===========================================================
         // POST-LOOP: SORT AND DEDICATE UP TO 10 SLOTS (COMPACT LAYOUT)
         // ===========================================================
-        let needsPK = userTeam.counts['PK'] < (State.settings.roster.PK?.max || 1);
-        let needsDST = userTeam.counts['DST'] < (State.settings.roster.DST?.max || 1);
+        let pkMax = State.settings.roster.PK?.max ?? 0;
+        let dstMax = State.settings.roster.DST?.max ?? 0;
+        let needsPK = pkMax > 0 && (userTeam.counts['PK'] || 0) < pkMax;
+        let needsDST = dstMax > 0 && (userTeam.counts['DST'] || 0) < dstMax;
 
         let skillPlayers = viablePlayers.filter(p => ['QB', 'RB', 'WR', 'TE'].includes(p.Pos))
             .sort((a, b) => b._recScore - a._recScore);
@@ -2761,7 +2759,7 @@ const UI = {
             else if (bestFit._rosterContextBadge) cliffBadge = ` • <span class="text-amber-200 font-bold">${bestFit._rosterContextBadge}</span>`;
             else if (bestFit._tierCliffTag) cliffBadge = ` • <span class="text-amber-200 font-bold">${bestFit._tierCliffTag}</span>`;
 
-            let recBadgeTitle = (bestFit._addedPPW && bestFit._addedPPW >= 14.0) ? "#1 Lineup Fit" : "#1 Recommended Pick";
+            let recBadgeTitle = (bestFit._addedPPW && bestFit._addedPPW >= 1.0) ? "#1 Lineup Fit" : "#1 Recommended Pick";
             htmlStr += `
             <div class="p-2 bg-gradient-to-br from-emerald-800 to-teal-950 rounded-lg border border-emerald-500/50 flex justify-between items-center shadow-sm cursor-pointer hover:brightness-110 transition mb-1.5" onclick="UI.showPlayerCard('${bestFit._cleanName}')">
                 <div class="min-w-0 pr-2">
