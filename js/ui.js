@@ -2767,11 +2767,11 @@ const UI = {
             let isStarterNeeded = userTeam.counts[bestFit.Pos] < (State.settings.roster[bestFit.Pos]?.max || 1);
             let ppwText = '';
             if (bestFit._addedPPW >= 0.5 || (bestFit._addedPPW > 0 && !bestFit._byeFillWeek)) {
-                ppwText = `+${bestFit._addedPPW.toFixed(1)} PPW`;
+                ppwText = `+${bestFit._addedPPW.toFixed(1)} PPW Lineup Fit`;
             } else if (bestFit._byeFillWeek) {
-                ppwText = `Wk ${bestFit._byeFillWeek} Fill`;
+                ppwText = `Wk ${bestFit._byeFillWeek} Bye Fill`;
             } else if (isStarterNeeded) {
-                ppwText = `Core Starter Need (${bestFit.Pos})`;
+                ppwText = `Core Starter (${bestFit.Pos})`;
             } else {
                 ppwText = `Bench Stash / Upside`;
             }
@@ -2790,11 +2790,11 @@ const UI = {
                         <span class="text-[9px] font-black uppercase tracking-wider text-emerald-300">${recBadgeTitle}</span>
                         <span class="text-[9px] text-emerald-200 font-bold">(${bestFit.Pos})</span>
                     </div>
-                    <h4 class="font-black text-sm text-white truncate leading-tight">${bestFit.Player} <span class="text-[11px] font-normal text-emerald-200">(${bestFit.Team})</span></h4>
+                    <h4 class="font-black text-sm text-white truncate leading-tight">${bestFit.Player} <span class="text-[11px] font-normal text-emerald-200">(${bestFit.Team} • Wk ${bestFit.byeWeek || '-'})</span></h4>
                     <p class="text-[10px] text-emerald-100 font-medium truncate mt-0.5">${ppwText}${stackBadge}${cliffBadge}</p>
                 </div>
                 <div class="text-right shrink-0">
-                    <span class="text-[10px] font-black text-emerald-300 bg-emerald-950/80 border border-emerald-700/80 px-2 py-0.5 rounded">${(bestFit.AdvVBD || bestFit.VBD).toFixed(1)} VBD</span>
+                    <span class="text-[11px] font-black text-emerald-300 bg-emerald-950/80 border border-emerald-700/80 px-2 py-1 rounded-lg">${(bestFit.AdvVBD || bestFit.VBD).toFixed(1)} VBD</span>
                 </div>
             </div>`;
         }
@@ -2802,7 +2802,6 @@ const UI = {
         // 7. #2–#10 Recommendations (Every Badge & Calculation Restored)
         htmlStr += vbdRecs.map((p, i) => {
             let stackBadge = p._stackPartner ? ` • ⚡ ${p._stackPartner}` : '';
-            let survivalProb = p._survivalProb !== undefined ? p._survivalProb : getSurvivalProb(p);
             let posRoster = State.settings.roster[p.Pos];
             let starterMax = posRoster ? posRoster.max : 1;
             let isStarterNeeded = userTeam.counts[p.Pos] < starterMax;
@@ -2812,9 +2811,9 @@ const UI = {
             if (p._byeWarningTag) {
                 highlight = `<span class="text-rose-300 font-extrabold">${p._byeWarningTag}</span>`;
             } else if (p === bpaPlayer) {
-                highlight = `<span class="text-fuchsia-300 font-extrabold tracking-wide">💎 Highest Raw Value (BPA)</span>`;
+                highlight = `<span class="text-fuchsia-300 font-extrabold">💎 Highest Raw Value (BPA)</span>`;
             } else if (p.contingentDraftEquity && p.contingentDraftEquity >= 25.0) {
-                highlight = `<span class="text-purple-300 font-black">👑 ${p._contingentTier || 'Diamond Stash'}</span>`;
+                highlight = `<span class="text-purple-300 font-bold">👑 ${p._contingentTier || 'Diamond Stash'}</span>`;
             } else if (p._sleeperBadge) {
                 highlight = `<span class="text-emerald-300 font-bold">${p._sleeperBadge}</span>`;
             } else if (p._rosterContextBadge) {
@@ -2828,31 +2827,35 @@ const UI = {
             } else if (p.adp && p._survivalProb > 0.75 && currentRound <= 9) {
                 highlight = `<span class="text-slate-400 font-medium">⏳ Exploit Public ADP (${p.adp.toFixed(0)})</span>`;
             } else if (isStarterNeeded) {
-                highlight = `<span class="text-amber-300 font-semibold">📋 Core Starter</span>`;
+                highlight = `<span class="text-amber-300 font-semibold">📋 Core Starter Need</span>`;
             } else {
-                highlight = `<span class="text-slate-400">Depth</span>`;
+                highlight = `<span class="text-slate-400">Bench Stash / Upside</span>`;
             }
 
             let ppwVal = '';
             if (p._addedPPW >= 0.5 || (p._addedPPW > 0 && !p._byeFillWeek)) {
                 ppwVal = `+${p._addedPPW.toFixed(1)}/wk`;
             } else if (p._byeFillWeek) {
-                ppwVal = `Wk ${p._byeFillWeek}`;
+                ppwVal = `Wk ${p._byeFillWeek} Fill`;
             } else {
                 let vbdVal = (p.AdvVBD || p.VBD).toFixed(1);
-                ppwVal = `${vbdVal >= 0 ? '+' : ''}${vbdVal}`;
+                ppwVal = `${vbdVal >= 0 ? '+' : ''}${vbdVal} VBD`;
             }
 
             return `
-            <div class="py-2 px-3 bg-indigo-950/70 rounded-xl border border-indigo-800/60 flex justify-between items-center cursor-pointer hover:bg-indigo-900/80 transition mb-1.5" onclick="UI.showPlayerCard('${p._cleanName}')">
-                <div class="min-w-0 pr-2 flex items-center gap-2 truncate">
-                    <span class="text-indigo-400 font-black text-xs w-4 shrink-0">${bestFit ? i + 2 : i + 1}.</span>
-                    <span class="font-bold text-xs text-white truncate">${p.Player}</span>
-                    <span class="text-[10px] text-indigo-300 shrink-0 font-medium">(${p.Pos} • ${p.Team})</span>
-                    <span class="text-[10px] shrink-0 font-medium">${highlight}${stackBadge}</span>
+            <div class="p-2.5 bg-indigo-950/70 rounded-xl border border-indigo-800/60 flex flex-col justify-between cursor-pointer hover:bg-indigo-900/80 transition mb-2 shadow-sm" onclick="UI.showPlayerCard('${p._cleanName}')">
+                <!-- Line 1: Rank, Name, Pos/Team & Score -->
+                <div class="flex justify-between items-center mb-1">
+                    <div class="flex items-center min-w-0 pr-1 truncate">
+                        <span class="text-indigo-400 font-black text-xs w-4 shrink-0">${bestFit ? i + 2 : i + 1}.</span>
+                        <span class="font-bold text-xs text-white truncate">${p.Player}</span>
+                        <span class="text-[10px] text-indigo-300 font-medium ml-1.5 shrink-0">(${p.Pos} • ${p.Team})</span>
+                    </div>
+                    <span class="text-[10px] font-black text-emerald-300 bg-emerald-950/90 border border-emerald-800/80 px-1.5 py-0.5 rounded shrink-0 leading-none">${ppwVal}</span>
                 </div>
-                <div class="text-right shrink-0">
-                    <span class="text-[10px] font-black text-emerald-300 bg-emerald-950/90 border border-emerald-800/80 px-2 py-0.5 rounded leading-none">${ppwVal}</span>
+                <!-- Line 2: Context / Reasoning Badge -->
+                <div class="text-[10px] font-medium truncate flex items-center pl-4">
+                    ${highlight}${stackBadge}
                 </div>
             </div>`;
         }).join('');
@@ -2860,7 +2863,7 @@ const UI = {
         State.currentRecommendations = finalRecs;
         container.innerHTML = htmlStr;
 
-        // 📌 Sync Pinned Compare Button
+        // Sync Pinned Compare Button
         const compWrapper = document.getElementById('compare-button-wrapper');
         const compCount = document.getElementById('compare-target-count');
         if (compWrapper) {
@@ -2872,7 +2875,7 @@ const UI = {
             }
         }
     },
-
+    
     renderMyRoster() {
         const container = document.getElementById('my-roster-container');
         if (!container) return;
@@ -2885,7 +2888,7 @@ const UI = {
         const countBadge = document.getElementById('my-roster-count');
         if (countBadge) countBadge.textContent = `${userTeam.roster.length}/${totalSize} Filled`;
 
-        // 1. Build Ordered Slot Lists (Starters vs. Bench)
+        // 1. Build Ordered Slot Lists
         let starterSlots = [];
         let benchSlots = [];
 
@@ -2911,7 +2914,7 @@ const UI = {
             benchSlots.push({ slotKey: 'BN', displayLabel: `BN${i}`, posType: 'Bench' });
         }
 
-        // 2. Exact Slot Matching Logic
+        // 2. Match Players to Slots
         let remainingPlayers = [...userTeam.roster];
 
         const matchSlots = (slotList) => {
@@ -2945,36 +2948,36 @@ const UI = {
         const filledStarters = matchSlots(starterSlots);
         const filledBench = matchSlots(benchSlots);
 
-        // 3. Render High-Density 2-Column Starter Grid
+        // 3. Render 2-Column Starter Grid
         let htmlStr = `
-            <div class="mb-2">
-                <div class="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1 flex items-center justify-between">
+            <div class="mb-3">
+                <div class="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1.5 flex items-center justify-between">
                     <span>⚔️ Starting Lineup</span>
                     <span class="text-indigo-600 font-bold">${filledStarters.filter(s => s.player).length}/${filledStarters.length}</span>
                 </div>
-                <div class="grid grid-cols-2 gap-1.5">
+                <div class="grid grid-cols-2 gap-2">
         `;
 
         filledStarters.forEach(s => {
             if (s.player) {
                 let p = s.player;
                 htmlStr += `
-                    <div class="bg-indigo-50/70 border border-indigo-200/80 p-1.5 rounded-lg flex items-center justify-between cursor-pointer hover:border-indigo-400 transition min-w-0" onclick="UI.showPlayerCard('${p._cleanName}')">
+                    <div class="bg-indigo-50/70 border border-indigo-200/80 p-2 rounded-xl flex items-center justify-between cursor-pointer hover:border-indigo-400 transition min-w-0 shadow-sm" onclick="UI.showPlayerCard('${p._cleanName}')">
                         <div class="flex items-center min-w-0 pr-1 truncate">
-                            <span class="bg-indigo-600 text-white font-black text-[8px] uppercase px-1 py-0.5 rounded mr-1.5 shrink-0">${s.displayLabel}</span>
-                            <span class="font-extrabold text-[11px] text-slate-900 truncate leading-tight">${p.Player}</span>
+                            <span class="bg-indigo-600 text-white font-black text-[9px] uppercase px-1.5 py-0.5 rounded mr-1.5 shrink-0">${s.displayLabel}</span>
+                            <span class="font-extrabold text-xs text-slate-900 truncate leading-tight">${p.Player}</span>
                         </div>
                         <span class="text-[10px] font-black text-indigo-700 shrink-0">${(p.ModelPts || p.ProjPts || 0).toFixed(0)}p</span>
                     </div>
                 `;
             } else {
                 htmlStr += `
-                    <div class="border border-dashed border-slate-200 bg-slate-50/50 p-1.5 rounded-lg flex items-center justify-between min-w-0 text-slate-400">
+                    <div class="border border-dashed border-slate-200 bg-slate-50/50 p-2 rounded-xl flex items-center justify-between min-w-0 text-slate-400">
                         <div class="flex items-center min-w-0">
-                            <span class="bg-slate-200 text-slate-500 font-bold text-[8px] uppercase px-1 py-0.5 rounded mr-1.5 shrink-0">${s.displayLabel}</span>
-                            <span class="text-[10px] italic truncate">Open</span>
+                            <span class="bg-slate-200 text-slate-500 font-bold text-[9px] uppercase px-1.5 py-0.5 rounded mr-1.5 shrink-0">${s.displayLabel}</span>
+                            <span class="text-xs italic truncate">Open</span>
                         </div>
-                        <span class="text-[9px] opacity-40">—</span>
+                        <span class="text-[10px] opacity-40">—</span>
                     </div>
                 `;
             }
@@ -2984,27 +2987,27 @@ const UI = {
                 </div>
             </div>
             
-            <!-- 4. Compact 3-Column Bench Pill Grid -->
+            <!-- 4. Bench Pill Grid -->
             <div>
-                <div class="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1 flex items-center justify-between">
+                <div class="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1.5 flex items-center justify-between">
                     <span>🛡️ Bench Stash</span>
                     <span class="text-slate-500 font-bold">${filledBench.filter(b => b.player).length}/${filledBench.length}</span>
                 </div>
-                <div class="grid grid-cols-3 gap-1">
+                <div class="grid grid-cols-3 gap-1.5">
         `;
 
         filledBench.forEach(b => {
             if (b.player) {
                 let p = b.player;
                 htmlStr += `
-                    <div class="bg-slate-100 border border-slate-200 p-1 rounded-md flex items-center justify-between cursor-pointer hover:border-slate-400 transition min-w-0" onclick="UI.showPlayerCard('${p._cleanName}')">
-                        <span class="font-bold text-[10px] text-slate-800 truncate pr-1">${p.Player.split(' ').slice(-1)[0]}</span>
-                        <span class="text-[9px] font-bold text-slate-500 shrink-0">${p.Pos}</span>
+                    <div class="bg-slate-100 border border-slate-200 p-1.5 rounded-lg flex items-center justify-between cursor-pointer hover:border-slate-400 transition min-w-0" onclick="UI.showPlayerCard('${p._cleanName}')">
+                        <span class="font-bold text-xs text-slate-800 truncate pr-1">${p.Player.split(' ').slice(-1)[0]}</span>
+                        <span class="text-[10px] font-bold text-slate-500 shrink-0">${p.Pos}</span>
                     </div>
                 `;
             } else {
                 htmlStr += `
-                    <div class="border border-dashed border-slate-200 p-1 rounded-md text-center text-slate-300 text-[10px] font-semibold">
+                    <div class="border border-dashed border-slate-200 p-1.5 rounded-lg text-center text-slate-400 text-[10px] font-semibold">
                         ${b.displayLabel}
                     </div>
                 `;
