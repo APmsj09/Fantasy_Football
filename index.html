@@ -431,67 +431,73 @@
             </div>
         </div>
 
+        <!-- Player Database & Projections Screen (Expanded Analytics) -->
         <div id="player-db-screen"
-            class="screen bg-white p-6 rounded-2xl shadow-sm border border-gray-100 max-w-6xl mx-auto hidden">
-            <h2 class="text-2xl font-bold mb-6">Player Database & Projections</h2>
-            <div class="flex space-x-4 mb-6">
-                <input type="text" id="db-search" placeholder="Search Player or Team..."
-                    class="flex-grow px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
-                <select id="db-position" class="px-4 py-2 border border-gray-300 rounded-lg outline-none">
-                    <option value="">All Positions</option>
-                    <option value="QB">QB</option>
-                    <option value="RB">RB</option>
-                    <option value="WR">WR</option>
-                    <option value="TE">TE</option>
-                    <option value="PK">PK</option>
-                    <option value="DST">DST</option>
-                </select>
+            class="screen bg-white p-4 lg:p-6 rounded-2xl shadow-sm border border-gray-100 max-w-7xl mx-auto hidden">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-900">Player Database & Advanced Modeling</h2>
+                    <p class="text-xs text-gray-500 mt-1">Full statistical projections, market edges, usage analytics, and scheme ratings.</p>
+                </div>
+                <div class="flex flex-wrap sm:flex-nowrap gap-3">
+                    <input type="text" id="db-search" placeholder="Search Player or Team..."
+                        class="w-full sm:w-64 px-4 py-2 text-xs border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none shadow-sm">
+                    <select id="db-position" class="w-full sm:w-36 px-3 py-2 text-xs border border-gray-300 rounded-xl outline-none font-bold text-gray-700 bg-slate-50 shadow-sm">
+                        <option value="">All Positions</option>
+                        <option value="QB">QB</option>
+                        <option value="RB">RB</option>
+                        <option value="WR">WR</option>
+                        <option value="TE">TE</option>
+                        <option value="PK">PK</option>
+                        <option value="DST">DST</option>
+                    </select>
+                </div>
             </div>
-            <div class="table-container border rounded-xl overflow-auto">
-                <table class="min-w-full divide-y divide-gray-200">
+
+            <!-- Expanded 18-Column Analytics Database -->
+            <div class="table-container border rounded-xl overflow-x-auto max-h-[70vh]">
+                <table class="min-w-full divide-y divide-gray-200 text-xs">
                     <thead class="bg-slate-50 sticky top-0 z-10 shadow-sm cursor-pointer select-none">
                         <tr>
-                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hover:text-indigo-600" onclick="UI.sortDatabase('player')">Player ↕</th>
-                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hover:text-indigo-600" onclick="UI.sortDatabase('pos')">Pos ↕</th>
-                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hover:text-indigo-600" onclick="UI.sortDatabase('team')">Team ↕</th>
-                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hover:text-indigo-600" onclick="UI.sortDatabase('projPts')">Proj ↕</th>
-                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hover:text-indigo-600" onclick="UI.sortDatabase('vbd')">VBD ↕</th>
-                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hover:text-indigo-600" onclick="UI.sortDatabase('advVbd')">Adv VBD ↕</th>
-                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hover:text-indigo-600" onclick="UI.sortDatabase('avgStars')">SOS ↕</th>
-                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hover:text-indigo-600" onclick="UI.sortDatabase('age')">Age ↕</th>
-                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hover:text-indigo-600" onclick="UI.sortDatabase('adp')">ADP ↕</th>
-                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hover:text-indigo-600" onclick="UI.sortDatabase('depth')">Depth ↕</th>
-                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hover:text-indigo-600" onclick="UI.sortDatabase('snap')">Snap ↕</th>
-                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hover:text-indigo-600" onclick="UI.sortDatabase('bye')">Bye ↕</th>
+                            <th class="px-2.5 py-3 text-center text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600" onclick="UI.sortDatabase('ovrRank')">Rank ↕</th>
+                            <th class="px-3.5 py-3 text-left text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600 min-w-[170px]" onclick="UI.sortDatabase('player')">Player ↕</th>
+                            <th class="px-2 py-3 text-center text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600" onclick="UI.sortDatabase('pos')">Pos ↕</th>
+                            <th class="px-2.5 py-3 text-center text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600" onclick="UI.sortDatabase('team')">Team ↕</th>
+                            <th class="px-2.5 py-3 text-right text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600" title="Consensus Projection" onclick="UI.sortDatabase('projPts')">Cons ↕</th>
+                            <th class="px-2.5 py-3 text-right text-[10px] font-extrabold text-indigo-600 uppercase tracking-wider hover:text-indigo-800" title="Model Expectation" onclick="UI.sortDatabase('modelPts')">Model ↕</th>
+                            <th class="px-2.5 py-3 text-center text-[10px] font-extrabold text-emerald-600 uppercase tracking-wider hover:text-emerald-800" title="Model Edge" onclick="UI.sortDatabase('edge')">Edge ↕</th>
+                            <th class="px-2.5 py-3 text-center text-[10px] font-extrabold text-purple-600 uppercase tracking-wider hover:text-purple-800" title="Probability of Beating Consensus" onclick="UI.sortDatabase('overProb')">% Over ↕</th>
+                            <th class="px-2.5 py-3 text-right text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600" title="Value Over Replacement" onclick="UI.sortDatabase('vbd')">VBD ↕</th>
+                            <th class="px-2.5 py-3 text-right text-[10px] font-extrabold text-indigo-600 uppercase tracking-wider hover:text-indigo-800" title="Model Advanced VBD" onclick="UI.sortDatabase('advVbd')">Adv VBD ↕</th>
+                            <th class="px-2.5 py-3 text-center text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600" title="Weekly Floor / Ceiling Range" onclick="UI.sortDatabase('ceilingPpg')">Range ↕</th>
+                            <th class="px-2.5 py-3 text-center text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600" title="Expected Touchdowns" onclick="UI.sortDatabase('xTD')">xTD ↕</th>
+                            <th class="px-2.5 py-3 text-center text-[10px] font-extrabold text-amber-600 uppercase tracking-wider hover:text-amber-800" title="Strength of Schedule" onclick="UI.sortDatabase('avgStars')">SOS ↕</th>
+                            <th class="px-2.5 py-3 text-center text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600" onclick="UI.sortDatabase('age')">Age ↕</th>
+                            <th class="px-2.5 py-3 text-center text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600" onclick="UI.sortDatabase('adp')">ADP ↕</th>
+                            <th class="px-2.5 py-3 text-center text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600" onclick="UI.sortDatabase('depth')">Depth ↕</th>
+                            <th class="px-2.5 py-3 text-center text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600" onclick="UI.sortDatabase('snap')">Snap ↕</th>
+                            <th class="px-2.5 py-3 text-center text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600" onclick="UI.sortDatabase('bye')">Bye ↕</th>
                         </tr>
                     </thead>
                     <tbody id="db-players-body" class="bg-white divide-y divide-gray-100"></tbody>
                 </table>
             </div>
 
+            <!-- Team Targets & Metric Leaders -->
             <div class="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <div class="bg-slate-50 p-5 rounded-2xl border border-slate-200">
                     <div class="flex flex-wrap gap-2 mb-4">
-                        <button
-                            class="target-tab-btn active text-xs font-bold bg-indigo-100 text-indigo-700 px-3 py-2 rounded-lg"
-                            data-pos="WR">WR Heavy</button>
-                        <button
-                            class="target-tab-btn text-xs font-bold bg-gray-100 text-gray-600 px-3 py-2 rounded-lg hover:bg-gray-200"
-                            data-pos="RB">RB Heavy</button>
-                        <button
-                            class="target-tab-btn text-xs font-bold bg-gray-100 text-gray-600 px-3 py-2 rounded-lg hover:bg-gray-200"
-                            data-pos="TE">TE Heavy</button>
+                        <button class="target-tab-btn active text-xs font-bold bg-indigo-100 text-indigo-700 px-3 py-2 rounded-lg" data-pos="WR">WR Heavy</button>
+                        <button class="target-tab-btn text-xs font-bold bg-gray-100 text-gray-600 px-3 py-2 rounded-lg hover:bg-gray-200" data-pos="RB">RB Heavy</button>
+                        <button class="target-tab-btn text-xs font-bold bg-gray-100 text-gray-600 px-3 py-2 rounded-lg hover:bg-gray-200" data-pos="TE">TE Heavy</button>
                     </div>
                     <div class="table-container border rounded-xl max-h-64 overflow-auto">
-                        <table class="min-w-full divide-y divide-gray-200">
+                        <table class="min-w-full divide-y divide-gray-200 text-xs">
                             <thead class="bg-white sticky top-0">
                                 <tr>
-                                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Team
-                                    </th>
-                                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Target
-                                        Share</th>
-                                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Total
-                                        Tgts</th>
+                                    <th class="px-4 py-3 text-left font-semibold text-gray-500 uppercase">Team</th>
+                                    <th class="px-4 py-3 text-left font-semibold text-gray-500 uppercase">Target Share</th>
+                                    <th class="px-4 py-3 text-left font-semibold text-gray-500 uppercase">Total Tgts</th>
                                 </tr>
                             </thead>
                             <tbody id="team-targets-body" class="bg-white divide-y divide-gray-100"></tbody>
@@ -501,29 +507,18 @@
 
                 <div class="bg-slate-50 p-5 rounded-2xl border border-slate-200">
                     <div class="flex flex-wrap gap-2 mb-4">
-                        <button
-                            class="metric-tab-btn active text-xs font-bold bg-emerald-100 text-emerald-700 px-3 py-2 rounded-lg"
-                            data-metric="TGT %">Target Share %</button>
-                        <button
-                            class="metric-tab-btn text-xs font-bold bg-gray-100 text-gray-600 px-3 py-2 rounded-lg hover:bg-gray-200"
-                            data-metric="20+Rec">20+ Yd Rec</button>
-                        <button
-                            class="metric-tab-btn text-xs font-bold bg-gray-100 text-gray-600 px-3 py-2 rounded-lg hover:bg-gray-200"
-                            data-metric="20+Rush">20+ Yd Rush</button>
-                        <button
-                            class="metric-tab-btn text-xs font-bold bg-gray-100 text-gray-600 px-3 py-2 rounded-lg hover:bg-gray-200"
-                            data-metric="RZ TGT">Red Zone Tgts</button>
+                        <button class="metric-tab-btn active text-xs font-bold bg-emerald-100 text-emerald-700 px-3 py-2 rounded-lg" data-metric="TGT %">Target Share %</button>
+                        <button class="metric-tab-btn text-xs font-bold bg-gray-100 text-gray-600 px-3 py-2 rounded-lg hover:bg-gray-200" data-metric="20+Rec">20+ Yd Rec</button>
+                        <button class="metric-tab-btn text-xs font-bold bg-gray-100 text-gray-600 px-3 py-2 rounded-lg hover:bg-gray-200" data-metric="20+Rush">20+ Yd Rush</button>
+                        <button class="metric-tab-btn text-xs font-bold bg-gray-100 text-gray-600 px-3 py-2 rounded-lg hover:bg-gray-200" data-metric="RZ TGT">Red Zone Tgts</button>
                     </div>
                     <div class="table-container border rounded-xl max-h-64 overflow-auto">
-                        <table class="min-w-full divide-y divide-gray-200">
+                        <table class="min-w-full divide-y divide-gray-200 text-xs">
                             <thead class="bg-white sticky top-0">
                                 <tr>
-                                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Player
-                                    </th>
-                                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Pos
-                                    </th>
-                                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Metric
-                                        Value</th>
+                                    <th class="px-4 py-3 text-left font-semibold text-gray-500 uppercase">Player</th>
+                                    <th class="px-4 py-3 text-left font-semibold text-gray-500 uppercase">Pos</th>
+                                    <th class="px-4 py-3 text-left font-semibold text-gray-500 uppercase">Metric Value</th>
                                 </tr>
                             </thead>
                             <tbody id="metric-leaders-body" class="bg-white divide-y divide-gray-100"></tbody>
@@ -533,103 +528,112 @@
             </div>
         </div>
 
-        <!-- Drafting Workspace Layout -->
-        <div id="drafting-screen" class="screen h-full pb-4 hidden flex flex-col">
+        <!-- Responsive Drafting Workspace Layout -->
+        <div id="drafting-screen" class="screen h-full pb-4 hidden flex flex-col min-h-0">
             <!-- Top Status Bar -->
-            <div
-                class="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm mb-4 border border-gray-100 flex-shrink-0">
-                <div class="flex items-center space-x-6">
+            <div class="flex flex-wrap justify-between items-center bg-white p-3.5 lg:p-4 rounded-2xl shadow-sm mb-4 border border-gray-100 gap-3 flex-shrink-0">
+                <div class="flex items-center space-x-4 lg:space-x-6">
                     <div>
-                        <p class="text-[10px] text-gray-500 uppercase tracking-wider font-bold">Current Pick</p>
-                        <p class="text-xl font-extrabold text-gray-900 leading-tight">
-                            Round <span id="current-round">1</span>. Pick <span id="current-pick-number">1</span>
-                            <span class="text-sm font-medium text-gray-400 ml-1">(Overall: <span
-                                    id="overall-pick-number">1</span>)</span>
+                        <p class="text-[10px] text-gray-400 uppercase tracking-wider font-extrabold">Current Pick</p>
+                        <p class="text-lg lg:text-xl font-extrabold text-gray-900 leading-tight">
+                            Rnd <span id="current-round">1</span> • Pick <span id="current-pick-number">1</span>
+                            <span class="text-xs font-semibold text-gray-400 ml-1">(Ovr #<span id="overall-pick-number">1</span>)</span>
                         </p>
                     </div>
-                    <div class="border-l border-gray-200 pl-6">
-                        <p class="text-[10px] text-gray-500 uppercase tracking-wider font-bold">On the Clock</p>
-                        <p id="on-the-clock" class="text-xl font-extrabold text-indigo-600 leading-tight">Team 1</p>
+                    <div class="border-l border-gray-200 pl-4 lg:pl-6">
+                        <p class="text-[10px] text-gray-400 uppercase tracking-wider font-extrabold">On the Clock</p>
+                        <p id="on-the-clock" class="text-lg lg:text-xl font-black text-indigo-600 leading-tight">Team 1</p>
                     </div>
                 </div>
                 
-                <div class="flex items-center space-x-3">
-                    <div class="text-[11px] font-bold px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-full shadow-sm border border-indigo-100"
+                <div class="flex items-center space-x-2.5">
+                    <div class="text-[10px] lg:text-xs font-extrabold px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-full border border-indigo-100 shadow-sm"
                         id="drafting-for-badge">Drafting for: CPU 1</div>
                     
-                    <!-- 💾 Top Bar Quick Save Button -->
                     <button onclick="DraftSync.showExportModal()"
-                        class="bg-indigo-50 text-indigo-600 hover:bg-indigo-100 font-semibold py-2 px-3 rounded-lg text-xs transition-colors flex items-center space-x-1.5 border border-indigo-100"
+                        class="bg-indigo-50 text-indigo-600 hover:bg-indigo-100 font-bold py-1.5 px-3 rounded-xl text-xs transition-colors flex items-center space-x-1.5 border border-indigo-100"
                         title="Save Draft Progress">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path>
                         </svg>
                         <span>Save</span>
                     </button>
 
                     <button id="undo-pick-button"
-                        class="bg-red-50 text-red-600 hover:bg-red-100 font-semibold py-2 px-3 rounded-lg text-xs transition-colors flex items-center space-x-1.5 border border-red-100">
+                        class="bg-rose-50 text-rose-600 hover:bg-rose-100 font-bold py-1.5 px-3 rounded-xl text-xs transition-colors flex items-center space-x-1.5 border border-rose-100">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path>
                         </svg>
                         <span>Undo</span>
                     </button>
                 </div>
             </div>
 
-            <!-- Main Work Area (Left Sidebar + Right Tabbed Space) -->
-            <div class="flex-1 min-h-0 flex gap-4">
+            <!-- Responsive Main Work Area: Flex Column on Mobile, 2-Column on Desktop -->
+            <div class="flex-1 min-h-0 flex flex-col lg:flex-row gap-4 overflow-y-auto lg:overflow-hidden">
 
-                <!-- 1/4 Width Left Sidebar: Targets & My Roster -->
-                <div class="w-1/4 flex flex-col gap-4 min-h-0 min-w-[280px]">
-                    <div
-                        class="bg-slate-900 text-white p-4 rounded-xl shadow-sm flex-1 overflow-hidden flex flex-col border border-slate-800">
-                        <h3 class="text-sm font-extrabold mb-1 tracking-wide">Your Targets</h3>
-                        <p
-                            class="text-slate-400 text-[10px] mb-3 pb-2 border-b border-slate-800 uppercase tracking-wider">
-                            Best Values For <strong id="user-team-name-disp" class="text-white">Your Team</strong></p>
-                        <div id="recommendations-container"
-                            class="space-y-2 overflow-y-auto pr-1 flex-1 hide-scrollbar"></div>
+                <!-- Left Sidebar: Targets & Organized Roster -->
+                <div class="w-full lg:w-80 xl:w-96 flex flex-col sm:flex-row lg:flex-col gap-4 shrink-0 min-h-0">
+                    
+                    <!-- 1. Targets Box with Pinned Compare Button -->
+                    <div class="bg-slate-900 text-white p-4 rounded-2xl shadow-sm flex-1 min-h-[300px] lg:min-h-0 overflow-hidden flex flex-col border border-slate-800">
+                        <div class="flex justify-between items-center mb-1">
+                            <h3 class="text-sm font-black tracking-wide">Your Targets</h3>
+                            <span class="text-[9px] font-extrabold uppercase bg-emerald-950 text-emerald-300 border border-emerald-800 px-2 py-0.5 rounded">Live Model</span>
+                        </div>
+                        <p class="text-slate-400 text-[10px] mb-2.5 pb-2 border-b border-slate-800 uppercase font-semibold">
+                            Best Value for <strong id="user-team-name-disp" class="text-white">Your Team</strong>
+                        </p>
+                        
+                        <!-- Scrollable Target Cards -->
+                        <div id="recommendations-container" class="space-y-1.5 overflow-y-auto pr-1 flex-1 hide-scrollbar min-h-0"></div>
+
+                        <!-- 📌 Pinned Compare Targets Action -->
+                        <div id="compare-button-wrapper" class="pt-2.5 border-t border-slate-800 mt-2 shrink-0">
+                            <button onclick="Compare.showComparison()"
+                                class="w-full py-2 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 border border-indigo-400/40 rounded-xl text-xs font-black text-white transition-all flex items-center justify-center gap-1.5 shadow-md">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                                <span>Compare Top Targets (<span id="compare-target-count">10</span>)</span>
+                            </button>
+                        </div>
                     </div>
 
-                    <div
-                        class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex-1 overflow-hidden flex flex-col">
-                        <div class="flex justify-between items-end mb-2 pb-2 border-b border-gray-100">
-                            <h3 class="text-sm font-extrabold text-gray-800">My Roster</h3>
+                    <!-- 2. My Roster Box (Organized by Position Slots) -->
+                    <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-200 flex-1 min-h-[300px] lg:min-h-0 overflow-hidden flex flex-col">
+                        <div class="flex justify-between items-center mb-2 pb-2 border-b border-gray-100">
+                            <h3 class="text-sm font-extrabold text-gray-900">My Starting Lineup</h3>
+                            <span id="my-roster-count" class="text-[10px] font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full">0/16 Spots</span>
                         </div>
-                        <div id="my-roster-container" class="overflow-y-auto flex-1 hide-scrollbar pr-1"></div>
+                        <div id="my-roster-container" class="overflow-y-auto flex-1 hide-scrollbar pr-1 min-h-0 space-y-1.5"></div>
                     </div>
                 </div>
 
-                <!-- 3/4 Width Main Workspace: Tabs -->
-                <div
-                    class="flex-1 flex flex-col bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden min-w-[650px] min-h-[500px]">
-                    <div class="flex border-b border-gray-200 bg-slate-50 flex-shrink-0">
+                <!-- Right Workspace: Tabs -->
+                <div class="flex-1 flex flex-col bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden min-w-0 min-h-[450px]">
+                    <div class="flex border-b border-gray-200 bg-slate-50 flex-shrink-0 overflow-x-auto">
                         <button
-                            class="draft-tab-btn flex-1 py-3 text-[13px] font-bold text-indigo-600 border-b-2 border-indigo-600 bg-white tracking-wide"
+                            class="draft-tab-btn flex-1 py-3 px-4 text-xs font-extrabold text-indigo-600 border-b-2 border-indigo-600 bg-white tracking-wide whitespace-nowrap"
                             data-target="draft-available">Available Players</button>
                         <button
-                            class="draft-tab-btn flex-1 py-3 text-[13px] font-semibold text-gray-500 hover:bg-gray-100 transition-colors tracking-wide"
+                            class="draft-tab-btn flex-1 py-3 px-4 text-xs font-bold text-gray-500 hover:bg-gray-100 transition-colors tracking-wide whitespace-nowrap"
                             data-target="draft-board-wrapper">Draft Board Grid</button>
                         <button
-                            class="draft-tab-btn flex-1 py-3 text-[13px] font-semibold text-gray-500 hover:bg-gray-100 transition-colors tracking-wide"
+                            class="draft-tab-btn flex-1 py-3 px-4 text-xs font-bold text-gray-500 hover:bg-gray-100 transition-colors tracking-wide whitespace-nowrap"
                             data-target="draft-all-rosters">League Rosters</button>
                     </div>
 
-                    <div class="flex-1 overflow-hidden relative flex flex-col">
+                    <div class="flex-1 overflow-hidden relative flex flex-col min-h-0">
 
-                        <!-- Tab 1: Available Players (Detailed Data) -->
-                        <div id="draft-available" class="draft-tab-content h-full flex flex-col flex-1">
-                            <!-- Draft Search & Filter Bar -->
-                            <div class="p-3 bg-white border-b border-gray-100 flex gap-3 shadow-sm z-20">
-                                <div class="relative flex-1 max-w-sm">
+                        <!-- Tab 1: Available Players -->
+                        <div id="draft-available" class="draft-tab-content h-full flex flex-col flex-1 min-h-0">
+                            <!-- Filter Bar -->
+                            <div class="p-3 bg-white border-b border-gray-100 flex flex-wrap gap-2.5 shadow-sm z-20">
+                                <div class="relative flex-1 min-w-[180px]">
                                     <input type="text" id="draft-search" placeholder="Search Player or Team..."
-                                        class="w-full pl-3 pr-4 py-2 border border-gray-300 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                                        class="w-full pl-3 pr-4 py-1.5 border border-gray-300 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 outline-none">
                                 </div>
                                 <select id="draft-position-filter"
-                                    class="px-3 py-2 border border-gray-300 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none font-semibold text-gray-700">
+                                    class="px-3 py-1.5 border border-gray-300 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-gray-700 bg-slate-50">
                                     <option value="">All Positions</option>
                                     <option value="QB">QB</option>
                                     <option value="RB">RB</option>
@@ -640,15 +644,15 @@
                                 </select>
                             </div>
 
-                            <div class="table-container flex-1 overflow-auto">
-                                <table class="min-w-full divide-y divide-gray-200">
+                            <div class="table-container flex-1 overflow-auto min-h-0">
+                                <table class="min-w-full divide-y divide-gray-200 text-xs">
                                     <thead class="bg-slate-50 sticky top-0 z-10 shadow-sm cursor-pointer select-none">
                                         <tr>
                                             <th class="px-2 py-2.5 text-center text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600" onclick="UI.sortTable('draft', 'ovrRank')">Rank ↕</th>
-                                            <th class="px-3 py-2.5 text-left text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600" onclick="UI.sortTable('draft', 'Player')">Player ↕</th>
+                                            <th class="px-3 py-2.5 text-left text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600 min-w-[200px]" onclick="UI.sortTable('draft', 'Player')">Player ↕</th>
                                             <th class="px-2 py-2.5 text-center text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600" onclick="UI.sortTable('draft', 'Pos')">Pos ↕</th>
-                                            <th class="px-2 py-2.5 text-right text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600" title="Professional Consensus Projection" onclick="UI.sortTable('draft', 'ConsensusPts')">Cons ↕</th>
-                                            <th class="px-2 py-2.5 text-right text-[10px] font-extrabold text-indigo-600 uppercase tracking-wider hover:text-indigo-800" title="Draft Pro Model Expectation" onclick="UI.sortTable('draft', 'ModelPts')">Model ↕</th>
+                                            <th class="px-2 py-2.5 text-right text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600" title="Consensus Projection" onclick="UI.sortTable('draft', 'ConsensusPts')">Cons ↕</th>
+                                            <th class="px-2 py-2.5 text-right text-[10px] font-extrabold text-indigo-600 uppercase tracking-wider hover:text-indigo-800" title="Model Expectation" onclick="UI.sortTable('draft', 'ModelPts')">Model ↕</th>
                                             <th class="px-2 py-2.5 text-center text-[10px] font-extrabold text-emerald-600 uppercase tracking-wider hover:text-emerald-800" title="Deviation from Consensus" onclick="UI.sortTable('draft', 'Edge')">Edge ↕</th>
                                             <th class="px-2 py-2.5 text-center text-[10px] font-extrabold text-purple-600 uppercase tracking-wider hover:text-purple-800" title="Probability of Beating Consensus" onclick="UI.sortTable('draft', 'OverProb')">% Over ↕</th>
                                             <th class="px-2 py-2.5 text-center text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600" title="Sort by Ceiling Range" onclick="UI.sortTable('draft', 'ceilingPpg')">Range ↕</th>
@@ -666,17 +670,14 @@
                         </div>
 
                         <!-- Tab 2: Draft Board Grid -->
-                        <div id="draft-board-wrapper"
-                            class="draft-tab-content h-full hidden p-4 overflow-auto bg-slate-50">
+                        <div id="draft-board-wrapper" class="draft-tab-content h-full hidden p-3 lg:p-4 overflow-auto bg-slate-50 min-h-0">
                             <div id="draft-board-grid"></div>
                         </div>
 
                         <!-- Tab 3: All League Rosters -->
-                        <div id="draft-all-rosters" class="draft-tab-content h-full hidden p-5 flex flex-col">
-                            <div id="roster-tabs"
-                                class="flex flex-nowrap overflow-x-auto hide-scrollbar gap-x-2 pb-3 mb-2 border-b border-gray-100">
-                            </div>
-                            <div id="roster-content" class="roster-content flex-1 p-2 overflow-y-auto"></div>
+                        <div id="draft-all-rosters" class="draft-tab-content h-full hidden p-4 flex flex-col min-h-0">
+                            <div id="roster-tabs" class="flex flex-nowrap overflow-x-auto hide-scrollbar gap-x-2 pb-3 mb-2 border-b border-gray-100"></div>
+                            <div id="roster-content" class="roster-content flex-1 p-2 overflow-y-auto min-h-0"></div>
                         </div>
                     </div>
                 </div>
