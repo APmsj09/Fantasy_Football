@@ -2766,10 +2766,10 @@ const UI = {
         if (bestFit) {
             let isStarterNeeded = userTeam.counts[bestFit.Pos] < (State.settings.roster[bestFit.Pos]?.max || 1);
             let ppwText = '';
-            if (bestFit._addedPPW >= 0.5 || (bestFit._addedPPW > 0 && !bestFit._byeFillWeek)) {
-                ppwText = `+${bestFit._addedPPW.toFixed(1)} PPW Lineup Fit`;
-            } else if (bestFit._byeFillWeek) {
+            if (bestFit._byeFillWeek) {
                 ppwText = `Wk ${bestFit._byeFillWeek} Bye Fill`;
+            } else if (currentRound >= 5 && bestFit._addedPPW >= 0.5) {
+                ppwText = `+${bestFit._addedPPW.toFixed(1)} PPW Lineup Fit`;
             } else if (isStarterNeeded) {
                 ppwText = `Core Starter (${bestFit.Pos})`;
             } else {
@@ -2782,7 +2782,7 @@ const UI = {
             else if (bestFit._rosterContextBadge) cliffBadge = ` • <span class="text-amber-200 font-bold">${bestFit._rosterContextBadge}</span>`;
             else if (bestFit._tierCliffTag) cliffBadge = ` • <span class="text-amber-200 font-bold">${bestFit._tierCliffTag}</span>`;
 
-            let recBadgeTitle = (bestFit._addedPPW && bestFit._addedPPW >= 1.0) ? "#1 Lineup Fit" : "#1 Recommended Pick";
+            let recBadgeTitle = (bestFit._addedPPW && bestFit._addedPPW >= 1.0 && currentRound >= 5) ? "#1 Lineup Fit" : "#1 Recommended Pick";
             htmlStr += `
             <div class="p-3 bg-gradient-to-br from-emerald-800 to-teal-950 rounded-2xl border border-emerald-500/50 flex justify-between items-center shadow-md cursor-pointer hover:brightness-110 transition mb-2 shrink-0" onclick="UI.showPlayerCard('${bestFit._cleanName}')">
                 <div class="min-w-0 pr-2">
@@ -2833,10 +2833,10 @@ const UI = {
             }
 
             let ppwVal = '';
-            if (p._addedPPW >= 0.5 || (p._addedPPW > 0 && !p._byeFillWeek)) {
-                ppwVal = `+${p._addedPPW.toFixed(1)}/wk`;
-            } else if (p._byeFillWeek) {
+            if (p._byeFillWeek) {
                 ppwVal = `Wk ${p._byeFillWeek} Fill`;
+            } else if (currentRound >= 5 && p._addedPPW >= 0.5) {
+                ppwVal = `+${p._addedPPW.toFixed(1)}/wk`;
             } else {
                 let vbdVal = (p.AdvVBD || p.VBD).toFixed(1);
                 ppwVal = `${vbdVal >= 0 ? '+' : ''}${vbdVal} VBD`;
