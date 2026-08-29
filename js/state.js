@@ -1547,12 +1547,26 @@ const State = {
         // ADP Reach / Slide evaluation
         let adpPenalty = 0, adpBonus = 0;
         if (player.adp) {
-            let adpDiff = player.adp - currentOverallPick;
+            let adpDiff = player.adp - currentOverallPick; // Positive means market drafts them later
             let allowedReach = Math.round(4.0 + Math.pow(currentRound, 1.4) * 0.8);
+    
+            // ✨ NEW: ADP Arbitrage for Recommendations!
+            // If it's the User's turn, check if the player will survive until our NEXT pick.
+            if (!isCPU && nextActiveWindowPick) {
+                let turnsUntilNextPick = nextActiveWindowPick - currentOverallPick;
+        
+                // If the player's ADP happens BEFORE our next pick (plus a tiny 2-pick safety buffer), 
+                // it is mathematically NOT a reach to draft them now. We must waive the penalty.
+                if (adpDiff <= turnsUntilNextPick + 2) {
+                    allowedReach = Math.max(allowedReach, adpDiff); 
+                }
+            }
+
             if (adpDiff > allowedReach) {
                 adpPenalty = Math.min(22.0, (adpDiff - allowedReach) * Math.max(0.35, 1.2 - currentRound * 0.08));
                 if (isCPU && personalityAdjustment > 0) adpPenalty *= 0.5; // Fan favorites mitigate reach penalty
             } else if (adpDiff < -12) {
+                // Value slide bonus
                 adpBonus = Math.min(12, Math.abs(adpDiff + 12) * 0.35);
             }
         }
