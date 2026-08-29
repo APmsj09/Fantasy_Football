@@ -301,7 +301,7 @@ window.TeamResearch = {
                                                 </div>
                                             </div>
                                             <div class="text-right shrink-0">
-                                                <span class="text-xs font-black text-indigo-600 block">${p.ProjPts.toFixed(1)} pts</span>
+                                                <span class="text-xs font-black text-indigo-600 block">${(p.ProjPts || 0).toFixed(1)} pts</span>
                                                 <span class="text-[10px] text-gray-400 font-semibold">${ppg} PPG</span>
                                             </div>
                                         </div>
