@@ -1566,8 +1566,22 @@ const State = {
                 adpPenalty = Math.min(22.0, (adpDiff - allowedReach) * Math.max(0.35, 1.2 - currentRound * 0.08));
                 if (isCPU && personalityAdjustment > 0) adpPenalty *= 0.5; // Fan favorites mitigate reach penalty
             } else if (adpDiff < -12) {
-                // Value slide bonus
-                adpBonus = Math.min(12, Math.abs(adpDiff + 12) * 0.35);
+                // ✨ NEW: Dynamic "Falling Knife" vs "Discount Rack" Logic
+                // Calculate where the pick is relative to the Model's Overall Rank
+                let modelDiff = (player.ovrRank || player.adp) - currentOverallPick; 
+        
+                if ((player.Edge || 0) >= -1.5) {
+                    // 🟢 Scenario A: The Model LIKES them, and they are sliding past ADP. 
+                    // Give them the standard slide bonus to push them to the top of your queue.
+                    adpBonus = Math.min(12, Math.abs(adpDiff + 12) * 0.35);
+                } else if (modelDiff < 0) {
+                    // 🟡 Scenario B: The "Discount Rack" Trigger
+                    // The Model HATES them, BUT they have now fallen past where even the Model 
+                    // thinks they belong. They are officially a steal at this price.
+                    adpBonus = Math.min(10, Math.abs(modelDiff) * 0.40);
+                }
+                // 🔴 Scenario C: The Model hates them, and they haven't fallen to the Model's 
+                // rank yet. Give them ZERO bonus. Let the knife keep falling.
             }
         }
 
