@@ -306,11 +306,11 @@ window.Compare = {
         }
 
         // Projection Edge / Market Mispricing Highlight
-        let topOverProb = topPick.OverProb ? Math.round(topPick.OverProb * 100) : 50;
-        if (topOverProb >= 65 && (topPick.Edge || 0) >= 8.0) {
-            highlights.unshift(`<li><strong class="text-emerald-700">🚀 Strong Market Edge:</strong> The model projects a <strong>${topOverProb}% probability to beat consensus</strong> (+${(topPick.Edge || 0).toFixed(1)} expected edge over market projections).</li>`);
-        } else if (topOverProb <= 35 && (topPick.Edge || 0) <= -8.0) {
-            highlights.push(`<li><strong class="text-rose-700">⚠️ Market Fade Alert:</strong> Model expectation sits below market consensus (${(topPick.Edge || 0).toFixed(1)} pts), flagging regression/competition downside.</li>`);
+        let topOverProb = p.OverProb ? Math.round(p.OverProb * 100) : 50;
+        if (topOverProb >= 65 && (p.Edge || 0) >= 8.0) {
+            highlights.unshift(`<li><strong class="text-emerald-700">🚀 Strong Market Edge:</strong> The model projects a <strong>${topOverProb}% probability to beat consensus</strong> (+${(p.Edge || 0).toFixed(1)} expected edge over market projections).</li>`);
+        } else if (topOverProb <= 35 && (p.Edge || 0) <= -8.0) {
+            highlights.push(`<li><strong class="text-rose-700">⚠️ Market Fade Alert:</strong> Model expectation sits below market consensus (${(p.Edge || 0).toFixed(1)} pts), flagging regression/competition downside.</li>`);
         }
 
         if (highlights.length === 0) {
