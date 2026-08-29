@@ -24,6 +24,8 @@ const UI = {
 
     getDatabaseSortValue(player, key) {
         switch (key) {
+            case 'ovrRank':
+                return Number(player.ovrRank ?? 9999);
             case 'player':
                 return player.Player || '';
             case 'pos':
@@ -31,13 +33,23 @@ const UI = {
             case 'team':
                 return player.Team || '';
             case 'projPts':
-                return Number(player.ProjPts || 0);
+                return Number(player.ConsensusPts ?? player.ProjPts ?? 0);
+            case 'modelPts':
+                return Number(player.ModelPts ?? player.ProjPts ?? 0);
+            case 'edge':
+                return Number(player.Edge ?? 0);
+            case 'overProb':
+                return Number(player.OverProb ?? 0.5);
             case 'vbd':
-                return Number(player.VBD || 0);
+                return Number(player.VBD ?? 0);
             case 'advVbd':
-                return Number(player.AdvVBD || player.VBD || 0);
+                return Number(player.AdvVBD ?? player.VBD ?? 0);
+            case 'ceilingPpg':
+                return Number(player.ceilingPpg ?? 0);
+            case 'xTD':
+                return Number(player.xTD ?? 0);
             case 'avgStars':
-                return Number(player.avgStars || 0);
+                return Number(player.avgStars ?? 0);
             case 'age': {
                 const age = this.getPlayerAge(player);
                 return age === null || age === undefined || age === '' ? Number.NEGATIVE_INFINITY : Number(age);
@@ -138,43 +150,69 @@ const UI = {
         let htmlStr = '';
 
         filtered.slice(0, 200).forEach(p => {
-            let vbdVal = p.VBD.toFixed(1);
-            let advVbdVal = (p.AdvVBD || p.VBD).toFixed(1);
-            let stars = p.avgStars ? `⭐ ${p.avgStars.toFixed(2)}` : '-';
+            let consPts = (p.ConsensusPts || p.ProjPts || 0).toFixed(1);
+            let modelPts = (p.ModelPts || p.ProjPts || 0).toFixed(1);
+            let vbdVal = (p.VBD ?? 0).toFixed(1);
+            let advVbdVal = (p.AdvVBD ?? p.VBD ?? 0).toFixed(1);
+
+            let edgeVal = p.Edge ?? 0;
+            let edgeStr = edgeVal >= 0 
+                ? `<span class="text-[10px] font-black text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">+${edgeVal.toFixed(1)}</span>`
+                : `<span class="text-[10px] font-bold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">${edgeVal.toFixed(1)}</span>`;
+
+            let overProb = p.OverProb ? Math.round(p.OverProb * 100) : 50;
+            let probColor = overProb >= 65 ? 'text-emerald-600 font-black' : (overProb <= 35 ? 'text-rose-600 font-bold' : 'text-slate-500 font-semibold');
+
+            let floorVal = (p.floorPpg !== undefined ? p.floorPpg : ((p.ProjPts || 0) / 17) * 0.78).toFixed(1);
+            let ceilVal = (p.ceilingPpg !== undefined ? p.ceilingPpg : ((p.ProjPts || 0) / 17) * 1.25).toFixed(1);
+            let rangeStr = `<span class="text-[10px] font-semibold text-slate-700 whitespace-nowrap"><span class="text-rose-500">${floorVal}</span> - <span class="text-emerald-600">${ceilVal}</span></span>`;
+
+            let xtdStr = p.xTD !== undefined ? `<span class="font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 text-[10px]">${p.xTD.toFixed(1)}</span>` : '—';
+            let stars = p.avgStars ? `⭐ ${p.avgStars.toFixed(1)}` : '-';
             let bye = p.byeWeek && p.byeWeek !== 'N/A' ? `Wk ${p.byeWeek}` : '-';
-            let age = this.getPlayerAge(p) !== null ? `${this.getPlayerAge(p)} y/o` : '—';
-            let adp = p.adp !== undefined && p.adp !== null ? `${p.adp.toFixed(1)}` : '—';
-            let depth = p.depthChart !== undefined && p.depthChart !== null ? `${p.depthChart}` : '—';
+            let age = this.getPlayerAge(p) !== null ? `${this.getPlayerAge(p)}` : '—';
+            let adp = p.adp !== undefined && p.adp !== null ? `${p.adp.toFixed(0)}` : '—';
+            let depth = p.depthChart !== undefined && p.depthChart !== null ? `#${p.depthChart}` : '—';
             let snap = p.snapShare !== undefined && p.snapShare !== null ? `${p.snapShare.toFixed(0)}%` : '—';
 
-            // Fix: Filter out OL badges for DST & Kickers
             let isOffense = !['DST', 'PK'].includes(p.Pos);
-            let olTag = (isOffense && p.olTier) ? `<span class="ml-2 text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">OL ${p.olTier}</span>` : '';
+            let olTag = (isOffense && p.olTier) ? `<span class="ml-1 text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">OL ${p.olTier}</span>` : '';
 
             let injBadge = '';
             if (p.injuryStatus) {
                 let abbr = p.injuryStatus === 'Questionable' ? 'Q' : (p.injuryStatus === 'Doubtful' ? 'D' : p.injuryStatus);
-                let color = ['Out', 'IR', 'PUP'].includes(p.injuryStatus) ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700';
-                injBadge = `<span class="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold ${color}">${abbr}</span>`;
+                let color = ['Out', 'IR', 'PUP', 'SUS'].includes(p.injuryStatus) ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700';
+                injBadge = `<span class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold ${color}">${abbr}</span>`;
             }
 
-            let vbdColor = p.VBD >= 0 ? 'text-emerald-600 font-medium' : 'text-red-500 font-medium';
-            let advVbdColor = p.AdvVBD >= 0 ? 'text-indigo-600 font-extrabold' : 'text-red-400 font-bold';
+            let vbdColor = (p.VBD || 0) >= 0 ? 'text-emerald-600 font-semibold' : 'text-slate-400 font-medium';
+            let advVbdColor = (p.AdvVBD || 0) >= 0 ? 'text-indigo-700 font-black' : 'text-rose-500 font-bold';
 
             htmlStr += `
-                <tr class="hover:bg-slate-50 transition-colors cursor-pointer" onclick="UI.showWeeklyModal('${p._cleanName}')">
-                    <td class="px-6 py-3 text-sm font-medium text-gray-900">${p.Player}${olTag}${injBadge}</td>
-                    <td class="px-6 py-3 text-sm text-gray-500">${p.Pos}</td>
-                    <td class="px-6 py-3 text-sm text-gray-500">${p.Team}</td>
-                    <td class="px-6 py-3 text-sm font-bold text-indigo-600">${p.ProjPts.toFixed(1)}</td>
-                    <td class="px-6 py-3 text-sm ${vbdColor}">${vbdVal}</td>
-                    <td class="px-6 py-3 text-sm ${advVbdColor}">${advVbdVal}</td>
-                    <td class="px-6 py-3 text-sm font-semibold text-amber-600">${stars}</td>
-                    <td class="px-6 py-3 text-sm text-gray-500">${age}</td>
-                    <td class="px-6 py-3 text-sm text-gray-500">${adp}</td>
-                    <td class="px-6 py-3 text-sm text-gray-500">${depth}</td>
-                    <td class="px-6 py-3 text-sm text-gray-500">${snap}</td>
-                    <td class="px-6 py-3 text-sm text-gray-500">${bye}</td>
+                <tr class="hover:bg-slate-50 transition-colors cursor-pointer border-b border-gray-100" onclick="UI.showPlayerCard('${p._cleanName}')">
+                    <td class="px-2.5 py-2.5 text-center text-[10px] font-extrabold text-slate-400">#${p.ovrRank || '-'}</td>
+                    <td class="px-3.5 py-2.5 text-xs font-bold text-gray-900">
+                        <div class="flex items-center flex-wrap gap-1">
+                            <span>${p.Player}</span>
+                            ${olTag}${injBadge}
+                        </div>
+                    </td>
+                    <td class="px-2 py-2.5 text-center text-xs font-bold text-gray-600">${p.Pos}</td>
+                    <td class="px-2.5 py-2.5 text-center text-xs font-medium text-slate-500">${p.Team}</td>
+                    <td class="px-2.5 py-2.5 text-right text-xs font-medium text-slate-400">${consPts}</td>
+                    <td class="px-2.5 py-2.5 text-right text-xs font-black text-indigo-900">${modelPts}</td>
+                    <td class="px-2.5 py-2.5 text-center">${edgeStr}</td>
+                    <td class="px-2 py-2.5 text-center text-xs ${probColor}">${overProb}%</td>
+                    <td class="px-2.5 py-2.5 text-right text-xs ${vbdColor}">${vbdVal}</td>
+                    <td class="px-2.5 py-2.5 text-right text-xs ${advVbdColor}">${advVbdVal}</td>
+                    <td class="px-2.5 py-2.5 text-center">${rangeStr}</td>
+                    <td class="px-2.5 py-2.5 text-center">${xtdStr}</td>
+                    <td class="px-2.5 py-2.5 text-center text-xs font-bold text-amber-600">${stars}</td>
+                    <td class="px-2 py-2.5 text-center text-xs text-gray-500">${age}</td>
+                    <td class="px-2 py-2.5 text-center text-xs text-gray-600 font-semibold">${adp}</td>
+                    <td class="px-2 py-2.5 text-center text-xs text-gray-500">${depth}</td>
+                    <td class="px-2 py-2.5 text-center text-xs text-gray-500">${snap}</td>
+                    <td class="px-2 py-2.5 text-center text-xs text-gray-500">${bye}</td>
                 </tr>
             `;
         });
@@ -2491,7 +2529,7 @@ const UI = {
         }
     },
 
-    // ⚡ OVERHAULED RECOMMENDATIONS TO MAXIMIZE PPW, MANAGE KICKERS, AND PREVENT SCARCITY DROP-OFFS
+    // ⚡ FULL RECOMMENDATIONS ENGINE (STRATEGY BANNER + LOOKAHEAD + PINNED COMPARE)
     renderRecommendations() {
         const container = document.getElementById('recommendations-container');
         if (!container || State.currentPick >= State.draftOrder.length) return;
@@ -2533,7 +2571,6 @@ const UI = {
         }
 
         // 3. Target the start of Window 2 as the true survival horizon
-        // If no future window exists (final rounds), fall back to draft conclusion
         const nextActiveWindowPick = nextWindow.length > 0 
             ? nextWindow[0] 
             : (currentOverallPick + (State.settings.numTeams * 2));
@@ -2546,7 +2583,7 @@ const UI = {
                 interveningTeamIds.push(State.draftOrder[i]);
             }
         }
-        interveningTeamIds = [...new Set(interveningTeamIds)]; // Remove duplicates for turn wraps
+        interveningTeamIds = [...new Set(interveningTeamIds)];
 
         // 5. Generalized Survival Probability with Dynamic Reach Elasticity
         const getSurvivalProb = (player) => {
@@ -2580,7 +2617,7 @@ const UI = {
                 }
             });
 
-            // ⚡ ELASTIC THREAT WINDOW: Scales with the draft round + turn gap
+            // Elastic Threat Window
             let turnGap = nextActiveWindowPick - currentOverallPick;
             let elasticWindow = 8 + (currentRound * 1.5) + (turnGap >= 18 ? 5 : 0);
             let isAdpInDanger = adp <= (nextActiveWindowPick + elasticWindow);
@@ -2626,22 +2663,22 @@ const UI = {
                 : `<span class="bg-emerald-950 text-emerald-300 border border-emerald-700 px-2 py-0.5 rounded font-bold ml-1.5">🛡️ Solid Foundation</span>`;
 
             if (earlyRBs === 0 && userRoster.length >= 2) {
-                strategyBanner = `<div class="p-2 mb-2 bg-indigo-950 border border-indigo-700 rounded-lg text-[10px] text-indigo-200 flex justify-between items-center">
+                strategyBanner = `<div class="p-2 mb-2 bg-indigo-950 border border-indigo-700 rounded-xl text-[10px] text-indigo-200 flex justify-between items-center shadow-sm">
                     <span>📡 <strong>Zero-RB Build:</strong> Hammering WR/TE alphas. Target high-HVO space backs & handcuffs in R7–R11.</span>
                     ${fragilityTag}
                 </div>`;
             } else if (earlyRBs === 1 && earlyWRs >= 2) {
-                strategyBanner = `<div class="p-2 mb-2 bg-emerald-950 border border-emerald-700 rounded-lg text-[10px] text-emerald-200 flex justify-between items-center">
+                strategyBanner = `<div class="p-2 mb-2 bg-emerald-950 border border-emerald-700 rounded-xl text-[10px] text-emerald-200 flex justify-between items-center shadow-sm">
                     <span>🦸 <strong>Hero-RB Build:</strong> Anchor RB secured. Evaluating Best Player Available across WR/TE/Flex.</span>
                     ${fragilityTag}
                 </div>`;
             } else if (earlyRBs >= 2) {
-                strategyBanner = `<div class="p-2 mb-2 bg-amber-950 border border-amber-700 rounded-lg text-[10px] text-amber-200 flex justify-between items-center">
+                strategyBanner = `<div class="p-2 mb-2 bg-amber-950 border border-amber-700 rounded-xl text-[10px] text-amber-200 flex justify-between items-center shadow-sm">
                     <span>🚜 <strong>Robust-RB Ground Attack:</strong> Backfield foundation established. Flex slots optimizing dynamically.</span>
                     ${fragilityTag}
                 </div>`;
             } else if (isGlassCannon) {
-                strategyBanner = `<div class="p-2 mb-2 bg-rose-950 border border-rose-700 rounded-lg text-[10px] text-rose-200 flex justify-between items-center">
+                strategyBanner = `<div class="p-2 mb-2 bg-rose-950 border border-rose-700 rounded-xl text-[10px] text-rose-200 flex justify-between items-center shadow-sm">
                     <span>⚠️ <strong>Volatility Warning:</strong> Multiple high-bust starters detected. Prioritizing high-floor insulation assets.</span>
                     ${fragilityTag}
                 </div>`;
@@ -2695,7 +2732,7 @@ const UI = {
         });
         
         // ===========================================================
-        // POST-LOOP: SORT AND DEDICATE UP TO 10 SLOTS (COMPACT LAYOUT)
+        // POST-LOOP: SORT AND DEDICATE SLOTS
         // ===========================================================
         let pkMax = State.settings.roster.PK?.max ?? 0;
         let dstMax = State.settings.roster.DST?.max ?? 0;
@@ -2716,16 +2753,16 @@ const UI = {
             if (!finalRecs.includes(p)) finalRecs.push(p);
         }
 
-        // 2. In final 2 rounds, promote needed DST and PK straight to the top of your list
+        // 2. In final 2 rounds, promote needed DST and PK straight to the top of list
         if (currentRound >= totalRounds - 2) {
             let bestDST = kDstPlayers.find(p => p.Pos === 'DST');
             let bestPK = kDstPlayers.find(p => p.Pos === 'PK');
 
             if (needsDST && bestDST && !finalRecs.includes(bestDST)) {
-                finalRecs.unshift(bestDST); // Put best Week 1 DST at #1
+                finalRecs.unshift(bestDST);
             }
             if (needsPK && bestPK && !finalRecs.includes(bestPK)) {
-                finalRecs.splice(1, 0, bestPK); // Put best PK right behind it
+                finalRecs.splice(1, 0, bestPK);
             }
         }
 
@@ -2737,8 +2774,6 @@ const UI = {
 
         let bestFit = finalRecs[0];
         let vbdRecs = finalRecs.slice(1, 10);
-        
-        // Identify the Best Player Available (BPA) based PURELY on raw math, ignoring ADP/Roster needs
         let bpaPlayer = [...viablePlayers].sort((a, b) => (b.AdvVBD || b.VBD) - (a.AdvVBD || a.VBD))[0];
 
         let htmlStr = strategyBanner;
@@ -2751,7 +2786,7 @@ const UI = {
             } else if (bestFit._byeFillWeek) {
                 ppwText = `Wk ${bestFit._byeFillWeek} Fill`;
             } else if (isStarterNeeded) {
-                ppwText = `Core Starter Need (${bestFit.Pos})`; // 🛑 Correctly labels open DST/PK slots!
+                ppwText = `Core Starter Need (${bestFit.Pos})`;
             } else {
                 ppwText = `Bench Stash / Upside`;
             }
@@ -2764,17 +2799,17 @@ const UI = {
 
             let recBadgeTitle = (bestFit._addedPPW && bestFit._addedPPW >= 1.0) ? "#1 Lineup Fit" : "#1 Recommended Pick";
             htmlStr += `
-            <div class="p-2 bg-gradient-to-br from-emerald-800 to-teal-950 rounded-lg border border-emerald-500/50 flex justify-between items-center shadow-sm cursor-pointer hover:brightness-110 transition mb-1.5" onclick="UI.showPlayerCard('${bestFit._cleanName}')">
+            <div class="p-2.5 bg-gradient-to-br from-emerald-800 to-teal-950 rounded-xl border border-emerald-500/50 flex justify-between items-center shadow-md cursor-pointer hover:brightness-110 transition mb-2" onclick="UI.showPlayerCard('${bestFit._cleanName}')">
                 <div class="min-w-0 pr-2">
-                    <div class="flex items-center gap-1.5 leading-none mb-0.5">
-                        <span class="text-[8px] font-extrabold uppercase tracking-wider text-emerald-300">${recBadgeTitle}</span>
-                        <span class="text-[9px] text-emerald-200 font-medium">(${bestFit.Pos})</span>
+                    <div class="flex items-center gap-1.5 leading-none mb-1">
+                        <span class="text-[8px] font-black uppercase tracking-wider text-emerald-300">${recBadgeTitle}</span>
+                        <span class="text-[9px] text-emerald-200 font-bold">(${bestFit.Pos})</span>
                     </div>
-                    <h4 class="font-bold text-xs text-white truncate leading-tight">${bestFit.Player} <span class="text-[10px] font-normal text-emerald-200">(${bestFit.Team})</span></h4>
+                    <h4 class="font-black text-xs text-white truncate leading-tight">${bestFit.Player} <span class="text-[10px] font-normal text-emerald-200">(${bestFit.Team})</span></h4>
                     <p class="text-[9px] text-emerald-100 font-medium truncate mt-0.5">${ppwText}${stackBadge}${cliffBadge}</p>
                 </div>
                 <div class="text-right shrink-0">
-                    <span class="text-[9px] font-extrabold text-emerald-300 bg-emerald-950/80 border border-emerald-700/80 px-1.5 py-0.5 rounded">${(bestFit.AdvVBD || bestFit.VBD).toFixed(1)} VBD</span>
+                    <span class="text-[9px] font-extrabold text-emerald-300 bg-emerald-950/80 border border-emerald-700/80 px-2 py-0.5 rounded">${(bestFit.AdvVBD || bestFit.VBD).toFixed(1)} VBD</span>
                 </div>
             </div>`;
         }
@@ -2807,7 +2842,7 @@ const UI = {
             } else if (p.adp && p._survivalProb > 0.75 && currentRound <= 9) {
                 highlight = `<span class="text-slate-400 font-medium">⏳ Exploit Public ADP (${p.adp.toFixed(0)})</span>`;
             } else if (isStarterNeeded) {
-                highlight = `<span class="text-amber-300 font-semibold">📋 Core Starter </span>`;
+                highlight = `<span class="text-amber-300 font-semibold">📋 Core Starter</span>`;
             } else {
                 highlight = `<span class="text-slate-400">Depth</span>`;
             }
@@ -2823,7 +2858,7 @@ const UI = {
             }
 
             return `
-            <div class="py-1.5 px-2 bg-indigo-950/70 rounded-lg border border-indigo-800/60 flex justify-between items-center cursor-pointer hover:bg-indigo-900/80 transition mb-1" onclick="UI.showPlayerCard('${p._cleanName}')">
+            <div class="py-1.5 px-2 bg-indigo-950/70 rounded-xl border border-indigo-800/60 flex justify-between items-center cursor-pointer hover:bg-indigo-900/80 transition mb-1" onclick="UI.showPlayerCard('${p._cleanName}')">
                 <div class="min-w-0 pr-2">
                     <h4 class="font-bold text-[11px] text-white truncate leading-tight">
                         <span class="text-indigo-400 font-normal mr-1">${bestFit ? i + 2 : i + 1}.</span>${p.Player} 
@@ -2838,16 +2873,19 @@ const UI = {
         }).join('');
 
         State.currentRecommendations = finalRecs;
-
-        if (finalRecs.length > 1) {
-            htmlStr += `
-            <button onclick="Compare.showComparison()" class="w-full mt-2 py-1.5 bg-indigo-900/50 hover:bg-indigo-800/70 border border-indigo-700/60 rounded-lg text-[11px] font-bold text-indigo-200 transition-colors flex items-center justify-center gap-1.5 shadow-sm">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
-                Compare Top ${Math.min(finalRecs.length, 10)} Targets
-            </button>`;
-        }
-
         container.innerHTML = htmlStr;
+
+        // 📌 Sync Pinned Compare Button (outside the scroll container)
+        const compWrapper = document.getElementById('compare-button-wrapper');
+        const compCount = document.getElementById('compare-target-count');
+        if (compWrapper) {
+            if (finalRecs.length > 1) {
+                compWrapper.classList.remove('hidden');
+                if (compCount) compCount.textContent = Math.min(finalRecs.length, 10);
+            } else {
+                compWrapper.classList.add('hidden');
+            }
+        }
     },
 
     renderMyRoster() {
@@ -2857,19 +2895,102 @@ const UI = {
         const userTeam = State.teamsById[State.userTeamId];
         if (!userTeam) return;
 
-        let htmlStr = `<ul class="space-y-1.5">`;
-        userTeam.roster.forEach(p => {
-            htmlStr += `
-                <li class="text-[11px] bg-slate-50 border border-slate-100 p-2 rounded-lg flex justify-between items-center shadow-sm">
-                    <span class="truncate"><strong class="text-indigo-600 mr-1.5 w-6 inline-block text-[9px] uppercase">${p.slottedPos}</strong> <span class="font-bold text-gray-800">${p.Player}</span></span>
-                    <span class="text-gray-500 font-medium whitespace-nowrap ml-2">${p.Pos} • <span class="text-emerald-600 font-bold">${p.ProjPts.toFixed(1)}</span></span>
-                </li>
-            `;
-        });
-        if (userTeam.roster.length === 0) {
-            htmlStr += `<p class="text-[11px] text-gray-400 italic">No players drafted yet.</p>`;
+        const r = State.settings.roster;
+        const totalSize = r.totalSize || 16;
+        const countBadge = document.getElementById('my-roster-count');
+        if (countBadge) countBadge.textContent = `${userTeam.roster.length}/${totalSize} Spots`;
+
+        // 1. Build Ordered Lineup Slot Blueprint based on active League Settings
+        let slotBlueprint = [];
+        const addSlots = (label, maxCount, posType) => {
+            for (let i = 1; i <= maxCount; i++) {
+                let display = maxCount > 1 ? `${label}${i}` : label;
+                slotBlueprint.push({ slotKey: label, displayLabel: display, posType: posType });
+            }
+        };
+
+        if (r.QB?.max > 0) addSlots('QB', r.QB.max, 'QB');
+        if (r.RB?.max > 0) addSlots('RB', r.RB.max, 'RB');
+        if (r.WR?.max > 0) addSlots('WR', r.WR.max, 'WR');
+        if (r.TE?.max > 0) addSlots('TE', r.TE.max, 'TE');
+        if (r.FlexRBWR?.max > 0) addSlots('FLEX (W/R)', r.FlexRBWR.max, 'FlexRBWR');
+        if (r.Flex?.max > 0) addSlots('FLEX', r.Flex.max, 'Flex');
+        if (r.Superflex?.max > 0) addSlots('SUPERFLEX', r.Superflex.max, 'Superflex');
+        if (r.PK?.max > 0) addSlots('K', r.PK.max, 'PK');
+        if (r.DST?.max > 0) addSlots('DST', r.DST.max, 'DST');
+        
+        let benchMax = r.Bench?.max || 6;
+        for (let i = 1; i <= benchMax; i++) {
+            slotBlueprint.push({ slotKey: 'BN', displayLabel: `BN${i}`, posType: 'Bench' });
         }
-        htmlStr += `</ul>`;
+
+        // 2. Assign drafted players to slots
+        let remainingPlayers = [...userTeam.roster];
+        let filledSlots = [];
+
+        slotBlueprint.forEach(slot => {
+            let matchedPlayerIndex = -1;
+
+            if (slot.posType === 'Bench') {
+                matchedPlayerIndex = 0; // First remaining bench player
+            } else {
+                matchedPlayerIndex = remainingPlayers.findIndex(p => {
+                    if (slot.posType === 'QB') return p.Pos === 'QB';
+                    if (slot.posType === 'RB') return p.Pos === 'RB';
+                    if (slot.posType === 'WR') return p.Pos === 'WR';
+                    if (slot.posType === 'TE') return p.Pos === 'TE';
+                    if (slot.posType === 'FlexRBWR') return ['RB', 'WR'].includes(p.Pos);
+                    if (slot.posType === 'Flex') return ['RB', 'WR', 'TE'].includes(p.Pos);
+                    if (slot.posType === 'Superflex') return ['QB', 'RB', 'WR', 'TE'].includes(p.Pos);
+                    if (slot.posType === 'PK') return p.Pos === 'PK';
+                    if (slot.posType === 'DST') return p.Pos === 'DST';
+                    return false;
+                });
+            }
+
+            if (matchedPlayerIndex !== -1 && remainingPlayers.length > 0) {
+                let player = remainingPlayers.splice(matchedPlayerIndex, 1)[0];
+                filledSlots.push({ ...slot, player });
+            } else {
+                filledSlots.push({ ...slot, player: null });
+            }
+        });
+
+        // 3. Render Slots
+        let htmlStr = `<div class="space-y-1.5">`;
+        filledSlots.forEach(s => {
+            if (s.player) {
+                let p = s.player;
+                let isBench = s.slotKey === 'BN';
+                let slotColor = isBench ? 'text-slate-400 bg-slate-100' : 'text-indigo-700 bg-indigo-50 border border-indigo-100';
+
+                htmlStr += `
+                    <div class="text-[11px] bg-white border border-slate-200/80 p-2 rounded-xl flex justify-between items-center shadow-sm cursor-pointer hover:border-indigo-300 transition-colors"
+                         onclick="UI.showPlayerCard('${p._cleanName}')">
+                        <div class="flex items-center min-w-0 pr-2">
+                            <span class="${slotColor} font-black text-[9px] uppercase px-1.5 py-0.5 rounded w-12 text-center shrink-0 mr-2">${s.displayLabel}</span>
+                            <div class="truncate">
+                                <span class="font-extrabold text-gray-900">${p.Player}</span>
+                                <span class="text-[10px] text-gray-400 font-medium ml-1">(${p.Team} • Wk ${p.byeWeek || '-'})</span>
+                            </div>
+                        </div>
+                        <span class="text-xs font-black text-indigo-900 shrink-0">${(p.ModelPts || p.ProjPts || 0).toFixed(1)} <span class="text-[9px] font-normal text-slate-400">pts</span></span>
+                    </div>
+                `;
+            } else {
+                htmlStr += `
+                    <div class="text-[11px] border border-dashed border-slate-200 bg-slate-50/50 p-2 rounded-xl flex justify-between items-center text-slate-400">
+                        <div class="flex items-center">
+                            <span class="font-bold text-[9px] uppercase px-1.5 py-0.5 rounded w-12 text-center text-slate-400 bg-slate-100 mr-2">${s.displayLabel}</span>
+                            <span class="text-xs font-medium italic">Empty Slot</span>
+                        </div>
+                        <span class="text-[10px] font-bold opacity-40">—</span>
+                    </div>
+                `;
+            }
+        });
+        htmlStr += `</div>`;
+
         container.innerHTML = htmlStr;
     },
 
