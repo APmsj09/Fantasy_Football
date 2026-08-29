@@ -1674,8 +1674,6 @@ const UI = {
             }
         }
 
-        const narrativeBlurb = `${archetypeNote}${pastStatsContext}${statProof}`.trim();
-
         let overProb = p.OverProb ? Math.round(p.OverProb * 100) : 50;
         let edgeVal = p.Edge ?? 0;
         
