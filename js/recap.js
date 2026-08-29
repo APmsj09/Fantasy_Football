@@ -120,7 +120,8 @@ window.DraftRecap = {
                 let isKickerOrDST = ['PK', 'DST'].includes(p.Pos);
 
                 if (p.adp) {
-                    let adpDiff = p.adp - pickNum; // Positive = Value, Negative = Reach
+                    // ✨ FIXED: pickNum - p.adp (Positive = Value/Steal, Negative = Reach)
+                    let adpDiff = pickNum - p.adp; 
                     let weight = isKickerOrDST ? 0.05 : Math.max(0.15, 1 - (roundDrafted * 0.05));
                     weightedAdpDelta += (adpDiff * weight);
 
@@ -532,11 +533,11 @@ window.DraftRecap = {
     identifyPersona(team, starterEdge, benchEdge, adpDelta, streaming) {
         let isPpr = State.scoring.ppr >= 0.5;
         let wrCount = team.roster.filter(p => p.Pos === 'WR').length;
-        let rbCount = team.roster.filter(p => p.Pos === 'RB').length;
         let r1Pos = team.roster[0]?.Pos;
         let r2Pos = team.roster[1]?.Pos;
 
-        if (r1Pos === 'RB' && (r2Pos === 'RB' || rbCount >= 5)) return { label: "Robust-RB Grinder", icon: "🚜" };
+        // ✨ FIXED: Removed the rbCount >= 5 fallback so late-round stashes don't break the persona
+        if (r1Pos === 'RB' && r2Pos === 'RB') return { label: "Robust-RB Grinder", icon: "🚜" };
         if (r1Pos === 'RB' && r2Pos !== 'RB') return { label: "Hero-RB Strategist", icon: "🦸" };
         if (r1Pos !== 'RB' && r2Pos !== 'RB' && isPpr && wrCount >= 6) return { label: "Zero-RB Tactician", icon: "📡" };
 
@@ -555,6 +556,10 @@ window.DraftRecap = {
         let isStreamingQB = qbs.length <= posSlots.QB;
         let isStreamingTE = tes.length <= posSlots.TE;
 
+        // ✨ NEW: Check if the solitary starter is actually an Elite set-and-forget anchor (Tier 1-3)
+        let qb1IsElite = qbs[0] && (qbs[0].staticTier || 4) <= 3;
+        let te1IsElite = tes[0] && (tes[0].staticTier || 4) <= 3;
+        
         let topStarters = [...team.roster]
             .sort((a,b) => (b.ProjPts || 0) - (a.ProjPts || 0))
             .slice(0, (posSlots.QB + posSlots.RB + posSlots.WR + posSlots.TE + (State.settings.roster.Flex?.max || 1)));
@@ -575,14 +580,29 @@ window.DraftRecap = {
         let strategyTitle = "", strategyDesc = "";
 
         if (isStreamingQB && isStreamingTE) {
-            strategyTitle = "Dual Flex Maximizer (QB/TE Streamer)";
-            strategyDesc = `Opted for a zero-backup QB/TE build. They are prioritizing max bench capacity for RB/WR lottery tickets and will lean on the waiver wire for bye weeks.`;
+            if (qb1IsElite && te1IsElite) {
+                strategyTitle = "Elite Onesie Anchors";
+                strategyDesc = `Secured elite, set-and-forget anchors at both QB and TE, opting to skip backups entirely to maximize bench capacity for RB/WR lottery tickets.`;
+            } else {
+                strategyTitle = "Dual Flex Maximizer (QB/TE Streamer)";
+                strategyDesc = `Opted for a zero-backup QB/TE build to stash skill players, relying on the waiver wire for bye weeks and streaming matchups.`;
+            }
         } else if (isStreamingQB) {
-            strategyTitle = "Single-QB Streaming Strategy";
-            strategyDesc = `Drafted minimum required QBs, intending to stream waiver-wire matchups during Week ${qbs[0]?.byeWeek || 'their bye'}.`;
+            if (qb1IsElite) {
+                strategyTitle = "Lone Franchise QB";
+                strategyDesc = `Anchored by an elite set-and-forget QB (${qbs[0]?.Player}), dedicating the rest of their bench exclusively to RB/WR depth.`;
+            } else {
+                strategyTitle = "Single-QB Streaming Strategy";
+                strategyDesc = `Drafted minimum required QBs, intending to stream waiver-wire matchups during Week ${qbs[0]?.byeWeek || 'their bye'}.`;
+            }
         } else if (isStreamingTE) {
-            strategyTitle = "Single-TE Streaming Strategy";
-            strategyDesc = `Anchored by ${tes[0]?.Player || 'Starter'}, choosing to stream waiver-wire TEs rather than wasting a bench stash.`;
+            if (te1IsElite) {
+                strategyTitle = "Elite TE Anchor";
+                strategyDesc = `Locked down a premium tight end advantage with ${tes[0]?.Player}, opting to use their bench spots on high-upside flex flyers rather than a backup TE.`;
+            } else {
+                strategyTitle = "Single-TE Streaming Strategy";
+                strategyDesc = `Anchored by ${tes[0]?.Player || 'Starter'}, choosing to stream waiver-wire TEs rather than wasting a bench stash.`;
+            }
         } else {
             strategyTitle = "Complete Insurance Depth";
             strategyDesc = `Drafted dedicated in-house backups across QB and TE, prioritizing complete waiver-wire independence at the cost of skill depth.`;
@@ -1024,7 +1044,10 @@ window.DraftRecap = {
             let pickNum = pl.draftPickNum || 1;
             let round = Math.floor((pickNum - 1) / numTeams) + 1;
             let pick = ((pickNum - 1) % numTeams) + 1;
-            let adpDiff = pl.adp ? (pl.adp - pickNum) : 0;
+            
+            // ✨ FIXED: pickNum - pl.adp (Positive = Value/Steal, Negative = Reach)
+            let adpDiff = pl.adp ? (pickNum - pl.adp) : 0; 
+            
             let diffStr = '';
             if (adpDiff > 0) {
                 diffStr = `<span class="text-emerald-600 font-bold">+${adpDiff.toFixed(0)} Value</span>`;
