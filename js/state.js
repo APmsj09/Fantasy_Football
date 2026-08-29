@@ -3201,82 +3201,78 @@ const State = {
                 }
             }
 
-            // ⚡ DYNAMIC Z-SCORE SCALING FOR RECEIVERS (Position-Aware)
+            // ⚡ 1. DEDUPLICATED RECEIVER METRICS (WOPR priority, with both upside & trap penalty)
             if (['WR', 'TE'].includes(p.Pos)) {
-                let meanTgt = p.Pos === 'WR' ? wrTgtMean : teTgtMean;
-                let stdTgt = p.Pos === 'WR' ? wrTgtStd : teTgtStd;
                 let meanWopr = p.Pos === 'WR' ? wrWoprMean : teWoprMean;
                 let stdWopr = p.Pos === 'WR' ? wrWoprStd : teWoprStd;
+                let meanTgt = p.Pos === 'WR' ? wrTgtMean : teTgtMean;
+                let stdTgt = p.Pos === 'WR' ? wrTgtStd : teTgtStd;
 
-                if (p.targetShare != null) {
-                    let zScore = (p.targetShare - meanTgt) / stdTgt;
-                    if (zScore > 0) {
-                        adjMultiplier += Math.min(0.08, zScore * 0.025 * sampleConfidence);
+                // Derive primary opportunity Z-Score (WOPR preferred; Target Share fallback)
+                let primaryZ = null;
+                if (p.wopr != null) {
+                    primaryZ = (p.wopr - meanWopr) / stdWopr;
+                } else if (p.targetShare != null) {
+                    primaryZ = (p.targetShare - meanTgt) / stdTgt;
+                }
+
+                if (primaryZ !== null) {
+                    // Positive Reward (Deduplicated, prevents runaway scores on studs)
+                    if (primaryZ > 0) {
+                        adjMultiplier += Math.min(0.05, primaryZ * 0.018 * sampleConfidence);
                     }
-                    if (p.ProjPts > (p.Pos === 'WR' ? 120 : 95) && zScore < -0.6) {
+                    
+                    // Negative Penalty (Catches over-projected receivers with bad target command)
+                    if (p.ProjPts > (p.Pos === 'WR' ? 120 : 95) && primaryZ < -0.6) {
                         adjMultiplier -= 0.04; 
                     }
                 }
 
-                if (p.wopr != null) {
-                    let zScore = (p.wopr - meanWopr) / stdWopr;
-                    if (zScore > 0) {
-                        adjMultiplier += Math.min(0.06, zScore * 0.02 * sampleConfidence);
-                    }
-                }
-
-                let isEliteAdot = (p.Pos === 'WR' && p.aDOT >= 12.0) || (p.Pos === 'TE' && p.aDOT >= 8.5);
-                if (p.targetShare >= (p.Pos === 'WR' ? 22.0 : 16.0) && isEliteAdot) {
-                    adjMultiplier += (0.03 * sampleConfidence);
-                }
-                
+                // Red Zone Target Density
                 if (p.rzTgt && p.pastStats && p.pastStats.targets) {
                     let rzDensity = p.rzTgt / Math.max(1, p.pastStats.targets);
                     if (rzDensity >= 0.20 && p.rzTgt >= (p.Pos === 'WR' ? 12 : 8)) {
-                        adjMultiplier += (0.03 * sampleConfidence);
+                        adjMultiplier += (0.025 * sampleConfidence);
                     }
                 }
             }
 
+            // ⚡ 2. DEDUPLICATED RB ELUSIVENESS (Prevent BT + YAC double-counting)
             if (p.Pos === 'RB') {
-                // ⚡ Z-Score Scaling: Rewards RBs dynamically based on standard deviations
-                if (p.brokenTackles != null) {
-                    let zScore = (p.brokenTackles - rBtMean) / rBtStd;
-                    if (zScore > 0) {
-                        adjMultiplier += Math.min(0.05, zScore * 0.015 * sampleConfidence);
-                    }
-                }
+                let yacBonus = (p.yacAtt && p.yacAtt >= 3.2) ? 0.025 : 0;
+                let btBonus = (p.brokenTackles != null) ? Math.min(0.025, ((p.brokenTackles - rBtMean) / rBtStd) * 0.012) : 0;
+                
+                // Mutually exclusive: take the higher of the two
+                adjMultiplier += Math.max(yacBonus, btBonus) * sampleConfidence;
+
                 if (p.hvo != null) {
                     let zScore = (p.hvo - rHvoMean) / rHvoStd;
-                    if (zScore > 0) {
-                        adjMultiplier += Math.min(0.08, zScore * 0.025 * sampleConfidence);
-                    }
-                }
-
-                if (p.pastStats && p.pastStats.rushAtt >= 60) {
-                    let ypc = (p.pastStats.rushYds || 0) / p.pastStats.rushAtt;
-                    let yac = p.yacAtt || 0;
-                    if (yac >= 3.2 && (!rushEnv || rushEnv.ybcAtt <= 2.2)) {
-                        adjMultiplier += 0.035;
-                        p._isIndependentYACCreator = true;
-                    } else if (ypc >= 4.8 && yac <= 2.3 && rushEnv && rushEnv.ybcAtt >= 2.8) {
-                        adjMultiplier -= 0.025;
-                        p._isSystemDependentRB = true;
-                    }
+                    if (zScore > 0) adjMultiplier += Math.min(0.05, zScore * 0.018 * sampleConfidence);
                 }
             }
 
             // Expected Touchdowns (xTD) Regression Engine
             if (p.pastStats && p.pastStats.gp >= 4 && p.xTD !== undefined && p.pastStats.totalTd !== undefined) {
-                let tdDiff = p.pastStats.totalTd - p.xTD;
+                let pastTdDiff = p.pastStats.totalTd - p.xTD;
                 let isExplosivePlaymaker = (p.pastStats.bigPlays >= 8) || (p.err && p.err >= 3.5);
                 
-                if (tdDiff >= 4.5 && !p._isSmallSampleAlpha && !isExplosivePlaymaker && !p._isAscendingRole) {
-                    adjMultiplier -= 0.05;
-                    p._isFlukeTDScorer = true;
-                } else if (tdDiff <= -4.0) {
-                    adjMultiplier += 0.05;
-                    p._positiveTdRegression = true;
+                // Calculate what the Consensus is currently projecting him for
+                let projTds = (p.stats?.passTd || 0) + (p.stats?.rushTd || 0) + (p.stats?.recTd || 0);
+                
+                if (pastTdDiff >= 4.5 && !p._isSmallSampleAlpha && !isExplosivePlaymaker && !p._isAscendingRole) {
+                    p._isFlukeTDScorer = true; // Always flag it for the UI narrative
+                    
+                    // Only apply the penalty if the Consensus is STILL projecting him for too many TDs
+                    if (projTds > p.xTD) {
+                        adjMultiplier -= 0.05;
+                    }
+                } else if (pastTdDiff <= -4.0) {
+                    p._positiveTdRegression = true; // Always flag it for the UI narrative
+                    
+                    // Only apply the mathematical bonus if the Consensus is STILL projecting him below his true xTD
+                    if (projTds < p.xTD) {
+                        adjMultiplier += 0.05;
+                    }
                 }
             }
 
@@ -3352,15 +3348,15 @@ const State = {
                 let mobilityBonus = 0.0;
 
                 if (rushYds >= 650 || rushAtt >= 115) {
-                    qbMobilityTier = 1; // Konami Alpha (Daniels, Lamar, Allen)
-                    mobilityBonus = 0.055;
+                    qbMobilityTier = 1; // Konami Alpha
+                    mobilityBonus = 0.015; // ⚡ REDUCED: Was 0.055. (Drives stay alive longer, but rush yds already in consensus)
                     p._qbArchetype = 'Konami Code Alpha';
                     p._isFlyer = true;
-                    upsideMultiplier += 0.30;
+                    upsideMultiplier += 0.30; // ⚡ REMAINS HIGH: Ceiling is where this trait shines
                     ceilingTags.push("Konami Code Rushing Weapon");
                 } else if (rushYds >= 425 || rushAtt >= 75) {
-                    qbMobilityTier = 2; // Dynamic Dual-Threat (Maye, Richardson, Kyler)
-                    mobilityBonus = 0.035;
+                    qbMobilityTier = 2; 
+                    mobilityBonus = 0.010; // ⚡ REDUCED: Was 0.035
                     p._qbArchetype = 'Dynamic Dual-Threat';
                     p._isFlyer = true;
                     upsideMultiplier += 0.20;
@@ -3495,7 +3491,7 @@ const State = {
                 // 1. Uncontested 3-Down Bellcow Alpha
                 if ((snap >= 68 || (p.depthChart === 1 && projCarries >= 220)) && hvo >= 65 && (tgtShare >= 9.5 || projTgts >= 45)) {
                     p._rbArchetype = 'Bellcow Alpha';
-                    adjMultiplier += 0.035; // 🛠️ Reduced from 0.065 (prevents double-dipping)
+                    adjMultiplier += 0.015; // ⚡ REDUCED: Was 0.035
                     p._isFlyer = true;
                     upsideMultiplier += 0.20;
                     ceilingTags.push("Three-Down Bellcow Monopoly");
@@ -3598,10 +3594,10 @@ const State = {
                 const snap = p.snapShare || 0;
                 const ypt = p.ypt || 0;
 
-                // Tier 1: Dominant Alpha Target Funnel (Jefferson, Lamb, Chase, Amon-Ra)
+                // Tier 1: Dominant Alpha Target Funnel
                 if (tgtShare >= 25.0 || wopr >= 0.60 || (p.depthChart === 1 && (p.stats?.targets || 0) >= 135)) {
                     p._wrArchetype = 'Alpha Target Funnel';
-                    adjMultiplier += 0.025; // 🛠️ Reduced from 0.065 (prevents double-dipping with Z-scores)
+                    adjMultiplier += 0.010; // ⚡ REDUCED: Was 0.025
                     p._isFlyer = true;
                     upsideMultiplier += 0.20;
                     ceilingTags.push("Dominant Alpha Target Funnel");
@@ -4173,9 +4169,34 @@ const State = {
             varianceSpread = Math.max(0.08, Math.min(0.55, varianceSpread));
             p.varianceSpread = varianceSpread;
 
-            let baselinePpg = (p.ProjPts / Math.max(1, p.stats?.gp || 17));
-            p.floorPpg = Math.max(1.5, baselinePpg * Math.max(0.40, 1 - varianceSpread));
-            // Ceiling PPG scales dynamically with a realistic cap
+            // ===========================================================
+            // FINAL CALCULATIONS: PROJECTION EDGE ENGINE & HUBRIS CURVE
+            // ===========================================================
+
+            // 1. Freeze the Professional Consensus
+            p.ConsensusPts = p.ProjPts;
+            let baseVBD = p.ConsensusPts - rawBasePts;
+
+            // 2. Apply Asymptotic Diminishing Returns (The "Hubris Curve")
+            let rawDrift = adjMultiplier - 1.0;
+            let maxDrift = 0.14; // Strict ±14% boundary against sharp consensus
+            let dampenedDrift = Math.sign(rawDrift) * maxDrift * (1 - Math.exp(-Math.abs(rawDrift) / maxDrift));
+            let finalMultiplier = 1.0 + dampenedDrift;
+
+            p.ModelPts = p.ConsensusPts * finalMultiplier;
+            
+            // 3. Calculate The Edge (Deviation from Consensus)
+            p.Edge = p.ModelPts - p.ConsensusPts;
+
+            // 4. Derive Standard and Model VBD
+            p.VBD = baseVBD;
+            p.AdvVBD = p.ModelPts - rawBasePts;
+
+            // 5. Range of Outcomes (Synced directly to Model Expectation)
+            let modelPpg = (p.ModelPts || p.ProjPts) / Math.max(1, p.stats?.gp || 17);
+            let rawFloor = modelPpg * Math.max(0.20, 1 - varianceSpread);
+            p.floorPpg = Math.max(0.2, rawFloor); // Fixed floor > median inversion bug
+
             let maxMultiplier = 1 + varianceSpread;
             if (p.upsideScore > 0 && p.AdvVBD > 0) {
                 let ratio = p.upsideScore / p.AdvVBD;
@@ -4184,34 +4205,12 @@ const State = {
                     maxMultiplier = Math.min(1.38, Math.max(maxMultiplier, dampenedRatio));
                 }
             }
-            p.ceilingPpg = baselinePpg * maxMultiplier;
+            p.ceilingPpg = modelPpg * maxMultiplier;
 
-            // ===========================================================
-            // FINAL CALCULATIONS: PROJECTION EDGE ENGINE
-            // ===========================================================
-            adjMultiplier = Math.max(0.70, Math.min(1.35, adjMultiplier));
-
-            // 1. Freeze the Professional Consensus
-            p.ConsensusPts = p.ProjPts;
-            let baseVBD = p.ConsensusPts - rawBasePts;
-
-            // 2. Apply feature engineering to generate Model Expectation
-            let dampenedMultiplier = adjMultiplier;
-            if (baseVBD > 75.0) {
-                const dampeningFactor = Math.max(0.20, 75.0 / baseVBD);
-                dampenedMultiplier = 1 + ((adjMultiplier - 1) * dampeningFactor);
-            }
-            p.ModelPts = p.ConsensusPts * dampenedMultiplier;
-            
-            // 3. Calculate The Edge (Deviation from Consensus)
-            p.Edge = p.ModelPts - p.ConsensusPts;
-
-            // 4. Probability Engine: Z-Score conversion using player's volatility
-            // We model the expected outcome as a normal distribution where standard deviation = ModelPts * varianceSpread
+            // 6. Probability Engine: Z-Score conversion using player's volatility
             let stdDev = Math.max(5.0, p.ModelPts * p.varianceSpread);
             let zScore = p.Edge / stdDev;
             
-            // Approximation function for Cumulative Distribution Function (CDF)
             const getNormProb = (z) => {
                 let sign = z < 0 ? -1 : 1;
                 let x = Math.abs(z) / Math.sqrt(2.0);
@@ -4220,7 +4219,6 @@ const State = {
                 return 0.5 * (1.0 + sign * erf);
             };
             
-            // Probability that actual outcome > ConsensusPts
             p.OverProb = getNormProb(zScore);
 
             // 5. Derive Standard and Model VBD
