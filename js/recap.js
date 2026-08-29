@@ -192,11 +192,25 @@ window.DraftRecap = {
             let xFactor = this.identifyXFactor(team);
             let lineup = this.getProjectedStarters(team);
 
+            // ⚡ 1. Calculate the stack boolean
+            let qbs = team.roster.filter(p => p.Pos === 'QB');
+            let hasEliteStack = qbs.some(qb => 
+                team.roster.some(partner => 
+                    partner._cleanTeam === qb._cleanTeam && 
+                    ['WR', 'TE'].includes(partner.Pos) && 
+                    (partner.ProjPts || 0) >= 180
+                )
+            );
+
+            // ⚡ 2. Include hasEliteStack directly inside the object
             team.analysis = {
                 grade, color, bg, score, persona, starterEdge, benchEdge,
                 bestValue, worstReach, topSleeper, lineup,
-                units, streamingAnalysis, playoffOutlook, xFactor
+                units, streamingAnalysis, playoffOutlook, xFactor,
+                hasEliteStack
             };
+            
+            // ⚡ 3. Now buildNarrative() can safely access a.hasEliteStack
             team.analysis.narrative = this.buildNarrative(team, index + 1, units, persona);
 
             this.teamData[team.id] = team;
@@ -1011,10 +1025,14 @@ window.DraftRecap = {
             let round = Math.floor((pickNum - 1) / numTeams) + 1;
             let pick = ((pickNum - 1) % numTeams) + 1;
             let adpDiff = pl.adp ? (pl.adp - pickNum) : 0;
-            let diffStr = adpDiff > 0 
-                ? `<span class="text-emerald-600 font-bold">+${adpDiff.toFixed(0)} Value</span>` 
-                : `<span class="text-rose-600 font-bold">${Math.abs(adpDiff).toFixed(0)} Reach</span>`;
-
+            let diffStr = '';
+            if (adpDiff > 0) {
+                diffStr = `<span class="text-emerald-600 font-bold">+${adpDiff.toFixed(0)} Value</span>`;
+            } else if (adpDiff < 0) {
+                diffStr = `<span class="text-rose-600 font-bold">${Math.abs(adpDiff).toFixed(0)} Reach</span>`;
+            } else {
+                diffStr = `<span class="text-slate-500 font-bold">At ADP</span>`;
+            }
             if (label === 'Top Stash / Sleeper') {
                 let badgeText = pl._contingentTier || pl._sleeperBadge || (pl._ceilingTags && pl._ceilingTags[0]) || '💎 High Ceiling Stash';
                 diffStr = `<span class="text-amber-600 font-bold">${badgeText}</span>`;
