@@ -364,8 +364,8 @@ window.Compare = {
         });
         altEarlySos = altWeeks > 0 ? altEarlySos / altWeeks : 3.0;
 
-        const topPpg = ((topPick.ProjPts || 0) / 17).toFixed(1);
-        const altPpg = ((alt.ProjPts || 0) / 17).toFixed(1);
+        const topPpg = (topPick._healthyPpg || ((topPick.ProjPts || 0) / Math.max(1, topPick.stats?.gp || 17))).toFixed(1);
+        const altPpg = (alt._healthyPpg || ((alt.ProjPts || 0) / Math.max(1, alt.stats?.gp || 17))).toFixed(1);
 
         const topSurname = getPlayerLastName(topPick.Player);
         const altSurname = getPlayerLastName(alt.Player);
