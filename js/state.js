@@ -1553,12 +1553,30 @@ const State = {
         if (player.byeWeek && player.byeWeek !== 'N/A') {
             const sameByePlayers = team.roster.filter(r => String(r.byeWeek) === String(player.byeWeek));
             const posByeCollisions = sameByePlayers.filter(r => r.Pos === pos).length;
-            if (['QB', 'TE', 'PK', 'DST'].includes(pos) && team.counts[pos] >= 1 && posByeCollisions >= 1) {
-                byePenaltyMultiplier = 0.20;
-            } else if (posByeCollisions >= 2) {
-                byePenaltyMultiplier = 0.65;
-            } else if (sameByePlayers.length >= 3) {
-                byePenaltyMultiplier = 0.50;
+    
+            // Check if the user has enough players at this position to survive the bye week
+            let totalDraftedAtPos = team.counts[pos] || 0;
+            let willHaveEmptyStarterSlot = posByeCollisions === totalDraftedAtPos && totalDraftedAtPos >= 1;
+
+            // Treat TE like a WR/RB if the Flex slot is still open
+            let isStrictOnesie = ['QB', 'PK', 'DST'].includes(pos) || (pos === 'TE' && !isFlexOpen);
+
+            if (isStrictOnesie) {
+                if (willHaveEmptyStarterSlot) {
+                    // Only apply the brutal 80% penalty if drafting this player means EVERY player 
+                    // at this position shares the same bye week, leaving no coverage.
+                    byePenaltyMultiplier = 0.20; 
+                } else if (posByeCollisions >= 1) {
+                    // If they share a bye but you have coverage, just apply a minor annoyance penalty
+                    byePenaltyMultiplier = 0.85; 
+                }
+            } else {
+                // Flex-eligible positions (RB, WR, and TE if flex is open)
+                if (posByeCollisions >= 2) {
+                    byePenaltyMultiplier = 0.65;
+                } else if (sameByePlayers.length >= 3) {
+                    byePenaltyMultiplier = 0.50; // Team-wide bye week collision
+                }
             }
         }
 
