@@ -1486,13 +1486,23 @@ const State = {
             if (['RB', 'WR'].includes(pos)) effectiveStarterMax += (this.settings.roster.FlexRBWR?.max || 0) + (this.settings.roster.Flex?.max || 0);
             if (pos === 'TE') effectiveStarterMax += (this.settings.roster.Flex?.max || 0);
             if (['QB', 'RB', 'WR', 'TE'].includes(pos)) effectiveStarterMax += (this.settings.roster.Superflex?.max || 0);
+    
             let totalPosCount = team.roster.filter(r => r.Pos === pos).length;
             let overage = Math.max(0, totalPosCount - effectiveStarterMax);
 
-            if (['RB', 'WR'].includes(pos)) rosterOveragePenalty = Math.pow(0.75, overage + 1);
-            else if (pos === 'TE') rosterOveragePenalty = overage === 0 ? 0.25 : 0.05;
-            else if (pos === 'QB') rosterOveragePenalty = (this.settings.roster.Superflex?.max || 0) > 0 ? Math.pow(0.70, overage + 1) : (overage === 0 ? 0.15 : 0.05);
-            else rosterOveragePenalty = overage === 0 ? 0.15 : 0.05;
+            // ✨ NEW: Smoother exponential scaling for backups, factoring in Flex eligibility
+            if (['RB', 'WR'].includes(pos)) {
+                rosterOveragePenalty = Math.pow(0.75, overage + 1); // 75% -> 56% -> 42%
+            } else if (pos === 'TE') {
+                // If Flex is open, treat like a WR. If closed, scale backup value gently.
+                rosterOveragePenalty = isFlexOpen ? Math.pow(0.75, overage + 1) : Math.pow(0.50, overage + 1);
+            } else if (pos === 'QB') {
+                // If Superflex is open, treat like high value. If closed, scale backup value gently.
+                rosterOveragePenalty = isSuperflexOpen ? Math.pow(0.70, overage + 1) : Math.pow(0.40, overage + 1);
+            } else {
+                // Kicker/Defense backups get slashed hard because hoarding them is objectively bad strategy
+                rosterOveragePenalty = overage === 0 ? 0.15 : 0.05;
+            }
         }
 
         // CPU Empirical Tendency Application (Safely clamped)
@@ -1505,13 +1515,20 @@ const State = {
                 if (pos === 'TE') personalityAdjustment += (profile.empirical.earlyTERate - 0.10) * 15.0;
             }
 
+            // CPU Empirical Tendency Application (Safely clamped)
             if (['QB', 'TE', 'PK', 'DST'].includes(pos)) {
                 let targetRound = profile.empirical[`${pos.toLowerCase()}TargetRound`] || 10;
                 let roundDiff = currentRound - targetRound;
+    
                 if (roundDiff >= 0) {
                     personalityAdjustment += Math.min(12.0, (roundDiff + 1) * 3.0); 
-                } else if (roundDiff < -2) {
-                    personalityAdjustment -= 15.0; 
+                } else if (roundDiff < 0) {
+                    // ✨ NEW: Smooth polynomial scaling instead of a flat -15 cliff!
+                    // -1 round early = -2.0 VBD penalty
+                    // -2 rounds early = -5.6 VBD penalty
+                    // -3 rounds early = -10.3 VBD penalty
+                    // -4 rounds early = -16.0 VBD penalty
+                    personalityAdjustment -= Math.pow(Math.abs(roundDiff), 1.5) * 2.0; 
                 }
             }
 
