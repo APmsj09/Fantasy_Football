@@ -553,7 +553,7 @@ window.Compare = {
         else if (alt.Pos === 'RB' && ['WR', 'TE'].includes(topPick.Pos)) {
             altCase.push(`<strong>Workhorse RB Scarcity:</strong> True three-down running backs disappear immediately; taking ${alt.Player} locks in <strong>${Math.round(alt.stats?.rushAtt || 200)}+ carries</strong> before the board hits committee territory.`);
             if ((alt.stats?.rushTd || 0) >= 7 || (alt.rzAtt || 0) >= 20 || alt._isGoalLineHammer) {
-                altCase.push(`<strong>Goal-Line TD Monopoly:</strong> Monopolizes high-leverage short-yardage carries (projected for <strong>${alt.stats?.rushTd || 8}+ rush TDs</strong>), generating touchdown equity receivers cannot match.`);
+                altCase.push(`<strong>Goal-Line TD Monopoly:</strong> Monopolizes high-leverage short-yardage carries (projected for <strong>${Math.round(alt.stats?.rushTd || 8)}+ rush TDs</strong>), generating touchdown equity receivers cannot match.`);
             }
             if ((alt.targetShare || 0) >= 10.0 || (alt.stats?.targets || 0) >= 40) {
                 altCase.push(`<strong>Dual-Threat Pass Catching:</strong> Highly involved as a receiver (${alt.targetShare || 12}% target share), protecting him against negative game scripts.`);
