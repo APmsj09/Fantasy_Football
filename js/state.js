@@ -4884,3 +4884,5 @@ const State = {
         this.draftStarted = true;
     }
 };
+
+window.State = State;
