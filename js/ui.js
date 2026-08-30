@@ -1575,6 +1575,8 @@ const UI = {
                     riskScore += 1;
                 }
             }
+        } // 👈 Added missing closing bracket for if (p.injuryStatus)
+
         // SUPPRESS generic "Durability Risk" if it's already classified as a Major Procedure Return
         if (p._isMajorReturn) {
             cons.push(`<strong>Early-Season Ramp-Up Friction (${p._injuryNote || '2025 Procedure'}):</strong> Cleared for Week 1, but historical return trends suggest limited snap shares and efficiency dips over opening weeks before reaching full speed.`);
@@ -1582,10 +1584,13 @@ const UI = {
         } else if (games <= 8 && games > 0 && !isDevelopmentalDepth) {
             cons.push(`<strong>Severe Durability Risk:</strong> Missed over half the season, playing only <strong>${games} games</strong>. Staying on the field is a major question mark.`);
             riskScore += 3;
+        }
+
+        if (p._isMajorReturn && (p.adp && p.adp >= 35)) {
+            pros.push(`<strong>🏆 Second-Half Championship Ceiling:</strong> Cleared and Active for Week 1 (${p._injuryNote || 'Major Procedure'}). While early weeks may feature load management, his depressed draft price offers massive fresh-legged upside for the fantasy playoffs.`);
         } else if (p._injuryNote && p._isFullyCleared) {
             pros.push(`<strong>Clean Bill of Health (${p._injuryNote}):</strong> Listed as fully active on team reports with no ongoing workload restrictions.`);
         }
-
         if (cons.length === 0) {
             cons.push(`<strong>Standard Game-Flow Variance:</strong> Subject to standard week-to-week game script fluctuations.`);
         }
@@ -3233,3 +3238,5 @@ const UI = {
         list.innerHTML = htmlStr;
     }
 };
+
+window.UI = UI;
