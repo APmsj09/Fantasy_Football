@@ -472,5 +472,8 @@ window.TeamResearch = {
 
 // Auto-initialize when document loads
 document.addEventListener('DOMContentLoaded', () => {
-    TeamResearch.init();
+    // Only init if State is defined and already has loaded player data
+    if (window.State && State.allPlayers && State.allPlayers.length > 0) {
+        TeamResearch.init();
+    }
 });
