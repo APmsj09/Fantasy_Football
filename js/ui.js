@@ -2586,11 +2586,11 @@ const UI = {
         const getSurvivalProb = (player) => {
             let adp = player.adp;
             if (!adp) return 1.0;
-            
-            let diff = adp - nextActiveWindowPick;
-            let slope = Math.max(0.04, 0.28 - (currentRound * 0.015));
-            let baseProb = 1 / (1 + Math.exp(-slope * diff));
 
+            // 1. Empirical ADP Standard Deviation (variance expands in later rounds)
+            let sigma = Math.max(3.0, 2.5 + (0.12 * adp));
+
+            // 2. Evaluate Intervening Teams' Positional Need
             let threatCount = 0;
             let safetyCount = 0;
             let posRoster = State.settings.roster[player.Pos];
@@ -2613,23 +2613,26 @@ const UI = {
                 }
             });
 
-            let turnGap = nextActiveWindowPick - currentOverallPick;
-            let elasticWindow = 8 + (currentRound * 1.5) + (turnGap >= 18 ? 5 : 0);
-            let isAdpInDanger = adp <= (nextActiveWindowPick + elasticWindow);
-
+            // 3. Shift the effective target pick based on board demand
+            let needShift = 0;
             if (['QB', 'TE', 'PK', 'DST'].includes(player.Pos)) {
                 if (safetyCount === interveningTeamIds.length && interveningTeamIds.length > 0) {
-                    baseProb = Math.min(0.95, baseProb + 0.35);
-                } else if (threatCount > 0 && isAdpInDanger) {
-                    baseProb = Math.max(0.05, baseProb - (0.10 * Math.min(5, threatCount)));
+                    needShift = +6.0; // Everyone has their starter; player will slide
+                } else {
+                    needShift = -(threatCount * 1.5);
                 }
             } else {
-                if (threatCount >= 2 && isAdpInDanger) {
-                    baseProb = Math.max(0.05, baseProb - (0.04 * Math.min(6, threatCount)));
-                }
+                needShift = -(threatCount * 0.8);
             }
 
-            return Math.max(0.0, Math.min(1.0, baseProb));
+            // 4. Calculate Z-Score against Next Pick
+            let effectivePick = nextActiveWindowPick + needShift;
+            let z = (adp - effectivePick) / sigma;
+
+            // 5. Smooth Logistic CDF (No flat 5% plateaus)
+            let prob = 1 / (1 + Math.exp(-1.6 * z));
+
+            return Math.max(0.0, Math.min(1.0, prob));
         };
 
         State.availablePlayers.forEach(p => {
