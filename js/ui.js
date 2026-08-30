@@ -1575,8 +1575,13 @@ const UI = {
                     riskScore += 1;
                 }
             }
-        } else if (p._isMajorReturn) {
-            pros.push(`<strong>Year-1 Major Injury Return (${p._injuryNote || 'Major 2025 Procedure'}):</strong> Cleared and Active for Week 1 after missing ${p._missed25 || 'significant'} games last year. Historical sports science data indicates a gradual early ramp-up followed by strong second-half output.`);
+        // SUPPRESS generic "Durability Risk" if it's already classified as a Major Procedure Return
+        if (p._isMajorReturn) {
+            cons.push(`<strong>Early-Season Ramp-Up Friction (${p._injuryNote || '2025 Procedure'}):</strong> Cleared for Week 1, but historical return trends suggest limited snap shares and efficiency dips over opening weeks before reaching full speed.`);
+            riskScore += 2;
+        } else if (games <= 8 && games > 0 && !isDevelopmentalDepth) {
+            cons.push(`<strong>Severe Durability Risk:</strong> Missed over half the season, playing only <strong>${games} games</strong>. Staying on the field is a major question mark.`);
+            riskScore += 3;
         } else if (p._injuryNote && p._isFullyCleared) {
             pros.push(`<strong>Clean Bill of Health (${p._injuryNote}):</strong> Listed as fully active on team reports with no ongoing workload restrictions.`);
         }
@@ -2082,8 +2087,12 @@ const UI = {
         }
 
         let handcuffBadge = '';
-        if (p.isRBStarter && p.handcuffName) {
-            handcuffBadge = `<span class="text-xs bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full font-semibold">🛡️ Handcuff: ${p.handcuffName}</span>`;
+        if (p.isRBStarter && p.handcuffName && p.handcuffName !== '—' && p.handcuffName !== '') {
+            if (p._backupThreatLevel === '1B Committee Threat' || p._backupThreatLevel === 'Passing Down Threat') {
+                pros.push(`<strong>Primary Early-Down Back:</strong> Holds the designated starting role ahead of ${p.handcuffName}.`);
+            } else {
+                pros.push(`<strong>Clear Backfield Lead:</strong> Uncontested RB1 status with designated backup (${p.handcuffName}).`);
+            }
         } else if ((p.isRBHandcuff || p.depthChart >= 2) && p._contingentTier) {
             let badgeCls = p._contingentTier.includes('Diamond') ? 'bg-purple-100 text-purple-800 border-purple-300' : (p._contingentTier.includes('High-Ceiling') ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-slate-100 text-slate-700 border-slate-300');
             handcuffBadge = `<span class="text-xs border ${badgeCls} px-2 py-0.5 rounded-full font-bold">${p._contingentTier}</span>`;
