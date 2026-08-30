@@ -1610,6 +1610,15 @@ const State = {
             upsideBonus = Math.min(12.0, ceilingDelta * 0.18) * roundScale;
         }
 
+        // EARLY ROUND FLOOR SECURITY PENALTY
+        // Punish high-variance profiles (injuries, bad O-Lines, volatile roles) in Rounds 1-3.
+        let variancePenalty = 0;
+        if (currentRound <= 3 && player.varianceSpread > 0.28) {
+            let urgency = (4 - currentRound); // Rd 1 = 3, Rd 2 = 2, Rd 3 = 1
+            // Scales dynamically. e.g., a 0.35 variance RB in Rd 1 gets a ~4.2 VBD penalty.
+            variancePenalty = (player.varianceSpread - 0.28) * 20.0 * urgency;
+        }
+        
         // Bye Week Multiplier
         let byePenaltyMultiplier = 1.0;
         if (player.byeWeek && player.byeWeek !== 'N/A') {
@@ -1658,7 +1667,7 @@ const State = {
             ppwBonus = (player._addedPPW * 2) * phaseScale;
         }
 
-        let rawScore = baseVBD + starterBonus + scarcityBonus + adpBonus - adpPenalty + upsideBonus + ppwBonus + stackBonus + personalityAdjustment;
+        let rawScore = baseVBD + starterBonus + scarcityBonus + adpBonus - adpPenalty + upsideBonus - variancePenalty + ppwBonus + stackBonus + personalityAdjustment;
         let totalDraftValue = (rawScore >= 0 ? rawScore * rosterOveragePenalty * byePenaltyMultiplier : rawScore / Math.max(0.05, (rosterOveragePenalty * byePenaltyMultiplier)));
 
         return { totalDraftValue, isDraftable: true };
@@ -4329,34 +4338,41 @@ const State = {
             p.VBD = baseVBD;
             p.AdvVBD = p.ModelPts - rawBasePts;
 
-            // 5. Range of Outcomes (Synced directly to Model Expectation)
+            // 5. Range of Outcomes: Statistical 10th & 90th Percentile Modeling
             let modelPpg = (p.ModelPts || p.ProjPts) / Math.max(1, p.stats?.gp || 17);
-            
-            // Hard Floor Cap for DST/PK
-            let rawFloor = modelPpg * Math.max(0.10, 1 - varianceSpread);
-            if (['DST', 'PK'].includes(p.Pos)) p.floorPpg = Math.max(0.0, rawFloor);
-            else p.floorPpg = Math.max(0.2, rawFloor);
 
-            let maxMultiplier = 1 + varianceSpread;
-            if (p.upsideScore > 0 && p.AdvVBD > 0) {
-                let ratio = p.upsideScore / p.AdvVBD;
-                if (Number.isFinite(ratio) && ratio > 1.0) {
-                    let dampenedRatio = 1 + ((ratio - 1) * 0.45);
-                    maxMultiplier = Math.min(1.38, Math.max(maxMultiplier, dampenedRatio));
-                }
+            // A. FLOOR (10th Percentile Outcome)
+            // Uses 1.28 as the z-score proxy for the 10th percentile bound.
+            let rawFloor = modelPpg * Math.max(0.0, 1 - (p.varianceSpread * 1.28));
+
+            // Allow true 0.0 floors for players whose roles can mathematically collapse to nothing
+            if (p._rbArchetype === 'Contingent Lottery Ticket' || p._isCardioKing || p._isTDorBust) {
+                p.floorPpg = 0.0; 
+            } else {
+                p.floorPpg = Math.max(0.0, rawFloor); // Removes the artificial 0.2 cap
             }
-            
-            p.ceilingPpg = modelPpg * maxMultiplier;
 
-            // Cap the ceiling for non-pass-catching RBs in PPR formats
+            // B. CEILING (90th Percentile Outcome)
+            // Base statistical right-tail using 1.28 z-score proxy
+            let standardCeiling = modelPpg * (1 + (p.varianceSpread * 1.28));
+
+            // Evaluate Bimodal Upside (Bypasses the generic statistical multiplier for players with structural ceilings)
+            if (p.contingentPeakPoints && p.Pos === 'RB' && p.depthChart >= 2) {
+                // Handcuffs reflect their true 'Starter' PPG if the RB1 goes down, bypassing multiplier limits
+                p.ceilingPpg = Math.max(standardCeiling, p.contingentPeakPoints / 17);
+            } else if (p.ceilingProjPts) {
+                // Uses pre-calculated upside logic (like deep air yard regression or high HVO)
+                p.ceilingPpg = Math.max(standardCeiling, p.ceilingProjPts / 17);
+            } else {
+                p.ceilingPpg = standardCeiling;
+            }
+
+            // C. Format-Specific Archetype Caps 
+            // (Maintained because these profiles are physically restricted by scoring formats)
             if (p.Pos === 'RB' && p._isGoalLineHammer && this.scoring.ppr >= 0.5) {
-                let maxPprCeilingMult = 1.15;
-                p.ceilingPpg = Math.min(modelPpg * maxPprCeilingMult, p.ceilingPpg);
-            }
-            // Cap the ceiling for Satellite Backs in Standard formats
-            else if (p.Pos === 'RB' && p._isSatelliteBack && this.scoring.ppr === 0) {
-                let maxStdCeilingMult = 1.10;
-                p.ceilingPpg = Math.min(modelPpg * maxStdCeilingMult, p.ceilingPpg);
+                p.ceilingPpg = Math.min(modelPpg * 1.15, p.ceilingPpg);
+            } else if (p.Pos === 'RB' && p._isSatelliteBack && this.scoring.ppr === 0) {
+                p.ceilingPpg = Math.min(modelPpg * 1.10, p.ceilingPpg);
             }
             
             // 6. Probability Engine: Z-Score conversion using player's volatility
