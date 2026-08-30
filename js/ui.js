@@ -2303,9 +2303,9 @@ const UI = {
             this.switchTab('summary-screen');
         }
 
-        this.renderDraftAvailablePlayers();
+        this.renderRecommendations();       
+        this.renderDraftAvailablePlayers(); 
         this.renderMyRoster();
-        this.renderRecommendations();
         this.renderRosters();
         this.renderDraftBoardGrid();
     },
@@ -2631,6 +2631,10 @@ const UI = {
 
             return Math.max(0.0, Math.min(1.0, baseProb));
         };
+
+        State.availablePlayers.forEach(p => {
+            p._survivalProb = getSurvivalProb(p);
+        });
 
         // =========================================================================
         // 🎯 4-TIER ROSTER FRAGILITY & DYNAMIC STRUCTURAL STRATEGY ENGINE
