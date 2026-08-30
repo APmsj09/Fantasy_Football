@@ -4205,97 +4205,75 @@ const State = {
             }
 
             // =============================================================
-            // DYNAMIC VARIANCE SPREAD (Floor/Ceiling Bounds)
+            // DYNAMIC VARIANCE SPREAD (Decoupled Floor/Ceiling Bounds)
             // =============================================================
             
             // 1. Position-Specific Base Volatility
-            let varianceSpread = 0.22;
-            if (p.Pos === 'QB') varianceSpread = 0.18; // QBs naturally score the most consistent baseline
-            else if (p.Pos === 'WR') varianceSpread = 0.24; // WRs rely on downfield targets (higher variance)
-            else if (p.Pos === 'TE') varianceSpread = 0.26; // TEs are highly TD dependent
-            else if (p.Pos === 'PK') varianceSpread = 0.32; // Kicker opportunity is script-dependent
-            else if (p.Pos === 'DST') varianceSpread = 0.45; // Defenses swing wildly between negative and 20+ points
+            let baseVar = 0.22;
+            if (p.Pos === 'QB') baseVar = 0.18; 
+            else if (p.Pos === 'WR') baseVar = 0.24; 
+            else if (p.Pos === 'TE') baseVar = 0.26; 
+            else if (p.Pos === 'PK') baseVar = 0.32; 
+            else if (p.Pos === 'DST') baseVar = 0.45; 
 
-            // 2. Role & Archetype Volatility
-            if (p.isRBHandcuff) {
-                varianceSpread += 0.12; 
-            } else if (p._isRedZoneVulture) {
-                varianceSpread += 0.08; // 🟢 NEW: Vultures collapse to near 0 pts without a TD
-            }
+            // DECOUPLED VARIANCE: Upside traits raise ceilVar, Risk traits raise floorVar
+            let ceilVar = baseVar;
+            let floorVar = baseVar;
 
-            // Note: Handcuffs also receive the _isFlyer tag, safely stacking to +0.16 variance
-            if (p._isFlyer) varianceSpread += 0.04;
-            
-            if (p.isRookie) varianceSpread += 0.06;
-            else if (p.isNewRole) varianceSpread += 0.03;
+            // 2. Role & Archetype Volatility (Bimodal Traits)
+            if (p.isRBHandcuff) { ceilVar += 0.12; floorVar += 0.12; } 
+            if (p._isRedZoneVulture) { floorVar += 0.08; } // Vultures bust easily, but ceiling is capped by lack of yards
+            if (p._isFlyer) { ceilVar += 0.06; floorVar += 0.04; }
+            if (p.isRookie || p.isNewRole) { ceilVar += 0.05; floorVar += 0.05; }
 
-            // 🟢 NEW: QB Benching Risk (Bridge Starters)
-            if (p.Pos === 'QB' && p._shortLeashRisk) {
-                varianceSpread += 0.10; // Massive floor drop if benched mid-game/mid-season
-            }
+            // 3. Structural Risks (ONLY affects the downside / floor)
+            if (p.Pos === 'QB' && p._shortLeashRisk) floorVar += 0.10;
+            if (p.Pos === 'TE' && p._isTDorBust) floorVar += 0.08;
+            if (p.Pos === 'WR' && p._isCardioKing) floorVar += 0.08;
+            if (p.Pos === 'WR' && p._isEmptyCalories) ceilVar -= 0.05; // Tightens ceiling
 
-            // Touchdown-or-Bust TE Floor Collapse
-            if (p.Pos === 'TE' && p._isTDorBust) {
-                varianceSpread += 0.08; // Floor drops near 0 if they don't score a TD
-            }
-
-            // 🟢 NEW: WR-Specific Archetype Volatility
-            if (p.Pos === 'WR') {
-                if (p._isCardioKing) {
-                    varianceSpread += 0.08; // Deep decoy. If they don't catch a bomb, they score 0.
-                } else if (p._isEmptyCalories) {
-                    varianceSpread -= 0.04; // Tightens variance. No ceiling, just a mediocre, flat floor.
-                }
-            }
-
-            // 3. Continuous Age Volatility (Decays smoothly from 21yo to 24yo)
+            // 4. Continuous Age Volatility 
             if (pAgeVal && pAgeVal <= 24) {
-                varianceSpread += (25 - pAgeVal) * 0.025;
+                let youthVar = (25 - pAgeVal) * 0.025;
+                ceilVar += youthVar;
+                floorVar += youthVar; // Young players are volatile in both directions
             }
 
-            // 4. Continuous Depth of Target (aDOT) Volatility
+            // 5. Continuous Depth of Target (aDOT)
             if (p.aDOT) {
                 let aDotDelta = p.aDOT - 9.5;
-                varianceSpread += (aDotDelta * 0.012);
+                ceilVar += (aDotDelta * 0.012);
+                floorVar += (aDotDelta * 0.012);
             }
 
-            // 5. Continuous Target Share Stability (Higher Share = Tightened Floor)
+            // 6. Target Share Stability (Higher Share = Tightened Floor)
             if (p.targetShare && ['WR', 'TE', 'RB'].includes(p.Pos)) {
                 if (p.targetShare > 12.0) {
-                    varianceSpread -= Math.min(0.08, (p.targetShare - 12.0) * 0.004);
+                    floorVar -= Math.min(0.08, (p.targetShare - 12.0) * 0.004); // Volume secures the floor
                 }
-            }
-
-            // 6. Crowded Passing Tree Target Volatility
-            if (p._passingTreeType === 'Crowded Committee Spread') {
-                varianceSpread += 0.05;
             }
 
             // 7. Environmental Trickle-Down (QB Play & O-Line)
+            if (p._passingTreeType === 'Crowded Committee Spread') floorVar += 0.05;
+            
             if (['WR', 'TE'].includes(p.Pos)) {
                 let teamQB = this.allPlayers.find(q => q._cleanTeam === tTeam && q._cleanPos === 'QB' && q.depthChart === 1);
-                // If QB is inaccurate, WR floor drops due to uncatchable targets
-                if (teamQB && teamQB.trueAccuracy && teamQB.trueAccuracy < 65.0) varianceSpread += 0.05;
+                if (teamQB && teamQB.trueAccuracy && teamQB.trueAccuracy < 65.0) floorVar += 0.05;
             } else if (p.Pos === 'QB') {
-                // QBs who take bad sacks or throw picks are highly volatile
-                if (p.p2s && p.p2s >= 20.0) varianceSpread += 0.04;
-                if (p.pastStats && p.pastStats.int >= 14) varianceSpread += 0.04;
+                if (p.p2s && p.p2s >= 20.0) floorVar += 0.04;
+                if (p.pastStats && p.pastStats.int >= 14) floorVar += 0.04;
+                if (p.stats && p.stats.rushAtt) floorVar -= Math.min(0.06, (p.stats.rushAtt / 100) * 0.05);
             }
 
-            // QB Rushing provides the SAFEST floor in fantasy
-            if (p.Pos === 'QB' && p.stats && p.stats.rushAtt) {
-                varianceSpread -= Math.min(0.06, (p.stats.rushAtt / 100) * 0.05);
-            }
+            // 8. Safe Floor & Trajectory Adjustments
+            if (p._isSafeFloor) floorVar -= 0.06;
+            if (p._isAscendingRole) { ceilVar += 0.04; floorVar -= 0.02; }
+            if (p._isDecliningRole) { ceilVar -= 0.04; floorVar += 0.06; }
 
-            // 8. Safe Floor Qualifier Adjustment & Workload Trajectory
-            if (p._isSafeFloor) varianceSpread -= 0.05;
-            if (p._isAscendingRole) varianceSpread -= 0.03;
-            if (p._isDecliningRole) varianceSpread += 0.06;
-
-            // 9. Historical Boom / Bust Continuous Scaling
+            // 9. Historical Boom / Bust
             if (p.boomBust && p.boomBust.games >= 4) {
                 let bb = p.boomBust;
-                let sampleWeight = Math.min(1.0, bb.games / 12);
+                let sampleWeight = Math.min(1.0, bb.games / 14);
                 let bustTolerance = p.Pos === 'WR' ? 28 : (p.Pos === 'QB' ? 18 : 22);
                 let top12Baseline = p.Pos === 'QB' ? 58 : (p.Pos === 'TE' ? 42 : 48);
 
@@ -4310,87 +4288,93 @@ const State = {
                     sampleWeight *= 0.5;
                 }
 
-                if (bb.bust > bustTolerance) {
-                    varianceSpread += ((bb.bust - bustTolerance) * 0.005) * sampleWeight;
-                }
-                if (bb.top12 > top12Baseline) {
-                    varianceSpread -= ((bb.top12 - top12Baseline) * 0.003) * sampleWeight;
-                }
+                if (bb.bust > bustTolerance) floorVar += ((bb.bust - bustTolerance) * 0.005) * sampleWeight;
+                if (bb.top12 > top12Baseline) floorVar -= ((bb.top12 - top12Baseline) * 0.003) * sampleWeight;
             }
 
-            if (p._scriptRisk) varianceSpread += 0.06; 
-            if (p._coldWeatherRisk) varianceSpread += 0.03; 
-            if (p._fumbleRisk) varianceSpread += 0.04; 
+            if (p._scriptRisk) floorVar += 0.06; 
+            if (p._coldWeatherRisk) floorVar += 0.03; 
+            if (p._fumbleRisk) floorVar += 0.04; 
 
-            // Final Bounds Safety Check (Accommodates DST/PK swings up to 0.65)
-            varianceSpread = Math.max(0.06, Math.min(0.65, varianceSpread));
-            p.varianceSpread = varianceSpread;
+            // Final Bounds Safety Check
+            p.ceilVar = Math.max(0.06, Math.min(0.65, ceilVar));
+            p.floorVar = Math.max(0.06, Math.min(0.65, floorVar));
+            
+            // Legacy mapping so old code doesn't break
+            p.varianceSpread = p.floorVar; 
 
             // ===========================================================
             // FINAL CALCULATIONS: PROJECTION EDGE ENGINE & HUBRIS CURVE
             // ===========================================================
 
-            // 1. Freeze the Professional Consensus
             p.ConsensusPts = p.ProjPts;
+
+            // 🌟 LAYER 1: BAYESIAN SMALL SAMPLE REGRESSION
+            // If a young player has an elite projection but missed significant time (small sample extrapolation),
+            // mathematical gravity dictates they regress slightly toward the positional mean.
+            let isSmallSamplePro = p.isRookie || (pAgeVal && pAgeVal <= 24 && pastGp <= 10);
+            if (isSmallSamplePro && p.ConsensusPts > rawBasePts * 1.3) {
+                let excess = p.ConsensusPts - (rawBasePts * 1.3);
+                p.ConsensusPts -= (excess * 0.15); // Shave off 15% of the elite outlier premium
+            }
+
             let baseVBD = p.ConsensusPts - rawBasePts;
 
-            // 2. Apply Asymptotic Diminishing Returns (The "Hubris Curve")
+            // Apply Asymptotic Diminishing Returns (The "Hubris Curve")
             let rawDrift = adjMultiplier - 1.0;
             let maxDrift = 0.14; 
             let dampenedDrift = Math.sign(rawDrift) * maxDrift * (1 - Math.exp(-Math.abs(rawDrift) / maxDrift));
             let finalMultiplier = 1.0 + dampenedDrift;
 
             p.ModelPts = p.ConsensusPts * finalMultiplier;
-            
-            // 3. Calculate The Edge (Deviation from Consensus)
-            p.Edge = p.ModelPts - p.ConsensusPts;
+            p.Edge = p.ModelPts - p.ProjPts; // Edge is evaluated against raw consensus
 
-            // 4. Derive Standard and Model VBD
-            p.VBD = baseVBD;
-            p.AdvVBD = p.ModelPts - rawBasePts;
+            // Range of Outcomes: Statistical 10th & 90th Percentile Modeling
+            let modelPpg = (p.ModelPts) / Math.max(1, p.stats?.gp || 17);
 
-            // 5. Range of Outcomes: Statistical 10th & 90th Percentile Modeling
-            let modelPpg = (p.ModelPts || p.ProjPts) / Math.max(1, p.stats?.gp || 17);
-
-            // A. FLOOR (10th Percentile Outcome)
-            // Uses 1.28 as the z-score proxy for the 10th percentile bound.
-            let rawFloor = modelPpg * Math.max(0.0, 1 - (p.varianceSpread * 1.28));
+            // A. FLOOR (10th Percentile Outcome using floorVar)
+            let rawFloor = modelPpg * Math.max(0.0, 1 - (p.floorVar * 1.28));
             let totalProjTouches = (p.stats?.rushAtt || 0) + (p.stats?.targets || 0);
 
-            // True 0.0 floor ONLY for pure handcuffs/decoys with no standalone volume
-            let isPureZeroRole = (p._rbArchetype === 'Contingent Lottery Ticket' && totalProjTouches < 100) || p._isCardioKing || (p._isTDorBust && (p.ModelPts || p.ProjPts) < 100);
+            let isPureZeroRole = (p._rbArchetype === 'Contingent Lottery Ticket' && totalProjTouches < 100) || p._isCardioKing || (p._isTDorBust && p.ModelPts < 100);
+            p.floorPpg = isPureZeroRole ? 0.0 : Math.max(0.0, rawFloor);
 
-            if (isPureZeroRole) {
-                p.floorPpg = 0.0; 
-            } else {
-                p.floorPpg = Math.max(0.0, rawFloor);
-            }
+            // B. CEILING (90th Percentile Outcome using ceilVar)
+            let standardCeiling = modelPpg * (1 + (p.ceilVar * 1.28));
 
-            // B. CEILING (90th Percentile Outcome)
-            // Base statistical right-tail using 1.28 z-score proxy
-            let standardCeiling = modelPpg * (1 + (p.varianceSpread * 1.28));
-
-            // Evaluate Bimodal Upside (Bypasses the generic statistical multiplier for players with structural ceilings)
             if (p.contingentPeakPoints && p.Pos === 'RB' && p.depthChart >= 2) {
-                // Handcuffs reflect their true 'Starter' PPG if the RB1 goes down, bypassing multiplier limits
                 p.ceilingPpg = Math.max(standardCeiling, p.contingentPeakPoints / 17);
             } else if (p.ceilingProjPts) {
-                // Uses pre-calculated upside logic (like deep air yard regression or high HVO)
                 p.ceilingPpg = Math.max(standardCeiling, p.ceilingProjPts / 17);
             } else {
                 p.ceilingPpg = standardCeiling;
             }
 
             // C. Format-Specific Archetype Caps 
-            // (Maintained because these profiles are physically restricted by scoring formats)
             if (p.Pos === 'RB' && p._isGoalLineHammer && this.scoring.ppr >= 0.5) {
                 p.ceilingPpg = Math.min(modelPpg * 1.15, p.ceilingPpg);
             } else if (p.Pos === 'RB' && p._isSatelliteBack && this.scoring.ppr === 0) {
                 p.ceilingPpg = Math.min(modelPpg * 1.10, p.ceilingPpg);
             }
-            
-            // 6. Probability Engine: Z-Score conversion using player's volatility
-            let stdDev = Math.max(5.0, p.ModelPts * p.varianceSpread);
+
+            // 🌟 LAYER 2: ASYMPTOTIC "HUMAN LIMITS" CEILING CAPS
+            // Historically, fantasy scoring follows a physical limit. When mathematical variance pushes 
+            // a ceiling into historic outlier territory (e.g. 30+ PPG), we gently regress it back to reality.
+            let posMax = 22.0;
+            if (p.Pos === 'QB') posMax = 28.0; // e.g., Lamar 2019
+            else if (p.Pos === 'RB') posMax = 26.0; // e.g., CMC 2023
+            else if (p.Pos === 'WR') posMax = 25.0; // e.g., Kupp 2021
+            else if (p.Pos === 'TE') posMax = 20.0; // e.g., Kelce 2020
+
+            if (p.ceilingPpg > posMax * 0.85) {
+                let threshold = posMax * 0.85; 
+                let excess = p.ceilingPpg - threshold;
+                // Soft cap: approaches but rarely breaches absolute max
+                p.ceilingPpg = threshold + (excess * (posMax - threshold) / (excess + (posMax - threshold)));
+            }
+
+            // Probability Engine: Z-Score conversion using player's volatility
+            let stdDev = Math.max(5.0, p.ModelPts * p.floorVar); // Use floor variance to assess bust probability
             let zScore = p.Edge / stdDev;
             
             const getNormProb = (z) => {
