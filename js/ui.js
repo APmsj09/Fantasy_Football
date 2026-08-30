@@ -2556,6 +2556,7 @@ const UI = {
             }
         });
 
+        // 1. Build Remaining Pick Windows
         let currentWindow = [];
         let nextWindow = [];
 
@@ -2570,27 +2571,41 @@ const UI = {
             }
         }
 
-        const nextActiveWindowPick = nextWindow.length > 0 
-            ? nextWindow[0] 
-            : (currentOverallPick + (State.settings.numTeams * 2));
+        // 2. Identify Target Window (Current upcoming pick vs Next round pick)
+        const isUserCurrentlyPicking = (State.draftOrder[State.currentPick] === State.userTeamId);
 
+        let targetPick;
+        if (isUserCurrentlyPicking) {
+            // You are picking right now: calculate who survives to your NEXT round (e.g. Pick 60)
+            targetPick = nextWindow.length > 0 ? nextWindow[0] : (currentOverallPick + (State.settings.numTeams * 2));
+        } else {
+            // Someone else is picking: calculate who survives to your UPCOMING turn (e.g. Pick 36)
+            targetPick = currentWindow.length > 0 ? currentWindow[0] : (currentOverallPick + State.settings.numTeams);
+        }
+
+        const nextActiveWindowPick = targetPick;
+
+        // 3. Collect All Teams Drafting Between Now and Your Target Pick
         let interveningTeamIds = [];
+        let startIdx = isUserCurrentlyPicking ? (State.currentPick + 1) : State.currentPick;
         let nextPickIndex = nextActiveWindowPick - 1; 
-        for (let i = State.currentPick + 1; i < nextPickIndex; i++) {
+
+        for (let i = startIdx; i < nextPickIndex; i++) {
             if (State.draftOrder[i] && State.draftOrder[i] !== State.userTeamId) {
                 interveningTeamIds.push(State.draftOrder[i]);
             }
         }
         interveningTeamIds = [...new Set(interveningTeamIds)];
 
+        // 4. Natural Bell-Curve Survival Probability Model
         const getSurvivalProb = (player) => {
             let adp = player.adp;
             if (!adp) return 1.0;
 
-            // 1. Empirical ADP Standard Deviation (variance expands in later rounds)
+            // Empirical standard deviation (variance scales with round depth)
             let sigma = Math.max(3.0, 2.5 + (0.12 * adp));
 
-            // 2. Evaluate Intervening Teams' Positional Need
+            // Count positional need among intervening teams
             let threatCount = 0;
             let safetyCount = 0;
             let posRoster = State.settings.roster[player.Pos];
@@ -2613,11 +2628,11 @@ const UI = {
                 }
             });
 
-            // 3. Shift the effective target pick based on board demand
+            // Adjust target line based on positional demand
             let needShift = 0;
             if (['QB', 'TE', 'PK', 'DST'].includes(player.Pos)) {
                 if (safetyCount === interveningTeamIds.length && interveningTeamIds.length > 0) {
-                    needShift = +6.0; // Everyone has their starter; player will slide
+                    needShift = +6.0; // All intervening teams filled starter slot; player slides
                 } else {
                     needShift = -(threatCount * 1.5);
                 }
@@ -2625,16 +2640,15 @@ const UI = {
                 needShift = -(threatCount * 0.8);
             }
 
-            // 4. Calculate Z-Score against Next Pick
+            // Normal Logistic Z-Score
             let effectivePick = nextActiveWindowPick + needShift;
             let z = (adp - effectivePick) / sigma;
-
-            // 5. Smooth Logistic CDF (No flat 5% plateaus)
             let prob = 1 / (1 + Math.exp(-1.6 * z));
 
             return Math.max(0.0, Math.min(1.0, prob));
         };
 
+        // 5. Store Computed Probability on Available Players
         State.availablePlayers.forEach(p => {
             p._survivalProb = getSurvivalProb(p);
         });
