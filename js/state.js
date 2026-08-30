@@ -1379,7 +1379,9 @@ const State = {
         let baseSeasonScore = 0;
         for (let w = startW; w <= endW; w++) {
             // Evaluates using optimal baselines so empty slots aren't treated as zero
-            let pts = this.calculateActualWeeklyScore(team.roster, w);
+            // ❌ INCORRECT: let pts = this.calculateActualWeeklyScore(team.roster, w);
+            // ✅ CORRECT:
+            let pts = this.calculateOptimalWeeklyScore(team.roster, w);
             baseWeeklyScores[w] = pts;
             baseSeasonScore += pts;
         }
@@ -1407,7 +1409,9 @@ const State = {
             team.roster.push(p);
             for (let w = startW; w <= endW; w++) {
                 // Now accurately tracks Value Over Replacement Player (VORP)
-                let newScore = this.calculateActualWeeklyScore(team.roster, w);
+                // ❌ INCORRECT: let newScore = this.calculateActualWeeklyScore(team.roster, w);
+                // ✅ CORRECT:
+                let newScore = this.calculateOptimalWeeklyScore(team.roster, w);
                 simSeasonScore += newScore;
 
                 let weekDiff = newScore - baseWeeklyScores[w];
