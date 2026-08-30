@@ -4407,37 +4407,36 @@ const State = {
                 p.ProjPts = 0;
                 p.floorPpg = 0;
                 p.ceilingPpg = 0;
-                ceilingTags.push("🚨 Out for Season (IR)");
+                p._ceilingTags.push("🚨 Out for Season (IR)");
             } else if (p._isMajorReturn) {
-                // Year-1 Return post-major 2025 surgery (e.g. ACL, Achilles): slight early-season pitch count
-                varianceSpread += 0.04; 
+                // Year-1 Return post-major 2025 surgery (e.g. ACL, Achilles)
+                p.floorVar = Math.min(0.65, p.floorVar + 0.04); 
                 p.AdvVBD = applySignedFactor(p.AdvVBD, 0.96); 
-                ceilingTags.push("📈 Year-1 Major Injury Return (Second-Half Surge)");
+                p._ceilingTags.push("📈 Year-1 Major Injury Return (Second-Half Surge)");
             } else if (p._isFullyCleared) {
                 // Fully cleared with no restrictions
                 p.AdvVBD = applySignedFactor(p.AdvVBD, 1.0); 
             } else if (p._isSuspended) {
-                // Games missed are ALREADY deducted in ProjPts. Only apply a small bench-stash friction discount.
+                // Games missed are ALREADY deducted in ProjPts
                 p.AdvVBD = applySignedFactor(p.AdvVBD, 0.95);
-                ceilingTags.push(`⚖️ Serving ${p._gamesSuspended || 4}-Game Suspension`);
+                p._ceilingTags.push(`⚖️ Serving ${p._gamesSuspended || 4}-Game Suspension`);
             } else if (p._isShortIR || p._isPupList) {
-                // Games missed are ALREADY deducted in ProjPts. Apply bench-stash friction & ramp-up discount.
-                varianceSpread += 0.06;
+                p.floorVar = Math.min(0.65, p.floorVar + 0.06);
                 p.AdvVBD = applySignedFactor(p.AdvVBD, 0.94); 
-                ceilingTags.push(p._isPupList ? "🚨 Starting Season on PUP List" : "🏥 Starting Season on Short-Term IR");
+                p._ceilingTags.push(p._isPupList ? "🚨 Starting Season on PUP List" : "🏥 Starting Season on Short-Term IR");
             } else if (p._isSoftTissueRisk) {
                 // Live in-camp soft-tissue re-injury risk
-                varianceSpread += 0.08;
+                p.floorVar = Math.min(0.65, p.floorVar + 0.08);
                 p.AdvVBD = applySignedFactor(p.AdvVBD, 0.92);
-                ceilingTags.push("⚠️ Live Soft Tissue Re-Injury Risk");
+                p._ceilingTags.push("⚠️ Live Soft Tissue Re-Injury Risk");
             } else if (p._isSlowRampUp) {
                 let isMajor = p._injuryPenalty === 'major_recovery';
-                varianceSpread += isMajor ? 0.08 : 0.04; 
+                p.floorVar = Math.min(0.65, p.floorVar + (isMajor ? 0.08 : 0.04));
                 p.AdvVBD = applySignedFactor(p.AdvVBD, isMajor ? 0.92 : 0.96);
             } else if (p._isMissedTime) {
-                varianceSpread += 0.05;
+                p.floorVar = Math.min(0.65, p.floorVar + 0.05);
                 p.AdvVBD = applySignedFactor(p.AdvVBD, 0.94);
-                ceilingTags.push("⚠️ Expected to Miss Time");
+                p._ceilingTags.push("⚠️ Expected to Miss Time");
             } else if (p.injuryStatus && !p._isSuspended) {
                 // Generic fallback for live tags not in TSV
                 if (['IR', 'PUP', 'NA', 'COV'].includes(p.injuryStatus.toUpperCase())) {
@@ -4451,9 +4450,17 @@ const State = {
                 }
             }
 
-            // BMI Calculator for Running Backs (BMI = 703 x (weight / height^2))
+            // Sync variance spread so legacy UI components don't break
+            p.varianceSpread = p.floorVar;
+
+            // Recalculate Floor PPG dynamically if injury widened the floor risk
+            if (p.floorPpg > 0.0) {
+                let updatedFloor = modelPpg * Math.max(0.0, 1 - (p.floorVar * 1.28));
+                p.floorPpg = Math.max(0.0, updatedFloor);
+            }
+
+            // BMI Calculator for Running Backs
             if (p.height && p.weight && p.Pos === 'RB') {
-                // Sleeper heights format e.g., "5'10" or "6-1"
                 let hMatch = String(p.height).match(/(\d+)['\-]+(\d+)/);
                 let inches = hMatch ? ((parseInt(hMatch[1]) * 12) + parseInt(hMatch[2])) : parseInt(p.height, 10);
                 let weightLbs = parseInt(p.weight, 10);
@@ -4463,56 +4470,30 @@ const State = {
                 }
             }
 
-            // Range of Outcomes / Upside Potential (Continuous & Gradient-Based)
+            // Range of Outcomes / Upside Potential Bonus (Adds ceiling metrics)
             let upsideBonus = 0;
+            let pastGp = p.pastStats?.gp || 17;
+
             if (pastGp <= 6 && p.pastPpg >= 15.0) {
                 upsideBonus += Math.min(0.20, (p.pastPpg - 14.0) * 0.015);
             }
-            if (p.aDOT && p.aDOT > 8.0) upsideBonus += Math.min(0.08, (p.aDOT - 8.0) * 0.012); // e.g. 14 aDOT = +0.072
-            if (p.hvo && p.hvo > 30) upsideBonus += Math.min(0.08, (p.hvo - 30) * 0.0015);      // e.g. 80 HVO = +0.075
-            if (p.pastStats && p.pastStats.bigPlays) upsideBonus += Math.min(0.08, p.pastStats.bigPlays * 0.006); // e.g. 10 big plays = +0.060
+            if (p.aDOT && p.aDOT > 8.0) upsideBonus += Math.min(0.08, (p.aDOT - 8.0) * 0.012); 
+            if (p.hvo && p.hvo > 30) upsideBonus += Math.min(0.08, (p.hvo - 30) * 0.0015);      
+            if (p.pastStats && p.pastStats.bigPlays) upsideBonus += Math.min(0.08, p.pastStats.bigPlays * 0.006); 
 
-            // Nuanced Positional Boom/Bust Continuous Scaling
+            // 💥 Historical Boom Rate Spike Bonus (Adds to upsideScore & UI badge)
             if (p.boomBust && p.boomBust.games >= 4) {
                 let bb = p.boomBust;
-                let sampleWeight = Math.min(1.0, bb.games / 14); // Sample size confidence weight
-
-                // Position-specific baselines (QBs naturally hit Top 12 more; TEs rarely Boom)
-                let top12Baseline = p.Pos === 'QB' ? 58 : (p.Pos === 'TE' ? 42 : 48);
+                let sampleWeight = Math.min(1.0, bb.games / 14);
                 let boomBaseline = p.Pos === 'TE' ? 12 : (p.Pos === 'QB' ? 22 : 16);
-                let bustTolerance = p.Pos === 'WR' ? 28 : (p.Pos === 'QB' ? 18 : 22);
 
-                // 🌟 NEW: Bust Exception for Role Expansion (Only if they didn't have significant volume)
-                let pastTouches = (p.pastStats?.rushAtt || 0) + (p.pastStats?.rec || 0);
-                let pastTargets = p.pastStats?.targets || 0;
-                let pastPassAtt = p.pastStats?.passAtt || 0;
-                let hasSignificantPastVolume = (p.Pos === 'RB' && pastTouches >= 100) || (['WR', 'TE'].includes(p.Pos) && pastTargets >= 60) || (p.Pos === 'QB' && pastPassAtt >= 200);
-
-                let isRoleExpansion = (p._isAscendingRole || p.isNewRole || (p._vacatedTgts >= 30) || (p._vacatedCarries >= 60) || p._inheritsGoalLineWork) && !hasSignificantPastVolume;
-                if (isRoleExpansion) {
-                    bustTolerance += 20; // Raise the tolerance significantly
-                    sampleWeight *= 0.5; // Halve the penalty impact (old sample belongs to a smaller role)
-                }
-
-                // 1. Continuous Consistency Floor Bonus
-                if (bb.top12 > top12Baseline) {
-                    adjMultiplier += ((bb.top12 - top12Baseline) * 0.0012) * sampleWeight;
-                    if (bb.top12 >= 55) p._isSafeFloor = true;
-                }
-
-                // 2. Continuous Spike-Week Upside Bonus
                 if (bb.boom > boomBaseline || bb.top6 > (boomBaseline * 1.8)) {
                     let boomDiff = Math.max(bb.boom - boomBaseline, (bb.top6 - (boomBaseline * 1.8)) * 0.5);
                     upsideBonus += (boomDiff * 0.008) * sampleWeight;
                     p._isFlyer = true;
-                    if (boomDiff >= 5 && !ceilingTags.includes("Spike Week Dominance")) {
-                        ceilingTags.push("Spike Week Dominance");
+                    if (boomDiff >= 5 && p._ceilingTags && !p._ceilingTags.includes("Spike Week Dominance")) {
+                        p._ceilingTags.push("Spike Week Dominance");
                     }
-                }
-
-                // 3. Continuous Bust Penalty
-                if (bb.bust > bustTolerance) {
-                    adjMultiplier -= ((bb.bust - bustTolerance) * 0.0015) * sampleWeight;
                 }
             }
 
