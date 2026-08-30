@@ -4472,7 +4472,7 @@ const State = {
 
             // Range of Outcomes / Upside Potential Bonus (Adds ceiling metrics)
             let upsideBonus = 0;
-            let pastGp = p.pastStats?.gp || 17;
+            pastGp = p.pastStats?.gp || 17;
 
             if (pastGp <= 6 && p.pastPpg >= 15.0) {
                 upsideBonus += Math.min(0.20, (p.pastPpg - 14.0) * 0.015);
