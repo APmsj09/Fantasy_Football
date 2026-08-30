@@ -2483,10 +2483,14 @@ const State = {
             // RESET WOPR TO RAW BEFORE APPLYING SCHEME BONUSES
             if (['WR', 'TE'].includes(p.Pos)) {
                 const teamAirYards = 3500;
-                const tgtShare = Number(p.targetShare) || 0;
+                const teamPassVol = teamDist ? (teamDist['Total Targets'] || 550) : 550;
+                // Fall back to projected target share if historical 2025 target share is missing
+                const projTgtShare = p.stats?.targets ? ((p.stats.targets / teamPassVol) * 100) : 0;
+                const tgtShare = Number(p.targetShare) || projTgtShare;
                 const airYardsShare = p.airYards ? ((Number(p.airYards) / teamAirYards) * 100) : tgtShare;
                 p.wopr = (1.5 * (tgtShare / 100)) + (0.7 * (airYardsShare / 100));
             }
+
 
             // INITIALIZE ALL MULTIPLIERS EARLY TO PREVENT REFERENCE ERRORS
             let adjMultiplier = 1.0;
@@ -3601,7 +3605,8 @@ const State = {
                     ceilingTags.push("High-Leverage PPR Space Creator");
                 }
                 // 3. Designed 1B Co-Starter (Guaranteed Standalone Flex)
-                else if (p.depthChart === 2 && snap >= 42 && projCarries >= 135 && projPts >= 140) {
+                // Allow projected touches (170+ total or 130+ carries) to qualify standalone timeshare backs (e.g. Henderson/Rhamondre)
+                else if (p.depthChart === 2 && ((snap >= 42) || (projCarries >= 130 && projPts >= 130) || ((projCarries + projTgts) >= 170))) {
                     p._rbArchetype = '1B Co-Starter';
                     p._isStandaloneCoLead = true;
                     adjMultiplier += 0.040;
@@ -3609,7 +3614,7 @@ const State = {
                     ceilingTags.push("Designed 1B Timeshare / Standalone Flex");
                 }
                 // 4. Handcuff+ (Touch Floor + Contingent Ceiling)
-                else if (p.depthChart === 2 && snap >= 28 && projPts >= 95) {
+                else if (p.depthChart === 2 && ((snap >= 28) || (projCarries >= 80 && projPts >= 90) || ((projCarries + projTgts) >= 110))) {
                     p._rbArchetype = 'Handcuff+ Stash';
                     p._isHandcuffPlus = true;
                     p._isFlyer = true;
@@ -3684,16 +3689,18 @@ const State = {
 
             // --- 2. WIDE RECEIVER 5-TIER ROUTE TREE & OPPORTUNITY MATRIX ---
             if (p.Pos === 'WR') {
-                const tgtShare = p.targetShare || 0;
+                const teamPassVol = teamDist ? (teamDist['Total Targets'] || 550) : 550;
+                const projTgtShare = p.stats?.targets ? ((p.stats.targets / teamPassVol) * 100) : 0;
+                const tgtShare = Number(p.targetShare) || projTgtShare;
                 const wopr = p.wopr || 0;
                 const adot = p.aDOT || 10.0;
                 const snap = p.snapShare || 0;
                 const ypt = p.ypt || 0;
 
-                // Tier 1: Dominant Alpha Target Funnel
-                if (tgtShare >= 25.0 || wopr >= 0.60 || (p.depthChart === 1 && (p.stats?.targets || 0) >= 135)) {
+                // Tier 1: Dominant Alpha Target Funnel (120+ targets or 24%+ share)
+                if (tgtShare >= 24.0 || wopr >= 0.58 || (p.depthChart === 1 && (p.stats?.targets || 0) >= 120)) {
                     p._wrArchetype = 'Alpha Target Funnel';
-                    adjMultiplier += 0.010; // ⚡ REDUCED: Was 0.025
+                    adjMultiplier += 0.010;
                     p._isFlyer = true;
                     upsideMultiplier += 0.20;
                     ceilingTags.push("Dominant Alpha Target Funnel");
@@ -3737,22 +3744,24 @@ const State = {
 
             // --- 3. TIGHT END 4-TIER DETACHMENT & ALIGNMENT HIERARCHY ---
             if (p.Pos === 'TE') {
-                const tgtShare = p.targetShare || 0;
+                const teamPassVol = teamDist ? (teamDist['Total Targets'] || 550) : 550;
+                const projTgtShare = p.stats?.targets ? ((p.stats.targets / teamPassVol) * 100) : 0;
+                const tgtShare = Number(p.targetShare) || projTgtShare;
                 const rzTgt = p.rzTgt || 0;
                 const projPts = p.ProjPts || 0;
                 const wopr = p.wopr || 0;
                 const snap = p.snapShare || 0;
 
-                // Tier 1: Detached Alpha "Big Slot" Weapon (Kelce, McBride, Bowers, Kittle)
-                if (tgtShare >= 18.0 || projPts >= 200 || wopr >= 0.45 || (p.depthChart === 1 && (p.stats?.targets || 0) >= 105)) {
+                // Tier 1: Detached Alpha "Big Slot" Weapon
+                if (tgtShare >= 17.5 || projPts >= 195 || wopr >= 0.44 || (p.depthChart === 1 && (p.stats?.targets || 0) >= 100)) {
                     p._teArchetype = 'Detached Alpha "Big Slot"';
                     adjMultiplier += 0.055;
                     p._isFlyer = true;
                     upsideMultiplier += 0.20;
                     ceilingTags.push("Detached TE Matchup Weapon");
                 }
-                // Tier 2: Middle-of-Field (MOF) Chain Mover (Ferguson, Engram, Njoku)
-                else if (tgtShare >= 13.5 || ((p.stats?.targets || 0) >= 75 && rzTgt >= 8)) {
+                // Tier 2: Middle-of-Field (MOF) Chain Mover (70+ targets or 13%+ share)
+                else if (tgtShare >= 13.0 || (p.depthChart === 1 && (p.stats?.targets || 0) >= 70) || ((p.stats?.targets || 0) >= 75 && (rzTgt >= 8 || (p.stats?.recTd || 0) >= 5))) {
                     p._teArchetype = 'Middle-of-Field Chain Mover';
                     adjMultiplier += 0.020;
                     p._isSafeFloor = true;
@@ -4009,10 +4018,12 @@ const State = {
                     if (!ceilingTags.includes("Elite Inherited Volume")) ceilingTags.push("Elite Inherited Volume");
                 }
 
-                // 🛡️ SAFE FLOOR TRAITS
-                let hasVolumeFloor = (p.targetShare && p.targetShare >= 10) || (p.snapShare && p.snapShare >= 60) || (p.hvo && p.hvo >= 50);
-                let hasRedZoneFloor = (p.rzAtt && p.rzAtt >= 35);
-                let hasSchemeFloor = (rushEnv && rushEnv.ybcAtt >= 2.5 && p.snapShare && p.snapShare >= 45) || (p.olTier === 'S' || p.olTier === 'A');
+                // 🛡️ SAFE FLOOR TRAITS (RB) - Accepts 2025 actuals OR 2026 projected volume
+                let projTouches = (p.stats?.rushAtt || 0) + (p.stats?.targets || 0);
+                let hasVolumeFloor = (p.targetShare && p.targetShare >= 10) ||  (p.snapShare && p.snapShare >= 60) || (p.hvo && p.hvo >= 50) || (p.depthChart === 1 && projTouches >= 200) ||(p._rbArchetype === '1B Co-Starter' && projTouches >= 170);
+
+                let hasRedZoneFloor = (p.rzAtt && p.rzAtt >= 35) || ((p.stats?.rushTd || 0) >= 7);
+                let hasSchemeFloor = (rushEnv && rushEnv.ybcAtt >= 2.5 && (p.snapShare >= 45 || p.depthChart <= 2)) || (p.olTier === 'S' || p.olTier === 'A');
 
                 // 🌟 ROOKIE/NEW STARTER INHERITED FLOOR
                 // If a rookie steps into a starting job behind an elite line or high YBC scheme, their floor is instantly safe.
@@ -4080,11 +4091,11 @@ const State = {
                     }
                 }
 
-                // 🛡️ SAFE FLOOR TRAITS
-                let hasTargetFloor = (p.targetShare && p.targetShare >= 20);
-                let hasEfficiencyFloor = (p.trueCatchRate && p.trueCatchRate >= 85.0);
-                let hasRedZoneFloor = (p.rzTgt && p.rzTgt >= 15);
-
+                // 🛡️ SAFE FLOOR TRAITS (WR/TE) - Accepts 2025 actuals OR 2026 projected targets
+                let hasTargetFloor = (p.targetShare && p.targetShare >= 20) || (p.depthChart === 1 && (p.stats?.targets || 0) >= 115);
+                let hasEfficiencyFloor = (p.trueCatchRate && p.trueCatchRate >= 85.0) || ((p.stats?.rec && p.stats?.targets) ? (p.stats.rec / p.stats.targets >= 0.68) : false);
+                let hasRedZoneFloor = (p.rzTgt && p.rzTgt >= 15) || ((p.stats?.recTd || 0) >= 7);
+                
                 // 🌟 ROOKIE/NEW STARTER INHERITED FLOOR
                 // If a rookie is named WR1/TE1 on a team that funnels targets to that position, they inherit that floor.
                 if (isInheritedStarter && teamDist) {
@@ -4344,12 +4355,15 @@ const State = {
             // A. FLOOR (10th Percentile Outcome)
             // Uses 1.28 as the z-score proxy for the 10th percentile bound.
             let rawFloor = modelPpg * Math.max(0.0, 1 - (p.varianceSpread * 1.28));
+            let totalProjTouches = (p.stats?.rushAtt || 0) + (p.stats?.targets || 0);
 
-            // Allow true 0.0 floors for players whose roles can mathematically collapse to nothing
-            if (p._rbArchetype === 'Contingent Lottery Ticket' || p._isCardioKing || p._isTDorBust) {
+            // True 0.0 floor ONLY for pure handcuffs/decoys with no standalone volume
+            let isPureZeroRole = (p._rbArchetype === 'Contingent Lottery Ticket' && totalProjTouches < 100) || p._isCardioKing || (p._isTDorBust && (p.ModelPts || p.ProjPts) < 100);
+
+            if (isPureZeroRole) {
                 p.floorPpg = 0.0; 
             } else {
-                p.floorPpg = Math.max(0.0, rawFloor); // Removes the artificial 0.2 cap
+                p.floorPpg = Math.max(0.0, rawFloor);
             }
 
             // B. CEILING (90th Percentile Outcome)
