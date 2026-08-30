@@ -67,7 +67,6 @@ window.TeamResearch = {
             });
         }
 
-        // Re-render when switching to research tab
         document.querySelectorAll('.nav-btn').forEach(btn => {
             if (btn.getAttribute('data-target') === 'research-screen') {
                 btn.addEventListener('click', () => {
@@ -77,7 +76,6 @@ window.TeamResearch = {
         });
     },
 
-    // ⚡ Compute dynamic Letter Grade & UI Colors
     getGradeDetails(score) {
         if (score >= 93) return { grade: 'A+', color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-200' };
         if (score >= 88) return { grade: 'A', color: 'text-emerald-500', bg: 'bg-emerald-50 border-emerald-200' };
@@ -92,22 +90,18 @@ window.TeamResearch = {
         return { grade: 'F', color: 'text-rose-700', bg: 'bg-rose-100 border-rose-300' };
     },
 
-    // ⚡ Target Draft Window Algorithm based on ADP & VBD
     getDraftWindow(p) {
         let adp = p.adp || (p.ovrRank ? p.ovrRank * 1.05 : 200);
-        let round = Math.floor((adp - 1) / 12) + 1;
-        let pickInRound = Math.round(((adp - 1) % 12) + 1);
 
-        if (adp <= 12) return { text: `Round 1 (Pick #${adp.toFixed(0)})`, badge: 'bg-emerald-100 text-emerald-800 border-emerald-200', category: 'Early Round Anchor' };
-        if (adp <= 24) return { text: `Round 2 (Pick #${adp.toFixed(0)})`, badge: 'bg-emerald-100 text-emerald-800 border-emerald-200', category: 'Core Foundation' };
-        if (adp <= 48) return { text: `Rounds 3–4 (Pick #${adp.toFixed(0)})`, badge: 'bg-indigo-100 text-indigo-800 border-indigo-200', category: 'Starter Target' };
-        if (adp <= 84) return { text: `Rounds 5–7 (Pick #${adp.toFixed(0)})`, badge: 'bg-indigo-50 text-indigo-700 border-indigo-100', category: 'Mid-Round Value' };
-        if (adp <= 120) return { text: `Rounds 8–10 (Pick #${adp.toFixed(0)})`, badge: 'bg-amber-100 text-amber-800 border-amber-200', category: 'Flex / High Upside' };
-        if (adp <= 168) return { text: `Rounds 11–14 (Pick #${adp.toFixed(0)})`, badge: 'bg-amber-50 text-amber-700 border-amber-100', category: 'Late-Round Stash' };
+        if (adp <= 12) return { text: `Round 1 (Pick #${Math.round(adp)})`, badge: 'bg-emerald-100 text-emerald-800 border-emerald-200', category: 'Early Round Anchor' };
+        if (adp <= 24) return { text: `Round 2 (Pick #${Math.round(adp)})`, badge: 'bg-emerald-100 text-emerald-800 border-emerald-200', category: 'Core Foundation' };
+        if (adp <= 48) return { text: `Rounds 3–4 (Pick #${Math.round(adp)})`, badge: 'bg-indigo-100 text-indigo-800 border-indigo-200', category: 'Starter Target' };
+        if (adp <= 84) return { text: `Rounds 5–7 (Pick #${Math.round(adp)})`, badge: 'bg-indigo-50 text-indigo-700 border-indigo-100', category: 'Mid-Round Value' };
+        if (adp <= 120) return { text: `Rounds 8–10 (Pick #${Math.round(adp)})`, badge: 'bg-amber-100 text-amber-800 border-amber-200', category: 'Flex / High Upside' };
+        if (adp <= 168) return { text: `Rounds 11–14 (Pick #${Math.round(adp)})`, badge: 'bg-amber-50 text-amber-700 border-amber-100', category: 'Late-Round Stash' };
         return { text: `Round 15+ / Waiver Wire`, badge: 'bg-slate-100 text-slate-700 border-slate-200', category: 'Deep Stash / Stream' };
     },
 
-    // ⚡ Player Tactical Role Tag
     getPlayerTacticalTag(p) {
         if (p.Pos === 'QB') {
             if (p.stats && p.stats.rushAtt >= 60) return { text: 'Konami Code Dual-Threat', cls: 'bg-amber-100 text-amber-800 border-amber-200' };
@@ -115,20 +109,39 @@ window.TeamResearch = {
             return { text: 'Field General Passer', cls: 'bg-indigo-100 text-indigo-800 border-indigo-200' };
         }
         if (p.Pos === 'RB') {
-            if (p.hvo && p.hvo >= 60) return { text: 'Three-Down Workhorse (HVO)', cls: 'bg-purple-100 text-purple-800 border-purple-200' };
-            if (p._isGoalLineHammer) return { text: 'Goal-Line Hammer', cls: 'bg-rose-100 text-rose-800 border-rose-200' };
-            if (p._isSatelliteBack) return { text: 'PPR Satellite Specialist', cls: 'bg-blue-100 text-blue-800 border-blue-200' };
-            if (p.isRBHandcuff) return { text: 'High-Upside Contingent Stash', cls: 'bg-emerald-100 text-emerald-800 border-emerald-200' };
+            let projCarries = p.stats?.rushAtt || 0;
+            let projTgts = p.stats?.targets || 0;
+
+            if (p._rbArchetype === 'Bellcow Alpha' || projCarries >= 235 || (p.depthChart === 1 && projCarries >= 200 && (p.hvo >= 45 || projTgts >= 40))) {
+                return { text: 'Three-Down Workhorse (Bellcow)', cls: 'bg-purple-100 text-purple-800 border-purple-200' };
+            }
+            if (p._rbArchetype === '1B Co-Starter' || ((projCarries + projTgts) >= 160 && p.depthChart === 2)) {
+                return { text: 'Designed 1B Co-Starter', cls: 'bg-indigo-100 text-indigo-800 border-indigo-200' };
+            }
+            if (p._isGoalLineHammer || (p.stats?.rushTd >= 8 && projTgts < 30)) {
+                return { text: 'Goal-Line Hammer', cls: 'bg-rose-100 text-rose-800 border-rose-200' };
+            }
+            if (p._isSatelliteBack || (projTgts >= 45 && projCarries < 130)) {
+                return { text: 'PPR Satellite Specialist', cls: 'bg-blue-100 text-blue-800 border-blue-200' };
+            }
+            if (p.isRBHandcuff || p._isHandcuffPlus) {
+                return { text: 'High-Upside Contingent Stash', cls: 'bg-emerald-100 text-emerald-800 border-emerald-200' };
+            }
             return { text: 'Early-Down Committee Lead', cls: 'bg-indigo-100 text-indigo-800 border-indigo-200' };
         }
         if (p.Pos === 'WR') {
-            if (p.targetShare >= 24.0 || (p.wopr && p.wopr >= 0.60)) return { text: 'Alpha WR1 Target Funnel', cls: 'bg-purple-100 text-purple-800 border-purple-200' };
-            if (p.aDOT && p.aDOT >= 12.5) return { text: 'Vertical Deep-Threat', cls: 'bg-rose-100 text-rose-800 border-rose-200' };
-            if (p._isShortAdotOperator) return { text: 'Slot Chain-Mover', cls: 'bg-blue-100 text-blue-800 border-blue-200' };
+            let projTgts = p.stats?.targets || 0;
+            if (p._wrArchetype === 'Alpha Target Funnel' || p.targetShare >= 23.0 || (p.wopr && p.wopr >= 0.58) || (p.depthChart === 1 && projTgts >= 120)) {
+                return { text: 'Alpha WR1 Target Funnel', cls: 'bg-purple-100 text-purple-800 border-purple-200' };
+            }
+            if (p.aDOT && p.aDOT >= 12.0) return { text: 'Vertical Deep-Threat', cls: 'bg-rose-100 text-rose-800 border-rose-200' };
+            if (p._isShortAdotOperator || (p.aDOT && p.aDOT <= 8.5 && projTgts >= 85)) return { text: 'Slot Chain-Mover', cls: 'bg-blue-100 text-blue-800 border-blue-200' };
             return { text: 'High-End WR2', cls: 'bg-indigo-100 text-indigo-800 border-indigo-200' };
         }
         if (p.Pos === 'TE') {
-            if (p.targetShare >= 18.0 || p.ProjPts >= 200) return { text: 'Elite Top-Tier Matchup Weapon', cls: 'bg-purple-100 text-purple-800 border-purple-200' };
+            if (p._teArchetype === 'Detached Alpha "Big Slot"' || p.targetShare >= 17.5 || p.ProjPts >= 195) {
+                return { text: 'Elite Top-Tier Matchup Weapon', cls: 'bg-purple-100 text-purple-800 border-purple-200' };
+            }
             if (p._isTDorBust) return { text: 'Red-Zone TD Specialist', cls: 'bg-amber-100 text-amber-800 border-amber-200' };
             return { text: 'Streamable Starting TE', cls: 'bg-indigo-100 text-indigo-800 border-indigo-200' };
         }
@@ -138,33 +151,36 @@ window.TeamResearch = {
         return { text: 'Specialist', cls: 'bg-slate-100 text-slate-800 border-slate-200' };
     },
 
-    // ⚡ Build Rich Statistical Receipts
+    // ⚡ Build Formatted Statistical Receipts (No Trailing Floating Decimals)
     getPlayerProofPoints(p) {
         let proofs = [];
+        const rInt = (val) => Math.round(Number(val) || 0).toLocaleString();
+        const rDec = (val, dec = 1) => Number(val || 0).toFixed(dec);
+
         if (p.Pos === 'QB') {
-            if (p.stats?.passYds) proofs.push(`${p.stats.passYds} Pass Yds`);
-            if (p.stats?.passTd) proofs.push(`${p.stats.passTd} Pass TDs`);
-            if (p.stats?.rushYds >= 200) proofs.push(`${p.stats.rushYds} Rush Yds`);
-            if (p.p2s && p.p2s <= 16.0) proofs.push(`Low ${p.p2s.toFixed(1)}% P2S`);
+            if (p.stats?.passYds) proofs.push(`${rInt(p.stats.passYds)} Pass Yds`);
+            if (p.stats?.passTd) proofs.push(`${rInt(p.stats.passTd)} Pass TDs`);
+            if (p.stats?.rushYds && Number(p.stats.rushYds) >= 150) proofs.push(`${rInt(p.stats.rushYds)} Rush Yds`);
+            if (p.p2s && p.p2s <= 16.0) proofs.push(`Low ${rDec(p.p2s)}% P2S`);
         } else if (p.Pos === 'RB') {
-            if (p.stats?.rushAtt) proofs.push(`${p.stats.rushAtt} Carries`);
-            if (p.hvo && p.hvo >= 30) proofs.push(`${p.hvo} HVO Touches`);
-            if (p.targetShare && p.targetShare >= 8) proofs.push(`${p.targetShare}% Tgt Share`);
-            if (p.yacAtt && p.yacAtt >= 2.8) proofs.push(`${p.yacAtt.toFixed(1)} YAC/Att`);
-            if (p.brokenTackles && p.brokenTackles >= 10) proofs.push(`${p.brokenTackles} Broken Tackles`);
+            if (p.stats?.rushAtt) proofs.push(`${rInt(p.stats.rushAtt)} Carries`);
+            if (p.hvo && p.hvo >= 30) proofs.push(`${rInt(p.hvo)} HVO Touches`);
+            if (p.targetShare && p.targetShare >= 8) proofs.push(`${rDec(p.targetShare)}% Tgt Share`);
+            if (p.yacAtt && p.yacAtt >= 2.8) proofs.push(`${rDec(p.yacAtt)} YAC/Att`);
+            if (p.brokenTackles && p.brokenTackles >= 10) proofs.push(`${rInt(p.brokenTackles)} Broken Tackles`);
         } else if (['WR', 'TE'].includes(p.Pos)) {
-            if (p.stats?.targets) proofs.push(`${p.stats.targets} Proj Targets`);
-            if (p.targetShare && p.targetShare >= 14) proofs.push(`${p.targetShare}% Tgt Share`);
-            if (p.wopr && p.wopr >= 0.45) proofs.push(`${p.wopr.toFixed(2)} WOPR`);
-            if (p.aDOT && p.aDOT >= 10.0) proofs.push(`${p.aDOT} aDOT`);
-            if (p.trueCatchRate && p.trueCatchRate >= 85) proofs.push(`${p.trueCatchRate.toFixed(1)}% Catch Rate`);
+            if (p.stats?.targets) proofs.push(`${rInt(p.stats.targets)} Proj Targets`);
+            if (p.targetShare && p.targetShare >= 14) proofs.push(`${rDec(p.targetShare)}% Tgt Share`);
+            if (p.wopr && p.wopr >= 0.45) proofs.push(`${rDec(p.wopr, 2)} WOPR`);
+            if (p.aDOT && p.aDOT >= 10.0) proofs.push(`${rDec(p.aDOT)} aDOT`);
+            if (p.trueCatchRate && p.trueCatchRate >= 85) proofs.push(`${rDec(p.trueCatchRate)}% Catch Rate`);
         } else if (p.Pos === 'DST') {
-            if (p.stats?.sack) proofs.push(`${p.stats.sack} Sacks`);
-            if (p.stats) proofs.push(`${(p.stats.defInt || 0) + (p.stats.defFum || 0)} Turnovers`);
-            if (p.stats?.papg) proofs.push(`${p.stats.papg.toFixed(1)} PAPG`);
+            if (p.stats?.sack) proofs.push(`${rInt(p.stats.sack)} Sacks`);
+            if (p.stats) proofs.push(`${rInt((p.stats.defInt || 0) + (p.stats.defFum || 0))} Turnovers`);
+            if (p.stats?.papg) proofs.push(`${rDec(p.stats.papg)} PAPG`);
         } else if (p.Pos === 'PK') {
-            if (p.stats?.fgTotal) proofs.push(`${p.stats.fgTotal} FGs`);
-            if (p.stats?.xp) proofs.push(`${p.stats.xp} PATs`);
+            if (p.stats?.fgTotal) proofs.push(`${rInt(p.stats.fgTotal)} FGs`);
+            if (p.stats?.xp) proofs.push(`${rInt(p.stats.xp)} PATs`);
         }
         return proofs;
     },
@@ -176,13 +192,11 @@ window.TeamResearch = {
         const teamCode = this.selectedTeam;
         const meta = this.nflTeams.find(t => t.code === teamCode) || this.nflTeams[0];
 
-        // 1. Fetch State Data & Players for Selected Team
+        // 1. Fetch State Data & Players
         const teamPlayers = State.allPlayers.filter(p => State.normalizeTeam(p.Team) === teamCode);
         const passEnv = State.teamAdvPass ? State.teamAdvPass[teamCode] : null;
         const rushEnv = State.teamAdvRush ? State.teamAdvRush[teamCode] : null;
-        const recEnv = State.teamAdvRec ? State.teamAdvRec[teamCode] : null;
         const teamDist = (State.teamTargets || []).find(t => State.normalizeTeam(t.Team) === teamCode) || (State.teamTargetsMap ? State.teamTargetsMap[teamCode] : null);
-        const threatObj = State.teamOffensiveThreats ? State.teamOffensiveThreats[teamCode] : null;
 
         // 2. Offense Grade Calculation
         let topSkillProj = teamPlayers
@@ -202,19 +216,23 @@ window.TeamResearch = {
         offScore = Math.max(45, Math.min(99, offScore));
         const offGrade = this.getGradeDetails(offScore);
 
-        // 3. Offensive Line Grade Calculation
+        // 3. Nuanced Offensive Line Grade Calculation (Blends Tier Base + Pass/Run Rank Precision)
         let firstOL = teamPlayers.find(p => p.olTier || p.olRank);
-        let olTier = firstOL?.olTier || 'C';
+        let olTier = (firstOL?.olTier || 'C').toUpperCase();
         let olRunBlk = firstOL?.olRunBlk ?? 16;
         let olPassBlk = firstOL?.olPassBlk ?? 16;
 
-        let olScore = 75;
-        if (olTier === 'S') olScore = 96;
-        else if (olTier === 'A') olScore = 89;
-        else if (olTier === 'B') olScore = 81;
-        else if (olTier === 'C') olScore = 73;
-        else if (olTier === 'D') olScore = 62;
-        else if (olTier === 'F') olScore = 48;
+        let tierBaseMap = { 'S': 95, 'A': 88, 'B': 81, 'C': 73, 'D': 63, 'E': 55, 'F': 48 };
+        let tierBase = tierBaseMap[olTier] || 70;
+
+        let avgRank = (olPassBlk + olRunBlk) / 2;
+        let rankScore = 100 - (avgRank * 1.6);
+        
+        let olScore = (tierBase * 0.60) + (rankScore * 0.40);
+        if (rushEnv && rushEnv.ybcAtt >= 2.8) olScore += 2;
+        else if (rushEnv && rushEnv.ybcAtt <= 2.1) olScore -= 2;
+
+        olScore = Math.max(45, Math.min(99, Math.round(olScore)));
         const olGrade = this.getGradeDetails(olScore);
 
         // 4. Defensive Unit Grade Calculation
@@ -226,7 +244,7 @@ window.TeamResearch = {
             let papg = teamDST.stats?.papg || 20.0;
             defScore = 50 + (sacks * 0.45) + (turnovers * 0.75) - (papg * 0.7);
         }
-        defScore = Math.max(45, Math.min(98, defScore));
+        defScore = Math.max(45, Math.min(98, Math.round(defScore)));
         const defGrade = this.getGradeDetails(defScore);
 
         // 5. Tactical Target Distribution & Scheme Pace
@@ -263,7 +281,7 @@ window.TeamResearch = {
             keyTakeaway = `⚖️ <strong>Balanced Offensive Spread:</strong> Volume is evenly distributed across all three skill units, making individual efficiency and touchdown conversion the primary drivers of fantasy value.`;
         }
 
-        // 7. Build Player Roster Cards
+        // 7. Render Player Roster Cards
         const renderPlayerSection = (title, icon, posFilter) => {
             const players = teamPlayers
                 .filter(p => posFilter.includes(p.Pos))
@@ -281,7 +299,11 @@ window.TeamResearch = {
                             const dWindow = this.getDraftWindow(p);
                             const tTag = this.getPlayerTacticalTag(p);
                             const proofs = this.getPlayerProofPoints(p);
-                            const ppg = ((p.ProjPts || 0) / Math.max(1, p.stats?.gp || 17)).toFixed(1);
+                            
+                            // True Active PPG Math (Max 17 Games)
+                            const activeGames = Math.min(17, Math.max(1, p.stats?.gp || 17));
+                            const ppg = (p._healthyPpg !== undefined ? p._healthyPpg : ((p.ProjPts || 0) / activeGames)).toFixed(1);
+                            
                             const depthBadge = p.depthChart ? `<span class="text-[10px] font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded border">#${p.depthChart} ${p.Pos}</span>` : '';
                             const injBadge = p.injuryStatus ? `<span class="text-[10px] font-bold bg-rose-100 text-rose-700 px-2 py-0.5 rounded border border-rose-200">🏥 ${p.injuryStatus}</span>` : '';
 
@@ -312,7 +334,7 @@ window.TeamResearch = {
                                             <span class="font-semibold text-[10px] opacity-90">${dWindow.category}</span>
                                         </div>
 
-                                        <!-- Statistical Proofs -->
+                                        <!-- Statistical Proofs (Clean Formatted) -->
                                         ${proofs.length > 0 ? `
                                         <div class="text-[11px] text-gray-600 flex flex-wrap gap-1.5 mb-1">
                                             ${proofs.map(pr => `<span class="bg-slate-50 border border-slate-200 text-slate-700 px-1.5 py-0.5 rounded font-medium">${pr}</span>`).join('')}
@@ -336,7 +358,7 @@ window.TeamResearch = {
             `;
         };
 
-        // 8. Generate Complete HTML Output
+        // 8. Output Complete HTML
         const html = `
             <div class="space-y-6">
                 <!-- Top Team Banner -->
@@ -377,7 +399,7 @@ window.TeamResearch = {
                         <span class="text-4xl font-black ${offGrade.color}">${offGrade.grade}</span>
                     </div>
 
-                    <!-- O-Line Grade -->
+                    <!-- O-Line Grade (Nuanced & Continuous) -->
                     <div class="${olGrade.bg} p-5 rounded-2xl border shadow-sm flex items-center justify-between">
                         <div>
                             <span class="text-[10px] font-extrabold uppercase tracking-widest text-gray-500 block">Trench Quality</span>
