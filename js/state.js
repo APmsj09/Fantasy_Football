@@ -2738,14 +2738,14 @@ const State = {
                     } else {
                         p._backupThreatLevel = 'Low Standalone Threat';
                         p._backupThreatNote = `${backup.Player} operates as a pure contingent backup, giving ${p.Player} an uncontested early-down lead.`;
-                        }
-                    } else {
-                        p._backupThreatLevel = 'Uncontested';
-                        p._backupThreatNote = 'No established backup threat on the depth chart.';
                     }
+                } else {
+                    p._backupThreatLevel = 'Uncontested';
+                    p._backupThreatNote = 'No established backup threat on the depth chart.';
                 }
+            }
 
-                // ⚡ APPLY MATHEMATICAL GOAL-LINE VULTURE PENALTY TO LEAD BACK
+            // ⚡ APPLY MATHEMATICAL GOAL-LINE VULTURE PENALTY TO LEAD BACK
                 if (p._backupThreatLevel === 'Goal-Line Vulture Threat') {
                     let matchupThreat = this.teamOffensiveThreats[tTeam];
                     let offenseQuality = matchupThreat ? (6.0 - matchupThreat.dstMatchupStars) : 3.0; // Scale 1.0 to 5.0
