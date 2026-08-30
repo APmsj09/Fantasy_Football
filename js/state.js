@@ -4308,16 +4308,6 @@ const State = {
             // ===========================================================
 
             p.ConsensusPts = p.ProjPts;
-
-            // 🌟 LAYER 1: BAYESIAN SMALL SAMPLE REGRESSION
-            // If a young player has an elite projection but missed significant time (small sample extrapolation),
-            // mathematical gravity dictates they regress slightly toward the positional mean.
-            let isSmallSamplePro = p.isRookie || (pAgeVal && pAgeVal <= 24 && pastGp <= 10);
-            if (isSmallSamplePro && p.ConsensusPts > rawBasePts * 1.3) {
-                let excess = p.ConsensusPts - (rawBasePts * 1.3);
-                p.ConsensusPts -= (excess * 0.15); // Shave off 15% of the elite outlier premium
-            }
-
             let baseVBD = p.ConsensusPts - rawBasePts;
 
             // Apply Asymptotic Diminishing Returns (The "Hubris Curve")
@@ -4327,10 +4317,16 @@ const State = {
             let finalMultiplier = 1.0 + dampenedDrift;
 
             p.ModelPts = p.ConsensusPts * finalMultiplier;
-            p.Edge = p.ModelPts - p.ProjPts; // Edge is evaluated against raw consensus
+            p.Edge = p.ModelPts - p.ConsensusPts;
+
+            // Derive Standard and Model VBD
+            p.VBD = baseVBD;
+            p.AdvVBD = p.ModelPts - rawBasePts;
 
             // Range of Outcomes: Statistical 10th & 90th Percentile Modeling
-            let modelPpg = (p.ModelPts) / Math.max(1, p.stats?.gp || 17);
+            // Full-season counting projections are evaluated over 17 games to prevent pace-inflation
+            let activeGames = (p._isSuspended || p._isShortIR || p._isPupList) ? Math.max(1, p.stats?.gp || 17) : 17;
+            let modelPpg = (p.ModelPts) / activeGames;
 
             // A. FLOOR (10th Percentile Outcome using floorVar)
             let rawFloor = modelPpg * Math.max(0.0, 1 - (p.floorVar * 1.28));
@@ -4357,24 +4353,22 @@ const State = {
                 p.ceilingPpg = Math.min(modelPpg * 1.10, p.ceilingPpg);
             }
 
-            // 🌟 LAYER 2: ASYMPTOTIC "HUMAN LIMITS" CEILING CAPS
-            // Historically, fantasy scoring follows a physical limit. When mathematical variance pushes 
-            // a ceiling into historic outlier territory (e.g. 30+ PPG), we gently regress it back to reality.
+            // 🌟 ASYMPTOTIC "HUMAN LIMITS" CEILING CAPS
+            // Prevents mathematical anomalies from exceeding historic peak thresholds
             let posMax = 22.0;
-            if (p.Pos === 'QB') posMax = 28.0; // e.g., Lamar 2019
-            else if (p.Pos === 'RB') posMax = 26.0; // e.g., CMC 2023
-            else if (p.Pos === 'WR') posMax = 25.0; // e.g., Kupp 2021
-            else if (p.Pos === 'TE') posMax = 20.0; // e.g., Kelce 2020
+            if (p.Pos === 'QB') posMax = 29.0; 
+            else if (p.Pos === 'RB') posMax = 27.0; 
+            else if (p.Pos === 'WR') posMax = 26.0; // Historical peak: Kupp 2021 (25.9 PPG)
+            else if (p.Pos === 'TE') posMax = 22.0; // Historical peak: Kelce 2020 (20.9 PPG)
 
             if (p.ceilingPpg > posMax * 0.85) {
                 let threshold = posMax * 0.85; 
                 let excess = p.ceilingPpg - threshold;
-                // Soft cap: approaches but rarely breaches absolute max
                 p.ceilingPpg = threshold + (excess * (posMax - threshold) / (excess + (posMax - threshold)));
             }
 
             // Probability Engine: Z-Score conversion using player's volatility
-            let stdDev = Math.max(5.0, p.ModelPts * p.floorVar); // Use floor variance to assess bust probability
+            let stdDev = Math.max(5.0, p.ModelPts * p.floorVar);
             let zScore = p.Edge / stdDev;
             
             const getNormProb = (z) => {
