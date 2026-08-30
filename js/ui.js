@@ -2090,11 +2090,7 @@ const UI = {
 
         let handcuffBadge = '';
         if (p.isRBStarter && p.handcuffName && p.handcuffName !== '—' && p.handcuffName !== '') {
-            if (p._backupThreatLevel === '1B Committee Threat' || p._backupThreatLevel === 'Passing Down Threat') {
-                pros.push(`<strong>Primary Early-Down Back:</strong> Holds the designated starting role ahead of ${p.handcuffName}.`);
-            } else {
-                pros.push(`<strong>Clear Backfield Lead:</strong> Uncontested RB1 status with designated backup (${p.handcuffName}).`);
-            }
+            handcuffBadge = `<span class="text-xs bg-slate-100 text-slate-700 border border-slate-200 px-2 py-0.5 rounded-full font-semibold">🔒 Starter (Handcuff: ${p.handcuffName})</span>`;
         } else if ((p.isRBHandcuff || p.depthChart >= 2) && p._contingentTier) {
             let badgeCls = p._contingentTier.includes('Diamond') ? 'bg-purple-100 text-purple-800 border-purple-300' : (p._contingentTier.includes('High-Ceiling') ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-slate-100 text-slate-700 border-slate-300');
             handcuffBadge = `<span class="text-xs border ${badgeCls} px-2 py-0.5 rounded-full font-bold">${p._contingentTier}</span>`;
