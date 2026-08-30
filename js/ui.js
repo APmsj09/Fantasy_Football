@@ -1581,8 +1581,8 @@ const UI = {
         if (p._isMajorReturn) {
             cons.push(`<strong>Early-Season Ramp-Up Friction (${p._injuryNote || '2025 Procedure'}):</strong> Cleared for Week 1, but historical return trends suggest limited snap shares and efficiency dips over opening weeks before reaching full speed.`);
             riskScore += 2;
-        } else if (games <= 8 && games > 0 && !isDevelopmentalDepth) {
-            cons.push(`<strong>Severe Durability Risk:</strong> Missed over half the season, playing only <strong>${games} games</strong>. Staying on the field is a major question mark.`);
+        } else if (p.pastStats && p.pastStats.gp <= 8 && p.pastStats.gp > 0) {
+            cons.push(`<strong>Severe Durability Risk:</strong> Missed over half the season, playing only <strong>${p.pastStats.gp} games</strong>. Staying on the field is a major question mark.`);
             riskScore += 3;
         }
 
