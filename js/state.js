@@ -984,6 +984,31 @@ const State = {
         });
     },
 
+    mergeBoomBustData24(bbList) {
+        if (!bbList || !Array.isArray(bbList)) return;
+        
+        // Safely converts '44%', 44, or undefined into a clean float, defaulting to 0
+        const cleanPct = (val) => typeof val === 'number' ? val : parseFloat(String(val || '0').replace('%', '')) || 0;
+
+        bbList.forEach(row => {
+            const player = row.Player || row.PLAYER;
+            const team = row.Team || row.TEAM;
+            if (!player) return;
+
+            let p = this.matchPlayerFast(player, team, '');
+            if (!p) return;
+
+            p.boomBust24 = {
+                boom: cleanPct(row['Boom']),
+                top6: cleanPct(row['Top 6']), // RBs/WRs don't have this; cleanPct safely converts it to 0
+                top12: cleanPct(row['Top 12']),
+                bust: cleanPct(row['Bust']),
+                other: cleanPct(row['Other']),
+                games: parseInt(row['Games'] || row['GAMES'], 10) || 0
+            };
+        });
+    },
+
     mergeActualStatsData(statsList) {
         if (!statsList || !Array.isArray(statsList)) return;
         this.advancedMetrics = [...this.advancedMetrics, ...statsList];
@@ -3256,6 +3281,7 @@ const State = {
                 let w25 = 0.65;
                 let w24 = 0.35;
 
+                // Injury Reversal: If 2025 was a severe injury year (<= 6 games), rely more on 2024
                 if (s25.gp <= 6 && s24.gp >= 14) {
                     w25 = 0.40;
                     w24 = 0.60;
@@ -3263,6 +3289,18 @@ const State = {
                 }
 
                 p.blendedPpg = ((p.pastPpg || 0) * w25) + ((s24.ppg || 0) * w24);
+
+                // ✨ BLEND 2024 & 2025 BOOM/BUST CONSISTENCY RATES ✨
+                if (p.boomBust && p.boomBust24 && p.boomBust.games > 0 && p.boomBust24.games > 0) {
+                    p.boomBust.boom = (p.boomBust.boom * w25) + (p.boomBust24.boom * w24);
+                    p.boomBust.top6 = ((p.boomBust.top6 || 0) * w25) + ((p.boomBust24.top6 || 0) * w24);
+                    p.boomBust.top12 = ((p.boomBust.top12 || 0) * w25) + ((p.boomBust24.top12 || 0) * w24);
+                    p.boomBust.bust = (p.boomBust.bust * w25) + (p.boomBust24.bust * w24);
+                    p.boomBust.other = ((p.boomBust.other || 0) * w25) + ((p.boomBust24.other || 0) * w24);
+                    
+                    // Combine total games (boosts sample confidence downstream)
+                    p.boomBust.games += p.boomBust24.games; 
+                }
 
                 let share25 = p.targetShare || s25.targetShare || 0;
                 let share24 = s24.targetShare || 0;
@@ -3280,6 +3318,25 @@ const State = {
                     p._isDecliningCareerArc = true;
                     adjMultiplier -= 0.035;
                 }
+            }
+            // ✨ Catch players who missed 2025 entirely (e.g. torn ACL in camp) but were active in 2024
+            else if (s24 && s24.gp > 0 && (!s25 || s25.gp === 0)) {
+                p.blendedPpg = s24.ppg || 0;
+                
+                if (p.boomBust24 && p.boomBust24.games > 0) {
+                    // Initialize the primary boomBust object using 2024 data
+                    p.boomBust = {
+                        boom: p.boomBust24.boom,
+                        top6: p.boomBust24.top6 || 0,
+                        top12: p.boomBust24.top12 || 0,
+                        bust: Math.min(100, (p.boomBust24.bust || 0) + 5), // +5% bust penalty for rust/year off
+                        games: p.boomBust24.games,
+                        other: p.boomBust24.other || 0
+                    };
+                }
+                
+                // Flag them so the narrative engine knows they are a major injury return
+                p._isMajorReturn = true; 
             }
 
             // 2nd-Level: Volume Density Check
