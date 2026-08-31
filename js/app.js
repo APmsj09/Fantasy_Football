@@ -287,7 +287,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 ...['QB', 'RB', 'WR', 'TE'].map(pos => fetchTSV(`${PREV_DATA_DIR}/${pos}_Stats.tsv`, State.parseAdvancedData.bind(State), State.mergeActualStatsData.bind(State))),
                 ...['QB', 'RB', 'WR', 'TE'].map(pos => fetchTSV(`${PREV_DATA_DIR}/Advanced${pos}Data.tsv`, State.parseAdvancedData.bind(State), State.mergeAdvancedMetrics.bind(State))),
 
-                // NEW: 2-Year Historical Actuals (2024)
+                // 2024 Stats Fetchers
+                ...['QB', 'RB', 'WR', 'TE'].map(pos => fetchTSV(`${HIST_DATA_DIR}/${pos}_Stats_${HIST_SEASON}.tsv`, State.parseHistoricalStatsData.bind(State), State.merge2024StatsData.bind(State))),
+
+                // 2024 Boom/Bust Fetchers
                 ...['QB', 'RB', 'WR', 'TE'].map(pos => fetchTSV(`${HIST_DATA_DIR}/${pos}_BB_${HIST_SEASON}.tsv`, State.parseAdvancedData.bind(State), State.mergeBoomBustData24.bind(State)))
             ]);
 
