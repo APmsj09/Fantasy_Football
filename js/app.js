@@ -231,6 +231,32 @@ document.addEventListener('DOMContentLoaded', () => {
             State.enrichPlayerMap();
             State.buildPlayerIndex(); // Build O(1) Lookup Table
 
+            // Determine ADP file based on selected scoring format
+            const scoringFmt = document.getElementById('setting-scoring-format')?.value || 'PPR';
+            let adpFileName = `${DATA_DIR}/ADP_${SEASON}.tsv`; // Your default PPR file
+            if (scoringFmt === 'HALF') adpFileName = `${DATA_DIR}/ADP_HALF_${SEASON}.tsv`;
+            else if (scoringFmt === 'STD') adpFileName = `${DATA_DIR}/ADP_STD_${SEASON}.tsv`;
+
+            const fetchADP = async () => {
+                try {
+                    let res = await fetch(adpFileName, fetchOpts);
+                    // Fall back to ADP_26.tsv if the specific Half/Std file isn't found
+                    if (!res.ok && adpFileName !== `${DATA_DIR}/ADP_${SEASON}.tsv`) {
+                        console.warn(`File ${adpFileName} not found. Falling back to default ADP_${SEASON}.tsv.`);
+                        res = await fetch(`${DATA_DIR}/ADP_${SEASON}.tsv`, fetchOpts);
+                    }
+                    if (res.ok) {
+                        const parsed = State.parseADPData(await res.text());
+                        State.mergeADPData(parsed);
+                        return parsed;
+                    } else {
+                        State.dataErrors.push(adpFileName);
+                    }
+                } catch (e) {
+                    State.dataErrors.push(adpFileName);
+                }
+            };
+
             // Load all advanced metrics concurrently (swapped to enrichPlayerData)
             await Promise.all([
                 enrichPlayerData(),
@@ -240,7 +266,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 fetchTSV(`${DATA_DIR}/Schedule_${SEASON}.tsv`, State.parseScheduleData.bind(State)),
                 fetchTSV(`${DATA_DIR}/SOS_${SEASON}.tsv`, State.parseSOSData.bind(State), State.mergeSOSData.bind(State)),
                 fetchTSV(`${DATA_DIR}/RB_Handcuffs_${SEASON}.tsv`, State.parseHandcuffData.bind(State), State.mergeHandcuffData.bind(State)),
-                fetchTSV(`${DATA_DIR}/ADP_${SEASON}.tsv`, State.parseADPData.bind(State), State.mergeADPData.bind(State)),
+                fetchADP(), // <-- DYNAMIC ADP FETCHER
                 fetchTSV(`${DATA_DIR}/Depth_Chart_${SEASON}.tsv`, State.parseDepthChartData.bind(State), State.mergeDepthChartData.bind(State)),
                 fetchTSV(`${DATA_DIR}/OL_Rank_${SEASON}.tsv`, State.parseOLRankData.bind(State), State.mergeOLRankData.bind(State)),
 
