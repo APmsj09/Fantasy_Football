@@ -490,6 +490,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const settingsDraftType = document.getElementById('setting-draft-type');
     if (settingsDraftType) settingsDraftType.addEventListener('change', () => UI.renderProfileAssignments());
 
+    const settingsScoringFormat = document.getElementById('setting-scoring-format');
+    if (settingsScoringFormat) {
+        settingsScoringFormat.addEventListener('change', (e) => {
+            const pprInput = document.getElementById('score-ppr');
+            if (pprInput) {
+                if (e.target.value === 'PPR') pprInput.value = "1";
+                if (e.target.value === 'HALF') pprInput.value = "0.5";
+                if (e.target.value === 'STD') pprInput.value = "0";
+            }
+            autoLoadData(); // Automatically re-loads the corresponding ADP file
+        });
+    }
+
     // FIX: Safely fallback `State.settings.numTeams` if it hasn't been instantiated yet to prevent crashing before UI start.
     const initialRound = Math.floor(State.currentPick / (State.settings.numTeams || 12)) + 1;
     const currentRoundEl = document.getElementById('current-round');
