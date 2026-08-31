@@ -3339,11 +3339,11 @@ const State = {
 
                 // ✨ BLEND 2024 & 2025 BOOM/BUST CONSISTENCY RATES ✨
                 if (p.boomBust && p.boomBust24 && p.boomBust.games > 0 && p.boomBust24.games > 0) {
-                    p.boomBust.boom = (p.boomBust.boom * w25) + (p.boomBust24.boom * w24);
-                    p.boomBust.top6 = ((p.boomBust.top6 || 0) * w25) + ((p.boomBust24.top6 || 0) * w24);
-                    p.boomBust.top12 = ((p.boomBust.top12 || 0) * w25) + ((p.boomBust24.top12 || 0) * w24);
-                    p.boomBust.bust = (p.boomBust.bust * w25) + (p.boomBust24.bust * w24);
-                    p.boomBust.other = ((p.boomBust.other || 0) * w25) + ((p.boomBust24.other || 0) * w24);
+                    p.boomBust.boom = Math.round((p.boomBust.boom * w25) + (p.boomBust24.boom * w24));
+                    p.boomBust.top6 = Math.round(((p.boomBust.top6 || 0) * w25) + ((p.boomBust24.top6 || 0) * w24));
+                    p.boomBust.top12 = Math.round(((p.boomBust.top12 || 0) * w25) + ((p.boomBust24.top12 || 0) * w24));
+                    p.boomBust.bust = Math.round((p.boomBust.bust * w25) + (p.boomBust24.bust * w24));
+                    p.boomBust.other = Math.round(((p.boomBust.other || 0) * w25) + ((p.boomBust24.other || 0) * w24));
                     
                     // Combine total games (boosts sample confidence downstream)
                     p.boomBust.games += p.boomBust24.games; 
