@@ -1939,7 +1939,7 @@ const UI = {
             let bb = p.boomBust;
             bbWidgetHTML = `
                 <div class="bg-slate-900 text-white p-3 rounded-xl mb-4 border border-slate-800 shadow-sm flex items-center justify-between text-xs">
-                    <span class="text-[10px] uppercase font-extrabold tracking-wider text-slate-400">2025 Weekly Finishes (${bb.games} G)</span>
+                    <span class="text-[10px] uppercase font-extrabold tracking-wider text-slate-400">${bb.games > 18 ? 'Multi-Year' : '2025'} Weekly Finishes (${bb.games} G)</span>
                     <div class="flex gap-2">
                         <span class="bg-emerald-950 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded font-bold" title="Explosive Overall Finish">💥 ${bb.boom}% Boom</span>
                         <span class="bg-indigo-950 text-indigo-300 border border-indigo-800 px-2 py-0.5 rounded font-bold" title="Top 12 Positional Finish">🥇 ${bb.top12}% Top 12</span>
