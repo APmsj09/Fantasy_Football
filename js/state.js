@@ -1170,48 +1170,92 @@ const State = {
     parseHistoricalStatsData(text) {
         const rows = text.split(/\r?\n/).filter(row => row.trim() !== '');
         if (rows.length < 2) return [];
-        const headers = rows[0].split('\t').map(h => h.trim());
+        
+        // Clean & normalize headers for case-insensitive flexible matching
+        const rawHeaders = rows[0].split('\t').map(h => h.trim());
+        const headers = rawHeaders.map(h => h.toUpperCase().replace(/[^A-Z0-9%]/g, ''));
         const parsed = [];
 
-        const cleanNum = (val) => {
-            if (val === undefined || val === null || val === '') return 0;
-            if (typeof val === 'number') return isNaN(val) ? 0 : val;
-            let num = parseFloat(String(val).replace(/,/g, '').replace('%', '').trim());
-            return isNaN(num) ? 0 : num;
+        // Helper: Find column index matching any alias
+        const findIdx = (aliases) => {
+            for (let a of aliases) {
+                let cleanA = a.toUpperCase().replace(/[^A-Z0-9%]/g, '');
+                let idx = headers.indexOf(cleanA);
+                if (idx !== -1) return idx;
+            }
+            return -1;
         };
+
+        // Helper: Extract clean float from column
+        const getNum = (vals, aliases, fallback = 0) => {
+            for (let a of aliases) {
+                let cleanA = a.toUpperCase().replace(/[^A-Z0-9%]/g, '');
+                let idx = headers.indexOf(cleanA);
+                if (idx !== -1 && vals[idx] !== undefined && vals[idx] !== '') {
+                    let num = parseFloat(String(vals[idx]).replace(/,/g, '').replace('%', '').trim());
+                    if (!isNaN(num)) return num;
+                }
+            }
+            return fallback;
+        };
+
+        const playerIdx = findIdx(['PLAYER', 'NAME', 'PLAYERNAME']);
+        const teamIdx = findIdx(['TEAM', 'TM', 'TEAMNAME']);
+        const posIdx = findIdx(['POS', 'POSITION']);
+
+        if (playerIdx === -1) return [];
 
         for (let i = 1; i < rows.length; i++) {
             const vals = rows[i].split('\t').map(v => v.trim());
-            if (vals.length < 3) continue;
+            if (vals.length <= playerIdx) continue;
 
-            const player = vals[headers.indexOf('Player')];
-            const team = vals[headers.indexOf('Team')];
+            const player = vals[playerIdx];
+            const team = teamIdx !== -1 ? vals[teamIdx] : '';
+            const pos = posIdx !== -1 ? vals[posIdx] : '';
             if (!player) continue;
+
+            // Extract Games Played (looks for G, GP, GAMES)
+            let gp = getNum(vals, ['G', 'GP', 'GAMES'], 0);
+            if (gp === 0) gp = 17; // Default only if completely missing
+
+            // Passing Stats
+            let passCmp = getNum(vals, ['CMP', 'COMP', 'PASSCMP']);
+            let passAtt = getNum(vals, ['PASSATT', 'PASSES', 'ATT']);
+            let passYds = getNum(vals, ['PASSATTYDS', 'PASSYDS', 'YDS']);
+            let passTd = getNum(vals, ['PASSATTTD', 'PASSTD', 'TD']);
+            let intVal = getNum(vals, ['INT', 'INTS', 'INTERCEPTIONS']);
+
+            // Rushing Stats (Checks specific Rush prefixes first before generic ATT/YDS/TD)
+            let rushAtt = getNum(vals, ['RUSHATT', 'CARRIES', 'RUSHES', 'ATT']);
+            let rushYds = getNum(vals, ['RUSHATTYDS', 'RUSHYDS', 'RUSHINGYDS', 'YDS']);
+            let rushTd = getNum(vals, ['RUSHATTTD', 'RUSHTD', 'RUSHINGTD', 'TD']);
+
+            // Receiving Stats
+            let tgts = getNum(vals, ['TGT', 'TARGETS']);
+            let rec = getNum(vals, ['REC', 'RECEPTIONS']);
+            let recYds = getNum(vals, ['RECYDS', 'RECEIVINGYDS', 'YDS']);
+            let recTd = getNum(vals, ['RECTD', 'RECEIVINGTD', 'TD']);
+            let tgtShare = getNum(vals, ['TGT%', 'TGTPCT', '%TM']);
+
+            // Big Plays & Fumbles
+            let bigRush = getNum(vals, ['20+RUSH', 'BIGRUSH']);
+            let bigRec = getNum(vals, ['20+REC', 'BIGREC']);
+            let fum = getNum(vals, ['FL', 'FUM', 'FUMBLESLOST']);
 
             let obj = {
                 Player: player,
                 Team: this.normalizeTeam(team),
-                gp: cleanNum(vals[headers.indexOf('G')]) || 17,
-                passCmp: cleanNum(vals[headers.indexOf('CMP')]),
-                passAtt: cleanNum(vals[headers.indexOf('PassATT')]),
-                passYds: cleanNum(vals[headers.indexOf('PassATTYDS')]),
-                passTd: cleanNum(vals[headers.indexOf('PassATTTD')]),
-                int: cleanNum(vals[headers.indexOf('INT')]),
-                rushAtt: cleanNum(vals[headers.indexOf('RushATT')]),
-                rushYds: cleanNum(vals[headers.indexOf('RushYDS')]),
-                rushTd: cleanNum(vals[headers.indexOf('RushTD')] || vals[headers.indexOf('TD')]),
-                targets: cleanNum(vals[headers.indexOf('TGT')]),
-                rec: cleanNum(vals[headers.indexOf('REC')]),
-                recYds: cleanNum(vals[headers.indexOf('RecYDS')]),
-                recTd: cleanNum(vals[headers.indexOf('RecTD')]),
-                targetShare: cleanNum(vals[headers.indexOf('TGT %')]),
-                bigRush: cleanNum(vals[headers.indexOf('20+Rush')]),
-                bigRec: cleanNum(vals[headers.indexOf('20+Rec')]),
-                fum: cleanNum(vals[headers.indexOf('FL')])
+                Pos: this.normalizePos(pos),
+                gp: gp,
+                passCmp, passAtt, passYds, passTd, int: intVal,
+                rushAtt, rushYds, rushTd,
+                targets: tgts, rec, recYds, recTd, targetShare: tgtShare,
+                bigRush, bigRec,
+                bigPlays: (bigRush || 0) + (bigRec || 0),
+                fum,
+                totalTd: (passTd || 0) + (rushTd || 0) + (recTd || 0)
             };
 
-            obj.bigPlays = (obj.bigRush || 0) + (obj.bigRec || 0);
-            obj.totalTd = (obj.passTd || 0) + (obj.rushTd || 0) + (obj.recTd || 0);
             parsed.push(obj);
         }
         return parsed;
@@ -1221,7 +1265,8 @@ const State = {
         if (!statsList || !Array.isArray(statsList)) return;
 
         statsList.forEach(row => {
-            let p = this.matchPlayerFast(row.Player, row.Team, '');
+            // Pass pos and team for fast matching
+            let p = this.matchPlayerFast(row.Player, row.Team, row.Pos || '');
             if (!p) return;
 
             if (!p.stats2024) p.stats2024 = {};
