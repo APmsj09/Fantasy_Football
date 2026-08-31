@@ -1171,8 +1171,11 @@ const State = {
         const rows = text.split(/\r?\n/).filter(row => row.trim() !== '');
         if (rows.length < 2) return [];
         
+        // ⚡ DYNAMIC DELIMITER: Safely handles both TSV and CSV formats
+        const delimiter = rows[0].includes('\t') ? '\t' : ',';
+        
         // Clean & normalize headers for case-insensitive flexible matching
-        const rawHeaders = rows[0].split('\t').map(h => h.trim());
+        const rawHeaders = rows[0].split(delimiter).map(h => h.trim());
         const headers = rawHeaders.map(h => h.toUpperCase().replace(/[^A-Z0-9%]/g, ''));
         const parsed = [];
 
@@ -1206,7 +1209,7 @@ const State = {
         if (playerIdx === -1) return [];
 
         for (let i = 1; i < rows.length; i++) {
-            const vals = rows[i].split('\t').map(v => v.trim());
+            const vals = rows[i].split(delimiter).map(v => v.trim());
             if (vals.length <= playerIdx) continue;
 
             const player = vals[playerIdx];
@@ -1291,7 +1294,6 @@ const State = {
             p.stats2024.ppg = (row.gp > 0) ? (pts24 / row.gp) : 0;
         });
     },
-
     calculateOptimalWeeklyScore(roster, weekNum) {
         let qb = []; let rb = []; let wr = []; let te = []; let pk = []; let dst = [];
 
