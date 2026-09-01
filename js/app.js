@@ -79,9 +79,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (target === 'research-screen' && window.TeamResearch) {
-            TeamResearch.render();
+                TeamResearch.render();
             }
-            
+
         });
     });
 
@@ -563,12 +563,13 @@ document.addEventListener('DOMContentLoaded', () => {
         r.WR.max = getInt('pos-wr', 2);
         r.TE.max = getInt('pos-te', 1);
         r.FlexRBWR = { max: getInt('pos-flex-rbwr', 0) };
+        r.FlexWRTE = { max: getInt('pos-flex-wrte', 0) }; // ⚡ NEW
         r.Flex = { max: getInt('pos-flex', 0) };
         r.Superflex = { max: getInt('pos-superflex', 0) };
         r.PK.max = getInt('pos-pk', 1);
         r.DST.max = getInt('pos-dst', 1);
         r.Bench.max = getInt('pos-bn', 6);
-        r.totalSize = r.QB.max + r.RB.max + r.WR.max + r.TE.max + r.FlexRBWR.max + r.Flex.max + r.Superflex.max + r.PK.max + r.DST.max + r.Bench.max;
+        r.totalSize = r.QB.max + r.RB.max + r.WR.max + r.TE.max + r.FlexRBWR.max + r.FlexWRTE.max + r.Flex.max + r.Superflex.max + r.PK.max + r.DST.max + r.Bench.max;
 
         const getNum = (id, fallback) => {
             const el = document.getElementById(id);
@@ -599,7 +600,7 @@ document.addEventListener('DOMContentLoaded', () => {
         State.scoring.rush2pt = getNum('score-rush-2pt', 2);
         State.scoring.rec2pt = getNum('score-rec-2pt', 2);
         State.scoring.def2ptRet = getNum('score-def-2pt', 2);
-        
+
         State.scoring.pass300Bonus = getNum('score-pass-300', 1);
         State.scoring.pass400Bonus = getNum('score-pass-400', 3);
         State.scoring.rush100Bonus = getNum('score-rush-100', 1);
@@ -618,7 +619,7 @@ document.addEventListener('DOMContentLoaded', () => {
         State.scoring.turnover = getNum('score-turnover', 2);
         State.scoring.defTd = getNum('score-deftd', 6);
         State.scoring.safety = getNum('score-safety', 2);
-        
+
         State.calculateProjections();
         State.applyDynamicDSTSOS();
         State.calculateVBD();
@@ -649,6 +650,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 slot = player.Pos;
             } else if (['RB', 'WR'].includes(player.Pos) && team.counts['FlexRBWR'] < (State.settings.roster.FlexRBWR?.max || 0)) {
                 slot = 'FlexRBWR';
+            } else if (['WR', 'TE'].includes(player.Pos) && team.counts['FlexWRTE'] < (State.settings.roster.FlexWRTE?.max || 0)) {
+                slot = 'FlexWRTE'; // ⚡ NEW W/T SLOT
             } else if (['RB', 'WR', 'TE'].includes(player.Pos) && team.counts['Flex'] < (State.settings.roster.Flex?.max || 0)) {
                 slot = 'Flex';
             } else if (['QB', 'RB', 'WR', 'TE'].includes(player.Pos) && team.counts['Superflex'] < (State.settings.roster.Superflex?.max || 0)) {

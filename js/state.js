@@ -19,7 +19,7 @@ const State = {
         startWeek: 1, endWeek: 17, decimalPlaces: 2,
         roster: {
             QB: { max: 1 }, RB: { max: 2 }, WR: { max: 2 }, TE: { max: 1 },
-            FlexRBWR: { max: 0 }, Flex: { max: 2 }, Superflex: { max: 0 },
+            FlexRBWR: { max: 0 }, FlexWRTE: { max: 0 }, Flex: { max: 2 }, Superflex: { max: 0 },
             PK: { max: 1 }, DST: { max: 1 }, Bench: { max: 6 }, totalSize: 16
         }
     },
@@ -105,8 +105,9 @@ const State = {
     isPositionFlexEligible(pos) {
         const r = this.settings.roster;
         if (!r) return false;
-        if (['RB', 'WR'].includes(pos) && (r.FlexRBWR?.max > 0 || r.Flex?.max > 0 || r.Superflex?.max > 0)) return true;
-        if (pos === 'TE' && (r.Flex?.max > 0 || r.Superflex?.max > 0)) return true;
+        if (pos === 'RB' && (r.FlexRBWR?.max > 0 || r.Flex?.max > 0 || r.Superflex?.max > 0)) return true;
+        if (pos === 'WR' && (r.FlexRBWR?.max > 0 || r.FlexWRTE?.max > 0 || r.Flex?.max > 0 || r.Superflex?.max > 0)) return true;
+        if (pos === 'TE' && (r.FlexWRTE?.max > 0 || r.Flex?.max > 0 || r.Superflex?.max > 0)) return true;
         if (pos === 'QB' && r.Superflex?.max > 0) return true;
         return false;
     },
@@ -1324,50 +1325,66 @@ const State = {
         for (let i = 0; i < req.PK.max; i++) score += (i < pk.length) ? Math.max(pk[i], b.PK || 7.0) : (b.PK || 7.0);
         for (let i = 0; i < req.DST.max; i++) score += (i < dst.length) ? Math.max(dst[i], b.DST || 7.0) : (b.DST || 7.0);
 
-        // 3. RB/WR/TE SCORING (Process pools separately for overflow cascades)
-        let processPos = (arr, maxReq, posKey, overflowTarget) => {
+        // 3. RB/WR/TE SCORING (Smart-Routing Pool Scanner)
+        let processPos = (arr, maxReq, posKey, overflowTarget, typeStr) => {
             let s = 0; let bVal = b[posKey] || 10.0;
             arr.sort((a, b) => b - a);
             for (let i = 0; i < maxReq; i++) {
                 if (i < arr.length) s += Math.max(arr[i], bVal);
                 else s += bVal;
             }
-            for (let i = maxReq; i < arr.length; i++) overflowTarget.push(arr[i]);
+            for (let i = maxReq; i < arr.length; i++) overflowTarget.push({ val: arr[i], type: typeStr });
             return s;
         };
 
-        let rbwrOverflow = [];
-        score += processPos(rb, req.RB.max, 'RB', rbwrOverflow);
-        score += processPos(wr, req.WR.max, 'WR', rbwrOverflow);
+        let overflowAll = [];
+        score += processPos(rb, req.RB.max, 'RB', overflowAll, 'RB');
+        score += processPos(wr, req.WR.max, 'WR', overflowAll, 'WR');
+        score += processPos(te, req.TE.max, 'TE', overflowAll, 'TE');
 
-        let teOverflow = [];
-        score += processPos(te, req.TE.max, 'TE', teOverflow);
+        // Sort descending so the highest scoring players get assigned first
+        overflowAll.sort((a, b) => b.val - a.val);
 
-        // 4. RB/WR FLEX SCORING
-        rbwrOverflow.sort((a, b) => b - a);
-        let rbwrBaseline = Math.max((b.RB || 10.5), (b.WR || 11.0));
-        for (let i = 0; i < (req.FlexRBWR?.max || 0); i++) {
-            if (i < rbwrOverflow.length) score += Math.max(rbwrOverflow[i], rbwrBaseline);
-            else score += rbwrBaseline;
+        // 4. SMART-ROUTING FLEX CASCADE (Handles RB/WR, W/T, and Standard Flex)
+        let flexRBWRCap = req.FlexRBWR?.max || 0;
+        let flexWRTECap = req.FlexWRTE?.max || 0;
+        let flexCap = req.Flex?.max || 0;
+
+        let flexRBWRBase = Math.max((b.RB || 10.5), (b.WR || 11.0));
+        let flexWRTEBase = Math.max((b.WR || 11.0), (b.TE || 7.5));
+        let flexBase = Math.max((b.RB || 10.5), (b.WR || 11.0), (b.TE || 7.5));
+
+        let unusedOverflow = [];
+
+        for (let item of overflowAll) {
+            let slotted = false;
+            
+            if (item.type === 'WR') {
+                // Smart-Route: WRs prefer FlexWRTE to leave FlexRBWR open for RBs
+                if (flexWRTECap > 0) { score += Math.max(item.val, flexWRTEBase); flexWRTECap--; slotted = true; }
+                else if (flexRBWRCap > 0) { score += Math.max(item.val, flexRBWRBase); flexRBWRCap--; slotted = true; }
+                else if (flexCap > 0) { score += Math.max(item.val, flexBase); flexCap--; slotted = true; }
+            } else if (item.type === 'RB') {
+                if (flexRBWRCap > 0) { score += Math.max(item.val, flexRBWRBase); flexRBWRCap--; slotted = true; }
+                else if (flexCap > 0) { score += Math.max(item.val, flexBase); flexCap--; slotted = true; }
+            } else if (item.type === 'TE') {
+                if (flexWRTECap > 0) { score += Math.max(item.val, flexWRTEBase); flexWRTECap--; slotted = true; }
+                else if (flexCap > 0) { score += Math.max(item.val, flexBase); flexCap--; slotted = true; }
+            }
+            
+            if (!slotted) unusedOverflow.push(item);
         }
 
-        // Combine remaining RB/WR and TE for standard Flex
-        let flexPool = [];
-        for (let i = (req.FlexRBWR?.max || 0); i < rbwrOverflow.length; i++) flexPool.push(rbwrOverflow[i]);
-        flexPool.push(...teOverflow);
+        // Add baseline values for any Flex slots left entirely empty
+        for (let i = 0; i < flexRBWRCap; i++) score += flexRBWRBase;
+        for (let i = 0; i < flexWRTECap; i++) score += flexWRTEBase;
+        for (let i = 0; i < flexCap; i++) score += flexBase;
 
-        // 5. STANDARD FLEX (W/R/T) SCORING
-        flexPool.sort((a, b) => b - a);
-        let flexBaseline = Math.max((b.RB || 10.5), (b.WR || 11.0), (b.TE || 7.5));
-        for (let i = 0; i < (req.Flex?.max || 0); i++) {
-            if (i < flexPool.length) score += Math.max(flexPool[i], flexBaseline);
-            else score += flexBaseline;
-        }
-        for (let i = (req.Flex?.max || 0); i < flexPool.length; i++) superflexPool.push(flexPool[i]);
+        // 5. SUPERFLEX SCORING
+        for (let item of unusedOverflow) superflexPool.push(item.val);
 
-        // 6. SUPERFLEX SCORING
         superflexPool.sort((a, b) => b - a);
-        let sfBaseline = Math.max(flexBaseline, (b.QB || 18.0));
+        let sfBaseline = Math.max(flexBase, (b.QB || 18.0));
         for (let i = 0; i < (req.Superflex?.max || 0); i++) {
             if (i < superflexPool.length) score += Math.max(superflexPool[i], sfBaseline);
             else score += sfBaseline;
@@ -1402,37 +1419,45 @@ const State = {
         for (let i = 0; i < req.PK.max; i++) if (i < pk.length) score += pk[i];
         for (let i = 0; i < req.DST.max; i++) if (i < dst.length) score += dst[i];
 
-        let processPos = (arr, maxReq, overflowTarget) => {
+        let processPos = (arr, maxReq, overflowTarget, typeStr) => {
             let s = 0;
             arr.sort((a, b) => b - a);
             for (let i = 0; i < maxReq; i++) {
                 if (i < arr.length) s += arr[i];
             }
-            for (let i = maxReq; i < arr.length; i++) overflowTarget.push(arr[i]);
+            for (let i = maxReq; i < arr.length; i++) overflowTarget.push({ val: arr[i], type: typeStr });
             return s;
         };
 
-        let rbwrOverflow = [];
-        score += processPos(rb, req.RB.max, rbwrOverflow);
-        score += processPos(wr, req.WR.max, rbwrOverflow);
+        let overflowAll = [];
+        score += processPos(rb, req.RB.max, overflowAll, 'RB');
+        score += processPos(wr, req.WR.max, overflowAll, 'WR');
+        score += processPos(te, req.TE.max, overflowAll, 'TE');
 
-        let teOverflow = [];
-        score += processPos(te, req.TE.max, teOverflow);
+        overflowAll.sort((a, b) => b.val - a.val);
 
-        rbwrOverflow.sort((a, b) => b - a);
-        for (let i = 0; i < (req.FlexRBWR?.max || 0); i++) {
-            if (i < rbwrOverflow.length) score += rbwrOverflow[i];
+        let flexRBWRCap = req.FlexRBWR?.max || 0;
+        let flexWRTECap = req.FlexWRTE?.max || 0;
+        let flexCap = req.Flex?.max || 0;
+        let unusedOverflow = [];
+
+        for (let item of overflowAll) {
+            let slotted = false;
+            if (item.type === 'WR') {
+                if (flexWRTECap > 0) { score += item.val; flexWRTECap--; slotted = true; }
+                else if (flexRBWRCap > 0) { score += item.val; flexRBWRCap--; slotted = true; }
+                else if (flexCap > 0) { score += item.val; flexCap--; slotted = true; }
+            } else if (item.type === 'RB') {
+                if (flexRBWRCap > 0) { score += item.val; flexRBWRCap--; slotted = true; }
+                else if (flexCap > 0) { score += item.val; flexCap--; slotted = true; }
+            } else if (item.type === 'TE') {
+                if (flexWRTECap > 0) { score += item.val; flexWRTECap--; slotted = true; }
+                else if (flexCap > 0) { score += item.val; flexCap--; slotted = true; }
+            }
+            if (!slotted) unusedOverflow.push(item);
         }
 
-        let flexPool = [];
-        for (let i = (req.FlexRBWR?.max || 0); i < rbwrOverflow.length; i++) flexPool.push(rbwrOverflow[i]);
-        flexPool.push(...teOverflow);
-
-        flexPool.sort((a, b) => b - a);
-        for (let i = 0; i < (req.Flex?.max || 0); i++) {
-            if (i < flexPool.length) score += flexPool[i];
-        }
-        for (let i = (req.Flex?.max || 0); i < flexPool.length; i++) superflexPool.push(flexPool[i]);
+        for (let item of unusedOverflow) superflexPool.push(item.val);
 
         superflexPool.sort((a, b) => b - a);
         for (let i = 0; i < (req.Superflex?.max || 0); i++) {
@@ -1465,6 +1490,7 @@ const State = {
             // Safe check: Ensure position exists in roster settings
             if (posConfig && team.counts[pos] < posConfig.max) return true;
             if (['RB', 'WR'].includes(pos) && team.counts['FlexRBWR'] < (this.settings.roster.FlexRBWR?.max || 0)) return true;
+            if (['WR', 'TE'].includes(pos) && team.counts['FlexWRTE'] < (this.settings.roster.FlexWRTE?.max || 0)) return true;
             if (['RB', 'WR', 'TE'].includes(pos) && team.counts['Flex'] < (this.settings.roster.Flex?.max || 0)) return true;
             if (['QB', 'RB', 'WR', 'TE'].includes(pos) && team.counts['Superflex'] < (this.settings.roster.Superflex?.max || 0)) return true;
             if (team.counts['Bench'] < (this.settings.roster.Bench?.max || 6)) return true;
@@ -1527,11 +1553,12 @@ const State = {
         let isStarterOpen = currentCount < starterMax;
         
         let isFlexRBWROpen = ['RB', 'WR'].includes(pos) && (team.counts['FlexRBWR'] < (this.settings.roster.FlexRBWR?.max || 0));
+        let isFlexWRTEOpen = ['WR', 'TE'].includes(pos) && (team.counts['FlexWRTE'] < (this.settings.roster.FlexWRTE?.max || 0));
         let isFlexOpen = ['RB', 'WR', 'TE'].includes(pos) && (team.counts['Flex'] < (this.settings.roster.Flex?.max || 0));
         let isSuperflexOpen = ['QB', 'RB', 'WR', 'TE'].includes(pos) && (team.counts['Superflex'] < (this.settings.roster.Superflex?.max || 0));
         let isBenchOpen = team.counts['Bench'] < (this.settings.roster.Bench?.max || 6);
 
-        let isAnyStartingSlotOpen = isStarterOpen || isFlexRBWROpen || isFlexOpen || isSuperflexOpen;
+        let isAnyStartingSlotOpen = isStarterOpen || isFlexRBWROpen || isFlexWRTEOpen || isFlexOpen || isSuperflexOpen;
 
         if (!isStarterOpen && !isAnyStartingSlotOpen && !isBenchOpen) {
             return { totalDraftValue: -999, isDraftable: false }; 
@@ -1570,6 +1597,36 @@ const State = {
         }
 
         // 👇 RESTORE THIS MISSING BLOCK 👇
+        if (isStarterOpen) {
+            let baseNeed = this.weights.starterNeed || 25;
+            let urgencyMultiplier = 1.0;
+            
+            let isSuperflexLeague = (this.settings.roster.Superflex?.max > 0);
+
+            if (pos === 'QB' && isSuperflexLeague) {
+                // Superflex: QBs are the most scarce asset; urgency is high immediately (Rds 1-3)
+                urgencyMultiplier = Math.max(0.75, Math.min(1.0, currentRound / 3.0));
+            } else if (['QB', 'TE'].includes(pos)) {
+                // Standard "Onesie" positions: Delay panic until mid-rounds (Starts rising at Rd 5)
+                urgencyMultiplier = Math.max(0.0, Math.min(1.0, (currentRound - 5) / 6.0));
+            } else if (['RB', 'WR'].includes(pos)) {
+                // Core flex positions: Steady immediate urgency (50% in Rd 1, 100% by Rd 5)
+                urgencyMultiplier = Math.max(0.50, Math.min(1.0, currentRound / 5.0));
+            } else if (['PK', 'DST'].includes(pos)) {
+                // Streaming positions: Zero urgency until the final 2 rounds
+                const totalRounds = this.settings.roster.totalSize || 16;
+                urgencyMultiplier = (currentRound >= totalRounds - 2) ? 1.0 : 0.0;
+            }
+
+            starterBonus = baseNeed * urgencyMultiplier;
+        } 
+        else if (isFlexRBWROpen || isFlexWRTEOpen || isFlexOpen || isSuperflexOpen) {
+            // Smoothly scale the Flex need so early-round Flex picks are highly valued
+            let baseFlexNeed = this.weights.flexNeed || 15;
+            let flexUrgency = Math.max(0.60, Math.min(1.0, currentRound / 7.0));
+            starterBonus = baseFlexNeed * flexUrgency;
+        }
+
         // Scarcity Tier Cliff bonus
         let scarcityBonus = 0;
         let tiers = this.getPositionalTiers(pos);
@@ -1600,8 +1657,9 @@ const State = {
         let rosterOveragePenalty = 1.0;
         if (!isAnyStartingSlotOpen) {
             let effectiveStarterMax = starterMax;
-            if (['RB', 'WR'].includes(pos)) effectiveStarterMax += (this.settings.roster.FlexRBWR?.max || 0) + (this.settings.roster.Flex?.max || 0);
-            if (pos === 'TE') effectiveStarterMax += (this.settings.roster.Flex?.max || 0);
+            if (pos === 'RB') effectiveStarterMax += (this.settings.roster.FlexRBWR?.max || 0) + (this.settings.roster.Flex?.max || 0);
+            if (pos === 'WR') effectiveStarterMax += (this.settings.roster.FlexRBWR?.max || 0) + (this.settings.roster.FlexWRTE?.max || 0) + (this.settings.roster.Flex?.max || 0);
+            if (pos === 'TE') effectiveStarterMax += (this.settings.roster.FlexWRTE?.max || 0) + (this.settings.roster.Flex?.max || 0);
             if (['QB', 'RB', 'WR', 'TE'].includes(pos)) effectiveStarterMax += (this.settings.roster.Superflex?.max || 0);
     
             let totalPosCount = team.roster.filter(r => r.Pos === pos).length;
@@ -2538,6 +2596,7 @@ const State = {
 
             // Dynamically scale baselines based on User Roster Settings
             let flexRBWR = this.settings.roster.FlexRBWR?.max || 0;
+            let flexWRTE = this.settings.roster.FlexWRTE?.max || 0; // ⚡ NEW
             let flex = this.settings.roster.Flex?.max || 0;
             let superFlex = this.settings.roster.Superflex?.max || 0;
             let bench = this.settings.roster.Bench?.max || 6;
@@ -2549,12 +2608,12 @@ const State = {
             } else if (pos === 'RB') {
                 starters = Math.floor(numTeams * (maxPos + (flexRBWR * 0.5) + (flex * 0.4) + (bench * 0.35)));
             } else if (pos === 'WR') {
-                starters = Math.floor(numTeams * (maxPos + (flexRBWR * 0.5) + (flex * 0.5) + (bench * 0.40)));
+                starters = Math.floor(numTeams * (maxPos + (flexRBWR * 0.5) + (flexWRTE * 0.5) + (flex * 0.4) + (bench * 0.40))); // ⚡ Added flexWRTE
             } else if (pos === 'TE') {
-                starters = Math.floor(numTeams * (maxPos + (flex * 0.1) + (bench * 0.05)));
+                starters = Math.floor(numTeams * (maxPos + (flexWRTE * 0.2) + (flex * 0.1) + (bench * 0.05))); // ⚡ Added flexWRTE
                 if (this.scoring.tePremium > 0) starters = Math.floor(starters * 1.2);
             } else if (pos === 'PK' || pos === 'DST') {
-                starters = Math.floor(numTeams * maxPos); // No bench representation needed for kicker/defense baselines
+                starters = Math.floor(numTeams * maxPos); 
             }
             
             // Ensure minimum 1 starter per team if maxPos > 0
@@ -5017,7 +5076,7 @@ const State = {
                 isCPU: this.settings.draftMode === 'mock' ? !isUser : false,
                 profile: profile, 
                 roster: [],
-                counts: { QB: 0, RB: 0, WR: 0, TE: 0, FlexRBWR: 0, Flex: 0, Superflex: 0, PK: 0, DST: 0, Bench: 0 }
+                counts: { QB: 0, RB: 0, WR: 0, TE: 0, FlexRBWR: 0, FlexWRTE: 0, Flex: 0, Superflex: 0, PK: 0, DST: 0, Bench: 0 }
             };
             teamIds.push(id);
         }

@@ -6,7 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pro Fantasy Draft Assistant</title>
     <!-- Inline Favicon to fix 404 -->
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏈</text></svg>">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏈</text></svg>">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
@@ -62,7 +63,7 @@
                 </svg>
                 <span class="nav-label">Player Database</span>
             </button>
-            
+
             <button class="nav-btn w-full flex items-center space-x-3 px-3 py-3 rounded-lg"
                 data-target="research-screen">
                 <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -72,7 +73,7 @@
                 </svg>
                 <span class="nav-label">Team Research</span>
             </button>
-            
+
             <button class="nav-btn w-full flex items-center space-x-3 px-3 py-3 rounded-lg"
                 data-target="drafting-screen" id="nav-draft-board">
                 <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -281,43 +282,65 @@
                     <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 text-sm">
                         <div>
                             <label class="text-gray-600 block mb-1 truncate font-bold text-[11px] uppercase">QB</label>
-                            <input type="number" id="pos-qb" value="1" class="w-full border border-gray-300 rounded-lg p-2.5 text-center font-semibold focus:ring-2 focus:ring-indigo-500 outline-none">
+                            <input type="number" id="pos-qb" value="1"
+                                class="w-full border border-gray-300 rounded-lg p-2.5 text-center font-semibold focus:ring-2 focus:ring-indigo-500 outline-none">
                         </div>
                         <div>
                             <label class="text-gray-600 block mb-1 truncate font-bold text-[11px] uppercase">RB</label>
-                            <input type="number" id="pos-rb" value="2" class="w-full border border-gray-300 rounded-lg p-2.5 text-center font-semibold focus:ring-2 focus:ring-indigo-500 outline-none">
+                            <input type="number" id="pos-rb" value="2"
+                                class="w-full border border-gray-300 rounded-lg p-2.5 text-center font-semibold focus:ring-2 focus:ring-indigo-500 outline-none">
                         </div>
                         <div>
                             <label class="text-gray-600 block mb-1 truncate font-bold text-[11px] uppercase">WR</label>
-                            <input type="number" id="pos-wr" value="2" class="w-full border border-gray-300 rounded-lg p-2.5 text-center font-semibold focus:ring-2 focus:ring-indigo-500 outline-none">
+                            <input type="number" id="pos-wr" value="2"
+                                class="w-full border border-gray-300 rounded-lg p-2.5 text-center font-semibold focus:ring-2 focus:ring-indigo-500 outline-none">
                         </div>
                         <div>
                             <label class="text-gray-600 block mb-1 truncate font-bold text-[11px] uppercase">TE</label>
-                            <input type="number" id="pos-te" value="1" class="w-full border border-gray-300 rounded-lg p-2.5 text-center font-semibold focus:ring-2 focus:ring-indigo-500 outline-none">
+                            <input type="number" id="pos-te" value="1"
+                                class="w-full border border-gray-300 rounded-lg p-2.5 text-center font-semibold focus:ring-2 focus:ring-indigo-500 outline-none">
                         </div>
                         <div>
-                            <label class="text-gray-600 block mb-1 truncate font-bold text-[11px] uppercase">FLEX (RB/WR)</label>
-                            <input type="number" id="pos-flex-rbwr" value="0" class="w-full border border-gray-300 rounded-lg p-2.5 text-center bg-gray-50 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none">
+                            <label class="text-gray-600 block mb-1 truncate font-bold text-[11px] uppercase">FLEX
+                                (RB/WR)</label>
+                            <input type="number" id="pos-flex-rbwr" value="0"
+                                class="w-full border border-gray-300 rounded-lg p-2.5 text-center bg-gray-50 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none">
                         </div>
                         <div>
-                            <label class="text-gray-600 block mb-1 truncate font-bold text-[11px] uppercase">FLEX (W/R/T)</label>
-                            <input type="number" id="pos-flex" value="2" class="w-full border border-gray-300 rounded-lg p-2.5 text-center bg-gray-50 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none">
+                            <label class="text-gray-600 block mb-1 truncate font-bold text-[11px] uppercase">FLEX
+                                (W/T)</label>
+                            <input type="number" id="pos-flex-wrte" value="0"
+                                class="w-full border border-gray-300 rounded-lg p-2.5 text-center bg-gray-50 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none">
                         </div>
                         <div>
-                            <label class="text-indigo-600 block mb-1 truncate font-bold text-[11px] uppercase">SUPERFLEX</label>
-                            <input type="number" id="pos-superflex" value="0" class="w-full border border-indigo-300 rounded-lg p-2.5 text-center bg-indigo-50 font-bold text-indigo-700 shadow-sm outline-none" title="Allows QB/RB/WR/TE">
+                            <label class="text-gray-600 block mb-1 truncate font-bold text-[11px] uppercase">FLEX
+                                (W/R/T)</label>
+                            <input type="number" id="pos-flex" value="2"
+                                class="w-full border border-gray-300 rounded-lg p-2.5 text-center bg-gray-50 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none">
                         </div>
                         <div>
-                            <label class="text-gray-600 block mb-1 truncate font-bold text-[11px] uppercase">Kicker</label>
-                            <input type="number" id="pos-pk" value="1" class="w-full border border-gray-300 rounded-lg p-2.5 text-center font-semibold focus:ring-2 focus:ring-indigo-500 outline-none">
+                            <label
+                                class="text-indigo-600 block mb-1 truncate font-bold text-[11px] uppercase">SUPERFLEX</label>
+                            <input type="number" id="pos-superflex" value="0"
+                                class="w-full border border-indigo-300 rounded-lg p-2.5 text-center bg-indigo-50 font-bold text-indigo-700 shadow-sm outline-none"
+                                title="Allows QB/RB/WR/TE">
+                        </div>
+                        <div>
+                            <label
+                                class="text-gray-600 block mb-1 truncate font-bold text-[11px] uppercase">Kicker</label>
+                            <input type="number" id="pos-pk" value="1"
+                                class="w-full border border-gray-300 rounded-lg p-2.5 text-center font-semibold focus:ring-2 focus:ring-indigo-500 outline-none">
                         </div>
                         <div>
                             <label class="text-gray-600 block mb-1 truncate font-bold text-[11px] uppercase">DST</label>
-                            <input type="number" id="pos-dst" value="1" class="w-full border border-gray-300 rounded-lg p-2.5 text-center font-semibold focus:ring-2 focus:ring-indigo-500 outline-none">
+                            <input type="number" id="pos-dst" value="1"
+                                class="w-full border border-gray-300 rounded-lg p-2.5 text-center font-semibold focus:ring-2 focus:ring-indigo-500 outline-none">
                         </div>
                         <div>
-                            <label class="text-gray-600 block mb-1 truncate font-bold text-[11px] uppercase">Bench</label>
-                            <input type="number" id="pos-bn" value="6" class="w-full border border-gray-300 rounded-lg p-2.5 text-center font-semibold focus:ring-2 focus:ring-indigo-500 outline-none">
+                            <label
+                                class="text-gray-600 block mb-1 truncate font-bold text-[11px] uppercase">Bench</label>
+                            <input type="number" id="pos-bn" value="6"
+                                class="w-full border border-gray-300 rounded-lg p-2.5 text-center font-semibold focus:ring-2 focus:ring-indigo-500 outline-none">
                         </div>
                     </div>
                 </div>
@@ -329,105 +352,144 @@
                     </h3>
                     <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-4 gap-3 text-sm mb-6">
                         <div>
-                            <label class="text-gray-600 block mb-1 text-[10px] uppercase font-bold">Pass Yds (pts/yd)</label>
-                            <input type="number" step="0.01" id="score-pass-yds" value="0.04" class="w-full border border-gray-300 rounded-lg p-2.5 text-center bg-slate-50 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none">
+                            <label class="text-gray-600 block mb-1 text-[10px] uppercase font-bold">Pass Yds
+                                (pts/yd)</label>
+                            <input type="number" step="0.01" id="score-pass-yds" value="0.04"
+                                class="w-full border border-gray-300 rounded-lg p-2.5 text-center bg-slate-50 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none">
                         </div>
                         <div>
                             <label class="text-gray-600 block mb-1 text-[10px] uppercase font-bold">Pass TD</label>
-                            <input type="number" id="score-pass-td" value="6" class="w-full border border-gray-300 rounded-lg p-2.5 text-center bg-slate-50 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none">
+                            <input type="number" id="score-pass-td" value="6"
+                                class="w-full border border-gray-300 rounded-lg p-2.5 text-center bg-slate-50 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none">
                         </div>
                         <div>
                             <label class="text-gray-600 block mb-1 text-[10px] uppercase font-bold">Pass INT</label>
-                            <input type="number" id="score-int" value="-2" class="w-full border border-gray-300 rounded-lg p-2.5 text-center bg-slate-50 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none">
+                            <input type="number" id="score-int" value="-2"
+                                class="w-full border border-gray-300 rounded-lg p-2.5 text-center bg-slate-50 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none">
                         </div>
                         <div>
-                            <label class="text-gray-600 block mb-1 text-[10px] uppercase font-bold">PPR (Per Rec)</label>
-                            <input type="number" step="0.5" id="score-ppr" value="1" class="w-full border border-gray-300 rounded-lg p-2.5 text-center bg-slate-50 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none">
+                            <label class="text-gray-600 block mb-1 text-[10px] uppercase font-bold">PPR (Per
+                                Rec)</label>
+                            <input type="number" step="0.5" id="score-ppr" value="1"
+                                class="w-full border border-gray-300 rounded-lg p-2.5 text-center bg-slate-50 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none">
                         </div>
 
                         <div>
-                            <label class="text-gray-600 block mb-1 text-[10px] uppercase font-bold">Rush Yds (pts/yd)</label>
-                            <input type="number" step="0.1" id="score-rush-yds" value="0.1" class="w-full border border-gray-300 rounded-lg p-2.5 text-center bg-slate-50 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none">
+                            <label class="text-gray-600 block mb-1 text-[10px] uppercase font-bold">Rush Yds
+                                (pts/yd)</label>
+                            <input type="number" step="0.1" id="score-rush-yds" value="0.1"
+                                class="w-full border border-gray-300 rounded-lg p-2.5 text-center bg-slate-50 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none">
                         </div>
                         <div>
                             <label class="text-gray-600 block mb-1 text-[10px] uppercase font-bold">Rush TD</label>
-                            <input type="number" id="score-rush-td" value="6" class="w-full border border-gray-300 rounded-lg p-2.5 text-center bg-slate-50 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none">
+                            <input type="number" id="score-rush-td" value="6"
+                                class="w-full border border-gray-300 rounded-lg p-2.5 text-center bg-slate-50 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none">
                         </div>
                         <div>
-                            <label class="text-gray-600 block mb-1 text-[10px] uppercase font-bold">Rec Yds (pts/yd)</label>
-                            <input type="number" step="0.1" id="score-rec-yds" value="0.1" class="w-full border border-gray-300 rounded-lg p-2.5 text-center bg-slate-50 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none">
+                            <label class="text-gray-600 block mb-1 text-[10px] uppercase font-bold">Rec Yds
+                                (pts/yd)</label>
+                            <input type="number" step="0.1" id="score-rec-yds" value="0.1"
+                                class="w-full border border-gray-300 rounded-lg p-2.5 text-center bg-slate-50 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none">
                         </div>
                         <div>
                             <label class="text-gray-600 block mb-1 text-[10px] uppercase font-bold">Rec TD</label>
-                            <input type="number" id="score-rec-td" value="6" class="w-full border border-gray-300 rounded-lg p-2.5 text-center bg-slate-50 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none">
+                            <input type="number" id="score-rec-td" value="6"
+                                class="w-full border border-gray-300 rounded-lg p-2.5 text-center bg-slate-50 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none">
                         </div>
 
                         <div>
                             <label class="text-gray-600 block mb-1 text-[10px] uppercase font-bold">Fumble Lost</label>
-                            <input type="number" id="score-fum" value="-2" class="w-full border border-gray-300 rounded-lg p-2.5 text-center bg-slate-50 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none">
+                            <input type="number" id="score-fum" value="-2"
+                                class="w-full border border-gray-300 rounded-lg p-2.5 text-center bg-slate-50 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none">
                         </div>
                         <div>
                             <label class="text-indigo-600 block mb-1 text-[10px] uppercase font-bold">TE Premium</label>
-                            <input type="number" step="0.5" id="score-te-prem" value="0" class="w-full border border-indigo-200 rounded-lg p-2.5 text-center bg-indigo-50 font-bold text-indigo-700 shadow-sm outline-none" title="Extra points per reception for TEs">
+                            <input type="number" step="0.5" id="score-te-prem" value="0"
+                                class="w-full border border-indigo-200 rounded-lg p-2.5 text-center bg-indigo-50 font-bold text-indigo-700 shadow-sm outline-none"
+                                title="Extra points per reception for TEs">
                         </div>
                         <div>
                             <label class="text-indigo-900 block mb-1 text-[10px] uppercase font-bold">FG Base</label>
-                            <input type="number" id="score-fg" value="3" class="w-full border border-indigo-200 rounded-lg p-2.5 text-center bg-indigo-50/70 text-indigo-900 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none">
+                            <input type="number" id="score-fg" value="3"
+                                class="w-full border border-indigo-200 rounded-lg p-2.5 text-center bg-indigo-50/70 text-indigo-900 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none">
                         </div>
                         <div>
                             <label class="text-indigo-900 block mb-1 text-[10px] uppercase font-bold">PAT Made</label>
-                            <input type="number" id="score-xp" value="1" class="w-full border border-indigo-200 rounded-lg p-2.5 text-center bg-indigo-50/70 text-indigo-900 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none">
+                            <input type="number" id="score-xp" value="1"
+                                class="w-full border border-indigo-200 rounded-lg p-2.5 text-center bg-indigo-50/70 text-indigo-900 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none">
                         </div>
 
                         <div>
                             <label class="text-emerald-900 block mb-1 text-[10px] uppercase font-bold">DEF Sack</label>
-                            <input type="number" id="score-sack" value="1" class="w-full border border-emerald-200 rounded-lg p-2.5 text-center bg-emerald-50/70 text-emerald-900 font-semibold focus:ring-2 focus:ring-emerald-500 outline-none">
+                            <input type="number" id="score-sack" value="1"
+                                class="w-full border border-emerald-200 rounded-lg p-2.5 text-center bg-emerald-50/70 text-emerald-900 font-semibold focus:ring-2 focus:ring-emerald-500 outline-none">
                         </div>
                         <div>
-                            <label class="text-emerald-900 block mb-1 text-[10px] uppercase font-bold">DEF Turnover</label>
-                            <input type="number" id="score-turnover" value="2" class="w-full border border-emerald-200 rounded-lg p-2.5 text-center bg-emerald-50/70 text-emerald-900 font-semibold focus:ring-2 focus:ring-emerald-500 outline-none" title="Interceptions & Fumble Recoveries">
+                            <label class="text-emerald-900 block mb-1 text-[10px] uppercase font-bold">DEF
+                                Turnover</label>
+                            <input type="number" id="score-turnover" value="2"
+                                class="w-full border border-emerald-200 rounded-lg p-2.5 text-center bg-emerald-50/70 text-emerald-900 font-semibold focus:ring-2 focus:ring-emerald-500 outline-none"
+                                title="Interceptions & Fumble Recoveries">
                         </div>
                         <div>
                             <label class="text-emerald-900 block mb-1 text-[10px] uppercase font-bold">DEF TD</label>
-                            <input type="number" id="score-deftd" value="6" class="w-full border border-emerald-200 rounded-lg p-2.5 text-center bg-emerald-50/70 text-emerald-900 font-semibold focus:ring-2 focus:ring-emerald-500 outline-none">
+                            <input type="number" id="score-deftd" value="6"
+                                class="w-full border border-emerald-200 rounded-lg p-2.5 text-center bg-emerald-50/70 text-emerald-900 font-semibold focus:ring-2 focus:ring-emerald-500 outline-none">
                         </div>
                         <div>
-                            <label class="text-emerald-900 block mb-1 text-[10px] uppercase font-bold">DEF Safety</label>
-                            <input type="number" id="score-safety" value="2" class="w-full border border-emerald-200 rounded-lg p-2.5 text-center bg-emerald-50/70 text-emerald-900 font-semibold focus:ring-2 focus:ring-emerald-500 outline-none">
+                            <label class="text-emerald-900 block mb-1 text-[10px] uppercase font-bold">DEF
+                                Safety</label>
+                            <input type="number" id="score-safety" value="2"
+                                class="w-full border border-emerald-200 rounded-lg p-2.5 text-center bg-emerald-50/70 text-emerald-900 font-semibold focus:ring-2 focus:ring-emerald-500 outline-none">
                         </div>
                     </div>
 
                     <!-- Extra League Scoring Toggles -->
                     <div class="mt-6 p-4 bg-slate-50 border border-slate-200 rounded-2xl">
                         <div class="flex items-center justify-between mb-3 pb-2 border-b border-slate-200/80">
-                            <h4 class="text-xs font-extrabold text-gray-900 uppercase tracking-wider flex items-center gap-1.5">
+                            <h4
+                                class="text-xs font-extrabold text-gray-900 uppercase tracking-wider flex items-center gap-1.5">
                                 <span class="text-indigo-600">⚡</span> Extra Scoring Toggles
                             </h4>
-                            <span class="text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-full">Custom League Rules</span>
+                            <span
+                                class="text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-full">Custom
+                                League Rules</span>
                         </div>
 
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                            <label class="flex items-start gap-3 p-3 bg-white border border-slate-200 rounded-xl hover:border-indigo-300 cursor-pointer shadow-sm transition-all">
-                                <input type="checkbox" id="toggle-milestones" checked class="mt-0.5 w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500 cursor-pointer">
+                            <label
+                                class="flex items-start gap-3 p-3 bg-white border border-slate-200 rounded-xl hover:border-indigo-300 cursor-pointer shadow-sm transition-all">
+                                <input type="checkbox" id="toggle-milestones" checked
+                                    class="mt-0.5 w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500 cursor-pointer">
                                 <div>
-                                    <span class="block text-xs font-bold text-gray-900 leading-tight">Yardage Milestones</span>
-                                    <span class="block text-[11px] text-gray-500 mt-0.5">Bonuses for 100/300/400 yd games</span>
+                                    <span class="block text-xs font-bold text-gray-900 leading-tight">Yardage
+                                        Milestones</span>
+                                    <span class="block text-[11px] text-gray-500 mt-0.5">Bonuses for 100/300/400 yd
+                                        games</span>
                                 </div>
                             </label>
 
-                            <label class="flex items-start gap-3 p-3 bg-white border border-slate-200 rounded-xl hover:border-indigo-300 cursor-pointer shadow-sm transition-all">
-                                <input type="checkbox" id="toggle-2pt" checked class="mt-0.5 w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500 cursor-pointer">
+                            <label
+                                class="flex items-start gap-3 p-3 bg-white border border-slate-200 rounded-xl hover:border-indigo-300 cursor-pointer shadow-sm transition-all">
+                                <input type="checkbox" id="toggle-2pt" checked
+                                    class="mt-0.5 w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500 cursor-pointer">
                                 <div>
-                                    <span class="block text-xs font-bold text-gray-900 leading-tight">2-Point Conversions</span>
-                                    <span class="block text-[11px] text-gray-500 mt-0.5">2 pts for pass/rush/rec/def 2PT</span>
+                                    <span class="block text-xs font-bold text-gray-900 leading-tight">2-Point
+                                        Conversions</span>
+                                    <span class="block text-[11px] text-gray-500 mt-0.5">2 pts for pass/rush/rec/def
+                                        2PT</span>
                                 </div>
                             </label>
 
-                            <label class="flex items-start gap-3 p-3 bg-white border border-slate-200 rounded-xl hover:border-indigo-300 cursor-pointer shadow-sm transition-all">
-                                <input type="checkbox" id="toggle-decimal-kicking" checked class="mt-0.5 w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500 cursor-pointer">
+                            <label
+                                class="flex items-start gap-3 p-3 bg-white border border-slate-200 rounded-xl hover:border-indigo-300 cursor-pointer shadow-sm transition-all">
+                                <input type="checkbox" id="toggle-decimal-kicking" checked
+                                    class="mt-0.5 w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500 cursor-pointer">
                                 <div>
-                                    <span class="block text-xs font-bold text-gray-900 leading-tight">Decimal Kicking</span>
-                                    <span class="block text-[11px] text-gray-500 mt-0.5">0.1 pts per FG yard (30+ yds)</span>
+                                    <span class="block text-xs font-bold text-gray-900 leading-tight">Decimal
+                                        Kicking</span>
+                                    <span class="block text-[11px] text-gray-500 mt-0.5">0.1 pts per FG yard (30+
+                                        yds)</span>
                                 </div>
                             </label>
                         </div>
@@ -448,12 +510,14 @@
             <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                 <div>
                     <h2 class="text-2xl font-bold text-gray-900">Player Database & Advanced Modeling</h2>
-                    <p class="text-xs text-gray-500 mt-1">Full statistical projections, market edges, usage analytics, and scheme ratings.</p>
+                    <p class="text-xs text-gray-500 mt-1">Full statistical projections, market edges, usage analytics,
+                        and scheme ratings.</p>
                 </div>
                 <div class="flex flex-wrap sm:flex-nowrap gap-3">
                     <input type="text" id="db-search" placeholder="Search Player or Team..."
                         class="w-full sm:w-64 px-4 py-2 text-xs border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none shadow-sm">
-                    <select id="db-position" class="w-full sm:w-36 px-3 py-2 text-xs border border-gray-300 rounded-xl outline-none font-bold text-gray-700 bg-slate-50 shadow-sm">
+                    <select id="db-position"
+                        class="w-full sm:w-36 px-3 py-2 text-xs border border-gray-300 rounded-xl outline-none font-bold text-gray-700 bg-slate-50 shadow-sm">
                         <option value="">All Positions</option>
                         <option value="QB">QB</option>
                         <option value="RB">RB</option>
@@ -470,24 +534,44 @@
                 <table class="min-w-full divide-y divide-gray-200 text-xs">
                     <thead class="bg-slate-50 sticky top-0 z-10 shadow-sm cursor-pointer select-none">
                         <tr>
-                            <th class="px-2.5 py-3 text-center text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600" onclick="UI.sortDatabase('ovrRank')">Rank ↕</th>
-                            <th class="px-3.5 py-3 text-left text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600 min-w-[170px]" onclick="UI.sortDatabase('player')">Player ↕</th>
-                            <th class="px-2 py-3 text-center text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600" onclick="UI.sortDatabase('pos')">Pos ↕</th>
-                            <th class="px-2.5 py-3 text-center text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600" onclick="UI.sortDatabase('team')">Team ↕</th>
-                            <th class="px-2.5 py-3 text-right text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600" title="Consensus Projection" onclick="UI.sortDatabase('projPts')">Cons ↕</th>
-                            <th class="px-2.5 py-3 text-right text-[10px] font-extrabold text-indigo-600 uppercase tracking-wider hover:text-indigo-800" title="Model Expectation" onclick="UI.sortDatabase('modelPts')">Model ↕</th>
-                            <th class="px-2.5 py-3 text-center text-[10px] font-extrabold text-emerald-600 uppercase tracking-wider hover:text-emerald-800" title="Model Edge" onclick="UI.sortDatabase('edge')">Edge ↕</th>
-                            <th class="px-2.5 py-3 text-center text-[10px] font-extrabold text-purple-600 uppercase tracking-wider hover:text-purple-800" title="Probability of Beating Consensus" onclick="UI.sortDatabase('overProb')">% Over ↕</th>
-                            <th class="px-2.5 py-3 text-right text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600" title="Value Over Replacement" onclick="UI.sortDatabase('vbd')">VBD ↕</th>
-                            <th class="px-2.5 py-3 text-right text-[10px] font-extrabold text-indigo-600 uppercase tracking-wider hover:text-indigo-800" title="Model Advanced VBD" onclick="UI.sortDatabase('advVbd')">Adv VBD ↕</th>
-                            <th class="px-2.5 py-3 text-center text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600" title="Weekly Floor / Ceiling Range" onclick="UI.sortDatabase('ceilingPpg')">Range ↕</th>
-                            <th class="px-2.5 py-3 text-center text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600" title="Expected Touchdowns" onclick="UI.sortDatabase('xTD')">xTD ↕</th>
-                            <th class="px-2.5 py-3 text-center text-[10px] font-extrabold text-amber-600 uppercase tracking-wider hover:text-amber-800" title="Strength of Schedule" onclick="UI.sortDatabase('avgStars')">SOS ↕</th>
-                            <th class="px-2.5 py-3 text-center text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600" onclick="UI.sortDatabase('age')">Age ↕</th>
-                            <th class="px-2.5 py-3 text-center text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600" onclick="UI.sortDatabase('adp')">ADP ↕</th>
-                            <th class="px-2.5 py-3 text-center text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600" onclick="UI.sortDatabase('depth')">Depth ↕</th>
-                            <th class="px-2.5 py-3 text-center text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600" onclick="UI.sortDatabase('snap')">Snap ↕</th>
-                            <th class="px-2.5 py-3 text-center text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600" onclick="UI.sortDatabase('bye')">Bye ↕</th>
+                            <th class="px-2.5 py-3 text-center text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600"
+                                onclick="UI.sortDatabase('ovrRank')">Rank ↕</th>
+                            <th class="px-3.5 py-3 text-left text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600 min-w-[170px]"
+                                onclick="UI.sortDatabase('player')">Player ↕</th>
+                            <th class="px-2 py-3 text-center text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600"
+                                onclick="UI.sortDatabase('pos')">Pos ↕</th>
+                            <th class="px-2.5 py-3 text-center text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600"
+                                onclick="UI.sortDatabase('team')">Team ↕</th>
+                            <th class="px-2.5 py-3 text-right text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600"
+                                title="Consensus Projection" onclick="UI.sortDatabase('projPts')">Cons ↕</th>
+                            <th class="px-2.5 py-3 text-right text-[10px] font-extrabold text-indigo-600 uppercase tracking-wider hover:text-indigo-800"
+                                title="Model Expectation" onclick="UI.sortDatabase('modelPts')">Model ↕</th>
+                            <th class="px-2.5 py-3 text-center text-[10px] font-extrabold text-emerald-600 uppercase tracking-wider hover:text-emerald-800"
+                                title="Model Edge" onclick="UI.sortDatabase('edge')">Edge ↕</th>
+                            <th class="px-2.5 py-3 text-center text-[10px] font-extrabold text-purple-600 uppercase tracking-wider hover:text-purple-800"
+                                title="Probability of Beating Consensus" onclick="UI.sortDatabase('overProb')">% Over ↕
+                            </th>
+                            <th class="px-2.5 py-3 text-right text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600"
+                                title="Value Over Replacement" onclick="UI.sortDatabase('vbd')">VBD ↕</th>
+                            <th class="px-2.5 py-3 text-right text-[10px] font-extrabold text-indigo-600 uppercase tracking-wider hover:text-indigo-800"
+                                title="Model Advanced VBD" onclick="UI.sortDatabase('advVbd')">Adv VBD ↕</th>
+                            <th class="px-2.5 py-3 text-center text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600"
+                                title="Weekly Floor / Ceiling Range" onclick="UI.sortDatabase('ceilingPpg')">Range ↕
+                            </th>
+                            <th class="px-2.5 py-3 text-center text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600"
+                                title="Expected Touchdowns" onclick="UI.sortDatabase('xTD')">xTD ↕</th>
+                            <th class="px-2.5 py-3 text-center text-[10px] font-extrabold text-amber-600 uppercase tracking-wider hover:text-amber-800"
+                                title="Strength of Schedule" onclick="UI.sortDatabase('avgStars')">SOS ↕</th>
+                            <th class="px-2.5 py-3 text-center text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600"
+                                onclick="UI.sortDatabase('age')">Age ↕</th>
+                            <th class="px-2.5 py-3 text-center text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600"
+                                onclick="UI.sortDatabase('adp')">ADP ↕</th>
+                            <th class="px-2.5 py-3 text-center text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600"
+                                onclick="UI.sortDatabase('depth')">Depth ↕</th>
+                            <th class="px-2.5 py-3 text-center text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600"
+                                onclick="UI.sortDatabase('snap')">Snap ↕</th>
+                            <th class="px-2.5 py-3 text-center text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600"
+                                onclick="UI.sortDatabase('bye')">Bye ↕</th>
                         </tr>
                     </thead>
                     <tbody id="db-players-body" class="bg-white divide-y divide-gray-100"></tbody>
@@ -498,17 +582,25 @@
             <div class="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <div class="bg-slate-50 p-5 rounded-2xl border border-slate-200">
                     <div class="flex flex-wrap gap-2 mb-4">
-                        <button class="target-tab-btn active text-xs font-bold bg-indigo-100 text-indigo-700 px-3 py-2 rounded-lg" data-pos="WR">WR Heavy</button>
-                        <button class="target-tab-btn text-xs font-bold bg-gray-100 text-gray-600 px-3 py-2 rounded-lg hover:bg-gray-200" data-pos="RB">RB Heavy</button>
-                        <button class="target-tab-btn text-xs font-bold bg-gray-100 text-gray-600 px-3 py-2 rounded-lg hover:bg-gray-200" data-pos="TE">TE Heavy</button>
+                        <button
+                            class="target-tab-btn active text-xs font-bold bg-indigo-100 text-indigo-700 px-3 py-2 rounded-lg"
+                            data-pos="WR">WR Heavy</button>
+                        <button
+                            class="target-tab-btn text-xs font-bold bg-gray-100 text-gray-600 px-3 py-2 rounded-lg hover:bg-gray-200"
+                            data-pos="RB">RB Heavy</button>
+                        <button
+                            class="target-tab-btn text-xs font-bold bg-gray-100 text-gray-600 px-3 py-2 rounded-lg hover:bg-gray-200"
+                            data-pos="TE">TE Heavy</button>
                     </div>
                     <div class="table-container border rounded-xl max-h-64 overflow-auto">
                         <table class="min-w-full divide-y divide-gray-200 text-xs">
                             <thead class="bg-white sticky top-0">
                                 <tr>
                                     <th class="px-4 py-3 text-left font-semibold text-gray-500 uppercase">Team</th>
-                                    <th class="px-4 py-3 text-left font-semibold text-gray-500 uppercase">Target Share</th>
-                                    <th class="px-4 py-3 text-left font-semibold text-gray-500 uppercase">Total Tgts</th>
+                                    <th class="px-4 py-3 text-left font-semibold text-gray-500 uppercase">Target Share
+                                    </th>
+                                    <th class="px-4 py-3 text-left font-semibold text-gray-500 uppercase">Total Tgts
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody id="team-targets-body" class="bg-white divide-y divide-gray-100"></tbody>
@@ -518,10 +610,18 @@
 
                 <div class="bg-slate-50 p-5 rounded-2xl border border-slate-200">
                     <div class="flex flex-wrap gap-2 mb-4">
-                        <button class="metric-tab-btn active text-xs font-bold bg-emerald-100 text-emerald-700 px-3 py-2 rounded-lg" data-metric="TGT %">Target Share %</button>
-                        <button class="metric-tab-btn text-xs font-bold bg-gray-100 text-gray-600 px-3 py-2 rounded-lg hover:bg-gray-200" data-metric="20+Rec">20+ Yd Rec</button>
-                        <button class="metric-tab-btn text-xs font-bold bg-gray-100 text-gray-600 px-3 py-2 rounded-lg hover:bg-gray-200" data-metric="20+Rush">20+ Yd Rush</button>
-                        <button class="metric-tab-btn text-xs font-bold bg-gray-100 text-gray-600 px-3 py-2 rounded-lg hover:bg-gray-200" data-metric="RZ TGT">Red Zone Tgts</button>
+                        <button
+                            class="metric-tab-btn active text-xs font-bold bg-emerald-100 text-emerald-700 px-3 py-2 rounded-lg"
+                            data-metric="TGT %">Target Share %</button>
+                        <button
+                            class="metric-tab-btn text-xs font-bold bg-gray-100 text-gray-600 px-3 py-2 rounded-lg hover:bg-gray-200"
+                            data-metric="20+Rec">20+ Yd Rec</button>
+                        <button
+                            class="metric-tab-btn text-xs font-bold bg-gray-100 text-gray-600 px-3 py-2 rounded-lg hover:bg-gray-200"
+                            data-metric="20+Rush">20+ Yd Rush</button>
+                        <button
+                            class="metric-tab-btn text-xs font-bold bg-gray-100 text-gray-600 px-3 py-2 rounded-lg hover:bg-gray-200"
+                            data-metric="RZ TGT">Red Zone Tgts</button>
                     </div>
                     <div class="table-container border rounded-xl max-h-64 overflow-auto">
                         <table class="min-w-full divide-y divide-gray-200 text-xs">
@@ -529,7 +629,8 @@
                                 <tr>
                                     <th class="px-4 py-3 text-left font-semibold text-gray-500 uppercase">Player</th>
                                     <th class="px-4 py-3 text-left font-semibold text-gray-500 uppercase">Pos</th>
-                                    <th class="px-4 py-3 text-left font-semibold text-gray-500 uppercase">Metric Value</th>
+                                    <th class="px-4 py-3 text-left font-semibold text-gray-500 uppercase">Metric Value
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody id="metric-leaders-body" class="bg-white divide-y divide-gray-100"></tbody>
@@ -541,15 +642,17 @@
 
         <!-- Responsive Drafting Workspace Layout -->
         <div id="drafting-screen" class="screen h-full pb-4 hidden flex flex-col min-h-0">
-            
+
             <!-- Top Status Bar -->
-            <div class="flex flex-wrap justify-between items-center bg-white px-5 py-3 rounded-2xl shadow-sm mb-3.5 border border-gray-100 gap-3 flex-shrink-0">
+            <div
+                class="flex flex-wrap justify-between items-center bg-white px-5 py-3 rounded-2xl shadow-sm mb-3.5 border border-gray-100 gap-3 flex-shrink-0">
                 <div class="flex items-center space-x-5">
                     <div>
                         <p class="text-[10px] text-gray-400 uppercase tracking-wider font-extrabold">Current Pick</p>
                         <p class="text-lg font-black text-gray-900 leading-tight">
                             Rnd <span id="current-round">1</span> • Pick <span id="current-pick-number">1</span>
-                            <span class="text-xs font-semibold text-gray-400 ml-1">(Ovr #<span id="overall-pick-number">1</span>)</span>
+                            <span class="text-xs font-semibold text-gray-400 ml-1">(Ovr #<span
+                                    id="overall-pick-number">1</span>)</span>
                         </p>
                     </div>
                     <div class="border-l border-gray-200 pl-5">
@@ -557,16 +660,18 @@
                         <p id="on-the-clock" class="text-lg font-black text-indigo-600 leading-tight">Team 1</p>
                     </div>
                 </div>
-                
+
                 <div class="flex items-center space-x-2.5">
                     <div class="text-[11px] font-extrabold px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-full border border-indigo-100 shadow-sm"
                         id="drafting-for-badge">Drafting for: CPU 1</div>
-                    
+
                     <button onclick="DraftSync.showExportModal()"
                         class="bg-indigo-50 text-indigo-600 hover:bg-indigo-100 font-bold py-1.5 px-3 rounded-xl text-xs transition-colors flex items-center space-x-1.5 border border-indigo-100"
                         title="Save Draft Progress">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4">
+                            </path>
                         </svg>
                         <span>Save</span>
                     </button>
@@ -574,7 +679,8 @@
                     <button id="undo-pick-button"
                         class="bg-rose-50 text-rose-600 hover:bg-rose-100 font-bold py-1.5 px-3 rounded-xl text-xs transition-colors flex items-center space-x-1.5 border border-rose-100">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path>
                         </svg>
                         <span>Undo</span>
                     </button>
@@ -586,42 +692,56 @@
 
                 <!-- Left Column: Generous Sidebar (Width: 380px / 420px on XL) -->
                 <div class="w-full lg:w-[380px] xl:w-[420px] shrink-0 flex flex-col gap-3.5 h-full min-h-0">
-                    
+
                     <!-- 1. Targets Card (Taller, holds 6-8 recommendations smoothly) -->
-                    <div class="bg-slate-900 text-white p-4 rounded-2xl shadow-sm flex-[1.4] overflow-hidden flex flex-col border border-slate-800 min-h-[340px] lg:min-h-0">
+                    <div
+                        class="bg-slate-900 text-white p-4 rounded-2xl shadow-sm flex-[1.4] overflow-hidden flex flex-col border border-slate-800 min-h-[340px] lg:min-h-0">
                         <div class="flex justify-between items-center mb-1">
                             <h3 class="text-sm font-black tracking-wide">Your Targets</h3>
-                            <span class="text-[9px] font-black uppercase bg-emerald-950 text-emerald-300 border border-emerald-800 px-2 py-0.5 rounded">Live Model</span>
+                            <span
+                                class="text-[9px] font-black uppercase bg-emerald-950 text-emerald-300 border border-emerald-800 px-2 py-0.5 rounded">Live
+                                Model</span>
                         </div>
-                        <p class="text-slate-400 text-[10px] mb-2 pb-1.5 border-b border-slate-800 uppercase font-semibold">
+                        <p
+                            class="text-slate-400 text-[10px] mb-2 pb-1.5 border-b border-slate-800 uppercase font-semibold">
                             Best Value for <strong id="user-team-name-disp" class="text-white">Your Team</strong>
                         </p>
-                        
+
                         <!-- Scrollable Targets Area -->
-                        <div id="recommendations-container" class="space-y-1.5 overflow-y-auto pr-1 flex-1 hide-scrollbar min-h-0"></div>
+                        <div id="recommendations-container"
+                            class="space-y-1.5 overflow-y-auto pr-1 flex-1 hide-scrollbar min-h-0"></div>
 
                         <!-- Pinned Compare Button -->
                         <div id="compare-button-wrapper" class="pt-2.5 border-t border-slate-800 mt-2 shrink-0">
                             <button onclick="Compare.showComparison()"
                                 class="w-full py-2 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 border border-indigo-400/40 rounded-xl text-xs font-black text-white transition-all flex items-center justify-center gap-1.5 shadow-md">
-                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z">
+                                    </path>
+                                </svg>
                                 <span>Compare Top Targets (<span id="compare-target-count">10</span>)</span>
                             </button>
                         </div>
                     </div>
 
                     <!-- 2. My Starting Lineup Card -->
-                    <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-200 flex-1 overflow-hidden flex flex-col min-h-[250px] lg:min-h-0">
+                    <div
+                        class="bg-white p-4 rounded-2xl shadow-sm border border-gray-200 flex-1 overflow-hidden flex flex-col min-h-[250px] lg:min-h-0">
                         <div class="flex justify-between items-center mb-2 pb-1.5 border-b border-gray-100">
                             <h3 class="text-sm font-black text-gray-900">My Roster</h3>
-                            <span id="my-roster-count" class="text-[10px] font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full">0/16 Filled</span>
+                            <span id="my-roster-count"
+                                class="text-[10px] font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full">0/16
+                                Filled</span>
                         </div>
-                        <div id="my-roster-container" class="overflow-y-auto flex-1 hide-scrollbar pr-0.5 min-h-0"></div>
+                        <div id="my-roster-container" class="overflow-y-auto flex-1 hide-scrollbar pr-0.5 min-h-0">
+                        </div>
                     </div>
                 </div>
 
                 <!-- Right Workspace: Full Height Tables & Tabs -->
-                <div class="flex-1 flex flex-col bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden min-w-0 h-full min-h-[480px]">
+                <div
+                    class="flex-1 flex flex-col bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden min-w-0 h-full min-h-[480px]">
                     <div class="flex border-b border-gray-200 bg-slate-50 flex-shrink-0 overflow-x-auto">
                         <button
                             class="draft-tab-btn flex-1 py-3 px-4 text-xs font-extrabold text-indigo-600 border-b-2 border-indigo-600 bg-white tracking-wide whitespace-nowrap"
@@ -660,20 +780,42 @@
                                 <table class="min-w-full divide-y divide-gray-200 text-xs">
                                     <thead class="bg-slate-50 sticky top-0 z-10 shadow-sm cursor-pointer select-none">
                                         <tr>
-                                            <th class="px-2.5 py-2.5 text-center text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600" onclick="UI.sortTable('draft', 'ovrRank')">Rank ↕</th>
-                                            <th class="px-3.5 py-2.5 text-left text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600 min-w-[200px]" onclick="UI.sortTable('draft', 'Player')">Player ↕</th>
-                                            <th class="px-2 py-2.5 text-center text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600" onclick="UI.sortTable('draft', 'Pos')">Pos ↕</th>
-                                            <th class="px-2.5 py-2.5 text-right text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600" title="Consensus Projection" onclick="UI.sortTable('draft', 'ConsensusPts')">Cons ↕</th>
-                                            <th class="px-2.5 py-2.5 text-right text-[10px] font-extrabold text-indigo-600 uppercase tracking-wider hover:text-indigo-800" title="Model Expectation" onclick="UI.sortTable('draft', 'ModelPts')">Model ↕</th>
-                                            <th class="px-2.5 py-2.5 text-center text-[10px] font-extrabold text-emerald-600 uppercase tracking-wider hover:text-emerald-800" title="Deviation from Consensus" onclick="UI.sortTable('draft', 'Edge')">Edge ↕</th>
-                                            <th class="px-2.5 py-2.5 text-center text-[10px] font-extrabold text-purple-600 uppercase tracking-wider hover:text-purple-800" title="Probability of Beating Consensus" onclick="UI.sortTable('draft', 'OverProb')">% Over ↕</th>
-                                            <th class="px-2.5 py-2.5 text-center text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600" title="Sort by Ceiling Range" onclick="UI.sortTable('draft', 'ceilingPpg')">Range ↕</th>
-                                            <th class="px-2.5 py-2.5 text-center text-[10px] font-extrabold text-emerald-600 uppercase tracking-wider hover:text-emerald-800" title="Lineup Points Per Week Gain" onclick="UI.sortTable('draft', '_addedPPW')">+PPW ↕</th>
-                                            <th class="px-2.5 py-2.5 text-center text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600" onclick="UI.sortTable('draft', 'adp')">ADP ↕</th>
-                                            <th class="px-2.5 py-2.5 text-center text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600" title="Probability of Surviving to Next Pick" onclick="UI.sortTable('draft', '_survivalProb')">Surv % ↕</th>
-                                            <th class="px-2.5 py-2.5 text-center text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600" onclick="UI.sortTable('draft', 'byeWeek')">Bye ↕</th>
-                                            <th class="px-2.5 py-2.5 text-center text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600" onclick="UI.sortTable('draft', 'depthChart')">Depth ↕</th>
-                                            <th class="px-3.5 py-2.5 text-right text-[10px] font-extrabold text-gray-500 uppercase tracking-wider">Action</th>
+                                            <th class="px-2.5 py-2.5 text-center text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600"
+                                                onclick="UI.sortTable('draft', 'ovrRank')">Rank ↕</th>
+                                            <th class="px-3.5 py-2.5 text-left text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600 min-w-[200px]"
+                                                onclick="UI.sortTable('draft', 'Player')">Player ↕</th>
+                                            <th class="px-2 py-2.5 text-center text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600"
+                                                onclick="UI.sortTable('draft', 'Pos')">Pos ↕</th>
+                                            <th class="px-2.5 py-2.5 text-right text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600"
+                                                title="Consensus Projection"
+                                                onclick="UI.sortTable('draft', 'ConsensusPts')">Cons ↕</th>
+                                            <th class="px-2.5 py-2.5 text-right text-[10px] font-extrabold text-indigo-600 uppercase tracking-wider hover:text-indigo-800"
+                                                title="Model Expectation" onclick="UI.sortTable('draft', 'ModelPts')">
+                                                Model ↕</th>
+                                            <th class="px-2.5 py-2.5 text-center text-[10px] font-extrabold text-emerald-600 uppercase tracking-wider hover:text-emerald-800"
+                                                title="Deviation from Consensus"
+                                                onclick="UI.sortTable('draft', 'Edge')">Edge ↕</th>
+                                            <th class="px-2.5 py-2.5 text-center text-[10px] font-extrabold text-purple-600 uppercase tracking-wider hover:text-purple-800"
+                                                title="Probability of Beating Consensus"
+                                                onclick="UI.sortTable('draft', 'OverProb')">% Over ↕</th>
+                                            <th class="px-2.5 py-2.5 text-center text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600"
+                                                title="Sort by Ceiling Range"
+                                                onclick="UI.sortTable('draft', 'ceilingPpg')">Range ↕</th>
+                                            <th class="px-2.5 py-2.5 text-center text-[10px] font-extrabold text-emerald-600 uppercase tracking-wider hover:text-emerald-800"
+                                                title="Lineup Points Per Week Gain"
+                                                onclick="UI.sortTable('draft', '_addedPPW')">+PPW ↕</th>
+                                            <th class="px-2.5 py-2.5 text-center text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600"
+                                                onclick="UI.sortTable('draft', 'adp')">ADP ↕</th>
+                                            <th class="px-2.5 py-2.5 text-center text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600"
+                                                title="Probability of Surviving to Next Pick"
+                                                onclick="UI.sortTable('draft', '_survivalProb')">Surv % ↕</th>
+                                            <th class="px-2.5 py-2.5 text-center text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600"
+                                                onclick="UI.sortTable('draft', 'byeWeek')">Bye ↕</th>
+                                            <th class="px-2.5 py-2.5 text-center text-[10px] font-extrabold text-gray-500 uppercase tracking-wider hover:text-indigo-600"
+                                                onclick="UI.sortTable('draft', 'depthChart')">Depth ↕</th>
+                                            <th
+                                                class="px-3.5 py-2.5 text-right text-[10px] font-extrabold text-gray-500 uppercase tracking-wider">
+                                                Action</th>
                                         </tr>
                                     </thead>
                                     <tbody id="draft-players-body" class="bg-white divide-y divide-gray-100"></tbody>
@@ -682,31 +824,38 @@
                         </div>
 
                         <!-- Tab 2: Draft Board Grid -->
-                        <div id="draft-board-wrapper" class="draft-tab-content h-full hidden p-4 overflow-auto bg-slate-50 min-h-0">
+                        <div id="draft-board-wrapper"
+                            class="draft-tab-content h-full hidden p-4 overflow-auto bg-slate-50 min-h-0">
                             <div id="draft-board-grid"></div>
                         </div>
 
                         <!-- Tab 3: All League Rosters -->
                         <div id="draft-all-rosters" class="draft-tab-content h-full hidden p-4 flex flex-col min-h-0">
-                            <div id="roster-tabs" class="flex flex-nowrap overflow-x-auto hide-scrollbar gap-x-2 pb-3 mb-2 border-b border-gray-100"></div>
+                            <div id="roster-tabs"
+                                class="flex flex-nowrap overflow-x-auto hide-scrollbar gap-x-2 pb-3 mb-2 border-b border-gray-100">
+                            </div>
                             <div id="roster-content" class="roster-content flex-1 p-2 overflow-y-auto min-h-0"></div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-        
+
         <!-- NFL Team Research & Fantasy Breakdown Screen -->
         <div id="research-screen" class="screen max-w-6xl mx-auto mt-6 hidden pb-12">
             <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-gray-100 mb-6">
-                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-gray-100">
+                <div
+                    class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-gray-100">
                     <div>
                         <h2 class="text-3xl font-extrabold text-gray-900">NFL Team Fantasy Outlook</h2>
-                        <p class="text-gray-500 text-sm mt-1">Deep tactical analysis, trench ratings, scheme funnels, and target round windows for all 32 teams.</p>
+                        <p class="text-gray-500 text-sm mt-1">Deep tactical analysis, trench ratings, scheme funnels,
+                            and target round windows for all 32 teams.</p>
                     </div>
                     <div class="w-full md:w-72">
-                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Select NFL Team</label>
-                        <select id="research-team-select" class="w-full border-gray-300 border p-2.5 rounded-xl font-bold text-gray-800 focus:ring-2 focus:ring-indigo-500 outline-none shadow-sm bg-slate-50">
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Select NFL
+                            Team</label>
+                        <select id="research-team-select"
+                            class="w-full border-gray-300 border p-2.5 rounded-xl font-bold text-gray-800 focus:ring-2 focus:ring-indigo-500 outline-none shadow-sm bg-slate-50">
                         </select>
                     </div>
                 </div>
@@ -730,10 +879,12 @@
             <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
                 <div class="text-center mb-8">
                     <h2 class="text-3xl font-extrabold text-gray-900">Post-Draft Team Recaps & Season Previews</h2>
-                    <p class="text-gray-500 mt-2">Comprehensive analysis, grades, and 3-tier projections for every roster.</p>
+                    <p class="text-gray-500 mt-2">Comprehensive analysis, grades, and 3-tier projections for every
+                        roster.</p>
                 </div>
                 <div class="flex justify-center mb-6">
-                    <select id="recap-team-select" class="w-full max-w-md border-gray-300 border p-3 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-gray-800 shadow-sm text-center text-lg">
+                    <select id="recap-team-select"
+                        class="w-full max-w-md border-gray-300 border p-3 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-gray-800 shadow-sm text-center text-lg">
                     </select>
                 </div>
                 <div id="recap-content-container" class="mt-4"></div>
