@@ -1537,35 +1537,36 @@ const State = {
             return { totalDraftValue: -999, isDraftable: false }; 
         }
 
+        // ⚡ AUDITED FIX: Dynamic Round-Based Urgency Curve (replaces flat +25 bonus)
         let starterBonus = 0;
-        if (isStarterOpen) starterBonus = this.weights.starterNeed;
-        else if (isFlexRBWROpen || isFlexOpen || isSuperflexOpen) starterBonus = this.weights.flexNeed;
+        if (isStarterOpen) {
+            let baseNeed = this.weights.starterNeed || 25;
+            let urgencyMultiplier = 1.0;
+            
+            let isSuperflexLeague = (this.settings.roster.Superflex?.max > 0);
 
-        // Scarcity Tier Cliff bonus
-        let scarcityBonus = 0;
-        let tiers = this.getPositionalTiers(pos);
-        if (tiers.length > 1 && tiers[0].length <= 3) {
-            let posRankInAvail = this.availablePlayers.filter(x => x.Pos === pos).findIndex(x => x._cleanName === player._cleanName);
-            if (posRankInAvail < 3) {
-                let lastInTopTier = tiers[0][tiers[0].length - 1];
-                let firstInNextTier = tiers[1][0];
-                let drop = (lastInTopTier.AdvVBD ?? lastInTopTier.VBD ?? 0) - (firstInNextTier.AdvVBD ?? firstInNextTier.VBD ?? 0);
-                
-                let urgencyMult = tiers[0].length === 1 ? 1.0 : (tiers[0].length === 2 ? 0.7 : 0.4);
-                
-                // ✨ 3-LAYERS DEEP FIX: Onesie Position Scarcity Dampening
-                // If a position only requires 1 starter (QB/TE), the panic of a tier cliff 
-                // is naturally mitigated because market demand is capped at 1 per team.
-                let maxStarters = this.settings.roster[pos]?.max || 1;
-                let isStrictOnesie = ['QB', 'TE', 'PK', 'DST'].includes(pos) && maxStarters === 1;
-                
-                if (isStrictOnesie) {
-                    if (pos === 'QB' && !isSuperflexOpen) urgencyMult *= 0.20; 
-                    else if (pos === 'TE' && (this.scoring.tePremium || 0) === 0) urgencyMult *= 0.35;
-                }
-
-                scarcityBonus = Math.max(0, drop) * urgencyMult;
+            if (pos === 'QB' && isSuperflexLeague) {
+                // Superflex: QBs are the most scarce asset; urgency is high immediately (Rds 1-3)
+                urgencyMultiplier = Math.max(0.75, Math.min(1.0, currentRound / 3.0));
+            } else if (['QB', 'TE'].includes(pos)) {
+                // Standard "Onesie" positions: Delay panic until mid-rounds (Starts rising at Rd 5)
+                urgencyMultiplier = Math.max(0.0, Math.min(1.0, (currentRound - 5) / 6.0));
+            } else if (['RB', 'WR'].includes(pos)) {
+                // Core flex positions: Steady immediate urgency (50% in Rd 1, 100% by Rd 5)
+                urgencyMultiplier = Math.max(0.50, Math.min(1.0, currentRound / 5.0));
+            } else if (['PK', 'DST'].includes(pos)) {
+                // Streaming positions: Zero urgency until the final 2 rounds
+                const totalRounds = this.settings.roster.totalSize || 16;
+                urgencyMultiplier = (currentRound >= totalRounds - 2) ? 1.0 : 0.0;
             }
+
+            starterBonus = baseNeed * urgencyMultiplier;
+        } 
+        else if (isFlexRBWROpen || isFlexOpen || isSuperflexOpen) {
+            // Smoothly scale the Flex need so early-round Flex picks are highly valued
+            let baseFlexNeed = this.weights.flexNeed || 15;
+            let flexUrgency = Math.max(0.60, Math.min(1.0, currentRound / 7.0));
+            starterBonus = baseFlexNeed * flexUrgency;
         }
 
         // Roster Overage Penalty
@@ -3600,51 +3601,54 @@ const State = {
 
                 // A. 4-Tier Mobility Classification
                 let qbMobilityTier = 4;
-                let mobilityBonus = 0.0;
 
+                // ⚡ AUDITED FIX: Removed artificial 'mobilityBonus' multiplier.
+                // Rushing upside is preserved in the ceiling, but median points rely strictly on projections.
                 if (rushYds >= 650 || rushAtt >= 115) {
                     qbMobilityTier = 1; // Konami Alpha
-                    mobilityBonus = 0.015; // ⚡ REDUCED: Was 0.055. (Drives stay alive longer, but rush yds already in consensus)
                     p._qbArchetype = 'Konami Code Alpha';
                     p._isFlyer = true;
-                    upsideMultiplier += 0.30; // ⚡ REMAINS HIGH: Ceiling is where this trait shines
+                    upsideMultiplier += 0.30; 
                     ceilingTags.push("Konami Code Rushing Weapon");
                 } else if (rushYds >= 425 || rushAtt >= 75) {
                     qbMobilityTier = 2; 
-                    mobilityBonus = 0.010; // ⚡ REDUCED: Was 0.035
                     p._qbArchetype = 'Dynamic Dual-Threat';
                     p._isFlyer = true;
                     upsideMultiplier += 0.20;
                     ceilingTags.push("Dual-Threat Rushing Floor");
                 } else if (rushYds >= 225 || rushAtt >= 45) {
-                    qbMobilityTier = 3; // Mobile Scrambler (Lawrence, Mahomes, Love)
-                    mobilityBonus = 0.015;
+                    qbMobilityTier = 3; // Mobile Scrambler
                     p._qbArchetype = 'Mobile Pocket Scrambler';
                 } else {
-                    qbMobilityTier = 4; // Pure Pocket Passer (Goff, Burrow, Cousins, Stroud)
-                    mobilityBonus = -0.010;
+                    qbMobilityTier = 4; // Pure Pocket Passer
                     p._qbArchetype = 'Pure Pocket Passer';
+                    adjMultiplier -= 0.010; // Gentle penalty for zero rushing baseline
                 }
-                adjMultiplier += mobilityBonus;
+                //adjMultiplier += mobilityBonus;
 
                 // B. Interactive Pressure-to-Sack (P2S%) Matrix
                 if (p2s !== undefined) {
-                    // ⚡ Continuous Scaler: Center league average around 20.0%. 
                     let p2sDelta = 20.0 - p2s; // Positive = better than average, Negative = worse
-                    let baseP2sMod = p2sDelta * 0.003; // 1% variance = 0.003 multiplier shift
+                    let baseP2sMod = p2sDelta * 0.003; 
                     
-                    // Pocket passers (Tier 4) are hurt significantly more by high sack rates than scramblers
                     let mobilitySensitivity = (qbMobilityTier === 4) ? 1.4 : (qbMobilityTier === 3 ? 1.1 : 0.8);
                     
-                    // Only apply the penalty scaler to negative deltas, leave positive rewards normalized
                     if (p2sDelta < 0) {
                         baseP2sMod *= mobilitySensitivity; 
+
+                        // ⚡ AUDITED FIX: Youth Scrambler Grace Period
+                        // Young dual-threats expectedly take sacks learning NFL timing; legs offset the damage.
+                        const pAge = p.age || p.Age || 25;
+                        const isYoungScrambler = (pAge <= 24 || p.isRookie) && (rushYds >= 400 || qbMobilityTier <= 2);
+                        
+                        if (isYoungScrambler) {
+                            baseP2sMod *= 0.50; // Cut the sack penalty in half for raw athletes
+                        }
                     }
                     
-                    // Bound the absolute maximum effect to realistic boundaries
                     let p2sMod = Math.max(-0.075, Math.min(0.045, baseP2sMod));
                     adjMultiplier += (p2sMod * sampleConfidence);
-                }
+                } // <--- End of the P2S block
 
                 // C. Pressure Rate Impact
                 if (pressRate !== undefined) {
@@ -4417,7 +4421,16 @@ const State = {
             } else if (p.Pos === 'QB') {
                 if (p.p2s && p.p2s >= 20.0) floorVar += 0.04;
                 if (p.pastStats && p.pastStats.int >= 14) floorVar += 0.04;
-                if (p.stats && p.stats.rushAtt) floorVar -= Math.min(0.06, (p.stats.rushAtt / 100) * 0.05);
+                
+                // ⚡ AUDITED FIX: Continuous Floor Stabilization based on rushing volume.
+                // Replaces the flat median bonus. High rushing yards insulate against bust games.
+                const rushYds = p.stats?.rushYds || 0;
+                if (rushYds > 150) {
+                    // Smoothly reduces variance up to 0.08 for elite rushers (800+ yards)
+                    // Note: We bypass the generic '_isSafeFloor' flag to prevent double-dipping
+                    let rushFloorInsulation = Math.min(0.08, ((rushYds - 150) / 100) * 0.012);
+                    floorVar -= rushFloorInsulation;
+                }
             }
 
             // 8. Safe Floor & Trajectory Adjustments
