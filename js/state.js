@@ -1569,6 +1569,33 @@ const State = {
             starterBonus = baseFlexNeed * flexUrgency;
         }
 
+        // 👇 RESTORE THIS MISSING BLOCK 👇
+        // Scarcity Tier Cliff bonus
+        let scarcityBonus = 0;
+        let tiers = this.getPositionalTiers(pos);
+        if (tiers.length > 1 && tiers[0].length <= 3) {
+            let posRankInAvail = this.availablePlayers.filter(x => x.Pos === pos).findIndex(x => x._cleanName === player._cleanName);
+            if (posRankInAvail < 3) {
+                let lastInTopTier = tiers[0][tiers[0].length - 1];
+                let firstInNextTier = tiers[1][0];
+                let drop = (lastInTopTier.AdvVBD ?? lastInTopTier.VBD ?? 0) - (firstInNextTier.AdvVBD ?? firstInNextTier.VBD ?? 0);
+                
+                let urgencyMult = tiers[0].length === 1 ? 1.0 : (tiers[0].length === 2 ? 0.7 : 0.4);
+                
+                // Onesie Position Scarcity Dampening
+                let maxStarters = this.settings.roster[pos]?.max || 1;
+                let isStrictOnesie = ['QB', 'TE', 'PK', 'DST'].includes(pos) && maxStarters === 1;
+                
+                if (isStrictOnesie) {
+                    if (pos === 'QB' && !isSuperflexOpen) urgencyMult *= 0.20; 
+                    else if (pos === 'TE' && (this.scoring.tePremium || 0) === 0) urgencyMult *= 0.35;
+                }
+
+                scarcityBonus = Math.max(0, drop) * urgencyMult;
+            }
+        }
+        // 👆 END OF RESTORED BLOCK 👆
+
         // Roster Overage Penalty
         let rosterOveragePenalty = 1.0;
         if (!isAnyStartingSlotOpen) {
@@ -3602,8 +3629,6 @@ const State = {
                 // A. 4-Tier Mobility Classification
                 let qbMobilityTier = 4;
 
-                // ⚡ AUDITED FIX: Removed artificial 'mobilityBonus' multiplier.
-                // Rushing upside is preserved in the ceiling, but median points rely strictly on projections.
                 if (rushYds >= 650 || rushAtt >= 115) {
                     qbMobilityTier = 1; // Konami Alpha
                     p._qbArchetype = 'Konami Code Alpha';
@@ -3624,7 +3649,6 @@ const State = {
                     p._qbArchetype = 'Pure Pocket Passer';
                     adjMultiplier -= 0.010; // Gentle penalty for zero rushing baseline
                 }
-                //adjMultiplier += mobilityBonus;
 
                 // B. Interactive Pressure-to-Sack (P2S%) Matrix
                 if (p2s !== undefined) {
@@ -3637,7 +3661,6 @@ const State = {
                         baseP2sMod *= mobilitySensitivity; 
 
                         // ⚡ AUDITED FIX: Youth Scrambler Grace Period
-                        // Young dual-threats expectedly take sacks learning NFL timing; legs offset the damage.
                         const pAge = p.age || p.Age || 25;
                         const isYoungScrambler = (pAge <= 24 || p.isRookie) && (rushYds >= 400 || qbMobilityTier <= 2);
                         
@@ -3648,7 +3671,7 @@ const State = {
                     
                     let p2sMod = Math.max(-0.075, Math.min(0.045, baseP2sMod));
                     adjMultiplier += (p2sMod * sampleConfidence);
-                } // <--- End of the P2S block
+                }
 
                 // C. Pressure Rate Impact
                 if (pressRate !== undefined) {
