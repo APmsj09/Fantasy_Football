@@ -1594,83 +1594,135 @@ const State = {
             }
         }
 
-        // CPU Empirical Tendency Application (Safely clamped)
+        // =========================================================
+        // 🤖 PURE EMPIRICAL CPU BEHAVIOR (INDIVIDUAL HISTORICAL STYLE)
+        // =========================================================
         let personalityAdjustment = 0;
         if (isCPU && profile && profile.empirical) {
-            if (currentRound <= 3) {
-                if (pos === 'RB') personalityAdjustment += (profile.empirical.earlyRBRate - 0.40) * 12.0; 
-                if (pos === 'WR') personalityAdjustment += (profile.empirical.earlyWRRate - 0.40) * 12.0;
-                if (pos === 'QB') personalityAdjustment += (profile.empirical.earlyQBRate - 0.10) * 15.0;
-                if (pos === 'TE') personalityAdjustment += (profile.empirical.earlyTERate - 0.10) * 15.0;
+            const emp = profile.empirical;
+            const pos = player.Pos;
+
+            // 1. Historical Phase Habit (Their actual frequency of drafting this pos in this round window)
+            let phaseRate = 0;
+            let baselineRate = (pos === 'RB' || pos === 'WR') ? 0.35 : (pos === 'QB' ? 0.12 : (pos === 'TE' ? 0.10 : 0.04));
+
+            if (currentRound <= 4) phaseRate = emp.posRoundPhaseRates.early[pos] || 0;
+            else if (currentRound <= 9) phaseRate = emp.posRoundPhaseRates.mid[pos] || 0;
+            else phaseRate = emp.posRoundPhaseRates.late[pos] || 0;
+
+            // Natural mathematical pull based on their personal deviation from neutral draft tendencies
+            personalityAdjustment += (phaseRate - baselineRate) * 22.0;
+
+            // 2. Personal Timing Horizon (Distance from their personal average & earliest-ever pick)
+            let avgRound = emp.posAvgRound[pos] || 10;
+            let earliestEver = emp.posEarliestRound[pos] || 1;
+            let roundDiff = currentRound - avgRound;
+
+            if (currentRound < earliestEver) {
+                // Drafting EARLIER than they have ever drafted this position in recorded history:
+                let earlyDist = earliestEver - currentRound;
+                personalityAdjustment -= Math.pow(earlyDist, 1.6) * 3.8;
+            } else if (roundDiff < 0) {
+                // Earlier than their historical average: mild resistance
+                personalityAdjustment -= Math.pow(Math.abs(roundDiff), 1.5) * 2.0;
+            } else {
+                // At or past their historical average round: escalating natural urgency
+                personalityAdjustment += Math.min(14.0, (roundDiff + 1) * 2.5);
             }
 
-            // CPU Empirical Tendency Application (Safely clamped)
-            if (['QB', 'TE', 'PK', 'DST'].includes(pos)) {
-                let targetRound = profile.empirical[`${pos.toLowerCase()}TargetRound`] || 10;
-                let roundDiff = currentRound - targetRound;
-    
-                if (roundDiff >= 0) {
-                    personalityAdjustment += Math.min(12.0, (roundDiff + 1) * 3.0); 
-                } else if (roundDiff < 0) {
-                    // ✨ NEW: Smooth polynomial scaling instead of a flat -15 cliff!
-                    // -1 round early = -2.0 VBD penalty
-                    // -2 rounds early = -5.6 VBD penalty
-                    // -3 rounds early = -10.3 VBD penalty
-                    // -4 rounds early = -16.0 VBD penalty
-                    personalityAdjustment -= Math.pow(Math.abs(roundDiff), 1.5) * 2.0; 
+            // 3. Historical Roster Saturation & Backup Tendency
+            let currentPosCount = team.roster.filter(r => r.Pos === pos).length;
+            let starterMax = this.settings.roster[pos]?.max || 1;
+
+            if (currentPosCount >= starterMax) {
+                let backupPropensity = emp.backupRates[pos] || 0.20;
+                personalityAdjustment += (backupPropensity - 0.50) * 14.0;
+            }
+
+            // 4. Individual Player Loyalty
+            let pastPlayerDrafts = emp.playerCrushes[player._cleanName] || 0;
+            if (pastPlayerDrafts > 0) {
+                let loyaltyRatio = pastPlayerDrafts / emp.draftsCount;
+                personalityAdjustment += loyaltyRatio * 12.0;
+            }
+
+            // 5. NFL Team Fandom
+            let teamDraftShare = emp.teamBias[this.normalizeTeam(player.Team)] || 0;
+            if (teamDraftShare > 0.08) {
+                personalityAdjustment += (teamDraftShare - 0.08) * 35.0;
+            }
+
+            // Clamp standard personality traits so they don't completely break VBD fundamentals
+            personalityAdjustment = Math.max(-18, Math.min(18, personalityAdjustment));
+
+            // Pure Empirical K/DST Hard Veto
+            // Prevent CPU from drafting K/DST before their historical earliest round, 
+            // OR before the final 3 rounds (whichever is earlier).
+            if (pos === 'PK' || pos === 'DST') {
+                const totalRounds = this.settings.roster.totalSize;
+                let earliestHistorical = emp.posEarliestRound[pos] || 14;
+                let acceptableRound = Math.min(earliestHistorical, totalRounds - 2);
+                
+                if (currentRound < acceptableRound) {
+                    personalityAdjustment = -999;
                 }
             }
-
-            if (profile.teamBias === this.normalizeTeam(player.Team)) personalityAdjustment += 4.0;
-            if (profile.playerCrushes?.includes(player._cleanName)) personalityAdjustment += 6.0;
-
-            const totalRounds = this.settings.roster.totalSize;
-            const canDraftPK = profile.reachesForKicker && currentRound >= Math.floor(profile.pkAvgRound);
-            const canDraftDST = profile.reachesForDST && currentRound >= Math.floor(profile.dstAvgRound);
-            if (pos === 'PK' && currentRound <= totalRounds - 2 && !canDraftPK) personalityAdjustment -= 999;
-            if (pos === 'DST' && currentRound <= totalRounds - 2 && !canDraftDST) personalityAdjustment -= 999;
-
-            personalityAdjustment = Math.max(-15, Math.min(15, personalityAdjustment));
         }
 
-        // ADP Reach / Slide evaluation
+        // =========================================================
+        // 🎯 SMOOTH ADP REACH, SLIDE & SURVIVAL ARBITRAGE ENGINE
+        // =========================================================
         let adpPenalty = 0, adpBonus = 0;
         if (player.adp) {
-            let adpDiff = player.adp - currentOverallPick; // Positive means market drafts them later
+            let adpDiff = player.adp - currentOverallPick; // Positive = market drafts them later
             let allowedReach = Math.round(4.0 + Math.pow(currentRound, 1.4) * 0.8);
     
-            // ✨ NEW: ADP Arbitrage for Recommendations!
-            // If it's the User's turn, check if the player will survive until our NEXT pick.
+            // 1. ADP Arbitrage Window for the User:
+            // If drafting on the turn, expand allowed reach to the full window turn
             if (!isCPU && nextActiveWindowPick) {
                 let turnsUntilNextPick = nextActiveWindowPick - currentOverallPick;
-        
-                // If the player's ADP happens BEFORE our next pick (plus a tiny 2-pick safety buffer), 
-                // it is mathematically NOT a reach to draft them now. We must waive the penalty.
                 if (adpDiff <= turnsUntilNextPick + 2) {
                     allowedReach = Math.max(allowedReach, adpDiff); 
                 }
             }
 
+            // 2. Smooth Continuous ADP Reach Penalty (No 22.0 hard cap)
             if (adpDiff > allowedReach) {
-                adpPenalty = Math.min(22.0, (adpDiff - allowedReach) * Math.max(0.35, 1.2 - currentRound * 0.08));
-                if (isCPU && personalityAdjustment > 0) adpPenalty *= 0.5; // Fan favorites mitigate reach penalty
+                let reachAmount = adpDiff - allowedReach;
+                let roundDecay = Math.max(0.40, 1.3 - currentRound * 0.07);
+                
+                // Continuous polynomial penalty: scales smoothly from small reaches to catastrophic multi-round reaches
+                let basePenalty = (reachAmount * roundDecay) + (Math.pow(reachAmount / 8.0, 2.2) * 1.5);
+
+                adpPenalty = basePenalty;
+                if (isCPU && personalityAdjustment > 0) adpPenalty *= 0.5; // CPU biases soften reach penalty
             } else if (adpDiff < -12) {
-                // ✨ NEW: Dynamic "Falling Knife" vs "Discount Rack" Logic
-                // Calculate where the pick is relative to the Model's Overall Rank
+                // Dynamic "Falling Knife" vs "Discount Rack" Logic
                 let modelDiff = (player.ovrRank || player.adp) - currentOverallPick; 
         
                 if ((player.Edge || 0) >= -1.5) {
-                    // 🟢 Scenario A: The Model LIKES them, and they are sliding past ADP. 
-                    // Give them the standard slide bonus to push them to the top of your queue.
                     adpBonus = Math.min(12, Math.abs(adpDiff + 12) * 0.35);
                 } else if (modelDiff < 0) {
-                    // 🟡 Scenario B: The "Discount Rack" Trigger
-                    // The Model HATES them, BUT they have now fallen past where even the Model 
-                    // thinks they belong. They are officially a steal at this price.
                     adpBonus = Math.min(10, Math.abs(modelDiff) * 0.40);
                 }
-                // 🔴 Scenario C: The Model hates them, and they haven't fallen to the Model's 
-                // rank yet. Give them ZERO bonus. Let the knife keep falling.
+            }
+
+            // 3. ✨ Smooth Continuous Survival Tax (Game Theory / ADP Arbitrage)
+            // Penalizes players who are safe to wait on, prioritizing scarce assets.
+            if (!isCPU && player._survivalProb !== undefined) {
+                let prob = player._survivalProb;
+                
+                // Smooth power curve: 50% prob = -5 pts, 70% prob = -13 pts, 85% prob = -23 pts, 99% prob = -35 pts
+                let rawSurvivalTax = 36.0 * Math.pow(prob, 2.8);
+
+                // Edge Case Protection: Tier Cliff Immunity
+                // If this player anchors an expiring positional tier, soften the survival tax
+                if (typeof scarcityBonus === 'number' && scarcityBonus > 0) {
+                    let cliffProtection = Math.max(0.30, 1.0 - (scarcityBonus / 20.0));
+                    rawSurvivalTax *= cliffProtection;
+                }
+
+                adpPenalty += rawSurvivalTax;
             }
         }
 
@@ -1744,7 +1796,6 @@ const State = {
 
         return { totalDraftValue, isDraftable: true };
     },
-
     calculateWeeklyProjections(player) {
         player.weeklyProjections = {};
         if (!player.ProjPts || player.ProjPts <= 0) return;
@@ -4694,52 +4745,32 @@ const State = {
                 profiles[teamName] = {
                     name: teamName,
                     years: new Set(),
-                    yearlyPicks: {}, // year -> { r1: pos, r2: pos }
-                    yearlyPosCounts: {}, // year -> { QB: 0, RB: 0, WR: 0, TE: 0 }
-                    earlyRBs: 0, earlyWRs: 0,
-                    firstQbRound: 99, firstTeRound: 99,
-                    qbAvgRound: 0, qbCount: 0,
-                    teAvgRound: 0, teCount: 0,
-                    pkAvgRound: 0, pkCount: 0,
-                    dstAvgRound: 0, dstCount: 0,
-                    midRoundRBs: 0, midRoundWRs: 0,
+                    totalPicks: 0,
+                    posPicks: { QB: 0, RB: 0, WR: 0, TE: 0, PK: 0, DST: 0 },
+                    posRoundCounts: { QB: {}, RB: {}, WR: {}, TE: {}, PK: {}, DST: {} },
+                    posEarliestRound: { QB: 99, RB: 99, WR: 99, TE: 99, PK: 99, DST: 99 },
+                    posRoundSums: { QB: 0, RB: 0, WR: 0, TE: 0, PK: 0, DST: 0 },
+                    yearlyPosCounts: {},
                     teamTally: {},
-                    playerTally: {} // ⚡ NEW: Track Player Loyalty
+                    playerTally: {}
                 };
             }
 
             let p = profiles[teamName];
             p.years.add(year);
+            p.totalPicks++;
 
-            if (!p.yearlyPicks[year]) p.yearlyPicks[year] = {};
             if (!p.yearlyPosCounts[year]) p.yearlyPosCounts[year] = { QB: 0, RB: 0, WR: 0, TE: 0, PK: 0, DST: 0 };
-
-            if (round === 1 && !p.yearlyPicks[year].r1) p.yearlyPicks[year].r1 = pos;
-            if (round === 2 && !p.yearlyPicks[year].r2) p.yearlyPicks[year].r2 = pos;
             p.yearlyPosCounts[year][pos] = (p.yearlyPosCounts[year][pos] || 0) + 1;
 
-            // Rounds 1-3 Early Capital
-            if (round <= 3) {
-                if (pos === 'RB') p.earlyRBs++;
-                if (pos === 'WR') p.earlyWRs++;
+            p.posPicks[pos] = (p.posPicks[pos] || 0) + 1;
+            p.posRoundSums[pos] = (p.posRoundSums[pos] || 0) + round;
+            p.posRoundCounts[pos][round] = (p.posRoundCounts[pos][round] || 0) + 1;
+
+            if (round < p.posEarliestRound[pos]) {
+                p.posEarliestRound[pos] = round;
             }
 
-            // Rounds 6-10 Depth Capital
-            if (round >= 6 && round <= 10) {
-                if (pos === 'RB') p.midRoundRBs++;
-                if (pos === 'WR') p.midRoundWRs++;
-            }
-
-            // Positional Targets
-            if (pos === 'QB' && round < p.firstQbRound) p.firstQbRound = round;
-            if (pos === 'TE' && round < p.firstTeRound) p.firstTeRound = round;
-
-            if (pos === 'QB' && round < 12) { p.qbAvgRound += round; p.qbCount++; }
-            if (pos === 'TE' && round < 12) { p.teAvgRound += round; p.teCount++; }
-            if (pos === 'PK') { p.pkAvgRound += round; p.pkCount++; }
-            if (pos === 'DST') { p.dstAvgRound += round; p.dstCount++; }
-
-            // Team Bias Tracking
             let nflTeam = this.normalizeTeam(rawNflTeam);
             if (!nflTeam) {
                 let matchedPlayer = this.matchPlayerFast(playerName, '', pos);
@@ -4749,92 +4780,67 @@ const State = {
                 p.teamTally[nflTeam] = (p.teamTally[nflTeam] || 0) + 1;
             }
 
-            // ⚡ NEW: Player Loyalty Tracking
             if (playerName) {
                 let cleanName = this.normalizeName(playerName);
                 p.playerTally[cleanName] = (p.playerTally[cleanName] || 0) + 1;
             }
         }
 
-        // Finalize Strategy Archetypes & Personalities
+        // Synthesize raw continuous empirical statistics for each manager
         for (let key in profiles) {
             let p = profiles[key];
             let draftsCount = Math.max(1, p.years.size);
 
-            let avgEarlyRBs = p.earlyRBs / draftsCount;
-            let avgEarlyWRs = p.earlyWRs / draftsCount;
-            let avgMidRBs = p.midRoundRBs / draftsCount;
-
-            p.qbAvgRound = p.qbCount > 0 ? (p.qbAvgRound / p.qbCount) : 10;
-            p.teAvgRound = p.teCount > 0 ? (p.teAvgRound / p.teCount) : 10;
-            p.pkAvgRound = p.pkCount > 0 ? (p.pkAvgRound / p.pkCount) : 15;
-            p.dstAvgRound = p.dstCount > 0 ? (p.dstAvgRound / p.dstCount) : 15;
-
-            p.draftsEarlyQB = p.firstQbRound <= 5;
-            p.draftsEarlyTE = p.firstTeRound <= 5;
-
-            // ⚡ NEW: Calculate Average Total Positional Roster Limits
-            let totalQBs = 0, totalTEs = 0;
-            for (let yr in p.yearlyPosCounts) {
-                totalQBs += p.yearlyPosCounts[yr].QB;
-                totalTEs += p.yearlyPosCounts[yr].TE;
-            }
-            p.draftsBackupQB = (totalQBs / draftsCount) >= 1.5; // Do they average > 1.5 QBs a year?
-            p.draftsBackupTE = (totalTEs / draftsCount) >= 1.5;
-
-            // =========================================================
-            // EMPIRICAL BEHAVIOR MATRIX
-            // =========================================================
-            let r1r3Picks = p.earlyRBs + p.earlyWRs + (p.qbAvgRound <= 3 ? 1 : 0) + (p.teAvgRound <= 3 ? 1 : 0);
-            let totalEarlyPicks = Math.max(1, r1r3Picks);
-
             p.empirical = {
-                // Historical Positional Distribution in Rounds 1-3
-                earlyRBRate: p.earlyRBs / totalEarlyPicks,
-                earlyWRRate: p.earlyWRs / totalEarlyPicks,
-                earlyQBRate: (p.qbAvgRound <= 3 ? 1 : 0) / draftsCount,
-                earlyTERate: (p.teAvgRound <= 3 ? 1 : 0) / draftsCount,
-                
-                // Target acquisition horizons
-                qbTargetRound: p.qbAvgRound,
-                teTargetRound: p.teAvgRound,
-                pkTargetRound: p.pkAvgRound,
-                dstTargetRound: p.dstAvgRound,
-                
-                // Behaviors
-                handcuffRate: p.likesHandcuffs ? 0.75 : 0.20,
-                backupQBRate: p.draftsBackupQB ? 0.80 : 0.15,
-                backupTERate: p.draftsBackupTE ? 0.80 : 0.15
+                draftsCount: draftsCount,
+                posAvgRound: {},
+                posEarliestRound: p.posEarliestRound,
+                posRoundPhaseRates: { early: {}, mid: {}, late: {} },
+                avgRosterCounts: {},
+                backupRates: {},
+                teamBias: {},
+                playerCrushes: p.playerTally
             };
-            
-            // To maintain UI badge compatibility, derive a dynamic label from the empirical math
-            if (p.empirical.earlyRBRate >= 0.60) p.strategy = "Robust-RB";
-            else if (p.empirical.earlyWRRate >= 0.60) p.strategy = "Zero-RB";
-            else if (p.empirical.earlyRBRate > 0.3 && p.empirical.earlyWRRate > 0.3) p.strategy = "Hero-RB";
-            else p.strategy = "Balanced";
 
-            p.likesHandcuffs = avgMidRBs >= 1.5;
-            p.reachesForKicker = p.pkAvgRound <= 12;
-            p.reachesForDST = p.dstAvgRound <= 12;
+            ['QB', 'RB', 'WR', 'TE', 'PK', 'DST'].forEach(pos => {
+                let picks = p.posPicks[pos] || 0;
+                p.empirical.posAvgRound[pos] = picks > 0 ? (p.posRoundSums[pos] / picks) : (['PK', 'DST'].includes(pos) ? 15 : 10);
 
-            // NFL Team Fandom
-            let maxTally = 0, bias = 'None';
+                // Calculate historical pick distribution across phases: Early (1-4), Mid (5-9), Late (10+)
+                let earlyPicks = 0, midPicks = 0, latePicks = 0;
+                for (let r = 1; r <= 4; r++) earlyPicks += (p.posRoundCounts[pos][r] || 0);
+                for (let r = 5; r <= 9; r++) midPicks += (p.posRoundCounts[pos][r] || 0);
+                for (let r = 10; r <= 30; r++) latePicks += (p.posRoundCounts[pos][r] || 0);
+
+                p.empirical.posRoundPhaseRates.early[pos] = earlyPicks / (draftsCount * 4);
+                p.empirical.posRoundPhaseRates.mid[pos] = midPicks / (draftsCount * 5);
+                p.empirical.posRoundPhaseRates.late[pos] = latePicks / Math.max(1, draftsCount * 7);
+
+                // Track how often they draft backups at this position
+                let totalCount = 0, backupYears = 0;
+                for (let yr in p.yearlyPosCounts) {
+                    let cnt = p.yearlyPosCounts[yr][pos] || 0;
+                    totalCount += cnt;
+                    if (cnt >= 2) backupYears++;
+                }
+                p.empirical.avgRosterCounts[pos] = totalCount / draftsCount;
+                p.empirical.backupRates[pos] = backupYears / draftsCount;
+            });
+
+            // NFL Team Biases (exact historical draft percentage by franchise)
             for (let teamKey in p.teamTally) {
-                let avgTally = p.teamTally[teamKey] / draftsCount;
-                if (avgTally > maxTally && avgTally >= 1.5) {
-                    maxTally = avgTally;
-                    bias = teamKey;
-                }
+                p.empirical.teamBias[teamKey] = p.teamTally[teamKey] / Math.max(1, p.totalPicks);
             }
-            p.teamBias = bias;
 
-            // ⚡ NEW: Identify "Player Crushes" (Drafted 3+ times across multiple years)
-            p.playerCrushes = [];
-            for (let playerName in p.playerTally) {
-                if (p.playerTally[playerName] >= 3) {
-                    p.playerCrushes.push(playerName);
-                }
-            }
+            // Legacy display compatibility for UI tables
+            p.strategy = p.empirical.posRoundPhaseRates.early.RB >= 0.50 ? "RB-Heavy" : (p.empirical.posRoundPhaseRates.early.WR >= 0.50 ? "WR-Heavy" : "Balanced");
+            p.qbAvgRound = p.empirical.posAvgRound.QB;
+            p.teAvgRound = p.empirical.posAvgRound.TE;
+            p.pkAvgRound = p.empirical.posAvgRound.PK;
+            p.dstAvgRound = p.empirical.posAvgRound.DST;
+            p.draftsEarlyQB = p.empirical.posEarliestRound.QB <= 5;
+            p.draftsEarlyTE = p.empirical.posEarliestRound.TE <= 5;
+            p.teamBias = Object.keys(p.teamTally).sort((a, b) => p.teamTally[b] - p.teamTally[a])[0] || 'None';
         }
 
         this.managerProfiles = profiles;
