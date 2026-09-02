@@ -199,7 +199,7 @@ window.DraftRecap = {
                 team.roster.some(partner => 
                     partner._cleanTeam === qb._cleanTeam && 
                     ['WR', 'TE'].includes(partner.Pos) && 
-                    (partner.ProjPts || 0) >= 180
+                    (partner.staticTier || 4) <= 3 // ⚡ Requires a Top-3 Tier pass-catcher
                 )
             );
 
@@ -226,7 +226,9 @@ window.DraftRecap = {
     // 🎲 1,000-ITERATION MONTE CARLO SEASON SIMULATOR
     runMonteCarloSimulations(teams) {
         const totalSims = 1000;
-        const weeks = 14; // Regular season weeks
+        // ⚡ NEW: Dynamically calculate regular season length (End Week minus 3 playoff weeks)
+        const endW = State.settings.endWeek || 17;
+        const weeks = Math.max(10, endW - 3); 
         const playoffSpots = 4; // Top 4 make playoffs
 
         const simResults = teams.map(t => ({
@@ -480,7 +482,8 @@ window.DraftRecap = {
         let r = State.settings.roster;
         let starters = [];
         let bench = [];
-        let counts = { QB: 0, RB: 0, WR: 0, TE: 0, FlexRBWR: 0, Flex: 0, Superflex: 0, PK: 0, DST: 0 };
+        // ⚡ NEW: Added FlexWRTE to counts
+        let counts = { QB: 0, RB: 0, WR: 0, TE: 0, FlexRBWR: 0, FlexWRTE: 0, Flex: 0, Superflex: 0, PK: 0, DST: 0 };
 
         roster.forEach(p => {
             let pos = p.Pos;
@@ -497,15 +500,57 @@ window.DraftRecap = {
         let remainingBench = [];
         bench.forEach(p => {
             let pos = p.Pos;
-            if (['RB', 'WR'].includes(pos) && counts['FlexRBWR'] < (r.FlexRBWR?.max || 0)) {
-                starters.push({ ...p, displaySlot: 'FLEX (W/R)' });
-                counts['FlexRBWR']++;
-            } else if (['RB', 'WR', 'TE'].includes(pos) && counts['Flex'] < (r.Flex?.max || 0)) {
-                starters.push({ ...p, displaySlot: 'FLEX' });
-                counts['Flex']++;
-            } else if (['QB', 'RB', 'WR', 'TE'].includes(pos) && counts['Superflex'] < (r.Superflex?.max || 0)) {
-                starters.push({ ...p, displaySlot: 'SUPERFLEX' });
-                counts['Superflex']++;
+            
+            // ⚡ NEW: Smart-Routing Flex Cascade for the UI
+            if (pos === 'WR') {
+                if (counts['FlexWRTE'] < (r.FlexWRTE?.max || 0)) {
+                    starters.push({ ...p, displaySlot: 'FLEX (W/T)' });
+                    counts['FlexWRTE']++;
+                } else if (counts['FlexRBWR'] < (r.FlexRBWR?.max || 0)) {
+                    starters.push({ ...p, displaySlot: 'FLEX (W/R)' });
+                    counts['FlexRBWR']++;
+                } else if (counts['Flex'] < (r.Flex?.max || 0)) {
+                    starters.push({ ...p, displaySlot: 'FLEX' });
+                    counts['Flex']++;
+                } else if (counts['Superflex'] < (r.Superflex?.max || 0)) {
+                    starters.push({ ...p, displaySlot: 'SUPERFLEX' });
+                    counts['Superflex']++;
+                } else {
+                    remainingBench.push(p);
+                }
+            } else if (pos === 'RB') {
+                if (counts['FlexRBWR'] < (r.FlexRBWR?.max || 0)) {
+                    starters.push({ ...p, displaySlot: 'FLEX (W/R)' });
+                    counts['FlexRBWR']++;
+                } else if (counts['Flex'] < (r.Flex?.max || 0)) {
+                    starters.push({ ...p, displaySlot: 'FLEX' });
+                    counts['Flex']++;
+                } else if (counts['Superflex'] < (r.Superflex?.max || 0)) {
+                    starters.push({ ...p, displaySlot: 'SUPERFLEX' });
+                    counts['Superflex']++;
+                } else {
+                    remainingBench.push(p);
+                }
+            } else if (pos === 'TE') {
+                if (counts['FlexWRTE'] < (r.FlexWRTE?.max || 0)) {
+                    starters.push({ ...p, displaySlot: 'FLEX (W/T)' });
+                    counts['FlexWRTE']++;
+                } else if (counts['Flex'] < (r.Flex?.max || 0)) {
+                    starters.push({ ...p, displaySlot: 'FLEX' });
+                    counts['Flex']++;
+                } else if (counts['Superflex'] < (r.Superflex?.max || 0)) {
+                    starters.push({ ...p, displaySlot: 'SUPERFLEX' });
+                    counts['Superflex']++;
+                } else {
+                    remainingBench.push(p);
+                }
+            } else if (pos === 'QB') {
+                if (counts['Superflex'] < (r.Superflex?.max || 0)) {
+                    starters.push({ ...p, displaySlot: 'SUPERFLEX' });
+                    counts['Superflex']++;
+                } else {
+                    remainingBench.push(p);
+                }
             } else {
                 remainingBench.push(p);
             }
@@ -560,9 +605,14 @@ window.DraftRecap = {
         let qb1IsElite = qbs[0] && (qbs[0].staticTier || 4) <= 3;
         let te1IsElite = tes[0] && (tes[0].staticTier || 4) <= 3;
         
+        let flexSpots = (State.settings.roster.FlexRBWR?.max || 0) + 
+                        (State.settings.roster.FlexWRTE?.max || 0) + 
+                        (State.settings.roster.Flex?.max || 0) + 
+                        (State.settings.roster.Superflex?.max || 0);
+                        
         let topStarters = [...team.roster]
             .sort((a,b) => (b.ProjPts || 0) - (a.ProjPts || 0))
-            .slice(0, (posSlots.QB + posSlots.RB + posSlots.WR + posSlots.TE + (State.settings.roster.Flex?.max || 1)));
+            .slice(0, (posSlots.QB + posSlots.RB + posSlots.WR + posSlots.TE + flexSpots));
 
         let byeCollisions = {};
         let maxByeCount = 0, maxByeWeek = null;
@@ -701,7 +751,13 @@ window.DraftRecap = {
         let earlyCore = team.roster.filter(p => (p.draftPickNum || 99) <= (State.settings.numTeams || 12) * 8);
         if (earlyCore.length === 0) earlyCore = team.roster;
         
-        let xPlayer = [...earlyCore].sort((a, b) => (b.upsideScore || 0) - (a.upsideScore || 0))[0];
+        // ⚡ NEW: Sort by True Variance Spread (Ceiling PPG - Floor PPG)
+        let xPlayer = [...earlyCore].sort((a, b) => {
+            let aVar = (a.ceilingPpg || 0) - (a.floorPpg || 0);
+            let bVar = (b.ceilingPpg || 0) - (b.floorPpg || 0);
+            return bVar - aVar;
+        })[0];
+
         if (!xPlayer) return null;
 
         let question = "";
@@ -1237,7 +1293,8 @@ window.DraftRecap = {
                             <div>
                                 <span class="font-black text-xs text-slate-900 mr-1.5">${p.Player}</span>
                                 <span class="text-[10px] font-bold ${idx === 0 ? 'text-indigo-600' : 'text-slate-400'}">(${idx === 0 ? 'Starter' : 'Depth #' + (idx + 1)})</span>
-                                <span class="block text-[10px] text-slate-400 mt-0.5">${p.Team} • Wk ${p.byeWeek || '-'} Bye</span>
+                                <!-- ⚡ FIXED BYE WEEK STRING BELOW ⚡ -->
+                                <span class="block text-[10px] text-slate-400 mt-0.5">${p.Team} • ${p.byeWeek && p.byeWeek !== 'N/A' ? 'Wk ' + p.byeWeek + ' Bye' : 'No Bye'}</span>
                             </div>
                             <div class="text-right">
                                 <span class="text-xs font-black text-slate-900 block">${p.ProjPts.toFixed(1)} pts</span>
