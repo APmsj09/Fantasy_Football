@@ -1,38 +1,46 @@
 Player	Pos	Team	Absence_Reason	When_Occurred	Missed_25	Status_26	Min_Missed_26	Max_Missed_26
-Christian McCaffrey	RB	SF	Soreness	Aug 2026	0	Active	0	0
-Alvin Kamara	RB	NO	MCL	Aug 2026	6	Out	3	6
+Christian McCaffrey	RB	SF	Soreness	Aug 2026	0	Questionable	0	1
+Alvin Kamara	RB	NO	MCL	Aug 2026	6	Questionable	0	1
 Breece Hall	RB	NYJ	Groin	Aug 2026	0	Active	0	0
 Zach Charbonnet	RB	SEA	ACL	Offseason 2026	1	PUP	4	8
 Jeremiyah Love	RB	ARI	Ankle	Aug 2026	0	Out	1	3
-Chuba Hubbard	RB	CAR	Hamstring	Aug 2026	2	Limited	0	2
-Kyle Monangai	RB	CHI	Knee	Aug 2026	0	Out	2	4
+Chuba Hubbard	RB	CAR	Hamstring	Aug 2026	2	Questionable	0	1
+Kyle Monangai	RB	CHI	Knee	Aug 2026	0	Questionable	0	2
 Cam Skattebo	RB	NYG	Dislocation	Oct 2025	9	Active	0	0
 Jaylen Waddle	WR	DEN	Leg	Aug 2026	1	Active	0	0
-Alec Pierce	WR	IND	Ankle	Offseason 2026	2	PUP	4	6
-Jordyn Tyson	WR	NO	Hamstring	Aug 2026	0	Out	1	3
+Alec Pierce	WR	IND	Ankle	Offseason 2026	2	Questionable	0	1
+Jordyn Tyson	WR	NO	Hamstring	Aug 2026	0	IR	4	8
 Jaylin Noel	WR	HOU	Finger	Jul 2026	0	Active	0	0
 Kenyon Sadiq	TE	NYJ	Hernia	Offseason 2026	0	Active	0	0
-George Kittle	TE	SF	Achilles	Jan 2026	5	Active	0	2
+George Kittle	TE	SF	Achilles	Jan 2026	5	Questionable	0	1
 Malik Nabers	WR	NYG	ACL	2025	14	Limited	0	2
 Puka Nacua	WR	LAR	Psoas	Aug 2026	1	Limited	0	1
 Emeka Egbuka	WR	TB	Toe	Aug 2026	0	Limited	0	1
 DeVonta Smith	WR	PHI	Hamstring	Aug 2026	0	Limited	0	2
 Michael Pittman Jr.	WR	PIT	Hamstring	Aug 2026	0	Limited	0	2
 Xavier Worthy	WR	KC	Shoulder	Aug 2026	0	Limited	0	1
-Luther Burden III	WR	CHI	Groin	Aug 2026	0	Active	0	0
+Luther Burden III	WR	CHI	Groin	Aug 2026	0	Questionable	0	1
 Jayden Higgins	WR	HOU	ACL	Aug 2026	0	IR	17	17
 Sam LaPorta	TE	DET	Hip	Aug 2026	8	Limited	0	2
 Tyler Warren	TE	IND	Groin	Aug 2026	0	Limited	0	1
-Tucker Kraft	TE	GB	ACL	Nov 2025	8	Active	0	0
-Tank Dell	WR	HOU	Knee	Dec 2024	0	Limited	0	0
+Tucker Kraft	TE	GB	ACL	Nov 2025	8	Questionable	0	1
+Tank Dell	WR	HOU	ACL MCL	Dec 2024	0	IR	4	8
 Jalen McMillan	WR	TB	Knee	Aug 2026	0	Limited	0	1
 Keon Coleman	WR	BUF	Foot	Aug 2026	0	Limited	0	1
 Rashee Rice	WR	KC	Suspension	2025	6	Active	0	0
 Jordan Addison	WR	MIN	Suspension	2025	3	Active	0	0
 DK Metcalf	WR	PIT	Suspension	Dec 2025	2	Active	0	0
 Deshaun Watson	QB	CLE	Achilles	2025	17	Active	0	0
-James Conner	RB	ARI	Foot	Sep 2025	14	Active	0	0
+James Conner	RB	ARI	Foot	Sep 2025	14	IR	4	8
 Dalton Kincaid	TE	BUF	Hamstring	Nov 2025	6	Active	0	0
-Ashton Jeanty	RB	LV	Ankle	Aug 2026	0	Limited	0	2
+Ashton Jeanty	RB	LV	Ankle	Aug 2026	0	Questionable	0	2
 Jake Bobo	WR	SEA	Knee	Aug 2026	0	IR	17	17
 Luke Musgrave	TE	GB	Neck	Aug 2026	0	PUP	4	8
+Isaac Guerendo	RB	SF	Pectoral	Aug 2026	0	PUP	4	8
+Isiah Pacheco	RB	DET	Back	Sep 2026	0	IR	4	8
+Mike Evans	WR	TB	Groin	Aug 2026	0	Questionable	0	1
+TreVeyon Henderson	RB	NE	Ankle	Aug 2026	0	Active	0	1
+Josh Jacobs	RB	GB	Legal	Sep 2026	0	Out	4	17
+Theo Johnson	TE	NYG	Shoulder	Aug 2026	0	Questionable	0	2
+Rashod Bateman	WR	BAL	Suspension	2026	0	Active	0	6
+Tyrone Tracy Jr.	RB	NYG	Neck	Sep 2026	0	Questionable	0	2
