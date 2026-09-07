@@ -4,6 +4,110 @@ window.DraftRecap = {
     leagueAwards: {},
     activeSubTab: 'overview', // 'overview' | 'starters' | 'depth' | 'awards'
 
+    clamp(value, min = 0, max = 100) {
+        return Math.max(min, Math.min(max, Number.isFinite(value) ? value : min));
+    },
+
+    summarizeWeeklyScores(scores, startWeek = 1) {
+        const cleanScores = scores.map(Number).filter(Number.isFinite);
+        if (cleanScores.length === 0) {
+            return {
+                total: 0, average: 0, median: 0, stdDev: 0, floor: 0, ceiling: 0,
+                bestWeek: null, worstWeek: null, consistency: 0, zeroWeeks: 0
+            };
+        }
+
+        const sorted = [...cleanScores].sort((a, b) => a - b);
+        const total = cleanScores.reduce((sum, score) => sum + score, 0);
+        const average = total / cleanScores.length;
+        const variance = cleanScores.reduce((sum, score) => sum + ((score - average) ** 2), 0) / cleanScores.length;
+        const bestIndex = cleanScores.indexOf(Math.max(...cleanScores));
+        const worstIndex = cleanScores.indexOf(Math.min(...cleanScores));
+
+        return {
+            total,
+            average,
+            median: sorted.length % 2 === 1
+                ? sorted[Math.floor(sorted.length / 2)]
+                : (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2,
+            stdDev: Math.sqrt(variance),
+            floor: sorted[0],
+            ceiling: sorted[sorted.length - 1],
+            bestWeek: startWeek + bestIndex,
+            worstWeek: startWeek + worstIndex,
+            consistency: this.clamp(100 - ((Math.sqrt(variance) / Math.max(1, average)) * 100), 0, 100),
+            zeroWeeks: cleanScores.filter(score => score <= 0).length
+        };
+    },
+
+    auditRoster(team) {
+        const roster = team?.roster || [];
+        const settings = State.settings?.roster || {};
+        const corePositions = ['QB', 'RB', 'WR', 'TE', 'PK', 'DST'];
+        const counts = corePositions.reduce((result, pos) => {
+            result[pos] = roster.filter(player => player.Pos === pos).length;
+            return result;
+        }, {});
+        const missingCore = corePositions.reduce((missing, pos) => {
+            const required = settings[pos]?.max || 0;
+            return missing + Math.max(0, required - counts[pos]);
+        }, 0);
+        const flexRequired = (settings.FlexRBWR?.max || 0) + (settings.FlexWRTE?.max || 0) +
+            (settings.Flex?.max || 0) + (settings.Superflex?.max || 0);
+        const extraEligible = Math.max(0, counts.RB - (settings.RB?.max || 0)) +
+            Math.max(0, counts.WR - (settings.WR?.max || 0)) +
+            Math.max(0, counts.TE - (settings.TE?.max || 0)) +
+            Math.max(0, counts.QB - (settings.QB?.max || 0));
+        const missingFlex = Math.max(0, flexRequired - extraEligible);
+        const coreSlots = corePositions.reduce((sum, pos) => sum + (settings[pos]?.max || 0), 0);
+        const benchMax = settings.Bench?.max || 0;
+        const injuredPlayers = roster.filter(player => {
+            const status = String(player.injuryStatus || '').toLowerCase();
+            return status && !['active', 'none', 'healthy', 'na'].includes(status);
+        });
+        const byeCollisions = {};
+        roster.forEach(player => {
+            if (player.byeWeek && player.byeWeek !== 'N/A') {
+                byeCollisions[player.byeWeek] = (byeCollisions[player.byeWeek] || 0) + 1;
+            }
+        });
+        const byePeak = Object.values(byeCollisions).reduce((max, count) => Math.max(max, count), 0);
+        const injuryPenalty = injuredPlayers.reduce((penalty, player) => {
+            const status = String(player.injuryStatus || '').toLowerCase();
+            return penalty + (['out', 'ir', 'pup', 'suspended', 'out for season'].includes(status) ? 12 : 4);
+        }, 0);
+
+        return {
+            counts,
+            missingCore,
+            missingFlex,
+            coreSlots,
+            benchCount: Math.max(0, roster.length - coreSlots),
+            benchMax,
+            injuredCount: injuredPlayers.length,
+            injuryPenalty,
+            byePeak,
+            byeCollisions,
+            availabilityScore: this.clamp(100 - injuryPenalty - Math.max(0, byePeak - 1) * 3)
+        };
+    },
+
+    getGradeDetails(score) {
+        if (score >= 97) return { grade: 'A+', color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-200' };
+        if (score >= 93) return { grade: 'A', color: 'text-emerald-500', bg: 'bg-emerald-50 border-emerald-200' };
+        if (score >= 90) return { grade: 'A-', color: 'text-emerald-400', bg: 'bg-emerald-50 border-emerald-200' };
+        if (score >= 87) return { grade: 'B+', color: 'text-indigo-600', bg: 'bg-indigo-50 border-indigo-200' };
+        if (score >= 83) return { grade: 'B', color: 'text-indigo-500', bg: 'bg-indigo-50 border-indigo-200' };
+        if (score >= 80) return { grade: 'B-', color: 'text-indigo-400', bg: 'bg-indigo-50 border-indigo-200' };
+        if (score >= 77) return { grade: 'C+', color: 'text-amber-600', bg: 'bg-amber-50 border-amber-200' };
+        if (score >= 73) return { grade: 'C', color: 'text-amber-500', bg: 'bg-amber-50 border-amber-200' };
+        if (score >= 70) return { grade: 'C-', color: 'text-amber-400', bg: 'bg-amber-50 border-amber-200' };
+        if (score >= 67) return { grade: 'D+', color: 'text-rose-500', bg: 'bg-rose-50 border-rose-200' };
+        if (score >= 63) return { grade: 'D', color: 'text-rose-500', bg: 'bg-rose-50 border-rose-200' };
+        if (score >= 60) return { grade: 'D-', color: 'text-rose-400', bg: 'bg-rose-50 border-rose-200' };
+        return { grade: 'F', color: 'text-rose-700', bg: 'bg-rose-100 border-rose-300' };
+    },
+
     generateRecaps() {
         this.teamData = {};
         this.sortedTeams = [];
@@ -12,12 +116,16 @@ window.DraftRecap = {
         const startW = State.settings.startWeek || 1;
         const endW = State.settings.endWeek || 17;
         const numTeams = State.settings.numTeams || 12;
+        const playoffStartWeek = Math.max(State.settings.startWeek || 1, (State.settings.endWeek || 17) - 2);
+        const playoffEndWeek = State.settings.endWeek || 17;
+        const leagueTeamCount = Math.max(1, Object.keys(State.teamsById || {}).length);
 
         // 1. Calculate Standings & 3-Tier Outcomes
         let rawTeams = Object.values(State.teamsById).map(team => {
             let basePts = 0, floorPts = 0, ceilingPts = 0;
             let totalProj = 0;
             let byeCollisions = {};
+            const weeklyBase = [], weeklyFloor = [], weeklyCeiling = [];
 
             team.roster.forEach(p => {
                 totalProj += (p.ProjPts || 0);
@@ -27,11 +135,14 @@ window.DraftRecap = {
             });
 
             for (let w = startW; w <= endW; w++) {
-                basePts += State.calculateOptimalWeeklyScore(team.roster, w);
+                const score = State.calculateActualWeeklyScore(team.roster, w);
+                basePts += score;
+                weeklyBase.push(score);
             }
 
             let floorRoster = team.roster.map(p => {
-                let variance = p.varianceSpread || (p.boomBust?.bust ? p.boomBust.bust / 100 : 0.22);
+                let variance = Number(p.varianceSpread ?? (p.boomBust?.bust !== undefined ? p.boomBust.bust / 100 : 0.22));
+                variance = this.clamp(variance, 0, 0.80);
                 let mapped = { ...p, weeklyProjections: {} };
                 for (let week = 1; week <= 18; week++) {
                     let baseProj = p.weeklyProjections?.[`W${week}`] || 0;
@@ -41,11 +152,12 @@ window.DraftRecap = {
             });
 
             let ceilRoster = team.roster.map(p => {
-                let variance = p.varianceSpread || 0.22;
+                let variance = Number(p.varianceSpread ?? 0.22);
+                variance = this.clamp(variance, 0, 0.80);
                 let maxMultiplier = 1 + (variance * 1.2);
                 if (p.upsideScore > 0 && (p.AdvVBD || 0) > 0) {
                     let ratio = p.upsideScore / p.AdvVBD;
-                    if (ratio > 1.0) maxMultiplier = Math.min(1.42, 1 + ((ratio - 1) * 0.45));
+                    if (Number.isFinite(ratio) && ratio > 1.0) maxMultiplier = Math.min(1.42, 1 + ((ratio - 1) * 0.45));
                 }
                 let mapped = { ...p, weeklyProjections: {} };
                 for (let week = 1; week <= 18; week++) {
@@ -56,14 +168,23 @@ window.DraftRecap = {
             });
 
             for (let w = startW; w <= endW; w++) {
-                floorPts += State.calculateOptimalWeeklyScore(floorRoster, w);
-                ceilingPts += State.calculateOptimalWeeklyScore(ceilRoster, w);
+                const floorScore = State.calculateActualWeeklyScore(floorRoster, w);
+                const ceilingScore = State.calculateActualWeeklyScore(ceilRoster, w);
+                floorPts += floorScore;
+                ceilingPts += ceilingScore;
+                weeklyFloor.push(floorScore);
+                weeklyCeiling.push(ceilingScore);
             }
+
+            const weeklyStats = this.summarizeWeeklyScores(weeklyBase, startW);
+            const floorStats = this.summarizeWeeklyScores(weeklyFloor, startW);
+            const ceilingStats = this.summarizeWeeklyScores(weeklyCeiling, startW);
+            const rosterAudit = this.auditRoster(team);
 
             return {
                 ...team, basePts, floorPts, ceilingPts, totalProj,
                 benchPts: Math.max(0, totalProj - basePts),
-                byeCollisions
+                byeCollisions, weeklyStats, floorStats, ceilingStats, rosterAudit
             };
         });
 
@@ -76,9 +197,10 @@ window.DraftRecap = {
             return sums;
         }, { basePts: 0, benchPts: 0, floorPts: 0, ceilingPts: 0 });
 
-        const avgLeagueBase = leagueTotals.basePts / numTeams;
-        const avgLeagueBench = leagueTotals.benchPts / numTeams;
+        const avgLeagueBase = leagueTotals.basePts / leagueTeamCount;
+        const avgLeagueBench = leagueTotals.benchPts / leagueTeamCount;
         const avgLeagueFloorRatio = leagueTotals.floorPts / Math.max(1, leagueTotals.ceilingPts);
+        const avgLeagueConsistency = rawTeams.reduce((sum, team) => sum + team.weeklyStats.consistency, 0) / leagueTeamCount;
 
         const posSlots = { 
             QB: State.settings.roster.QB?.max || 1, 
@@ -99,7 +221,7 @@ window.DraftRecap = {
                 unitAvgs[pos] += (starters * starterWeight) + (depth * depthWeight);
             });
         });
-        Object.keys(unitAvgs).forEach(pos => unitAvgs[pos] /= numTeams);
+        Object.keys(unitAvgs).forEach(pos => unitAvgs[pos] /= leagueTeamCount);
 
         // 🎲 3. FAST MONTE CARLO SEASON SIMULATION (1,000 Iterations)
         this.runMonteCarloSimulations(rawTeams);
@@ -149,42 +271,28 @@ window.DraftRecap = {
                 }
             });
 
-            // Bell-Curve Scoring Algorithm
-            let score = 78; // Base calibrated for a 12-team median
-            let starterEdge = ((team.basePts - avgLeagueBase) / avgLeagueBase) * 100;
-            score += Math.max(-14, Math.min(14, starterEdge * 2.2)); // Rewards close starter margins
-
+            let starterEdge = avgLeagueBase === 0 ? 0 : ((team.basePts - avgLeagueBase) / avgLeagueBase) * 100;
             let benchEdge = ((team.benchPts - avgLeagueBench) / (avgLeagueBench || 1)) * 100;
-            score += Math.max(-6, Math.min(6, benchEdge * 0.20));
-
-            score += Math.max(-5, Math.min(5, weightedAdpDelta * 0.10));
-
             let teamFloorRatio = team.floorPts / Math.max(1, team.ceilingPts);
             let riskDiff = (teamFloorRatio - avgLeagueFloorRatio) * 100;
-            score += Math.max(-3, Math.min(3, riskDiff * 0.4));
-
-            // Deductions for missing positions
-            const coreNeeds = { QB: 1, RB: 2, WR: 2, TE: 1 };
-            Object.keys(coreNeeds).forEach(pos => {
-                let req = State.settings.roster[pos]?.max || coreNeeds[pos];
-                if ((team.counts[pos] || 0) < req) score -= 6.0;
-            });
-
-            score = Math.max(0, Math.min(100, score));
-            let grade = 'F', color = 'text-gray-500', bg = 'bg-gray-100';
-            if (score >= 97) { grade = 'A+'; color = 'text-emerald-600'; bg = 'bg-emerald-50 border-emerald-200'; }
-            else if (score >= 93) { grade = 'A'; color = 'text-emerald-500'; bg = 'bg-emerald-50 border-emerald-200'; }
-            else if (score >= 90) { grade = 'A-'; color = 'text-emerald-400'; bg = 'bg-emerald-50 border-emerald-200'; }
-            else if (score >= 87) { grade = 'B+'; color = 'text-indigo-600'; bg = 'bg-indigo-50 border-indigo-200'; }
-            else if (score >= 83) { grade = 'B'; color = 'text-indigo-500'; bg = 'bg-indigo-50 border-indigo-200'; }
-            else if (score >= 80) { grade = 'B-'; color = 'text-indigo-400'; bg = 'bg-indigo-50 border-indigo-200'; }
-            else if (score >= 77) { grade = 'C+'; color = 'text-amber-600'; bg = 'bg-amber-50 border-amber-200'; }
-            else if (score >= 73) { grade = 'C'; color = 'text-amber-500'; bg = 'bg-amber-50 border-amber-200'; }
-            else if (score >= 70) { grade = 'C-'; color = 'text-amber-400'; bg = 'bg-amber-50 border-amber-200'; }
-            else if (score >= 67) { grade = 'D+'; color = 'text-rose-500'; bg = 'bg-rose-50 border-rose-200'; }
-            else if (score >= 63) { grade = 'D'; color = 'text-rose-500'; bg = 'bg-rose-50 border-rose-200'; }
-            else if (score >= 60) { grade = 'D-'; color = 'text-rose-500'; bg = 'bg-rose-50 border-rose-200'; }
-            else { grade = 'F'; color = 'text-rose-700'; bg = 'bg-rose-100 border-rose-300'; }
+            const gradeComponents = {
+                lineup: this.clamp(50 + starterEdge * 1.2),
+                depth: this.clamp(50 + benchEdge * 0.45),
+                value: this.clamp(50 + weightedAdpDelta * 0.6),
+                stability: this.clamp(50 + (team.weeklyStats.consistency - avgLeagueConsistency) * 1.8 + riskDiff * 0.35),
+                availability: team.rosterAudit.availabilityScore,
+                completeness: this.clamp(100 - team.rosterAudit.missingCore * 10 - team.rosterAudit.missingFlex * 5)
+            };
+            const score = Math.round(
+                gradeComponents.lineup * 0.38 +
+                gradeComponents.depth * 0.14 +
+                gradeComponents.value * 0.12 +
+                gradeComponents.stability * 0.14 +
+                gradeComponents.availability * 0.12 +
+                gradeComponents.completeness * 0.10
+            );
+            const gradeDetails = this.getGradeDetails(score);
+            const { grade, color, bg } = gradeDetails;
 
             let units = this.analyzeUnits(team, unitAvgs, posSlots);
             let streamingAnalysis = this.analyzeStreamingStrategy(team, posSlots);
@@ -205,7 +313,7 @@ window.DraftRecap = {
 
             // ⚡ 2. Include hasEliteStack directly inside the object
             team.analysis = {
-                grade, color, bg, score, persona, starterEdge, benchEdge,
+                grade, color, bg, score, gradeComponents, persona, starterEdge, benchEdge,
                 bestValue, worstReach, topSleeper, lineup,
                 units, streamingAnalysis, playoffOutlook, xFactor,
                 hasEliteStack
@@ -226,14 +334,16 @@ window.DraftRecap = {
     // 🎲 1,000-ITERATION MONTE CARLO SEASON SIMULATOR
     runMonteCarloSimulations(teams) {
         const totalSims = 1000;
-        // ⚡ NEW: Dynamically calculate regular season length (End Week minus 3 playoff weeks)
         const endW = State.settings.endWeek || 17;
-        const weeks = Math.max(10, endW - 3); 
+        const startW = State.settings.startWeek || 1;
+        const totalWeeks = Math.max(1, endW - startW + 1);
+        const regularSeasonWeeks = Math.max(1, totalWeeks - 3);
+        const playoffWeeks = totalWeeks - regularSeasonWeeks;
         const playoffSpots = 4; // Top 4 make playoffs
 
         const simResults = teams.map(t => ({
             id: t.id,
-            meanWeekly: t.basePts / 17,
+            meanWeekly: t.basePts / totalWeeks,
             stdDev: Math.max(8.0, (t.ceilingPts - t.floorPts) / 38),
             winsTotal: 0,
             playoffTotal: 0,
@@ -243,7 +353,7 @@ window.DraftRecap = {
         for (let sim = 0; sim < totalSims; sim++) {
             let weeklyScores = simResults.map(r => {
                 let scores = [];
-                for (let w = 0; w < weeks; w++) {
+                for (let w = 0; w < totalWeeks; w++) {
                     // Box-Muller normal distribution
                     let u = 0, v = 0;
                     while (u === 0) u = Math.random();
@@ -254,8 +364,8 @@ window.DraftRecap = {
                 return { id: r.id, scores, wins: 0, pts: 0 };
             });
 
-            // Simulate round-robin matchups
-            for (let w = 0; w < weeks; w++) {
+            // Simulate regular-season matchups.
+            for (let w = 0; w < regularSeasonWeeks; w++) {
                 let shuffled = [...weeklyScores].sort(() => Math.random() - 0.5);
                 for (let i = 0; i < shuffled.length; i += 2) {
                     let teamA = shuffled[i];
@@ -272,26 +382,39 @@ window.DraftRecap = {
 
             weeklyScores.sort((a, b) => b.wins !== a.wins ? b.wins - a.wins : b.pts - a.pts);
 
-            // Record wins & playoff teams
+            // Record regular-season wins and playoff seeds.
             weeklyScores.forEach((teamRes, seed) => {
                 let target = simResults.find(x => x.id === teamRes.id);
                 target.winsTotal += teamRes.wins;
                 if (seed < playoffSpots) target.playoffTotal++;
-                if (seed === 0) target.titleTotal++; // Seed 1 champion proxy
             });
+
+            // Simulate a simple 4-team semifinal/final bracket when enough weeks exist.
+            if (playoffWeeks > 0 && weeklyScores.length >= playoffSpots) {
+                const semifinals = [
+                    [weeklyScores[0], weeklyScores[3]],
+                    [weeklyScores[1], weeklyScores[2]]
+                ].map(([teamA, teamB]) => teamA.scores[regularSeasonWeeks] >= teamB.scores[regularSeasonWeeks] ? teamA : teamB);
+
+                const champion = playoffWeeks > 1
+                    ? (semifinals[0].scores[regularSeasonWeeks + 1] >= semifinals[1].scores[regularSeasonWeeks + 1] ? semifinals[0] : semifinals[1])
+                    : semifinals[0];
+                const target = simResults.find(x => x.id === champion.id);
+                target.titleTotal++;
+            }
         }
 
         // Attach metrics to teams
         teams.forEach(team => {
             let res = simResults.find(x => x.id === team.id);
             let avgWins = (res.winsTotal / totalSims).toFixed(1);
-            let avgLosses = (weeks - avgWins).toFixed(1);
+            let avgLosses = (regularSeasonWeeks - avgWins).toFixed(1);
             let playoffOdds = Math.round((res.playoffTotal / totalSims) * 100);
             let titleOdds = Math.round((res.titleTotal / totalSims) * 100);
 
             team.simRecord = `${Math.round(avgWins)}-${Math.round(avgLosses)}`;
             team.playoffOdds = playoffOdds;
-            team.titleOdds = Math.max(1, titleOdds);
+            team.titleOdds = titleOdds;
         });
     },
 
@@ -675,13 +798,15 @@ window.DraftRecap = {
             ? coreStarters.reduce((sum, p) => sum + (p.playoffSOS || p.avgStars || 3.0), 0) / coreStarters.length 
             : 3.0;
 
+        const playoffStart = Math.max(State.settings.startWeek || 1, (State.settings.endWeek || 17) - 2);
+        const playoffEnd = State.settings.endWeek || 17;
         let verdict = "";
         if (avgPlayoffStars >= 3.3) {
-            verdict = `🔥 <strong>Championship Schedule:</strong> Core starters enjoy a lush <strong>⭐${avgPlayoffStars.toFixed(2)}/5.0 Playoff SOS</strong> during Weeks 15–17.`;
+            verdict = `🔥 <strong>Championship Schedule:</strong> Core starters enjoy a lush <strong>⭐${avgPlayoffStars.toFixed(2)}/5.0 Playoff SOS</strong> during Weeks ${playoffStart}–${playoffEnd}.`;
         } else if (avgPlayoffStars <= 2.7) {
-            verdict = `⚠️ <strong>Brutal Playoff Slate:</strong> Faces a rigid <strong>⭐${avgPlayoffStars.toFixed(2)}/5.0 Playoff SOS</strong> during the fantasy championship rounds.`;
+            verdict = `⚠️ <strong>Brutal Playoff Slate:</strong> Faces a rigid <strong>⭐${avgPlayoffStars.toFixed(2)}/5.0 Playoff SOS</strong> during Weeks ${playoffStart}–${playoffEnd}.`;
         } else {
-            verdict = `⚖️ <strong>Neutral Playoff Schedule:</strong> Balanced <strong>⭐${avgPlayoffStars.toFixed(2)}/5.0 Playoff SOS</strong> across Weeks 15–17.`;
+            verdict = `⚖️ <strong>Neutral Playoff Schedule:</strong> Balanced <strong>⭐${avgPlayoffStars.toFixed(2)}/5.0 Playoff SOS</strong> across Weeks ${playoffStart}–${playoffEnd}.`;
         }
 
         return { avgPlayoffStars, verdict };
@@ -1151,6 +1276,19 @@ window.DraftRecap = {
             </div>
         `;
 
+        const componentBar = (label, value) => `
+            <div>
+                <div class="flex justify-between text-[10px] font-bold text-slate-600 mb-1">
+                    <span>${label}</span><span>${Math.round(value)}/100</span>
+                </div>
+                <div class="h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                    <div class="h-full bg-indigo-500 rounded-full" style="width:${this.clamp(value)}%"></div>
+                </div>
+            </div>`;
+
+        const ws = team.weeklyStats;
+        const ra = team.rosterAudit;
+
         const maxCeil = Math.max(1, team.ceilingPts);
         const basePct = Math.round((team.basePts / maxCeil) * 100);
         const floorPct = Math.round((team.floorPts / maxCeil) * 100);
@@ -1176,6 +1314,44 @@ window.DraftRecap = {
                             </span>
                         </div>
                         <span class="text-2xl opacity-50">🛡️</span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+                        <span class="text-[10px] uppercase font-extrabold text-slate-400 block">Median Week</span>
+                        <strong class="text-lg text-indigo-700">${ws.median.toFixed(1)}</strong>
+                        <span class="block text-[10px] text-slate-500">${ws.average.toFixed(1)} average</span>
+                    </div>
+                    <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+                        <span class="text-[10px] uppercase font-extrabold text-slate-400 block">Consistency</span>
+                        <strong class="text-lg text-emerald-600">${Math.round(ws.consistency)}%</strong>
+                        <span class="block text-[10px] text-slate-500">${ws.stdDev.toFixed(1)} point spread</span>
+                    </div>
+                    <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+                        <span class="text-[10px] uppercase font-extrabold text-slate-400 block">Best / Worst</span>
+                        <strong class="text-lg text-slate-800">W${ws.bestWeek || '-'} / W${ws.worstWeek || '-'}</strong>
+                        <span class="block text-[10px] text-slate-500">${ws.ceiling.toFixed(1)} / ${ws.floor.toFixed(1)} pts</span>
+                    </div>
+                    <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+                        <span class="text-[10px] uppercase font-extrabold text-slate-400 block">Roster Health</span>
+                        <strong class="text-lg ${ra.availabilityScore >= 80 ? 'text-emerald-600' : 'text-amber-600'}">${Math.round(ra.availabilityScore)}%</strong>
+                        <span class="block text-[10px] text-slate-500">${ra.injuredCount} injury tags • ${ra.byePeak} peak bye</span>
+                    </div>
+                </div>
+
+                <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                    <div class="flex justify-between items-center mb-3">
+                        <h4 class="text-xs font-extrabold uppercase tracking-wider text-slate-700">Grade Breakdown</h4>
+                        <span class="text-[10px] text-slate-500">Format-aware, league-relative</span>
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        ${componentBar('Lineup', a.gradeComponents.lineup)}
+                        ${componentBar('Depth', a.gradeComponents.depth)}
+                        ${componentBar('Draft Value', a.gradeComponents.value)}
+                        ${componentBar('Stability', a.gradeComponents.stability)}
+                        ${componentBar('Availability', a.gradeComponents.availability)}
+                        ${componentBar('Completeness', a.gradeComponents.completeness)}
                     </div>
                 </div>
 
@@ -1205,7 +1381,7 @@ window.DraftRecap = {
 
                     <div class="bg-emerald-50/70 border border-emerald-200 p-4 rounded-xl">
                         <h4 class="text-xs font-extrabold text-emerald-900 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-                            <span>🏆</span> Championship Playoff Path (Wks 15–17)
+                            <span>🏆</span> Championship Playoff Path (Wks ${playoffStartWeek}–${playoffEndWeek})
                         </h4>
                         <p class="text-xs text-emerald-950 leading-relaxed mb-2">${p.verdict}</p>
                         <div class="text-[11px] text-emerald-900 border-t border-emerald-200/60 pt-2">Simulated strength against playoff matchups based on team SOS ratings.</div>
@@ -1231,7 +1407,8 @@ window.DraftRecap = {
 
         // TAB 2: PROJECTED STARTING LINEUP
         let totalStartingPts = a.lineup.starters.reduce((s, p) => s + (p.ProjPts || 0), 0);
-        let weeklyAvgPPG = (totalStartingPts / 17).toFixed(1);
+        const recapWeeks = Math.max(1, (State.settings.endWeek || 17) - (State.settings.startWeek || 1) + 1);
+        let weeklyAvgPPG = (totalStartingPts / recapWeeks).toFixed(1);
 
         const startersHTML = `
             <div class="space-y-4">
@@ -1265,8 +1442,8 @@ window.DraftRecap = {
                                     <td class="px-4 py-2.5 font-extrabold text-slate-900">${p.Player}</td>
                                     <td class="px-4 py-2.5 text-slate-500 font-semibold">${p.Team} • ${p.Pos}</td>
                                     <td class="px-4 py-2.5 text-center text-slate-500 font-medium">${p.byeWeek !== 'N/A' ? 'Wk ' + p.byeWeek : '-'}</td>
-                                    <td class="px-4 py-2.5 text-right font-black text-indigo-900">${(p.ModelPts || p.ProjPts).toFixed(1)}</td>
-                                    <td class="px-4 py-2.5 text-right font-bold text-emerald-600">${((p.ModelPts || p.ProjPts) / 17).toFixed(1)}</td>
+                                    <td class="px-4 py-2.5 text-right font-black text-indigo-900">${(p.ModelPts ?? p.ProjPts ?? 0).toFixed(1)}</td>
+                                    <td class="px-4 py-2.5 text-right font-bold text-emerald-600">${((p.ModelPts ?? p.ProjPts ?? 0) / recapWeeks).toFixed(1)}</td>
                                     <td class="px-4 py-2.5">
                                         <span class="bg-slate-100 text-slate-700 border border-slate-200 px-2 py-0.5 rounded text-[10px] font-bold">
                                             ${p._rbArchetype || p._wrArchetype || p._teArchetype || p._qbArchetype || 'Starter'}
@@ -1298,7 +1475,7 @@ window.DraftRecap = {
                             </div>
                             <div class="text-right">
                                 <span class="text-xs font-black text-slate-900 block">${p.ProjPts.toFixed(1)} pts</span>
-                                <span class="text-[10px] font-bold text-emerald-600">${(p.ProjPts / 17).toFixed(1)} PPG</span>
+                                <span class="text-[10px] font-bold text-emerald-600">${(p.ProjPts / recapWeeks).toFixed(1)} PPG</span>
                             </div>
                         </div>
                     `).join('')}

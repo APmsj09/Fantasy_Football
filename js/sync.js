@@ -126,7 +126,7 @@ window.DraftSync = {
                     isCPU: t.isCPU,
                     profile: profile,
                     roster: [],
-                    counts: { QB: 0, RB: 0, WR: 0, TE: 0, FlexRBWR: 0, Flex: 0, Superflex: 0, PK: 0, DST: 0, Bench: 0 }
+                    counts: { QB: 0, RB: 0, WR: 0, TE: 0, FlexRBWR: 0, FlexWRTE: 0, Flex: 0, Superflex: 0, PK: 0, DST: 0, Bench: 0 }
                 };
             });
 
@@ -138,7 +138,8 @@ window.DraftSync = {
             }
 
             // 4. Replay Pick History
-            data.history.forEach(h => {
+            const history = [...data.history].sort((a, b) => (a.pickIndex || 0) - (b.pickIndex || 0));
+            history.forEach(h => {
                 let team = State.teamsById[h.teamId];
                 let playerIndex = State.availablePlayers.findIndex(p => p._cleanName === h.cleanName && p.Pos === h.pos && p.Team === h.team);
                 
@@ -147,11 +148,11 @@ window.DraftSync = {
                     player.draftPickNum = h.pickIndex + 1;
                     
                     team.roster.push({ ...player, slottedPos: h.slot });
-                    team.counts[h.slot]++;
+                    team.counts[h.slot] = (team.counts[h.slot] || 0) + 1;
                     State.draftHistory.push({ pickIndex: h.pickIndex, player: player, teamId: team.id, slot: h.slot });
-                    State.currentPick++;
                 }
             });
+            State.currentPick = State.draftHistory.reduce((maxPick, pick) => Math.max(maxPick, pick.pickIndex + 1), 0);
 
             // 5. Finalize UI State
             State.draftStarted = true;

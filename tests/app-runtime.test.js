@@ -239,3 +239,43 @@ test('player ages should prefer the team/position-matching Sleeper entry when na
 
   assert.equal(State.allPlayers[0].age, 29);
 });
+
+test('recap summaries and roster audits remain finite for incomplete teams', () => {
+  const context = {
+    console,
+    document: { getElementById() { return null; } },
+    window: {},
+    State: {
+      settings: {
+        startWeek: 1,
+        endWeek: 17,
+        roster: {
+          QB: { max: 1 }, RB: { max: 2 }, WR: { max: 2 }, TE: { max: 1 },
+          PK: { max: 1 }, DST: { max: 1 }, Flex: { max: 1 }, Bench: { max: 5 }
+        }
+      }
+    }
+  };
+
+  context.window.window = context.window;
+  vm.createContext(context);
+  vm.runInContext(fs.readFileSync('js/recap.js', 'utf8'), context);
+
+  const recap = context.window.DraftRecap;
+  const summary = recap.summarizeWeeklyScores([10, Number.NaN, 0, 20], 3);
+  assert.equal(summary.total, 30);
+  assert.equal(summary.bestWeek, 5);
+  assert.equal(summary.worstWeek, 4);
+  assert.ok(Number.isFinite(summary.consistency));
+
+  const audit = recap.auditRoster({
+    roster: [
+      { Pos: 'QB', injuryStatus: 'Questionable', byeWeek: 9 },
+      { Pos: 'RB', byeWeek: 9 }
+    ]
+  });
+  assert.equal(audit.missingCore, 6);
+  assert.equal(audit.byePeak, 2);
+  assert.equal(audit.injuredCount, 1);
+  assert.ok(audit.availabilityScore < 100);
+});

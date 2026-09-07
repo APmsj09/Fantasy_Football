@@ -160,7 +160,7 @@ const UI = {
                 ? `<span class="text-[10px] font-black text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">+${edgeVal.toFixed(1)}</span>`
                 : `<span class="text-[10px] font-bold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">${edgeVal.toFixed(1)}</span>`;
 
-            let overProb = p.OverProb ? Math.round(p.OverProb * 100) : 50;
+            let overProb = p.OverProb !== undefined && p.OverProb !== null ? Math.round(p.OverProb * 100) : 50;
             let probColor = overProb >= 65 ? 'text-emerald-600 font-black' : (overProb <= 35 ? 'text-rose-600 font-bold' : 'text-slate-500 font-semibold');
 
             let floorVal = (p.floorPpg !== undefined ? p.floorPpg : ((p.ProjPts || 0) / 17) * 0.78).toFixed(1);
@@ -1681,7 +1681,7 @@ const UI = {
             }
         }
 
-        let overProb = p.OverProb ? Math.round(p.OverProb * 100) : 50;
+        let overProb = p.OverProb !== undefined && p.OverProb !== null ? Math.round(p.OverProb * 100) : 50;
         let edgeVal = p.Edge ?? 0;
         
         let verdictBadge, verdictText, verdictBg;
@@ -2397,7 +2397,7 @@ const UI = {
                 ? `<span class="text-[10px] font-black text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">+${edgeVal.toFixed(1)}</span>` 
                 : `<span class="text-[10px] font-bold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">${edgeVal.toFixed(1)}</span>`;
 
-            let overProb = p.OverProb ? Math.round(p.OverProb * 100) : 50;
+            let overProb = p.OverProb !== undefined && p.OverProb !== null ? Math.round(p.OverProb * 100) : 50;
             let probColor = overProb >= 65 ? 'text-emerald-600 font-black' : (overProb <= 35 ? 'text-rose-600 font-bold' : 'text-slate-500 font-semibold');
             let probStr = `<span class="text-[11px] ${probColor}">${overProb}%</span>`;
 

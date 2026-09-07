@@ -279,6 +279,12 @@ const State = {
 
         if (!this.allPlayers || !this.allPlayers.length) return null;
 
+        // Merge operations can run before the normal load pipeline builds indexes.
+        if (!this._fallbackIndex || !this._playerIndex || typeof this._playerIndex.get !== 'function') {
+            this.enrichPlayerMap();
+            this.buildPlayerIndex();
+        }
+
         if (nPos !== 'DST' && nPos !== 'PK') {
             // Check exact map first
             let exactMatch = this._playerIndex.get(`${noSpaceName}_${nTeam}_${nPos}`);
@@ -1300,7 +1306,7 @@ const State = {
 
         for (let i = 0; i < roster.length; i++) {
             let p = roster[i];
-            let val = p.weeklyProjections[`W${weekNum}`] || 0;
+            let val = p.weeklyProjections?.[`W${weekNum}`] || 0;
             if (p.Pos === 'QB') qb.push({ player: p, val: val });
             else if (p.Pos === 'RB') rb.push(val);
             else if (p.Pos === 'WR') wr.push(val);
@@ -1398,7 +1404,7 @@ const State = {
 
         for (let i = 0; i < roster.length; i++) {
             let p = roster[i];
-            let val = p.weeklyProjections[`W${weekNum}`] || 0;
+            let val = p.weeklyProjections?.[`W${weekNum}`] || 0;
             if (p.Pos === 'QB') qb.push(val);
             else if (p.Pos === 'RB') rb.push(val);
             else if (p.Pos === 'WR') wr.push(val);
@@ -2053,9 +2059,9 @@ const State = {
                 if (['WR', 'TE'].includes(p.Pos) && advPlayer['YDS']) p.pastStats.recYds = advPlayer['YDS'];
 
                 // TDs & INTs
-                const passTd = advPlayer['PASS TD'] ?? advPlayer['Pass TD'];
-                const rushTd = advPlayer['RUSH TD'] ?? advPlayer['Rush TD'];
-                const recTd = advPlayer['REC TD'] ?? advPlayer['Rec TD'];
+                const passTd = advPlayer['PASS TD'] ?? advPlayer['Pass TD'] ?? (p.Pos === 'QB' ? p.stats?.passTd : undefined);
+                const rushTd = advPlayer['RUSH TD'] ?? advPlayer['Rush TD'] ?? (p.Pos === 'RB' ? p.stats?.rushTd : undefined);
+                const recTd = advPlayer['REC TD'] ?? advPlayer['Rec TD'] ?? (['WR', 'TE'].includes(p.Pos) ? p.stats?.recTd : undefined);
                 const totalTd = advPlayer['TD'] ?? advPlayer['TDs'] ?? advPlayer['Total TD'];
 
                 if (totalTd !== undefined) {
@@ -2195,7 +2201,11 @@ const State = {
 
     calculateProjections() {
         this.allPlayers.forEach(p => {
-            let s = p.stats || {};
+            // Rebuild from immutable source stats so changing scoring settings does not
+            // repeatedly blend already-blended projections.
+            if (!p._baseStats) p._baseStats = { ...(p.stats || {}) };
+            let s = { ...p._baseStats };
+            p.stats = s;
             
             // =========================================================
             // ⚡ PER-GAME CONSENSUS BLENDING (CBS + Sleeper)

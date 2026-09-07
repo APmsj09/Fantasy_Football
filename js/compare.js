@@ -65,7 +65,7 @@ window.Compare = {
                             </h3>
                         </div>
                         <div class="text-right">
-                            <span class="block text-lg font-black text-indigo-700">${(topPick.ModelPts || topPick.ProjPts || 0).toFixed(1)} <span class="text-xs text-indigo-400 font-semibold">Model Pts</span></span>
+                            <span class="block text-lg font-black text-indigo-700">${(topPick.ModelPts ?? topPick.ProjPts ?? 0).toFixed(1)} <span class="text-xs text-indigo-400 font-semibold">Model Pts</span></span>
                             <span class="text-xs text-slate-500 font-medium">Consensus: ${(topPick.ConsensusPts || topPick.ProjPts || 0).toFixed(1)} pts <span class="font-bold ${(topPick.Edge || 0) >= 0 ? 'text-emerald-600' : 'text-rose-600'}">(${(topPick.Edge || 0) >= 0 ? '+' : ''}${(topPick.Edge || 0).toFixed(1)})</span></span>
                         </div>
                     </div>
@@ -306,7 +306,7 @@ window.Compare = {
         }
 
         // Projection Edge / Market Mispricing Highlight
-        let topOverProb = p.OverProb ? Math.round(p.OverProb * 100) : 50;
+        let topOverProb = p.OverProb !== undefined && p.OverProb !== null ? Math.round(p.OverProb * 100) : 50;
         if (topOverProb >= 65 && (p.Edge || 0) >= 8.0) {
             highlights.unshift(`<li><strong class="text-emerald-700">🚀 Strong Market Edge:</strong> The model projects a <strong>${topOverProb}% probability to beat consensus</strong> (+${(p.Edge || 0).toFixed(1)} expected edge over market projections).</li>`);
         } else if (topOverProb <= 35 && (p.Edge || 0) <= -8.0) {
