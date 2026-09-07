@@ -279,3 +279,68 @@ test('recap summaries and roster audits remain finite for incomplete teams', () 
   assert.equal(audit.injuredCount, 1);
   assert.ok(audit.availabilityScore < 100);
 });
+
+test('recap grade calibration treats average complete teams as average', () => {
+  const context = {
+    console,
+    document: { getElementById() { return null; } },
+    window: {},
+    State: { settings: { roster: {} } }
+  };
+
+  context.window.window = context.window;
+  vm.createContext(context);
+  vm.runInContext(fs.readFileSync('js/recap.js', 'utf8'), context);
+
+  const recap = context.window.DraftRecap;
+  const averageScore = recap.calculateGradeScore({
+    lineup: 65,
+    depth: 65,
+    value: 65,
+    stability: 65,
+    availability: 100,
+    completeness: 100
+  });
+  const strongScore = recap.calculateGradeScore({
+    lineup: 82,
+    depth: 82,
+    value: 82,
+    stability: 82,
+    availability: 90,
+    completeness: 100
+  });
+
+  assert.equal(averageScore, 73);
+  assert.equal(recap.getGradeDetails(averageScore).grade, 'C');
+  assert.equal(recap.getGradeDetails(strongScore).grade, 'B');
+});
+
+test('draft assessment distinguishes smart value, reaches, stashes, and roster shape', () => {
+  const context = {
+    console,
+    document: { getElementById() { return null; } },
+    window: {},
+    State: { settings: { numTeams: 12, roster: {} } }
+  };
+
+  context.window.window = context.window;
+  vm.createContext(context);
+  vm.runInContext(fs.readFileSync('js/recap.js', 'utf8'), context);
+
+  const recap = context.window.DraftRecap;
+  const assessment = recap.assessDraftConstruction({
+    roster: [
+      { Player: 'Starter A', Pos: 'RB', draftPickNum: 30, adp: 20, handcuffName: 'Backup A' },
+      { Player: 'Backup A', Pos: 'RB', draftPickNum: 150, adp: 130, isRBHandcuff: true, contingentDraftEquity: 30 },
+      { Player: 'Reach', Pos: 'WR', draftPickNum: 10, adp: 25 }
+    ]
+  }, 2, 1.08, 1, 1.08, 1);
+
+  assert.equal(assessment.valuePicks, 2);
+  assert.equal(assessment.reaches, 1);
+  assert.equal(assessment.severeReaches, 1);
+  assert.equal(assessment.handcuffsOwned, 1);
+  assert.equal(assessment.handcuffTargets, 1);
+  assert.equal(assessment.upsideStashes, 1);
+  assert.equal(assessment.rosterProfile, 'Complete Contender');
+});

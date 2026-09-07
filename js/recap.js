@@ -108,6 +108,79 @@ window.DraftRecap = {
         return { grade: 'F', color: 'text-rose-700', bg: 'bg-rose-100 border-rose-300' };
     },
 
+    calculateGradeScore(gradeComponents) {
+        return Math.round(
+            gradeComponents.lineup * 0.38 +
+            gradeComponents.depth * 0.14 +
+            gradeComponents.value * 0.12 +
+            gradeComponents.stability * 0.14 +
+            gradeComponents.availability * 0.12 +
+            gradeComponents.completeness * 0.10
+        );
+    },
+
+    assessDraftConstruction(team, averageAdpDelta, floorRatio, avgFloorRatio, ceilingRatio, avgCeilingRatio) {
+        const skillPlayers = (team.roster || []).filter(p => !['PK', 'DST'].includes(p.Pos));
+        const valuePicks = skillPlayers.filter(p => {
+            const diff = (p.draftPickNum || 1) - (p.adp || p.draftPickNum || 1);
+            return diff >= 8;
+        }).length;
+        const reaches = skillPlayers.filter(p => {
+            const diff = (p.draftPickNum || 1) - (p.adp || p.draftPickNum || 1);
+            return diff <= -5;
+        }).length;
+        const severeReaches = skillPlayers.filter(p => {
+            const diff = (p.draftPickNum || 1) - (p.adp || p.draftPickNum || 1);
+            return diff <= -12;
+        }).length;
+        const upsideStashes = skillPlayers.filter(p => {
+            const round = Math.floor(((p.draftPickNum || 1) - 1) / Math.max(1, State.settings.numTeams || 12)) + 1;
+            const hasContingentValue = (p.contingentDraftEquity || 0) >= 20 || p.isRBHandcuff;
+            const hasGrowthSignal = p._isAscendingRole || p._isHandcuffPlus || p._isFlyer || (p.upsideScore || 0) >= 25;
+            return round >= 8 && (hasContingentValue || hasGrowthSignal);
+        }).length;
+
+        const handcuffTargets = skillPlayers.filter(p => p.Pos === 'RB' && p.handcuffName);
+        const ownedNames = new Set(skillPlayers.map(p => String(p.Player || p._cleanName || '').toLowerCase()));
+        const handcuffsOwned = handcuffTargets.filter(starter =>
+            ownedNames.has(String(starter.handcuffName || '').toLowerCase())
+        ).length;
+        const handcuffCoverage = handcuffTargets.length > 0
+            ? handcuffsOwned / handcuffTargets.length
+            : 0;
+
+        let floorLabel = 'Balanced Floor';
+        if (floorRatio >= avgFloorRatio + 0.03) floorLabel = 'High-Floor Build';
+        else if (floorRatio <= avgFloorRatio - 0.03) floorLabel = 'Fragile Floor';
+
+        let ceilingLabel = 'Balanced Ceiling';
+        if (ceilingRatio >= avgCeilingRatio + 0.03) ceilingLabel = 'High-Ceiling Build';
+        else if (ceilingRatio <= avgCeilingRatio - 0.03) ceilingLabel = 'Capped Ceiling';
+
+        let rosterProfile = `${floorLabel} • ${ceilingLabel}`;
+        if (floorLabel === 'Fragile Floor' && ceilingLabel === 'High-Ceiling Build') {
+            rosterProfile = 'Boom-or-Bust Upside';
+        } else if (floorLabel === 'High-Floor Build' && ceilingLabel === 'High-Ceiling Build') {
+            rosterProfile = 'Complete Contender';
+        }
+
+        return {
+            averageAdpDelta,
+            valuePicks,
+            reaches,
+            severeReaches,
+            upsideStashes,
+            handcuffsOwned,
+            handcuffTargets: handcuffTargets.length,
+            handcuffCoverage,
+            floorRatio,
+            ceilingRatio,
+            floorLabel,
+            ceilingLabel,
+            rosterProfile
+        };
+    },
+
     generateRecaps() {
         this.teamData = {};
         this.sortedTeams = [];
@@ -199,6 +272,7 @@ window.DraftRecap = {
 
         const avgLeagueBase = leagueTotals.basePts / leagueTeamCount;
         const avgLeagueBench = leagueTotals.benchPts / leagueTeamCount;
+        const avgLeagueCeiling = leagueTotals.ceilingPts / leagueTeamCount;
         const avgLeagueFloorRatio = leagueTotals.floorPts / Math.max(1, leagueTotals.ceilingPts);
         const avgLeagueConsistency = rawTeams.reduce((sum, team) => sum + team.weeklyStats.consistency, 0) / leagueTeamCount;
 
@@ -235,6 +309,7 @@ window.DraftRecap = {
             let bestValue = null, worstReach = null, topSleeper = null;
             let maxSteal = 0, worstReachDiff = 0, maxStash = -999;
             let weightedAdpDelta = 0;
+            let adpSampleSize = 0;
 
             team.roster.forEach(p => {
                 let pickNum = p.draftPickNum || 1;
@@ -246,6 +321,7 @@ window.DraftRecap = {
                     let adpDiff = pickNum - p.adp; 
                     let weight = isKickerOrDST ? 0.05 : Math.max(0.15, 1 - (roundDrafted * 0.05));
                     weightedAdpDelta += (adpDiff * weight);
+                    if (!isKickerOrDST) adpSampleSize += 1;
 
                     if (adpDiff > maxSteal && !isKickerOrDST && roundDrafted <= 14) {
                         maxSteal = adpDiff;
@@ -274,23 +350,27 @@ window.DraftRecap = {
             let starterEdge = avgLeagueBase === 0 ? 0 : ((team.basePts - avgLeagueBase) / avgLeagueBase) * 100;
             let benchEdge = ((team.benchPts - avgLeagueBench) / (avgLeagueBench || 1)) * 100;
             let teamFloorRatio = team.floorPts / Math.max(1, team.ceilingPts);
+            let teamCeilingRatio = team.ceilingPts / Math.max(1, avgLeagueCeiling);
             let riskDiff = (teamFloorRatio - avgLeagueFloorRatio) * 100;
+            const averageAdpDelta = weightedAdpDelta / Math.max(1, adpSampleSize);
+            const draftAssessment = this.assessDraftConstruction(
+                team,
+                averageAdpDelta,
+                teamFloorRatio,
+                avgLeagueFloorRatio,
+                teamCeilingRatio,
+                1
+            );
+            const relativeBaseline = 65;
             const gradeComponents = {
-                lineup: this.clamp(50 + starterEdge * 1.2),
-                depth: this.clamp(50 + benchEdge * 0.45),
-                value: this.clamp(50 + weightedAdpDelta * 0.6),
-                stability: this.clamp(50 + (team.weeklyStats.consistency - avgLeagueConsistency) * 1.8 + riskDiff * 0.35),
+                lineup: this.clamp(relativeBaseline + starterEdge * 1.2),
+                depth: this.clamp(relativeBaseline + benchEdge * 0.45 + draftAssessment.handcuffCoverage * 5 + Math.min(6, draftAssessment.upsideStashes * 1.5)),
+                value: this.clamp(relativeBaseline + averageAdpDelta * 1.0 + Math.min(5, draftAssessment.valuePicks * 0.75) - Math.min(8, draftAssessment.severeReaches * 1.5)),
+                stability: this.clamp(relativeBaseline + (team.weeklyStats.consistency - avgLeagueConsistency) * 1.8 + riskDiff * 0.35),
                 availability: team.rosterAudit.availabilityScore,
                 completeness: this.clamp(100 - team.rosterAudit.missingCore * 10 - team.rosterAudit.missingFlex * 5)
             };
-            const score = Math.round(
-                gradeComponents.lineup * 0.38 +
-                gradeComponents.depth * 0.14 +
-                gradeComponents.value * 0.12 +
-                gradeComponents.stability * 0.14 +
-                gradeComponents.availability * 0.12 +
-                gradeComponents.completeness * 0.10
-            );
+            const score = this.calculateGradeScore(gradeComponents);
             const gradeDetails = this.getGradeDetails(score);
             const { grade, color, bg } = gradeDetails;
 
@@ -314,7 +394,7 @@ window.DraftRecap = {
             // ⚡ 2. Include hasEliteStack directly inside the object
             team.analysis = {
                 grade, color, bg, score, gradeComponents, persona, starterEdge, benchEdge,
-                bestValue, worstReach, topSleeper, lineup,
+                bestValue, worstReach, topSleeper, lineup, draftAssessment,
                 units, streamingAnalysis, playoffOutlook, xFactor,
                 hasEliteStack
             };
@@ -1137,6 +1217,21 @@ window.DraftRecap = {
 
         let specialMoveHTML = specialMoveCommentary.length > 0 ? ` ${specialMoveCommentary.slice(0, 2).join(' ')}` : '';
 
+        const draftProfile = a.draftAssessment;
+        let processReview = '';
+        if (draftProfile) {
+            const valueReview = draftProfile.severeReaches > 0
+                ? `The board discipline was mixed: ${draftProfile.valuePicks} meaningful value picks were offset by ${draftProfile.severeReaches} major reach${draftProfile.severeReaches === 1 ? '' : 'es'}.`
+                : `The draft showed sound board discipline with ${draftProfile.valuePicks} meaningful value pick${draftProfile.valuePicks === 1 ? '' : 's'} and no major reaches.`;
+            const stashReview = draftProfile.upsideStashes > 0
+                ? `The manager also reserved ${draftProfile.upsideStashes} late-round roster spot${draftProfile.upsideStashes === 1 ? '' : 's'} for legitimate upside.`
+                : `The bench is more conservative, with limited identifiable late-round upside.`;
+            const handcuffReview = draftProfile.handcuffTargets > 0
+                ? `RB contingency coverage is ${Math.round(draftProfile.handcuffCoverage * 100)}%.`
+                : `No clear RB handcuff pair was drafted.`;
+            processReview = `<strong>${draftProfile.rosterProfile}:</strong> ${valueReview} ${stashReview} ${handcuffReview}`;
+        }
+
         // =========================================================================
         // 5. ROTATING EDITORIAL VERDICT (Synced with 90/80/70 scale)
         // =========================================================================
@@ -1177,6 +1272,7 @@ window.DraftRecap = {
                 </div>
                 <p class="leading-relaxed text-slate-700">The <strong>${team.name}</strong> exited the draft projected for the <strong>#${rank} overall seed</strong>. Operating under a <strong>${persona.label} ${persona.icon}</strong> framework, they ${strategyCommentary}</p>
                 <p class="leading-relaxed text-slate-700">${unitReview}${specialMoveHTML}</p>
+                ${processReview ? `<p class="leading-relaxed text-slate-700">${processReview}</p>` : ''}
                 <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-800 font-medium leading-snug shadow-sm">
                     ${chatVerdict}
                 </div>
@@ -1354,6 +1450,23 @@ window.DraftRecap = {
                         ${componentBar('Stability', a.gradeComponents.stability)}
                         ${componentBar('Availability', a.gradeComponents.availability)}
                         ${componentBar('Completeness', a.gradeComponents.completeness)}
+                    </div>
+                </div>
+
+                <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 shadow-sm">
+                    <div class="flex justify-between items-center mb-3">
+                        <h4 class="text-xs font-extrabold uppercase tracking-wider text-slate-700">Draft Process & Roster Shape</h4>
+                        <span class="text-[10px] font-bold text-indigo-700">${a.draftAssessment.rosterProfile}</span>
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-[11px]">
+                        <div><span class="block text-slate-500">Smart value picks</span><strong class="text-emerald-700">${a.draftAssessment.valuePicks}</strong></div>
+                        <div><span class="block text-slate-500">Reaches / major</span><strong class="text-rose-600">${a.draftAssessment.reaches} / ${a.draftAssessment.severeReaches}</strong></div>
+                        <div><span class="block text-slate-500">Upside stashes</span><strong class="text-amber-700">${a.draftAssessment.upsideStashes}</strong></div>
+                        <div><span class="block text-slate-500">RB handcuff cover</span><strong class="text-indigo-700">${a.draftAssessment.handcuffsOwned}/${a.draftAssessment.handcuffTargets || 0}</strong></div>
+                    </div>
+                    <div class="mt-3 pt-2 border-t border-slate-200 text-[11px] text-slate-600">
+                        <strong>${a.draftAssessment.floorLabel}</strong> • <strong>${a.draftAssessment.ceilingLabel}</strong>
+                        <span class="text-slate-400"> | </span>${a.draftAssessment.handcuffTargets > 0 ? `${Math.round(a.draftAssessment.handcuffCoverage * 100)}% of identified RB handcuff needs covered.` : 'No identified RB handcuff pair was present on this roster.'}
                     </div>
                 </div>
 
