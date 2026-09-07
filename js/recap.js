@@ -1211,6 +1211,8 @@ window.DraftRecap = {
         const s = a.streamingAnalysis;
         const p = a.playoffOutlook;
         const numTeams = State.settings.numTeams || 12;
+        const playoffStartWeek = Math.max(State.settings.startWeek || 1, (State.settings.endWeek || 17) - 2);
+        const playoffEndWeek = State.settings.endWeek || 17;
 
         const playerCardHTML = (pl, label, colorCls, icon) => {
             if (!pl) {
