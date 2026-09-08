@@ -8,6 +8,15 @@ window.DraftRecap = {
         return Math.max(min, Math.min(max, Number.isFinite(value) ? value : min));
     },
 
+    getDraftMarketData(player) {
+        const pick = Number(player?.draftPickNum ?? player?.pickNum ?? player?.pick);
+        const adp = Number(player?.adp ?? player?.ADP ?? player?.averageDraftPosition);
+        return {
+            pick: Number.isFinite(pick) && pick > 0 ? pick : null,
+            adp: Number.isFinite(adp) && adp > 0 ? adp : null
+        };
+    },
+
     summarizeWeeklyScores(scores, startWeek = 1) {
         const cleanScores = scores.map(Number).filter(Number.isFinite);
         if (cleanScores.length === 0) {
@@ -122,15 +131,18 @@ window.DraftRecap = {
     assessDraftConstruction(team, averageAdpDelta, floorRatio, avgFloorRatio, ceilingRatio, avgCeilingRatio) {
         const skillPlayers = (team.roster || []).filter(p => !['PK', 'DST'].includes(p.Pos));
         const valuePicks = skillPlayers.filter(p => {
-            const diff = (p.draftPickNum || 1) - (p.adp || p.draftPickNum || 1);
+            const market = this.getDraftMarketData(p);
+            const diff = (market.pick || 1) - (market.adp || market.pick || 1);
             return diff >= 8;
         }).length;
         const reaches = skillPlayers.filter(p => {
-            const diff = (p.draftPickNum || 1) - (p.adp || p.draftPickNum || 1);
+            const market = this.getDraftMarketData(p);
+            const diff = (market.pick || 1) - (market.adp || market.pick || 1);
             return diff <= -5;
         }).length;
         const severeReaches = skillPlayers.filter(p => {
-            const diff = (p.draftPickNum || 1) - (p.adp || p.draftPickNum || 1);
+            const market = this.getDraftMarketData(p);
+            const diff = (market.pick || 1) - (market.adp || market.pick || 1);
             return diff <= -12;
         }).length;
         const upsideStashes = skillPlayers.filter(p => {
@@ -312,13 +324,14 @@ window.DraftRecap = {
             let adpSampleSize = 0;
 
             team.roster.forEach(p => {
-                let pickNum = p.draftPickNum || 1;
+                const market = this.getDraftMarketData(p);
+                let pickNum = market.pick || 1;
                 let roundDrafted = Math.floor((pickNum - 1) / numTeams) + 1;
                 let isKickerOrDST = ['PK', 'DST'].includes(p.Pos);
 
-                if (p.adp) {
+                if (market.adp) {
                     // ✨ FIXED: pickNum - p.adp (Positive = Value/Steal, Negative = Reach)
-                    let adpDiff = pickNum - p.adp; 
+                    let adpDiff = pickNum - market.adp;
                     let weight = isKickerOrDST ? 0.05 : Math.max(0.15, 1 - (roundDrafted * 0.05));
                     weightedAdpDelta += (adpDiff * weight);
                     if (!isKickerOrDST) adpSampleSize += 1;
@@ -327,7 +340,7 @@ window.DraftRecap = {
                         maxSteal = adpDiff;
                         bestValue = p;
                     }
-                    if (adpDiff < worstReachDiff && !isKickerOrDST && roundDrafted <= 10) {
+                    if (adpDiff < worstReachDiff && !isKickerOrDST) {
                         worstReachDiff = adpDiff;
                         worstReach = p;
                     }
@@ -363,10 +376,10 @@ window.DraftRecap = {
             );
             const relativeBaseline = 65;
             const gradeComponents = {
-                lineup: this.clamp(relativeBaseline + starterEdge * 1.2),
-                depth: this.clamp(relativeBaseline + benchEdge * 0.45 + draftAssessment.handcuffCoverage * 5 + Math.min(6, draftAssessment.upsideStashes * 1.5)),
-                value: this.clamp(relativeBaseline + averageAdpDelta * 1.0 + Math.min(5, draftAssessment.valuePicks * 0.75) - Math.min(8, draftAssessment.severeReaches * 1.5)),
-                stability: this.clamp(relativeBaseline + (team.weeklyStats.consistency - avgLeagueConsistency) * 1.8 + riskDiff * 0.35),
+                lineup: this.clamp(relativeBaseline + starterEdge * 1.8),
+                depth: this.clamp(relativeBaseline + benchEdge * 0.75 + draftAssessment.handcuffCoverage * 5 + Math.min(6, draftAssessment.upsideStashes * 1.5)),
+                value: this.clamp(relativeBaseline + averageAdpDelta * 1.35 + Math.min(7, draftAssessment.valuePicks * 1.0) - Math.min(12, draftAssessment.severeReaches * 2.5)),
+                stability: this.clamp(relativeBaseline + (team.weeklyStats.consistency - avgLeagueConsistency) * 2.2 + riskDiff * 0.5),
                 availability: team.rosterAudit.availabilityScore,
                 completeness: this.clamp(100 - team.rosterAudit.missingCore * 10 - team.rosterAudit.missingFlex * 5)
             };
@@ -501,7 +514,7 @@ window.DraftRecap = {
     // 🏆 AUDIT LEAGUE-WIDE SUPERLATIVES & TROPHIES
     computeLeagueSuperlatives() {
         let bestSteal = null, maxStealDiff = -999;
-        let worstReach = null, maxReachDiff = 999;
+        let worstReach = null, maxReachDiff = -1;
         let chaosTeam = null, maxVariance = -999;
         let fortressTeam = null, maxFloorRatio = -999;
         let benchHoarder = null, maxBenchEdge = -999;
@@ -511,20 +524,22 @@ window.DraftRecap = {
             const a = team.analysis;
 
             // 1. Steal of the Draft
-            if (a.bestValue && a.bestValue.adp) {
-                let diff = a.bestValue.adp - (a.bestValue.draftPickNum || 1);
+            if (a.bestValue) {
+                const market = this.getDraftMarketData(a.bestValue);
+                let diff = (market.adp || 0) - (market.pick || 1);
                 if (diff > maxStealDiff) {
                     maxStealDiff = diff;
-                    bestSteal = { team: team.name, player: a.bestValue.Player, diff: Math.round(diff), pick: a.bestValue.draftPickNum };
+                    bestSteal = { team: team.name, player: a.bestValue.Player, diff: Math.round(diff), pick: market.pick };
                 }
             }
 
             // 2. Biggest Reach
-            if (a.worstReach && a.worstReach.adp) {
-                let diff = (a.worstReach.draftPickNum || 1) - a.worstReach.adp;
+            if (a.worstReach) {
+                const market = this.getDraftMarketData(a.worstReach);
+                let diff = (market.pick || 1) - (market.adp || 0);
                 if (diff > maxReachDiff) {
                     maxReachDiff = diff;
-                    worstReach = { team: team.name, player: a.worstReach.Player, diff: Math.round(diff), pick: a.worstReach.draftPickNum };
+                    worstReach = { team: team.name, player: a.worstReach.Player, diff: Math.round(diff), pick: market.pick };
                 }
             }
 

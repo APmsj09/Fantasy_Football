@@ -774,6 +774,7 @@ const State = {
             if (adpIndex === -1) adpIndex = headers.indexOf('REAL-TIME ADP');
             if (adpIndex === -1) adpIndex = headers.indexOf('ADP');
             if (adpIndex === -1) adpIndex = headers.indexOf('PICK NUM');
+            if (adpIndex === -1) adpIndex = headers.indexOf('PICK NUM.');
             if (adpIndex === -1) adpIndex = headers.indexOf('OVR');
             if (adpIndex === -1) adpIndex = headers.indexOf('OVERALL');
             
