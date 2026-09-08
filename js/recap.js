@@ -130,6 +130,11 @@ window.DraftRecap = {
 
     assessDraftConstruction(team, averageAdpDelta, floorRatio, avgFloorRatio, ceilingRatio, avgCeilingRatio) {
         const skillPlayers = (team.roster || []).filter(p => !['PK', 'DST'].includes(p.Pos));
+        const earlySpecialists = (team.roster || []).filter(p => {
+            const market = this.getDraftMarketData(p);
+            const round = market.pick ? Math.floor((market.pick - 1) / Math.max(1, State.settings.numTeams || 12)) + 1 : 99;
+            return ['PK', 'DST'].includes(p.Pos) && round <= 10;
+        });
         const valuePicks = skillPlayers.filter(p => {
             const market = this.getDraftMarketData(p);
             const diff = (market.pick || 1) - (market.adp || market.pick || 1);
@@ -185,6 +190,11 @@ window.DraftRecap = {
             handcuffsOwned,
             handcuffTargets: handcuffTargets.length,
             handcuffCoverage,
+            earlySpecialists: earlySpecialists.map(p => {
+                const market = this.getDraftMarketData(p);
+                return { player: p.Player, pos: p.Pos, round: Math.floor(((market.pick || 1) - 1) / Math.max(1, State.settings.numTeams || 12)) + 1, pick: market.pick };
+            }),
+            earlySpecialistCount: earlySpecialists.length,
             floorRatio,
             ceilingRatio,
             floorLabel,
@@ -378,7 +388,7 @@ window.DraftRecap = {
             const gradeComponents = {
                 lineup: this.clamp(relativeBaseline + starterEdge * 1.8),
                 depth: this.clamp(relativeBaseline + benchEdge * 0.75 + draftAssessment.handcuffCoverage * 5 + Math.min(6, draftAssessment.upsideStashes * 1.5)),
-                value: this.clamp(relativeBaseline + averageAdpDelta * 1.35 + Math.min(7, draftAssessment.valuePicks * 1.0) - Math.min(12, draftAssessment.severeReaches * 2.5)),
+                value: this.clamp(relativeBaseline + averageAdpDelta * 1.35 + Math.min(7, draftAssessment.valuePicks * 1.0) - Math.min(12, draftAssessment.severeReaches * 2.5) - Math.min(8, draftAssessment.earlySpecialists.reduce((penalty, specialist) => penalty + Math.max(0, 11 - specialist.round) * 0.8, 0))),
                 stability: this.clamp(relativeBaseline + (team.weeklyStats.consistency - avgLeagueConsistency) * 2.2 + riskDiff * 0.5),
                 availability: team.rosterAudit.availabilityScore,
                 completeness: this.clamp(100 - team.rosterAudit.missingCore * 10 - team.rosterAudit.missingFlex * 5)
@@ -1218,6 +1228,14 @@ window.DraftRecap = {
             }
         }
 
+        // Specialist timing
+        const earlySpecialists = a.draftAssessment?.earlySpecialists || [];
+        if (earlySpecialists.length > 0) {
+            const specialist = earlySpecialists[0];
+            const timing = specialist.pick ? `Pick #${specialist.pick} (Round ${specialist.round})` : `Round ${specialist.round}`;
+            specialMoveCommentary.push(`The <strong>${specialist.player}</strong> selection at ${timing} prioritized a replaceable ${specialist.pos === 'PK' ? 'kicker' : 'defense'} well ahead of the usual streaming window, costing some draft-value efficiency but securing a preferred option.`);
+        }
+
         // Handcuff Monopoly
         let ownsHandcuff = team.roster.some(p => p.isRBHandcuff && p.starterName && team.roster.some(s => s._cleanName === State.normalizeName(p.starterName)));
         if (ownsHandcuff) {
@@ -1473,11 +1491,12 @@ window.DraftRecap = {
                         <h4 class="text-xs font-extrabold uppercase tracking-wider text-slate-700">Draft Process & Roster Shape</h4>
                         <span class="text-[10px] font-bold text-indigo-700">${a.draftAssessment.rosterProfile}</span>
                     </div>
-                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-[11px]">
+                    <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 text-[11px]">
                         <div><span class="block text-slate-500">Smart value picks</span><strong class="text-emerald-700">${a.draftAssessment.valuePicks}</strong></div>
                         <div><span class="block text-slate-500">Reaches / major</span><strong class="text-rose-600">${a.draftAssessment.reaches} / ${a.draftAssessment.severeReaches}</strong></div>
                         <div><span class="block text-slate-500">Upside stashes</span><strong class="text-amber-700">${a.draftAssessment.upsideStashes}</strong></div>
                         <div><span class="block text-slate-500">RB handcuff cover</span><strong class="text-indigo-700">${a.draftAssessment.handcuffsOwned}/${a.draftAssessment.handcuffTargets || 0}</strong></div>
+                        <div><span class="block text-slate-500">Early specialists</span><strong class="text-rose-600">${a.draftAssessment.earlySpecialistCount}</strong></div>
                     </div>
                     <div class="mt-3 pt-2 border-t border-slate-200 text-[11px] text-slate-600">
                         <strong>${a.draftAssessment.floorLabel}</strong> • <strong>${a.draftAssessment.ceilingLabel}</strong>
